@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "scene.h"
 #include "intersect.h"
+#include "framebuffer.h"
 
 #include "cmdline.h"
 
@@ -50,7 +51,17 @@ rgb_pixel to_png(vec3 col01) {
 // }
 // 
 
-void repl(FILE *, scene &);
+void run(scene &scene, framebuffer &fb, gi_algorithm *algo) {
+	algo->prepare_frame(scene);
+	test_camrays(scene.camera);
+	fb.clear();
+	fb.color.for_each([&](unsigned x, unsigned y) {
+					  fb.add(x, y, algo->sample_pixel(x, y, 1, scene));
+					  });
+	fb.png().write("out.png");
+}
+
+void repl(istream &);
 
 int main(int argc, char **argv)
 {
@@ -59,17 +70,21 @@ int main(int argc, char **argv)
 // 	cout << to_string(cmdline.cam_pos) << endl;
 // 	cout << to_string(cmdline.view_dir) << endl;
 // 	cout << to_string(cmdline.world_up) << endl;
+// 
+// 	camera camera(cmdline.view_dir, cmdline.cam_pos, cmdline.world_up,
+// 				  cmdline.fovy, cmdline.vp_w, cmdline.vp_h);
+// 
+// 	test_camrays(camera);
+// 
+// 	image<rgb_pixel> out(cmdline.vp_w, cmdline.vp_h);
+// 	//scene scene = load_scene(cmdline.scene);
 
-	camera camera(cmdline.view_dir, cmdline.cam_pos, cmdline.world_up,
-				  cmdline.fovy, cmdline.vp_w, cmdline.vp_h);
-
-	test_camrays(camera);
-
-	image<rgb_pixel> out(cmdline.vp_w, cmdline.vp_h);
-	//scene scene = load_scene(cmdline.scene);
-
-	scene scene;
-	repl(stdin, scene);
+	if (cmdline.script != "") {
+		ifstream script(cmdline.script);
+		repl(script);
+	}
+	else
+		repl(cin);
 
 // 	out.write(cmdline.outfile);
 	return 0;

@@ -20,14 +20,7 @@ static struct argp_option options[] =
 {
 	// --[opt]		short/const		arg-descr		flag	option-descr
 	{ "verbose", 			'v', 	0,         		0, "Be verbose." },
-	{ "scene",              's',    "string",       0, "Which scene to use (e.g. wavefront obj file)." },
-	{ "width",              'w',    "int",          0, "View port width" },
-	{ "height",             'h',    "int",          0, "View port height" },
-	{ "dir",                'd',    "vec3",         0, "view direction (default 0,0,-1)" },
-	{ "up",                 'u',    "vec3",         0, "world up vector (default 0,1,0)" },
-	{ "pos",                'p',    "vec3",         0, "camera position (default 0,0,0)" },
-	{ "output-file",        'o',    "filename.png", 0, "output file name (default out.png)" },
-	{ "mode",               'm',    "<mode>",       0, "Which mode to use. srt is simple ray tracing (default), raster is signed distance rasterization" },
+	{ "script",             's',    "file",         0, "Use file instead of stdin to read commands from" },
 	{ 0 }
 };
 
@@ -58,21 +51,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 
 	switch (key)
 	{
-	case 'v':	cmdline.verbose = true; 	break;
-	case 'w':	cmdline.vp_w = atoi(arg); 	break;
-	case 'h':	cmdline.vp_h = atoi(arg); 	break;
-	case 'd':   cmdline.view_dir = read_vec3(sarg); break;
-	case 'u':   cmdline.world_up = read_vec3(sarg); break;
-	case 'p':   cmdline.cam_pos  = read_vec3(sarg); break;
-	case 'o':   cmdline.outfile = sarg; break;
-	case 's':   cmdline.scene = sarg; break;
-				
-	case 'm':
-				if (sarg == "srt") cmdline.mode = simple_rt;
-				else if (sarg == "raster") cmdline.mode = raster;
-				else argp_usage(state);
-				break;
-
+	case 's':   cmdline.script = sarg; break;
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}

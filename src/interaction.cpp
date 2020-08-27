@@ -1,8 +1,12 @@
 #include "scene.h"
+#include "algorithm.h"
+#include "bvh.h"
+#include "framebuffer.h"
 
-#include <cstdio>
-#include <cstring>
+#include "primary-hit.h"
+
 #include <iostream>
+#include <sstream>
 #include <glm/glm.hpp>
 
 #include <glm/gtx/string_cast.hpp>
@@ -11,41 +15,134 @@ inline std::ostream& operator<<(std::ostream &out, const glm::vec3 &x) {
 	return out;
 }
 
+inline std::istream& operator>>(std::istream &in, glm::vec3 &x) {
+	in >> x.x >> x.y >> x.z;
+	return in;
+}
+
 using namespace glm;
 using namespace std;
 
 const char *prompt = "rtgi > ";
 
-#define ifcmd(c) if (strcmp(command,c)==0)
-#define error(x) { fprintf(stderr, "command %d (%s): %s\n", cmdid, command, x); continue; }
+#define ifcmd(c) if (command==c)
+#define error(x) { cerr << "command " << cmdid << " (" << command << "): " << x << endl; continue; }
+#define check_in(x) { if (in.bad() || in.fail()) error(x); }
+#define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
-void repl(FILE *in, scene &scene) {
+void run(scene &scene, framebuffer &fb, gi_algorithm *algo);
+
+void repl(istream &infile) {
 	int cmdid = 0;
-	while (!feof(in)) {
-		cmdid++;
-		if (in == stdin) {
-			fprintf(stdout, "%s", prompt);
-			fflush(stdout);
-		}
-		char *command;
-		fscanf(in, "%ms", &command);
+	bool cam_has_pos = false,
+		 cam_has_dir = false,
+		 cam_has_up = false,
+		 scene_up_set = false;
 
+	gi_algorithm *algo = nullptr;
+	scene scene;
+
+	unsigned scene_touched_at = 0,
+			 tracer_touched_at = 0,
+			 accel_touched_at = 0;
+	framebuffer framebuffer(scene.camera.w, scene.camera.h);
+
+	while (!infile.eof()) {
+		if (&infile == &cin)
+			cout << prompt << flush;
+		cmdid++;
+		string line, command;
+		getline(infile, line);
+		istringstream in(line);
+
+		in >> command;
+		vec3 tmp;
 		ifcmd("at") {
-			if (fscanf(in, "%f %f %f", &scene.camera.pos.x, &scene.camera.pos.y, &scene.camera.pos.z) != 3)
-				error("Syntax error, requires 3 numerical components");
+			in >> tmp;
+			check_in_complete("Syntax error, requires 3 numerical components");
+			scene.camera.pos = tmp;
+			cam_has_pos = true;
 		}
 		else ifcmd("look") {
-			if (fscanf(in, "%f %f %f", &scene.camera.dir.x, &scene.camera.dir.y, &scene.camera.dir.z) != 3)
-				error("Syntax error, requires 3 numerical components");
+			in >> tmp;
+			check_in_complete("Syntax error, requires 3 numerical components");
+			scene.camera.dir = tmp;
+			cam_has_dir = true;
 		}
 		else ifcmd("up") {
-			if (fscanf(in, "%f %f %f", &scene.up.x, &scene.up.y, &scene.up.z) != 3)
-				error("Syntax error, requires 3 numerical components");
+			if (scene_up_set)
+				error("Cannot set scene up vector twice, did you mean camup?");
+			in >> tmp;
+			check_in_complete("Syntax error, requires 3 numerical components");
+			scene_up_set = true;
+			scene.up = tmp;
+			if (!cam_has_up) {
+				scene.camera.up = scene.up;
+				cam_has_up = true;
+			}
 		}
-		else ifcmd("bookmark") {
-			
+		else ifcmd("camup") {
+			in >> tmp;
+			check_in_complete("Syntax error, requires 3 numerical components");
+			scene.camera.up = tmp;
+			cam_has_up = true;
 		}
-
-		free(command);
+		else ifcmd("load") {
+			string file, name;
+			in >> file;
+			if (!in.eof())
+				in >> name;
+			check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
+			scene.add(file, name);
+			scene_touched_at = cmdid;
+		}
+		else ifcmd("resolution") {
+			int w, h;
+			in >> w >> h;
+			check_in_complete("Syntax error, requires 2 integral values");
+			framebuffer.resize(w, h);
+			scene.camera.update_frustum(scene.camera.fovy, w, h);
+		}
+		else ifcmd("algo") {
+			string name;
+			in >> name;
+			if (name == "primary")	algo = new primary_hit_display;
+			else error("There is no gi algorithm called '" << name << "'");
+		}
+// 		else ifcmd("bookmark") {
+// 			
+// 		}
+		else ifcmd("raytracer") {
+			string name;
+			in >> name;
+			if (name == "bbvh") scene.rt = new binary_bvh_tracer;
+			else error("There is no ray tracer called '" << name << "'");
+			tracer_touched_at = cmdid;
+		}
+		else ifcmd("commit") {
+			if (scene.vertices.empty())
+				error("There is no scene data to work with");
+			if (!scene.rt)
+				error("There is no ray traversal scheme to commit the scene data to");
+			scene.rt->build(&scene);
+			accel_touched_at = cmdid;
+		}
+		else ifcmd("run") {
+			if (scene_touched_at == 0 || tracer_touched_at == 0 || accel_touched_at == 0 || algo == nullptr)
+				error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
+			if (accel_touched_at < tracer_touched_at)
+				error("The current tracer does (might?) not have an up-to-date acceleration structure");
+			if (accel_touched_at < scene_touched_at)
+				error("The current acceleration structure is out-dated");
+			run(scene, framebuffer, algo);
+		}
+		else if (command == "") ;
+		else if (algo && algo->interprete(command, in)) ;
+		else {
+			error("Unknown command");
+		}
 	}
+	cout << endl;
+
+	delete algo;
 }

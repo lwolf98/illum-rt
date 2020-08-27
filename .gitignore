@@ -1,0 +1,16 @@
+*.o
+*.swp
+Makefile.in
+Makefile
+.deps
+config.log
+config.status
+config.h
+config.h.in~
+configure
+auxx
+src/rt
+out.png
+stamp-h1
+aclocal.m4
+autom4te.cache
