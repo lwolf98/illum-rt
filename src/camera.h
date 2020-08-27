@@ -26,7 +26,7 @@ struct camera {
 
 
 //! Set up a camera ray. Expects the vertices handed in to be normalized
-ray cam_ray(const camera &cam, int x, int y);
+ray cam_ray(const camera &cam, int x, int y, glm::vec2 offset = glm::vec2(0,0));
 
 //! Call and import obj file in blender to visualize the camera rays
 void test_camrays(const camera &camera, int stride = 10);

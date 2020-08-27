@@ -55,7 +55,7 @@ texture* load_image3f(const std::filesystem::path &path) {
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
     // load from disk
     Assimp::Importer importer;
-    std::cout << "Loading: " << path << "..." << std::endl;
+//     std::cout << "Loading: " << path << "..." << std::endl;
 	unsigned int flags = aiProcess_Triangulate | aiProcess_GenNormals;  // | aiProcess_FlipUVs  // TODO assimp
     const aiScene* scene_ai = importer.ReadFile(path.string(), flags);
     if (!scene_ai) // handle error

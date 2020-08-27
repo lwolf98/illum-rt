@@ -22,8 +22,7 @@ png::image<png::rgb_pixel> framebuffer::png() const {
 	png::image<png::rgb_pixel> out(color.w, color.h);
 	
 	color.for_each([&](unsigned x, unsigned y) {
-				   	vec4 v = color(x,y);
-					vec3 c(vec3(v)/v.w);
+					vec3 c(color(x,y));
 					c = pow(clamp(c, vec3(0), vec3(1)), vec3(1.0f/2.2f)) * 255.0f;
 				   	out[color.h-y-1][x] = png::rgb_pixel(c.x, c.y, c.z);
 				   });

@@ -2,6 +2,7 @@
 #include "algorithm.h"
 #include "bvh.h"
 #include "framebuffer.h"
+#include "context.h"
 
 #include "primary-hit.h"
 
@@ -30,9 +31,9 @@ const char *prompt = "rtgi > ";
 #define check_in(x) { if (in.bad() || in.fail()) error(x); }
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
-void run(scene &scene, framebuffer &fb, gi_algorithm *algo);
+void run(render_context &rc, gi_algorithm *algo);
 
-void repl(istream &infile) {
+void repl(istream &infile, render_context &rc) {
 	int cmdid = 0;
 	bool cam_has_pos = false,
 		 cam_has_dir = false,
@@ -40,12 +41,12 @@ void repl(istream &infile) {
 		 scene_up_set = false;
 
 	gi_algorithm *algo = nullptr;
-	scene scene;
+	scene &scene = rc.scene;
+	framebuffer &framebuffer = rc.framebuffer;
 
 	unsigned scene_touched_at = 0,
 			 tracer_touched_at = 0,
 			 accel_touched_at = 0;
-	framebuffer framebuffer(scene.camera.w, scene.camera.h);
 
 	while (!infile.eof()) {
 		if (&infile == &cin)
@@ -127,6 +128,12 @@ void repl(istream &infile) {
 			scene.rt->build(&scene);
 			accel_touched_at = cmdid;
 		}
+		else ifcmd("sppx") {
+			int sppx;
+			in >> sppx;
+			check_in_complete("Syntax error, requires exactly one positive integral value");
+			rc.sppx = sppx;
+		}
 		else ifcmd("run") {
 			if (scene_touched_at == 0 || tracer_touched_at == 0 || accel_touched_at == 0 || algo == nullptr)
 				error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
@@ -134,7 +141,7 @@ void repl(istream &infile) {
 				error("The current tracer does (might?) not have an up-to-date acceleration structure");
 			if (accel_touched_at < scene_touched_at)
 				error("The current acceleration structure is out-dated");
-			run(scene, framebuffer, algo);
+			run(rc, algo);
 		}
 		else if (command == "") ;
 		else if (algo && algo->interprete(command, in)) ;
