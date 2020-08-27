@@ -17,6 +17,8 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
+PKG_CHECK_MODULES(WAND, MagickWand, [HAVE_MAGICKWAND=1], [HAVE_MAGICKWAND=0])
+
 AC_CONFIG_FILES([Makefile src/Makefile])
 
 AC_OUTPUT
