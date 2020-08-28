@@ -43,8 +43,21 @@ struct triangle_intersection {
 	}
 };
 
-
 class scene;
+class material;
+
+struct diff_geom {
+	const glm::vec3 x, ng, ns;
+	const glm::vec2 tc;
+	const uint32_t tri;
+	const material *mat;
+	explicit diff_geom(const triangle_intersection &is, const scene &scene);
+
+	glm::vec3 albedo() const;
+private:
+	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
+	diff_geom(triangle tri, const triangle_intersection &is, const scene &scene);
+};
 
 class ray_tracer {
 protected:

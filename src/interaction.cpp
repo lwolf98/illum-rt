@@ -143,6 +143,35 @@ void repl(istream &infile, render_context &rc) {
 				error("The current acceleration structure is out-dated");
 			run(rc, algo);
 		}
+		else ifcmd("mesh") {
+			string name, cmd;
+			in >> name;
+			if (in.eof() && name == "list") {
+				for (auto &obj : scene.objects) cout << obj.name << endl;
+				continue;
+			}
+			error("Meshes can only be listed in this version");
+		}
+		else ifcmd("material") {
+			string name, cmd;
+			in >> name;
+			if (in.eof() && name == "list") {
+				for (auto &mtl : scene.materials) cout << mtl.name << endl;
+				continue;
+			}
+			check_in("Syntax error, requires material name, command and subsequent arguments");
+			material *m = nullptr;
+			for (auto &mtl : scene.materials) if (mtl.name == name) { m = &mtl; break; }
+			if (!m) error("No material called '" << name << "'");
+			command = cmd;
+			ifcmd("albedo") {
+			}
+			else ifcmd("emissive") {
+			}
+			else ifcmd("set") {
+			}
+			else error("Unknown subcommand");
+		}
 		else if (command == "") ;
 		else if (algo && algo->interprete(command, in)) ;
 		else {

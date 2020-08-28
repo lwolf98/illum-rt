@@ -3,6 +3,7 @@
 #include "cmdline.h"
 #include "camera.h"
 #include "bvh.h"
+#include "material.h"
 
 #include <vector>
 #include <map>
@@ -17,7 +18,7 @@ struct texture {
 	~texture() {
 		delete [] texel;
 	}
-	const glm::vec3& operator()(float u, float v) const {
+	const glm::vec3& sample(float u, float v) const {
 		u = u - floor(u);
 		v = v - floor(v);
 		int x = (int)(u*w+0.5f);
@@ -26,22 +27,28 @@ struct texture {
 		if (y == h) y = 0;
 		return texel[y*w+x];
 	}
+	const glm::vec3& sample(glm::vec2 uv) const {
+		return sample(uv.x, uv.y);
+	}
+	const glm::vec3& operator()(float u, float v) const {
+		return sample(u, v);
+	}
 	const glm::vec3& operator()(glm::vec2 uv) const {
-		return (*this)(uv.x, uv.y);
+		return sample(uv.x, uv.y);
 	}
 };
 
-struct material {
-	std::string name;
-	glm::vec3 albedo = glm::vec3(0);
-	texture *albedo_tex = nullptr;
-};
-
 struct scene {
+	struct object {
+		std::string name;
+		unsigned start, end;
+		unsigned material_id;
+	};
 	std::vector<::vertex>    vertices;
 	std::vector<::triangle>  triangles;
 	std::vector<::material>  materials;
 	std::vector<::texture*>  textures;
+	std::vector<object>      objects;
 	std::map<std::string, ::camera> cameras;
 	::camera camera;
 	glm::vec3 up;

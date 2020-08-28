@@ -96,6 +96,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
         const aiMesh *mesh_ai = scene_ai->mMeshes[i];
 		uint32_t material_id = scene_ai->mMeshes[i]->mMaterialIndex;
 		uint32_t index_offset = vertices.size();
+		std::string object_name = mesh_ai->mName.C_Str();
+		objects.push_back({object_name, index_offset, index_offset+mesh_ai->mNumVertices, material_id});
 		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
