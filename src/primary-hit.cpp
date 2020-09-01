@@ -21,7 +21,9 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
-				lambertian_reflection brdf;
+				lambertian_reflection d_brdf;
+				phong_specular_reflection s_brdf;
+				layered_brdf brdf(&s_brdf, &d_brdf);
 				auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
 				light *l = rc.scene.lights[l_id];
 				auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());

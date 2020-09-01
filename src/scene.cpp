@@ -76,9 +76,12 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		else            material.name = name_ai.C_Str();
 		
 		vec3 kd(0), ks(0), ke(0);
-		if (mat_ai->Get(AI_MATKEY_COLOR_DIFFUSE, col) == AI_SUCCESS)  kd = glm::vec4(col.r, col.g, col.b, 1.0f);
+		float tmp;
+		if (mat_ai->Get(AI_MATKEY_COLOR_DIFFUSE,  col) == AI_SUCCESS) kd = glm::vec4(col.r, col.g, col.b, 1.0f);
 		if (mat_ai->Get(AI_MATKEY_COLOR_SPECULAR, col) == AI_SUCCESS) ks = glm::vec4(col.r, col.g, col.b, 1.0f);
 		if (mat_ai->Get(AI_MATKEY_COLOR_EMISSIVE, col) == AI_SUCCESS) ke = glm::vec4(col.r, col.g, col.b, 1.0f);
+		if (mat_ai->Get(AI_MATKEY_SHININESS,      tmp) == AI_SUCCESS) material.roughness = roughness_from_exponent(tmp);
+		if (mat_ai->Get(AI_MATKEY_REFRACTI,       tmp) == AI_SUCCESS) material.ior = tmp;
 		if (luma(kd) > 1e-4) material.albedo = kd;
 		else                 material.albedo = ks;
 		material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
