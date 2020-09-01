@@ -1,0 +1,11 @@
+at -10 -10 0
+look 1 0 0
+up 0 1 0
+load render-data/sibenik/sibenik.obj
+raytracer bbvh
+commit
+algo primary
+sppx 32
+pointlight pos 0 -4 0 col 35 30 26
+resolution 1280 720
+run

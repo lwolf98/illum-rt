@@ -4,6 +4,7 @@
 
 struct ray {
 	glm::vec3 o, d, id;
+	float max_t = FLT_MAX;
 	ray(const glm::vec3 &o, const glm::vec3 &d) : o(o), d(d), id(1.0f/d.x, 1.0f/d.y, 1.0f/d.z) {}
 	ray() {}
 };
@@ -56,7 +57,7 @@ struct diff_geom {
 	glm::vec3 albedo() const;
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
-	diff_geom(triangle tri, const triangle_intersection &is, const scene &scene);
+	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 };
 
 class ray_tracer {

@@ -10,7 +10,6 @@ using namespace glm;
 
 glm::vec3 lambertian_reflection::f(const diff_geom &geom, const glm::vec3 &wo, const glm::vec3 &wi) {
 	if (!same_hemisphere(wo, geom.ns)) return vec3(0);
-	if (!same_hemisphere(wi, geom.ns)) return vec3(0);
 	return one_over_pi * geom.albedo();
 }
 

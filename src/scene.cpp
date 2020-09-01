@@ -2,6 +2,7 @@
 
 #include "bvh.h"
 #include "color.h"
+#include "util.h"
 
 #include <vector>
 #include <iostream>
@@ -64,6 +65,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	// todo: store indices prior to adding anything to allow "transform-last"
 
 	// load materials
+	unsigned material_offset = materials.size();
     for (uint32_t i = 0; i < scene_ai->mNumMaterials; ++i) {
 		::material material;
         aiString name_ai;
@@ -73,12 +75,14 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		if (name != "") material.name = name + "/" + name_ai.C_Str();
 		else            material.name = name_ai.C_Str();
 		
-		vec3 kd(0), ks(0);
+		vec3 kd(0), ks(0), ke(0);
 		if (mat_ai->Get(AI_MATKEY_COLOR_DIFFUSE, col) == AI_SUCCESS)  kd = glm::vec4(col.r, col.g, col.b, 1.0f);
 		if (mat_ai->Get(AI_MATKEY_COLOR_SPECULAR, col) == AI_SUCCESS) ks = glm::vec4(col.r, col.g, col.b, 1.0f);
+		if (mat_ai->Get(AI_MATKEY_COLOR_EMISSIVE, col) == AI_SUCCESS) ke = glm::vec4(col.r, col.g, col.b, 1.0f);
 		if (luma(kd) > 1e-4) material.albedo = kd;
 		else                 material.albedo = ks;
 		material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
+		material.emissive = ke;
 			
 		if (mat_ai->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
 			aiString path_ai;
@@ -94,10 +98,14 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
     // load meshes
     for (uint32_t i = 0; i < scene_ai->mNumMeshes; ++i) {
         const aiMesh *mesh_ai = scene_ai->mMeshes[i];
-		uint32_t material_id = scene_ai->mMeshes[i]->mMaterialIndex;
+		uint32_t material_id = scene_ai->mMeshes[i]->mMaterialIndex + material_offset;
 		uint32_t index_offset = vertices.size();
 		std::string object_name = mesh_ai->mName.C_Str();
-		objects.push_back({object_name, index_offset, index_offset+mesh_ai->mNumVertices, material_id});
+		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
+		if (materials[material_id].emissive != vec3(0)) {
+			light_geom.push_back(objects.back());
+			cout << "emissive mesh with mtl " << material_id << endl;
+		}
 		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
@@ -125,6 +133,26 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		}
 	}
 }
+	
+void scene::compute_light_distribution() {
+	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
+	cout << "light distribution of " << prims << " triangles" << endl;
+	for (auto l : lights) delete l;
+	lights.clear();
+	lights.resize(prims);
+	std::vector<float> power(prims);
+	int l = 0;
+	for (auto g : light_geom) {
+		for (int i = g.start; i < g.end; ++i) {
+			lights[l] = new trianglelight(*this, i);
+			power[l] = luma(lights[l]->power());
+			l++;
+		}
+	}
+// 	light_distribution = new distribution_1d(std::move(power));	
+	light_distribution = new distribution_1d(power);	
+	light_distribution->debug_out("/tmp/light-dist");
+}
 
 scene::~scene() {
 	delete rt;
@@ -146,4 +174,63 @@ glm::vec3 scene::sample_texture(const triangle_intersection &is, const triangle 
 	return (*tex)(tc);
 }
 
+/////
 
+glm::vec3 pointlight::power() const {
+	return 4*pi*col;
+}
+
+std::tuple<ray, glm::vec3, float> pointlight::sample_Li(const diff_geom &from, const glm::vec2 &xis) const {
+	vec3 to_light = pos - from.x;
+	vec3 target = nextafter(pos, -to_light);
+	vec3 source = nextafter(from.x, to_light);
+	to_light = target-source;
+	float tmax = length(to_light);
+	to_light /= tmax;
+	ray r(source, to_light);
+	r.max_t = tmax;
+	vec3 c = col / (tmax*tmax);
+	return { r, c, 1.0f };
+}
+
+/////
+
+trianglelight::trianglelight(::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
+}
+
+glm::vec3 trianglelight::power() const {
+	const vertex &a = scene.vertices[this->a];
+	const vertex &b = scene.vertices[this->b];
+	const vertex &c = scene.vertices[this->c];
+	vec3 e1 = b.pos-a.pos;
+	vec3 e2 = c.pos-a.pos;
+	const material &m = scene.materials[this->material_id];
+	return m.emissive * 0.5f * length(cross(e1,e2)) * pi;
+}
+
+std::tuple<ray, glm::vec3, float> trianglelight::sample_Li(const diff_geom &from, const glm::vec2 &xis) const {
+	// pbrt3/845
+	const vertex &a = scene.vertices[this->a];
+	const vertex &b = scene.vertices[this->b];
+	const vertex &c = scene.vertices[this->c];
+	vec3 target = (1.0f-xis.x-xis.y)*a.pos + xis.x*b.pos + xis.y*c.pos;
+	vec3 n = (1.0f-xis.x-xis.y)*a.norm + xis.x*b.norm + xis.y*c.norm;
+	vec3 w_i = target - from.x;
+	target = nextafter(target, -w_i);
+	
+	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
+	const material &m = scene.materials[material_id];
+	vec3 col = m.emissive;
+	
+	vec3 source = nextafter(from.x, w_i);
+	w_i = target-source;
+	float tmax = length(w_i);
+	w_i /= tmax;
+	ray r(source, w_i);
+	r.max_t = tmax;
+	
+	// pbrt3/838
+	float pdf = tmax*tmax/(cdot(n,-w_i) * area);
+	return { r, col, pdf };
+	
+}

@@ -18,3 +18,8 @@ uint32_t rng::uniform_uint() const {
 }
  
 
+
+glm::vec2 rng::uniform_float2() const {
+	return {uniform_float(), uniform_float()};
+}
+ 

@@ -125,6 +125,7 @@ void repl(istream &infile, render_context &rc) {
 				error("There is no scene data to work with");
 			if (!scene.rt)
 				error("There is no ray traversal scheme to commit the scene data to");
+			scene.compute_light_distribution();
 			scene.rt->build(&scene);
 			accel_touched_at = cmdid;
 		}
@@ -171,6 +172,35 @@ void repl(istream &infile, render_context &rc) {
 			else ifcmd("set") {
 			}
 			else error("Unknown subcommand");
+		}
+		else ifcmd("pointlight") {
+			glm::vec3 p, c;
+			string cmd;
+			in >> cmd;
+			check_in("Command incomplete");
+			bool replace = false;
+			if (cmd == "replace") {
+				replace = true;
+				in >> cmd;
+				check_in("Command incomplete");
+			}
+			if (cmd == "pos")
+				in >> p;
+			else error("Syntax error: poinlight [replace] pos x y z col x y z");
+			check_in("Syntax error: poinlight [replace] pos x y z col x y z");
+			in >> cmd;
+			check_in("Command incomplete");
+			if (cmd == "col")
+				in >> c;
+			else error("Syntax error: poinlight [replace] pos x y z col x y z");
+			check_in_complete("Syntax error: poinlight [replace] pos x y z col x y z");
+			pointlight *pl = new pointlight(p, c);
+			if (replace && scene.lights.size() > 0) {
+				delete scene.lights[0];
+				scene.lights[0] = pl;
+			}
+			else
+				scene.lights.push_back(pl);
 		}
 		else if (command == "") ;
 		else if (algo && algo->interprete(command, in)) ;

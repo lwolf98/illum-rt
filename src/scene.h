@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "bvh.h"
 #include "material.h"
+#include "discrete_distributions.h"
 
 #include <vector>
 #include <map>
@@ -38,6 +39,34 @@ struct texture {
 	}
 };
 
+struct light {
+	virtual glm::vec3 power() const = 0;
+	virtual std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const = 0;
+};
+
+struct pointlight : public light {
+	glm::vec3 pos;
+	glm::vec3 col;
+	pointlight(const glm::vec3 pos, const glm::vec3 col) : pos(pos), col(col) {}
+	glm::vec3 power() const override;
+	std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const override;
+};
+
+/*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
+ *  It is. However, this way the BVH is allowed to reshuffle triangle positions (not vertex positions!)
+ *  without having an effect on this.
+ *
+ *  We might have to re-think this at a point, we could as well provide an indirection-array for the BVH's
+ *  triangles. I opted against that at first, as not to intorduce overhead, but any more efficient representation
+ *  copy the triangle data on the GPU or in SIMD formats anyway.
+ */
+struct trianglelight : public light, private triangle {
+	::scene& scene;
+	trianglelight(::scene &scene, uint32_t i);
+	glm::vec3 power() const override;
+	std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const override;
+};
+
 struct scene {
 	struct object {
 		std::string name;
@@ -49,9 +78,13 @@ struct scene {
 	std::vector<::material>  materials;
 	std::vector<::texture*>  textures;
 	std::vector<object>      objects;
+	std::vector<object>      light_geom;
+	std::vector<light*>      lights;
 	std::map<std::string, ::camera> cameras;
 	::camera camera;
 	glm::vec3 up;
+	distribution_1d *light_distribution;
+	void compute_light_distribution();
 	const ::material material(uint32_t triangle_index) const {
 		return materials[triangles[triangle_index].material_id];
 	}

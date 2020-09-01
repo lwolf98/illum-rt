@@ -10,6 +10,7 @@ struct texture;
 struct material {
 	std::string name;
 	glm::vec3 albedo = glm::vec3(0);
+	glm::vec3 emissive = glm::vec3(0);
 	texture *albedo_tex = nullptr;
 };
 
