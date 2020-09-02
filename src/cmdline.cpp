@@ -1,5 +1,7 @@
 #include "cmdline.h"
 
+#include "rt.h"
+
 #include <argp.h>
 #include <string>
 #include <iostream>
@@ -32,9 +34,9 @@ string& replace_nl(string &s)
 	return s;
 }
 
-glm::vec3 read_vec3(const std::string &s) {
+vec3 read_vec3(const std::string &s) {
 	istringstream iss(s);
-	glm::vec3 v;
+	vec3 v;
 	char sep;
 	iss >> v.x >> sep >> v.y >> sep >> v.z;
 	return v;

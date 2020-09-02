@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rt.h"
+
 #include <random>
 #include <vector>
 #include <glm/glm.hpp>
@@ -18,5 +20,5 @@ public:
 	rng(const rng&) = delete;
 	rng& operator=(const rng&) = delete;
 
-	glm::vec2 uniform_float2() const;
+	vec2 uniform_float2() const;
 };

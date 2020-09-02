@@ -1,5 +1,7 @@
 #pragma once
 
+#include "rt.h"
+
 #include <vector>
 #include <string>
 #include <utility>
@@ -12,6 +14,6 @@ class distribution_1d {
 public:
 	distribution_1d(const std::vector<float> &f);
 	distribution_1d(std::vector<float> &&f);
-	std::pair<uint32_t,float> sample_index(float xi) const;
+	pair<uint32_t,float> sample_index(float xi) const;
 	void debug_out(const std::string &p) const;
 };

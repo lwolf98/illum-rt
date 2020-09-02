@@ -1,18 +1,25 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <utility>
+
+using glm::vec3;
+using glm::vec2;
+using glm::vec4;
+using std::pair;
+using std::tuple;
 
 struct ray {
-	glm::vec3 o, d, id;
+	vec3 o, d, id;
 	float max_t = FLT_MAX;
-	ray(const glm::vec3 &o, const glm::vec3 &d) : o(o), d(d), id(1.0f/d.x, 1.0f/d.y, 1.0f/d.z) {}
+	ray(const vec3 &o, const vec3 &d) : o(o), d(d), id(1.0f/d.x, 1.0f/d.y, 1.0f/d.z) {}
 	ray() {}
 };
 
 struct vertex {
-	glm::vec3 pos;
-	glm::vec3 norm;
-	glm::vec2 tc;
+	vec3 pos;
+	vec3 norm;
+	vec2 tc;
 };
 
 struct triangle {
@@ -35,8 +42,8 @@ struct triangle_intersection {
 		t = FLT_MAX;
 		ref = 0;
 	}
-	glm::vec3 barycentric_coord() const {
-		glm::vec3 bc;
+	vec3 barycentric_coord() const {
+		vec3 bc;
 		bc.x = 1.0 - beta - gamma;
 		bc.y = beta;
 		bc.z = gamma;
@@ -48,13 +55,13 @@ class scene;
 class material;
 
 struct diff_geom {
-	const glm::vec3 x, ng, ns;
-	const glm::vec2 tc;
+	const vec3 x, ng, ns;
+	const vec2 tc;
 	const uint32_t tri;
 	const material *mat;
 	explicit diff_geom(const triangle_intersection &is, const scene &scene);
 
-	glm::vec3 albedo() const;
+	vec3 albedo() const;
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
@@ -66,6 +73,6 @@ protected:
 public:
 	virtual void build(::scene *) = 0;
 	virtual triangle_intersection closest_hit(const ray &) = 0;
-	virtual bool visible(const glm::vec3 &) = 0;
+	virtual bool visible(const vec3 &) = 0;
 	virtual ~ray_tracer() {}
 };

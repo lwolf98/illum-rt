@@ -11,12 +11,12 @@
 #include <glm/glm.hpp>
 
 #include <glm/gtx/string_cast.hpp>
-inline std::ostream& operator<<(std::ostream &out, const glm::vec3 &x) {
+inline std::ostream& operator<<(std::ostream &out, const vec3 &x) {
 	out << to_string(x);
 	return out;
 }
 
-inline std::istream& operator>>(std::istream &in, glm::vec3 &x) {
+inline std::istream& operator>>(std::istream &in, vec3 &x) {
 	in >> x.x >> x.y >> x.z;
 	return in;
 }
@@ -174,7 +174,7 @@ void repl(istream &infile, render_context &rc) {
 			else error("Unknown subcommand");
 		}
 		else ifcmd("pointlight") {
-			glm::vec3 p, c;
+			vec3 p, c;
 			string cmd;
 			in >> cmd;
 			check_in("Command incomplete");

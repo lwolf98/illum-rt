@@ -15,11 +15,11 @@ struct texture {
 	std::string name;
 	std::filesystem::path path;
 	unsigned w, h;
-	glm::vec3 *texel = nullptr;
+	vec3 *texel = nullptr;
 	~texture() {
 		delete [] texel;
 	}
-	const glm::vec3& sample(float u, float v) const {
+	const vec3& sample(float u, float v) const {
 		u = u - floor(u);
 		v = v - floor(v);
 		int x = (int)(u*w+0.5f);
@@ -28,28 +28,28 @@ struct texture {
 		if (y == h) y = 0;
 		return texel[y*w+x];
 	}
-	const glm::vec3& sample(glm::vec2 uv) const {
+	const vec3& sample(vec2 uv) const {
 		return sample(uv.x, uv.y);
 	}
-	const glm::vec3& operator()(float u, float v) const {
+	const vec3& operator()(float u, float v) const {
 		return sample(u, v);
 	}
-	const glm::vec3& operator()(glm::vec2 uv) const {
+	const vec3& operator()(vec2 uv) const {
 		return sample(uv.x, uv.y);
 	}
 };
 
 struct light {
-	virtual glm::vec3 power() const = 0;
-	virtual std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const = 0;
+	virtual vec3 power() const = 0;
+	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
 };
 
 struct pointlight : public light {
-	glm::vec3 pos;
-	glm::vec3 col;
-	pointlight(const glm::vec3 pos, const glm::vec3 col) : pos(pos), col(col) {}
-	glm::vec3 power() const override;
-	std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const override;
+	vec3 pos;
+	vec3 col;
+	pointlight(const vec3 pos, const vec3 col) : pos(pos), col(col) {}
+	vec3 power() const override;
+	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 };
 
 /*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
@@ -63,8 +63,8 @@ struct pointlight : public light {
 struct trianglelight : public light, private triangle {
 	::scene& scene;
 	trianglelight(::scene &scene, uint32_t i);
-	glm::vec3 power() const override;
-	std::tuple<ray, glm::vec3, float> sample_Li(const diff_geom &from, const glm::vec2 &xis) const override;
+	vec3 power() const override;
+	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 };
 
 struct scene {
@@ -82,21 +82,21 @@ struct scene {
 	std::vector<light*>      lights;
 	std::map<std::string, ::camera> cameras;
 	::camera camera;
-	glm::vec3 up;
+	vec3 up;
 	distribution_1d *light_distribution;
 	void compute_light_distribution();
 	const ::material material(uint32_t triangle_index) const {
 		return materials[triangles[triangle_index].material_id];
 	}
-	scene() : camera(glm::vec3(0,0,-1), glm::vec3(0,0,0), glm::vec3(0,1,0), 65, 1280, 720) {
+	scene() : camera(vec3(0,0,-1), vec3(0,0,0), vec3(0,1,0), 65, 1280, 720) {
 	}
 	~scene();
 	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4());
 
-	glm::vec3 normal(const triangle &tri) const;
+	vec3 normal(const triangle &tri) const;
 	
-	glm::vec3 sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const;
-	glm::vec3 sample_texture(const triangle_intersection &is, const texture *tex) const {
+	vec3 sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const;
+	vec3 sample_texture(const triangle_intersection &is, const texture *tex) const {
 		return sample_texture(is, triangles[is.ref], tex);
 	}
 

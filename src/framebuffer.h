@@ -41,13 +41,13 @@ template<typename T> struct buffer {
 
 class framebuffer {
 public:
-	buffer<glm::vec4> color;
+	buffer<vec4> color;
 	framebuffer(unsigned w, unsigned h) : color(w, h) {
 	}
 	~framebuffer() {
 	}
 	void resize(unsigned new_w, unsigned new_h) {
-		color = buffer<glm::vec4>(new_w, new_h);
+		color = buffer<vec4>(new_w, new_h);
 	}
 	void clear();
 	void add(unsigned x, unsigned y, gi_algorithm::sample_result res);

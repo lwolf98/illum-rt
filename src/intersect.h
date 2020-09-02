@@ -4,9 +4,9 @@
 #include "scene.h"
 
 struct aabb {
-	glm::vec3 min, max;
+	vec3 min, max;
 	aabb() : min(FLT_MAX), max(-FLT_MAX) {}
-	void grow(glm::vec3 v) {
+	void grow(vec3 v) {
 		min = glm::min(v, min);
 		max = glm::max(v, max);
 	}
@@ -18,7 +18,7 @@ struct aabb {
 
 // Siehe Shirley (2nd Ed.), 206ff.
 inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray, triangle_intersection &info) {
-	glm::vec3 pos = vertices[t.a].pos;
+	vec3 pos = vertices[t.a].pos;
 	const float a_x = pos.x;
 	const float a_y = pos.y;
 	const float a_z = pos.z;

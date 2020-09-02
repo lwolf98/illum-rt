@@ -51,7 +51,7 @@ struct binary_bvh_tracer : public ray_tracer {
 	binary_bvh_tracer();
 	void build(::scene *scene) override;
 	triangle_intersection closest_hit(const ray &ray) override;
-	bool visible(const glm::vec3&) override { return false; }
+	bool visible(const vec3&) override { return false; }
 private:
 	uint32_t subdivide_om(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
 };

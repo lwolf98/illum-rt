@@ -17,14 +17,14 @@ inline float exponent_from_roughness(float roughness) {
 
 struct material {
 	std::string name;
-	glm::vec3 albedo = glm::vec3(0);
-	glm::vec3 emissive = glm::vec3(0);
+	vec3 albedo = vec3(0);
+	vec3 emissive = vec3(0);
 	texture *albedo_tex = nullptr;
 	float ior = 1.3f, roughness = 0.1f;
 };
 
 struct brdf {
-	virtual glm::vec3 f(const diff_geom &geom, const glm::vec3 &wo, const glm::vec3 &wi) = 0;
+	virtual vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) = 0;
 };
 
 //! Specular BRDFs can be layered onto non-specular ones
@@ -36,13 +36,13 @@ struct layered_brdf : public brdf {
 	specular_brdf *coat;
 	brdf *base;
 	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) {}
-	glm::vec3 f(const diff_geom &geom, const glm::vec3 &wo, const glm::vec3 &wi) override;
+	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
 };
 
 struct lambertian_reflection : public brdf {
-	glm::vec3 f(const diff_geom &geom, const glm::vec3 &wo, const glm::vec3 &wi) override;
+	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
 };
 
 struct phong_specular_reflection : public specular_brdf {
-	glm::vec3 f(const diff_geom &geom, const glm::vec3 &wo, const glm::vec3 &wi) override;
+	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
 };

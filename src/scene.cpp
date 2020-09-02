@@ -77,9 +77,9 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		
 		vec3 kd(0), ks(0), ke(0);
 		float tmp;
-		if (mat_ai->Get(AI_MATKEY_COLOR_DIFFUSE,  col) == AI_SUCCESS) kd = glm::vec4(col.r, col.g, col.b, 1.0f);
-		if (mat_ai->Get(AI_MATKEY_COLOR_SPECULAR, col) == AI_SUCCESS) ks = glm::vec4(col.r, col.g, col.b, 1.0f);
-		if (mat_ai->Get(AI_MATKEY_COLOR_EMISSIVE, col) == AI_SUCCESS) ke = glm::vec4(col.r, col.g, col.b, 1.0f);
+		if (mat_ai->Get(AI_MATKEY_COLOR_DIFFUSE,  col) == AI_SUCCESS) kd = vec4(col.r, col.g, col.b, 1.0f);
+		if (mat_ai->Get(AI_MATKEY_COLOR_SPECULAR, col) == AI_SUCCESS) ks = vec4(col.r, col.g, col.b, 1.0f);
+		if (mat_ai->Get(AI_MATKEY_COLOR_EMISSIVE, col) == AI_SUCCESS) ke = vec4(col.r, col.g, col.b, 1.0f);
 		if (mat_ai->Get(AI_MATKEY_SHININESS,      tmp) == AI_SUCCESS) material.roughness = roughness_from_exponent(tmp);
 		if (mat_ai->Get(AI_MATKEY_REFRACTI,       tmp) == AI_SUCCESS) material.ior = tmp;
 		if (luma(kd) > 1e-4) material.albedo = kd;
@@ -161,7 +161,7 @@ scene::~scene() {
 		delete x;
 }
 
-glm::vec3 scene::normal(const triangle &tri) const {
+vec3 scene::normal(const triangle &tri) const {
 	const vec3 &a = vertices[tri.a].pos;
 	const vec3 &b = vertices[tri.b].pos;
 	const vec3 &c = vertices[tri.c].pos;
@@ -170,18 +170,18 @@ glm::vec3 scene::normal(const triangle &tri) const {
 	return cross(e1, e2);
 }
 
-glm::vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const {
+vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const {
 	vec2 tc = (1.0f-is.beta-is.gamma)*vertices[tri.a].tc + is.beta*vertices[tri.b].tc + is.gamma*vertices[tri.c].tc;
 	return (*tex)(tc);
 }
 
 /////
 
-glm::vec3 pointlight::power() const {
+vec3 pointlight::power() const {
 	return 4*pi*col;
 }
 
-std::tuple<ray, glm::vec3, float> pointlight::sample_Li(const diff_geom &from, const glm::vec2 &xis) const {
+tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	vec3 to_light = pos - from.x;
 	vec3 target = nextafter(pos, -to_light);
 	vec3 source = nextafter(from.x, to_light);
@@ -199,7 +199,7 @@ std::tuple<ray, glm::vec3, float> pointlight::sample_Li(const diff_geom &from, c
 trianglelight::trianglelight(::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
 }
 
-glm::vec3 trianglelight::power() const {
+vec3 trianglelight::power() const {
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
 	const vertex &c = scene.vertices[this->c];
@@ -209,7 +209,7 @@ glm::vec3 trianglelight::power() const {
 	return m.emissive * 0.5f * length(cross(e1,e2)) * pi;
 }
 
-std::tuple<ray, glm::vec3, float> trianglelight::sample_Li(const diff_geom &from, const glm::vec2 &xis) const {
+tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	// pbrt3/845
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
