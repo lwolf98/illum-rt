@@ -203,6 +203,7 @@ void repl(istream &infile, render_context &rc) {
 				scene.lights.push_back(pl);
 		}
 		else if (command == "") ;
+		else if (command[0] == '#') ;
 		else if (algo && algo->interprete(command, in)) ;
 		else {
 			error("Unknown command");

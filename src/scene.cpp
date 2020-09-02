@@ -105,10 +105,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		uint32_t index_offset = vertices.size();
 		std::string object_name = mesh_ai->mName.C_Str();
 		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
-		if (materials[material_id].emissive != vec3(0)) {
+		if (materials[material_id].emissive != vec3(0))
 			light_geom.push_back(objects.back());
-			cout << "emissive mesh with mtl " << material_id << endl;
-		}
 		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
