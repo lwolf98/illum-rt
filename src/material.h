@@ -4,6 +4,8 @@
 
 #include <glm/glm.hpp>
 #include <string>
+#include <tuple>
+
 
 struct texture;
     
@@ -24,7 +26,12 @@ struct material {
 };
 
 struct brdf {
+	//          w_i,f(w_i),pdf(w_i)
+	typedef tuple<vec3,vec3,float> sampling_res;
+	
 	virtual vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) = 0;
+	virtual float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) = 0;
+	virtual sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) = 0;
 };
 
 //! Specular BRDFs can be layered onto non-specular ones
@@ -32,17 +39,24 @@ struct specular_brdf : public brdf {
 	bool coat = false;
 };
 
-struct layered_brdf : public brdf {
-	specular_brdf *coat;
-	brdf *base;
-	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) {}
-	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-};
+// struct layered_brdf : public brdf {
+// 	specular_brdf *coat;
+// 	brdf *base;
+// 	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) {}
+// 	
+// 	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+// 	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+// 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+// };
 
 struct lambertian_reflection : public brdf {
 	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 };
 
-struct phong_specular_reflection : public specular_brdf {
-	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-};
+// struct phong_specular_reflection : public specular_brdf {
+// 	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+// 	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+// 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+// };

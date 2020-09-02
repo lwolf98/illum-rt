@@ -9,6 +9,12 @@ using glm::vec4;
 using std::pair;
 using std::tuple;
 
+constexpr float pi = float(M_PI);
+constexpr float one_over_pi = (1.0 / M_PI);
+constexpr float one_over_2pi = (1.0 / (2*M_PI));
+constexpr float one_over_4pi = (1.0 / (4*M_PI));
+
+
 struct ray {
 	vec3 o, d, id;
 	float max_t = FLT_MAX;
