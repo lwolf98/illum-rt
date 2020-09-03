@@ -39,6 +39,8 @@ struct texture {
 	}
 };
 
+texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
+
 struct light {
 	virtual vec3 power() const = 0;
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;

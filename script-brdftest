@@ -1,0 +1,26 @@
+at -2.8908 1.7537 -0.050779
+look 0.85235 -0.52249 -0.022323
+up 0 1 0
+camup 0.52233 0.85264 -0.013184
+load render-data/brdf-test.obj
+raytracer bbvh
+commit
+algo direct
+sppx 32
+#pointlight pos 0 -4 0 col 35 30 26
+resolution 1280 720
+
+material select microfacet
+material texture drop
+
+material select microfacet.001
+material texture drop
+
+material select microfacet.002
+material texture drop
+
+material select specular
+material texture drop
+
+
+run

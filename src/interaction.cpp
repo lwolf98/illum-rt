@@ -59,6 +59,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 		in >> command;
 		vec3 tmp;
 		ifcmd("history") {
+			commands.pop_back();
 			for (auto &x : commands)
 				cout << x << endl;
 		}
@@ -176,8 +177,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				string name;
 				in >> name;
 				check_in_complete("Only a single string (no whitespace) accepted");
-				for (auto &mtl : scene.materials) if (mtl.name == name) { mat = &mtl; break; }
-				if (!mat) error("No material called '" << name << "'");
+				material *m = nullptr; for (auto &mtl : scene.materials) if (mtl.name == name) { m = &mtl; break; }
+				if (!m) error("No material called '" << name << "'");
+				mat = m;
 				continue;
 			}
 			if (!mat)
@@ -202,10 +204,23 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				check_in_complete("Expects a floating point value");
 				mat->ior = tmp.x;
 			}
+			else ifcmd("texture") {
+				in >> cmd;
+				check_in_complete("Expected a single (no whitespace) string value");
+				// we keep the textures around as other materials might still use them.
+				// they will be cleaned up by ~scene
+				if (cmd == "drop")
+					mat->albedo_tex = nullptr;
+				else {
+					texture *tex = load_image3f(cmd);
+					if (tex)
+						mat->albedo_tex = tex;
+				}
+			}
 			else ifcmd("show") {
 				check_in_complete("Does not take further arguments");
 				cout << "albedo     " << mat->albedo << endl;
-				cout << "albedo-tex " << (mat->albedo_tex ? "y" : "n") << endl;
+				cout << "albedo-tex " << (mat->albedo_tex ? mat->albedo_tex->path.string() : string("none")) << endl;
 				cout << "emissive   " << mat->emissive << endl;
 				cout << "roughness  " << mat->roughness << endl;
 				cout << "ior        " << mat->ior << endl;

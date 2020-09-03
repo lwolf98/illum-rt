@@ -26,8 +26,8 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	enum mode { sample_light, sample_brdf };
-	constexpr mode m = sample_brdf;
-	                   //sample_light;
+	constexpr mode m = //sample_brdf;
+	                   sample_light;
 
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {

@@ -22,25 +22,29 @@ using namespace std;
 inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
 
-void magickwand_error(MagickWand *wand) {
+void magickwand_error(MagickWand *wand, bool crash) {
 	char *description;
 	ExceptionType severity;
 	description=MagickGetException(wand,&severity);
 	cerr << (GetMagickModule()) << ": " << description << endl;
 	MagickRelinquishMemory(description);
-	exit(1);
+	if (crash)
+		exit(1);
 }
 
-texture* load_image3f(const std::filesystem::path &path) {
+texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 	cout << "loading texture " << path << endl;
 	MagickWandGenesis();
 	MagickWand *img = NewMagickWand();
 	int status = MagickReadImage(img, path.c_str());
 	if (status == MagickFalse) {
-		magickwand_error(img);
+		magickwand_error(img, crash_on_error);
+		return nullptr;
 	}
 	MagickFlipImage(img);
 	texture *tex = new texture;
+	tex->name = path;
+	tex->path = path;
 	tex->w = MagickGetImageWidth(img);
 	tex->h = MagickGetImageHeight(img);
 	tex->texel = new vec3[tex->w*tex->h];
