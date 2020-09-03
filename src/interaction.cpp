@@ -1,3 +1,4 @@
+#include "interaction.h"
 #include "scene.h"
 #include "algorithm.h"
 #include "bvh.h"
@@ -27,38 +28,41 @@ using namespace std;
 const char *prompt = "rtgi > ";
 
 #define ifcmd(c) if (command==c)
-#define error(x) { cerr << "command " << cmdid << " (" << command << "): " << x << endl; continue; }
+#define error(x) { cerr << "command " << uc.cmdid << " (" << command << "): " << x << endl; continue; }
 #define check_in(x) { if (in.bad() || in.fail()) error(x); }
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
 void run(render_context &rc, gi_algorithm *algo);
 
-void repl(istream &infile, render_context &rc) {
-	int cmdid = 0;
+void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 	bool cam_has_pos = false,
 		 cam_has_dir = false,
 		 cam_has_up = false,
 		 scene_up_set = false;
 
-	gi_algorithm *algo = nullptr;
+	gi_algorithm *&algo = rc.algo;
 	scene &scene = rc.scene;
 	framebuffer &framebuffer = rc.framebuffer;
 
-	unsigned scene_touched_at = 0,
-			 tracer_touched_at = 0,
-			 accel_touched_at = 0;
+	material *mat = nullptr;
+	vector<string> commands;
 
 	while (!infile.eof()) {
 		if (&infile == &cin)
 			cout << prompt << flush;
-		cmdid++;
+		uc.cmdid++;
 		string line, command;
 		getline(infile, line);
+		commands.push_back(line);
 		istringstream in(line);
 
 		in >> command;
 		vec3 tmp;
-		ifcmd("at") {
+		ifcmd("history") {
+			for (auto &x : commands)
+				cout << x << endl;
+		}
+		else ifcmd("at") {
 			in >> tmp;
 			check_in_complete("Syntax error, requires 3 numerical components");
 			scene.camera.pos = tmp;
@@ -95,7 +99,7 @@ void repl(istream &infile, render_context &rc) {
 				in >> name;
 			check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
 			scene.add(file, name);
-			scene_touched_at = cmdid;
+			uc.scene_touched_at = uc.cmdid;
 		}
 		else ifcmd("resolution") {
 			int w, h;
@@ -107,8 +111,14 @@ void repl(istream &infile, render_context &rc) {
 		else ifcmd("algo") {
 			string name;
 			in >> name;
-			if (name == "primary")	algo = new primary_hit_display;
+			gi_algorithm *a = nullptr;
+			if (name == "primary")      a = new primary_hit_display;
+			else if (name == "direct")  a = new direct_light;
 			else error("There is no gi algorithm called '" << name << "'");
+			if (a) {
+				delete algo;
+				algo = a;
+			}
 		}
 // 		else ifcmd("bookmark") {
 // 			
@@ -118,7 +128,7 @@ void repl(istream &infile, render_context &rc) {
 			in >> name;
 			if (name == "bbvh") scene.rt = new binary_bvh_tracer;
 			else error("There is no ray tracer called '" << name << "'");
-			tracer_touched_at = cmdid;
+			uc.tracer_touched_at = uc.cmdid;
 		}
 		else ifcmd("commit") {
 			if (scene.vertices.empty())
@@ -127,7 +137,7 @@ void repl(istream &infile, render_context &rc) {
 				error("There is no ray traversal scheme to commit the scene data to");
 			scene.compute_light_distribution();
 			scene.rt->build(&scene);
-			accel_touched_at = cmdid;
+			uc.accel_touched_at = uc.cmdid;
 		}
 		else ifcmd("sppx") {
 			int sppx;
@@ -136,11 +146,11 @@ void repl(istream &infile, render_context &rc) {
 			rc.sppx = sppx;
 		}
 		else ifcmd("run") {
-			if (scene_touched_at == 0 || tracer_touched_at == 0 || accel_touched_at == 0 || algo == nullptr)
+			if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || algo == nullptr)
 				error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
-			if (accel_touched_at < tracer_touched_at)
+			if (uc.accel_touched_at < uc.tracer_touched_at)
 				error("The current tracer does (might?) not have an up-to-date acceleration structure");
-			if (accel_touched_at < scene_touched_at)
+			if (uc.accel_touched_at < uc.scene_touched_at)
 				error("The current acceleration structure is out-dated");
 			run(rc, algo);
 		}
@@ -154,22 +164,51 @@ void repl(istream &infile, render_context &rc) {
 			error("Meshes can only be listed in this version");
 		}
 		else ifcmd("material") {
-			string name, cmd;
-			in >> name;
-			if (in.eof() && name == "list") {
+			string cmd;
+			in >> cmd;
+			if (in.eof() && cmd == "list") {
 				for (auto &mtl : scene.materials) cout << mtl.name << endl;
 				continue;
 			}
 			check_in("Syntax error, requires material name, command and subsequent arguments");
-			material *m = nullptr;
-			for (auto &mtl : scene.materials) if (mtl.name == name) { m = &mtl; break; }
-			if (!m) error("No material called '" << name << "'");
 			command = cmd;
+			ifcmd("select") {
+				string name;
+				in >> name;
+				check_in_complete("Only a single string (no whitespace) accepted");
+				for (auto &mtl : scene.materials) if (mtl.name == name) { mat = &mtl; break; }
+				if (!mat) error("No material called '" << name << "'");
+				continue;
+			}
+			if (!mat)
+				error("No material selected");
 			ifcmd("albedo") {
+				in >> tmp;
+				check_in_complete("Expects a color triplet");
+				mat->albedo = tmp;
 			}
 			else ifcmd("emissive") {
+				in >> tmp;
+				check_in_complete("Expects a color triplet");
+				mat->emissive = tmp;
 			}
-			else ifcmd("set") {
+			else ifcmd("roughness") {
+				in >> tmp.x;
+				check_in_complete("Expects a floating point value");
+				mat->roughness = tmp.x;
+			}
+			else ifcmd("ior") {
+				in >> tmp.x;
+				check_in_complete("Expects a floating point value");
+				mat->ior = tmp.x;
+			}
+			else ifcmd("show") {
+				check_in_complete("Does not take further arguments");
+				cout << "albedo     " << mat->albedo << endl;
+				cout << "albedo-tex " << (mat->albedo_tex ? "y" : "n") << endl;
+				cout << "emissive   " << mat->emissive << endl;
+				cout << "roughness  " << mat->roughness << endl;
+				cout << "ior        " << mat->ior << endl;
 			}
 			else error("Unknown subcommand");
 		}
@@ -210,6 +249,4 @@ void repl(istream &infile, render_context &rc) {
 		}
 	}
 	cout << endl;
-
-	delete algo;
 }

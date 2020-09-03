@@ -9,8 +9,25 @@ using namespace glm;
 using namespace std;
 
 gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
+	sample_result result;
+	for (int sample = 0; sample < samples; ++sample) {
+		vec3 radiance(0);
+		ray view_ray = cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f));
+		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
+		if (closest.valid()) {
+			diff_geom dg(closest, rc.scene);
+			radiance = dg.albedo();
+		}
+		result.push_back({radiance,vec2(0)});
+	}
+	return result;
+}
+
+
+gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	enum mode { sample_light, sample_brdf };
 	constexpr mode m = sample_brdf;
+	                   //sample_light;
 
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
@@ -24,7 +41,8 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
-				lambertian_reflection brdf;
+// 				lambertian_reflection brdf;
+				phong_specular_reflection brdf;
 // 				lambertian_reflection d_brdf;
 // 				phong_specular_reflection s_brdf;
 // 				layered_brdf brdf(&s_brdf, &d_brdf);

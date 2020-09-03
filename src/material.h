@@ -55,8 +55,8 @@ struct lambertian_reflection : public brdf {
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 };
 
-// struct phong_specular_reflection : public specular_brdf {
-// 	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-// 	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-// 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
-// };
+struct phong_specular_reflection : public specular_brdf {
+	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+};

@@ -4,6 +4,7 @@
 #include "intersect.h"
 #include "framebuffer.h"
 #include "context.h"
+#include "interaction.h"
 
 #include "cmdline.h"
 
@@ -66,19 +67,19 @@ void run(render_context &rc, gi_algorithm *algo) {
 	rc.framebuffer.png().write("out.png");
 }
 
-void repl(istream &, render_context &);
-
 int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);
 
 	render_context rc;
+	repl_update_checks uc;
 	if (cmdline.script != "") {
 		ifstream script(cmdline.script);
-		repl(script, rc);
+		repl(script, rc, uc);
 	}
-	else
-		repl(cin, rc);
+	if (cmdline.interact)
+		repl(cin, rc, uc);
 
+	delete rc.algo;
 	return 0;
 }

@@ -23,6 +23,7 @@ static struct argp_option options[] =
 	// --[opt]		short/const		arg-descr		flag	option-descr
 	{ "verbose", 			'v', 	0,         		0, "Be verbose." },
 	{ "script",             's',    "file",         0, "Use file instead of stdin to read commands from" },
+	{ "load",               'l',    "file",         0, "Read commands from file, then from stdin" },
 	{ 0 }
 };
 
@@ -53,7 +54,8 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 
 	switch (key)
 	{
-	case 's':   cmdline.script = sarg; break;
+	case 's':   cmdline.script = sarg; cmdline.interact = false; break;
+	case 'l':   cmdline.script = sarg; break;
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}
