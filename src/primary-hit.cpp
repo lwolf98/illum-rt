@@ -25,10 +25,6 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 
 
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
-	enum mode { sample_light, sample_brdf };
-	constexpr mode m = //sample_brdf;
-	                   sample_light;
-
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
@@ -41,21 +37,16 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
-// 				lambertian_reflection brdf;
-				phong_specular_reflection brdf;
-// 				lambertian_reflection d_brdf;
-// 				phong_specular_reflection s_brdf;
-// 				layered_brdf brdf(&s_brdf, &d_brdf);
-				if constexpr (m == sample_light) {
+				if (sampling_mode == sample_light) {
 					auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
 					light *l = rc.scene.lights[l_id];
 					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
-					if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t >= shadow_ray.max_t) {
-						radiance = col * brdf.f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
+					if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t >= shadow_ray.max_t*.999) {
+						radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 					}
 				}
 				else {
-					auto [w_i, f, pdf] = brdf.sample(dg, -view_ray.d, rc.rng.uniform_float2());
+					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
 					ray light_ray(nextafter(dg.x, w_i), w_i);
 					if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
 						if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0))
@@ -67,3 +58,25 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 	}
 	return result;
 }
+	
+bool direct_light::interprete(const std::string &command, std::istringstream &in) {
+	string value;
+	if (command == "brdf") {
+		in >> value;
+		if (value == "lambertian")    brdf = &d_brdf;
+		else if (value == "specular") brdf = &s_brdf;
+		else if (value == "layered")  brdf = &l_brdf;
+		else if (value == "gtr2")     brdf = &gtr2_brdf;
+		else cerr << "unknown brdf in " << __func__ << ": " << value << endl;
+		return true;
+	}
+	else if (command == "is") {
+		in >> value;
+		if (value == "light") sampling_mode = sample_light;
+		else if (value == "brdf") sampling_mode = sample_brdf;
+		else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
+		return true;
+	}
+	return false;
+}
+

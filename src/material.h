@@ -29,8 +29,8 @@ struct brdf {
 	//          w_i,f(w_i),pdf(w_i)
 	typedef tuple<vec3,vec3,float> sampling_res;
 	
-	virtual vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) = 0;
-	virtual float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) = 0;
+	virtual vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) = 0;
+	virtual float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) = 0;
 	virtual sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) = 0;
 };
 
@@ -39,24 +39,30 @@ struct specular_brdf : public brdf {
 	bool coat = false;
 };
 
-// struct layered_brdf : public brdf {
-// 	specular_brdf *coat;
-// 	brdf *base;
-// 	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) {}
-// 	
-// 	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-// 	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-// 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
-// };
+struct layered_brdf : public brdf {
+	specular_brdf *coat;
+	brdf *base;
+	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) { coat->coat = true; }
+	
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+};
 
 struct lambertian_reflection : public brdf {
-	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 };
 
 struct phong_specular_reflection : public specular_brdf {
-	vec3 f(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
-	float pdf(const diff_geom &geom, const vec3 &wo, const vec3 &wi) override;
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+};
+
+struct gtr2_reflection : public specular_brdf {
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 };

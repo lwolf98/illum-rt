@@ -6,21 +6,31 @@ load render-data/brdf-test.obj
 raytracer bbvh
 commit
 algo direct
-sppx 32
+sppx 64
 #pointlight pos 0 -4 0 col 35 30 26
 resolution 1280 720
 
 material select microfacet
+material ior 2.4
+material roughness 0.025
 material texture drop
 
 material select microfacet.001
+material ior 2.4
+material roughness 0.075
 material texture drop
 
 material select microfacet.002
+material ior 2.4
+material roughness 0.15
 material texture drop
 
 material select specular
+material ior 2.4
+material roughness 0.001
 material texture drop
 
+brdf gtr2
+is brdf
 
 run

@@ -56,6 +56,58 @@ inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_materi
 }
 
 
+/* 
+ * trigonometric helper functions
+ *
+ */
+inline float cos_theta(float cos_t) {
+    return cos_t;
+}
+inline float cos2_theta(float cos_t) {
+    return cos_t*cos_t;
+}
+inline float abs_cos_theta(float cos_t) {
+    return cos_t < 0.0f ? -cos_t : cos_t;
+}
+inline float sin2_theta(float cos_t) {
+	float res = 1.0f - cos_t*cos_t;
+    return res < 0.0f ? 0.0f : res;
+}
+inline float sin_theta(float cos_t) {
+    return sqrtf(sin2_theta(cos_t));
+}
+inline float tan_theta(float cos_t) {
+    return sin_theta(cos_t) / cos_theta(cos_t);
+}
+inline float tan2_theta(float cos_t) {
+    return sin2_theta(cos_t) / cos2_theta(cos_t);
+}
+inline float cos_theta(const glm::vec3& N, const glm::vec3& w) {
+    return glm::dot(N, w);
+}
+inline float abs_cos_theta(const glm::vec3& N, const glm::vec3& w) {
+	float x = cos_theta(N, w);
+    return x < 0.0f ? -x : x;
+}
+inline float cos2_theta(const glm::vec3& N, const glm::vec3& w) {
+	float x = cos_theta(N, w);
+    return x*x;
+}
+inline float sin2_theta(const glm::vec3& N, const glm::vec3& w) {
+	float x = cos_theta(N, w);
+	float y = 1.0f - x*x;
+	return y < 0.0f ? 0.0f : y;
+}
+inline float sin_theta(const glm::vec3& N, const glm::vec3& w) {
+    return sqrtf(sin2_theta(N, w));
+}
+inline float tan_theta(const glm::vec3& N, const glm::vec3& w) {
+    return sin_theta(N, w) / cos_theta(N, w);
+}
+inline float tan2_theta(const glm::vec3& N, const glm::vec3& w) {
+    return sin2_theta(N, w) / cos2_theta(N, w);
+}
+
 /*
  *  spherical geometry helpers
  */
