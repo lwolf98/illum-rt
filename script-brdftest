@@ -6,7 +6,7 @@ load render-data/brdf-test.obj
 raytracer bbvh
 commit
 algo direct
-sppx 64
+sppx 128
 #pointlight pos 0 -4 0 col 35 30 26
 resolution 1280 720
 
@@ -30,7 +30,7 @@ material ior 2.4
 material roughness 0.001
 material texture drop
 
-brdf gtr2
+brdf layered-gtr2
 is brdf
 
 run

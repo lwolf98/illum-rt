@@ -57,7 +57,7 @@ inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray,
 	gamma /= M;
 	tt /= M;
 
-	if (tt > 0)
+	if (tt > ray.t_min && tt < ray.t_max)
 		if (beta > 0 && gamma > 0 && beta + gamma <= 1)
 		{
 			info.t = tt;
@@ -89,7 +89,7 @@ inline bool intersect(const aabb &box, const ray &ray, float &is) {
 		if (t_near > t_far)	// box missed
 			return false;
 
-		if (t_far < 0)		// box behind ray
+		if (t_far < ray.t_min || t_near > ray.t_max)
 			return false;
 	}
 
@@ -109,7 +109,7 @@ inline bool intersect(const aabb &box, const ray &ray, float &is) {
 		if (t_near > t_far)	// box missed
 			return false;
 
-		if (t_far < 0)		// box behind ray
+		if (t_far < ray.t_min || t_near > ray.t_max)
 			return false;
 	}
 
@@ -129,7 +129,7 @@ inline bool intersect(const aabb &box, const ray &ray, float &is) {
 		if (t_near > t_far)	// box missed
 			return false;
 
-		if (t_far < 0)		// box behind ray
+		if (t_far < ray.t_min || t_near > ray.t_max)
 			return false;
 	}
 
@@ -159,8 +159,9 @@ inline bool intersect2(const aabb &box, const ray &ray, float &is) {
 	float t2 = (t2x < t2y) ? t2x : t2y;
 	      t2 = (t2z < t2 ) ? t2z : t2;
 		
-	if (t1 > t2)	return false;
-	if (t2 < 0)		return false;
+	if (t1 > t2)        return false;
+	if (t2 < ray.t_min)	return false;
+	if (t1 > ray.t_max) return false;
 	
 	is = t1;
 	return true;
@@ -193,8 +194,9 @@ inline bool intersect3(const aabb &box, const ray &ray, float &is) {
 	float t2 = (t2x < t2y) ? t2x : t2y;
 	      t2 = (t2z < t2 ) ? t2z : t2;
 		
-	if (t1 > t2)	return false;
-	if (t2 < 0)		return false;
+	if (t1 > t2)        return false;
+	if (t2 < ray.t_min) return false;
+	if (t1 > ray.t_max) return false;
 	
 	is = t1;
 	return true;
@@ -226,9 +228,10 @@ inline bool intersect4(const aabb &box, const ray &ray, float &is) {
 	float t2 = (t2x < t2y) ? t2x : t2y;
 	      t2 = (t2z < t2 ) ? t2z : t2;
 		
-	if (t1 > t2)	return false;
-	if (t2 < 0)		return false;
-	
+	if (t1 > t2)        return false;
+	if (t2 < ray.t_min) return false;
+	if (t1 > ray.t_max) return false;
+		
 	is = t1;
 	return true;
 }

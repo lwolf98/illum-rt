@@ -16,10 +16,12 @@ constexpr float one_over_4pi = (1.0 / (4*M_PI));
 
 
 struct ray {
+	static constexpr float eps = 1e-4f;
 	vec3 o, d, id;
-	float max_t = FLT_MAX;
+	float t_min = eps, t_max = FLT_MAX;
 	ray(const vec3 &o, const vec3 &d) : o(o), d(d), id(1.0f/d.x, 1.0f/d.y, 1.0f/d.z) {}
 	ray() {}
+	void length_exclusive(float d) { t_max = d - eps; }
 };
 
 struct vertex {

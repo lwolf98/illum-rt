@@ -187,13 +187,10 @@ vec3 pointlight::power() const {
 
 tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	vec3 to_light = pos - from.x;
-	vec3 target = nextafter(pos, -to_light);
-	vec3 source = nextafter(from.x, to_light);
-	to_light = target-source;
 	float tmax = length(to_light);
 	to_light /= tmax;
-	ray r(source, to_light);
-	r.max_t = tmax;
+	ray r(from.x, to_light);
+	r.length_exclusive(tmax);
 	vec3 c = col / (tmax*tmax);
 	return { r, c, 1.0f };
 }
@@ -221,18 +218,15 @@ tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const ve
 	vec3 target = (1.0f-xis.x-xis.y)*a.pos + xis.x*b.pos + xis.y*c.pos;
 	vec3 n = (1.0f-xis.x-xis.y)*a.norm + xis.x*b.norm + xis.y*c.norm;
 	vec3 w_i = target - from.x;
-	target = nextafter(target, -w_i);
 	
 	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
 	const material &m = scene.materials[material_id];
 	vec3 col = m.emissive;
 	
-	vec3 source = nextafter(from.x, w_i);
-	w_i = target-source;
 	float tmax = length(w_i);
 	w_i /= tmax;
-	ray r(source, w_i);
-	r.max_t = tmax;
+	ray r(from.x, w_i);
+	r.length_exclusive(tmax);
 	
 	// pbrt3/838
 	float pdf = tmax*tmax/(cdot(n,-w_i) * area);

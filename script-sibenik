@@ -7,9 +7,10 @@ load render-data/sibenik/sibenik.obj
 load render-data/sibenik/sibenbunny.obj
 raytracer bbvh
 commit
-algo primary
+algo direct
 sppx 32
 #pointlight pos 0 -4 0 col 35 30 26
-#resolution 1280 720
-resolution 640 360
+resolution 1280 720
+#resolution 640 360
+brdf layered-gtr2
 run

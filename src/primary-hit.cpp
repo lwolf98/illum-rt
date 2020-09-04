@@ -41,7 +41,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 					auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
 					light *l = rc.scene.lights[l_id];
 					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
-					if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t >= shadow_ray.max_t*.999) {
+					if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max) {
 						radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 					}
 				}
@@ -63,10 +63,11 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 	string value;
 	if (command == "brdf") {
 		in >> value;
-		if (value == "lambertian")    brdf = &d_brdf;
-		else if (value == "specular") brdf = &s_brdf;
-		else if (value == "layered")  brdf = &l_brdf;
-		else if (value == "gtr2")     brdf = &gtr2_brdf;
+		if (value == "lambertian")         brdf = &d_brdf;
+		else if (value == "specular")      brdf = &s_brdf;
+		else if (value == "layered-phong") brdf = &l_brdf;
+		else if (value == "gtr2")          brdf = &gtr2_brdf;
+		else if (value == "layered-gtr2")  brdf = &l_brdf2;
 		else cerr << "unknown brdf in " << __func__ << ": " << value << endl;
 		return true;
 	}
