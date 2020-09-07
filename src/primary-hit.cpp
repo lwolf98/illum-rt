@@ -4,6 +4,7 @@
 #include "context.h"
 #include "intersect.h"
 #include "util.h"
+#include "color.h"
 
 using namespace glm;
 using namespace std;
@@ -45,12 +46,39 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 						radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 					}
 				}
-				else {
+				else if (sampling_mode == sample_brdf) {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
 					ray light_ray(nextafter(dg.x, w_i), w_i);
 					if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
 						if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0))
 							radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i) / pdf;
+				}
+				else {
+					float pdf_light = 0,
+						  pdf_brdf = 0;
+					if (sample < samples/2-1) {
+						auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
+						light *l = rc.scene.lights[l_id];
+						auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
+						pdf_light = l_pdf*pdf;
+						pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
+						if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
+					}
+					else {
+						auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
+						ray light_ray(nextafter(dg.x, w_i), w_i);
+						pdf_brdf  = pdf;
+						if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
+							if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0)) {
+								trianglelight tl(rc.scene, is.ref);
+								pdf_light = luma(tl.power()) / rc.scene.light_distribution->integral();
+								pdf_light *= tl.pdf(light_ray, hit_geom);
+								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
+							}
+					}
+					float balance = pdf_light + pdf_brdf; // 1920/229
+					radiance /= balance;
 				}
 			}
 		}
@@ -75,6 +103,7 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 		in >> value;
 		if (value == "light") sampling_mode = sample_light;
 		else if (value == "brdf") sampling_mode = sample_brdf;
+		else if (value == "mis") sampling_mode = both;
 		else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
 		return true;
 	}

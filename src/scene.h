@@ -44,6 +44,7 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = t
 struct light {
 	virtual vec3 power() const = 0;
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
+// 	virtual float pdf(const ray &r) const = 0;
 };
 
 struct pointlight : public light {
@@ -52,6 +53,7 @@ struct pointlight : public light {
 	pointlight(const vec3 pos, const vec3 col) : pos(pos), col(col) {}
 	vec3 power() const override;
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
+// 	float pdf(const ray &r) const override { return 0; }
 };
 
 /*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
@@ -63,10 +65,11 @@ struct pointlight : public light {
  *  copy the triangle data on the GPU or in SIMD formats anyway.
  */
 struct trianglelight : public light, private triangle {
-	::scene& scene;
-	trianglelight(::scene &scene, uint32_t i);
+	const ::scene& scene;
+	trianglelight(const ::scene &scene, uint32_t i);
 	vec3 power() const override;
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
+	float pdf(const ray &r, const diff_geom &on_light) const;
 };
 
 struct scene {

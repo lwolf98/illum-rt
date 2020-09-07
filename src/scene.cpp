@@ -197,7 +197,7 @@ tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 
 
 /////
 
-trianglelight::trianglelight(::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
+trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
 }
 
 vec3 trianglelight::power() const {
@@ -232,4 +232,14 @@ tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const ve
 	float pdf = tmax*tmax/(cdot(n,-w_i) * area);
 	return { r, col, pdf };
 	
+}
+
+float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
+	const vertex &a = scene.vertices[this->a];
+	const vertex &b = scene.vertices[this->b];
+	const vertex &c = scene.vertices[this->c];
+	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
+	float d = length(on_light.x - r.o);
+	float pdf = d*d/(cdot(on_light.ns, -r.d)*area);
+	return pdf;
 }

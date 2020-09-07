@@ -15,5 +15,7 @@ public:
 	distribution_1d(const std::vector<float> &f);
 	distribution_1d(std::vector<float> &&f);
 	pair<uint32_t,float> sample_index(float xi) const;
+	float pdf(uint32_t index) const;
 	void debug_out(const std::string &p) const;
+	float integral() const { return integral_1spaced; }
 };

@@ -15,7 +15,7 @@ class direct_light : public gi_algorithm {
 	gtr2_reflection gtr2_brdf;
 	layered_brdf l_brdf2;
 	::brdf *brdf = nullptr;
-	enum sampling_mode { sample_light, sample_brdf };
+	enum sampling_mode { sample_light, sample_brdf, both };
 	enum sampling_mode sampling_mode = sample_light;
 public:
 	direct_light() : l_brdf(&s_brdf, &d_brdf), l_brdf2(&gtr2_brdf, &d_brdf), brdf(&d_brdf) {}

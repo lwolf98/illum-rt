@@ -31,6 +31,6 @@ material roughness 0.001
 material texture drop
 
 brdf layered-gtr2
-is brdf
+#is brdf
 
 run

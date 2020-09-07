@@ -30,6 +30,10 @@ pair<uint32_t,float> distribution_1d::sample_index(float xi) const {
 	float pdf = integral_1spaced > 0.0f ? f[index] / integral_1spaced : 0.0f;
 	return pair{index,pdf};;
 }
+	
+float distribution_1d::pdf(uint32_t index) const {
+	return integral_1spaced > 0.0f ? f[index] / integral_1spaced : 0.0f;
+}
 
 void distribution_1d::debug_out(const std::string &p) const {
 	ofstream pdf(p+".pdf");
