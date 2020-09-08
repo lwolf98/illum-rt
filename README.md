@@ -18,6 +18,22 @@ $ autoreconf -if
 $ ./configure
 ```
 
+sudo apt install
+## Abhängigkeiten
+
+Folgende Pakete sind nötig (Liste für Debianderivate wie z.B. Ubuntu/Mint, weitere nehme ich gerne auf, schicken Sie mir einfach die nötigen Daten!).
+
+Zum Übersetzen des Codes:
+```
+sudo apt install pkg-config [...]
+```
+
+Für das Buildsystem wenn Sie das Repo direkt verwenden:
+```
+sudo apt install build-essential autoconf automake autoconf-archive
+```
+
+
 ## Configure & Make
 
 Wenn Sie den Code mit gutem Debug-Support übersetzen wollen (auf Kosten der Laufzeit) können Sie `configure CXXFLAGS="-ggdb3 -O0"` verwenden.
