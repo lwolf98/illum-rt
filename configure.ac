@@ -18,7 +18,24 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
-PKG_CHECK_MODULES(WAND, MagickWand, [HAVE_MAGICKWAND=1], [HAVE_MAGICKWAND=0])
+
+AC_MSG_CHECKING([MagickWand])
+if pkg-config --atleast-version=7.0.0 MagickWand ; then
+	AC_MSG_RESULT([v7])
+	WAND_CFLAGS="$(pkg-config MagickWand --cflags) -D RTGI_WAND7"
+	WAND_LIBS="$(pkg-config MagickWand --libs)"
+else 
+	if pkg-config --atleast-version=6.0.0 MagickWand ; then
+		AC_MSG_RESULT([v6])
+		WAND_CFLAGS="$(pkg-config MagickWand --cflags) -D RTGI_WAND6"
+		WAND_LIBS="$(pkg-config MagickWand --libs)"
+	else
+		AC_MSG_FAILURE([Requires MagickWand v6 or v7])
+	fi
+fi
+AC_SUBST([WAND_CFLAGS])
+AC_SUBST([WAND_LIBS])
+
 
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile

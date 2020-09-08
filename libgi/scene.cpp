@@ -15,7 +15,12 @@
 #include <assimp/postprocess.h>
 #include <assimp/mesh.h>
 #include <assimp/material.h>
+
+#ifdef RTGI_WAND7
 #include <MagickWand/MagickWand.h>
+#else
+#include <wand/MagickWand.h>
+#endif
 
 using namespace glm;
 using namespace std;
