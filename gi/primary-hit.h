@@ -1,7 +1,7 @@
 #pragma once
 
-#include "algorithm.h"
-#include "material.h"
+#include "libgi/algorithm.h"
+#include "libgi/material.h"
 
 class primary_hit_display : public gi_algorithm {
 public:

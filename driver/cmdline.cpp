@@ -1,6 +1,6 @@
 #include "cmdline.h"
 
-#include "rt.h"
+#include "libgi/rt.h"
 
 #include <argp.h>
 #include <string>

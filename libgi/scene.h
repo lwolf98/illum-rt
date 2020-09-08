@@ -1,10 +1,10 @@
 #pragma once
 
-#include "cmdline.h"
 #include "camera.h"
-#include "bvh.h"
 #include "material.h"
 #include "discrete_distributions.h"
+
+#include "rt/bbvh-base/bvh.h"
 
 #include <vector>
 #include <map>

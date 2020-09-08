@@ -1,11 +1,12 @@
 #include "interaction.h"
-#include "scene.h"
-#include "algorithm.h"
-#include "bvh.h"
-#include "framebuffer.h"
-#include "context.h"
 
-#include "primary-hit.h"
+#include "libgi/scene.h"
+#include "libgi/algorithm.h"
+#include "libgi/framebuffer.h"
+#include "libgi/context.h"
+
+#include "rt/bbvh-base/bvh.h"
+#include "gi/primary-hit.h"
 
 #include <iostream>
 #include <sstream>

@@ -1,8 +1,9 @@
 #include "scene.h"
 
-#include "bvh.h"
 #include "color.h"
 #include "util.h"
+
+#include "rt/bbvh-base/bvh.h"
 
 #include <vector>
 #include <iostream>

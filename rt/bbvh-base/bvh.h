@@ -1,7 +1,7 @@
 #pragma once
 
-#include "scene.h"
-#include "intersect.h"
+#include "libgi/scene.h"
+#include "libgi/intersect.h"
 
 #include <vector>
 #include <float.h>

@@ -1,6 +1,6 @@
-AC_INIT([rt], [2020], [kai selgrad at oth regensburg de])
+AC_INIT([rtgi], [2020], [kai selgrad at oth regensburg de])
 
-AC_CONFIG_SRCDIR([src/main.cpp])
+AC_CONFIG_SRCDIR([driver/main.cpp])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_AUX_DIR([auxx])
 
@@ -9,6 +9,7 @@ AM_INIT_AUTOMAKE()
 AC_PROG_CXX
 AC_LANG([C++])
 AX_CXX_COMPILE_STDCXX(17)
+AC_PROG_RANLIB
 AC_OPENMP
 CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
 
@@ -19,6 +20,10 @@ AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On
 
 PKG_CHECK_MODULES(WAND, MagickWand, [HAVE_MAGICKWAND=1], [HAVE_MAGICKWAND=0])
 
-AC_CONFIG_FILES([Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile 
+				driver/Makefile
+				libgi/Makefile
+				rt/Makefile rt/bbvh-base/Makefile
+				gi/Makefile])
 
 AC_OUTPUT

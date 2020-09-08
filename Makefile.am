@@ -1,1 +1,1 @@
-SUBDIRS = src
+SUBDIRS = libgi rt gi driver

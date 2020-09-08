@@ -9,7 +9,7 @@ config.h
 config.h.in~
 configure
 auxx
-src/rt
+src/rtgi
 out.png
 stamp-h1
 aclocal.m4

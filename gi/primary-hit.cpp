@@ -1,10 +1,10 @@
 #include "primary-hit.h"
 
-#include "rt.h"
-#include "context.h"
-#include "intersect.h"
-#include "util.h"
-#include "color.h"
+#include "libgi/rt.h"
+#include "libgi/context.h"
+#include "libgi/intersect.h"
+#include "libgi/util.h"
+#include "libgi/color.h"
 
 using namespace glm;
 using namespace std;

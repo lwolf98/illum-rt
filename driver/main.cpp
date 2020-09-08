@@ -1,9 +1,10 @@
-#include "rt.h"
-#include "camera.h"
-#include "scene.h"
-#include "intersect.h"
-#include "framebuffer.h"
-#include "context.h"
+#include "libgi/rt.h"
+#include "libgi/camera.h"
+#include "libgi/scene.h"
+#include "libgi/intersect.h"
+#include "libgi/framebuffer.h"
+#include "libgi/context.h"
+
 #include "interaction.h"
 
 #include "cmdline.h"

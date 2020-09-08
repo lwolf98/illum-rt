@@ -33,7 +33,7 @@ Wenn Sie eine Verbesserung mit mir teilen möchten können Sie gerne einen Patch
 
 Um das Programm auszuführen verwenden Sie eines der Skriptfiles:
 ```
-./src/rt -s script-sibenik
+./rtgi -s script-sibenik
 ```
 (dazu müssen die entsprechenden Modelle unter `render-data/` liegen, siehe Grips-Seite).
 
@@ -43,6 +43,6 @@ Alle verfügbaren Kommandos finden sich in `src/interaction.cpp`, bis auf GI-Alg
 
 ## Neue Sourcefiles
 
-Bisher ist der Code noch nicht auf die Art und Weise organisiert wie ich das gerne hätte, deshalb können alle Quelldateien unter `src/` abgelegt werden. Neue Quelldateien sollten in `src/Makefile.am` in der Liste hinzugefügt werden, dann sind sie automatisch im Build-Prozess integriert.
+Bisher ist der Code noch nicht ganz auf die Art und Weise organisiert wie ich das gerne hätte, wenn Sie einen neuen Tracer schreiben, dann legen Sie bitte ein Unterverzeichnis in `rt/` an. Sie können dann das `rt/bbvh-base/Makefile.am` kopieren und anpassen, siehe auch `driver/Makefile.am`. Neue Quelldateien sollten im entsprechenden `Makefile.am` in der Liste hinzugefügt werden, dann sind sie automatisch im Build-Prozess integriert.
 
 
