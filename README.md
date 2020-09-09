@@ -25,12 +25,12 @@ Folgende Pakete sind nötig (Liste für Debianderivate wie z.B. Ubuntu/Mint, wei
 
 Zum Übersetzen des Codes:
 ```
-sudo apt install pkg-config [...]
+sudo apt install build-essential pkg-config imagemagick libmagickwand-dev libassimp-dev libglm-dev libpng++-dev
 ```
 
 Für das Buildsystem wenn Sie das Repo direkt verwenden:
 ```
-sudo apt install build-essential autoconf automake autoconf-archive
+sudo apt install autoconf automake autoconf-archive
 ```
 
 
