@@ -61,4 +61,23 @@ Alle verfügbaren Kommandos finden sich in `src/interaction.cpp`, bis auf GI-Alg
 
 Bisher ist der Code noch nicht ganz auf die Art und Weise organisiert wie ich das gerne hätte, wenn Sie einen neuen Tracer schreiben, dann legen Sie bitte ein Unterverzeichnis in `rt/` an. Sie können dann das `rt/bbvh-base/Makefile.am` kopieren und anpassen, siehe auch `driver/Makefile.am`. Neue Quelldateien sollten im entsprechenden `Makefile.am` in der Liste hinzugefügt werden, dann sind sie automatisch im Build-Prozess integriert.
 
+## Branching in Projekt/Examensarbeiten
+
+Wenn Sie eine längere Arbeit innerhalb von RTGI machen, erstellen Sie bitte einen FORK des Repositories via Gitlab. In Ihrem Fork, legen Sie dann bitte einen Branch an der also lokaler Masterbranch dient (auch Integrationbranch genannt), Vorschlag <arbeit>-<username>, also z.B. ba-sek38402.
+
+Für einzelne Teilaufgaben können Sie dann, ausgehend von diesem Branch, sogenannte Featurebranches anlegen innerhalb derer Sie die Aufgaben umsetzen können. Damit können wir, wenn Sie Feedback zu Ihrer Umsetzung wollen, einen Pullrequest aufmachen und via Gitlab die Unterschiede zu Ihrem Ursprungsbranch sehen und anhand des Codes kommentieren und entsprechend sehr einfach über Details sprechen.
+
+Wenn wir dann zufrieden mit dem Stand sind können Sie den Featurebranch zurück in Ihren Integrationsbranch mergen.
+
+Sie können regelmäßig vom Original-Repository den master-Branch in Ihren Integrationsbranch mergen, und sollten einzelne Teile oder Ihre Arbeit insgesamt in das Ursprungs-Repository gemerged werden, ist das sehr einfach möglich.
+
+Inspiriert von https://nvie.com/posts/a-successful-git-branching-model/
+
+## Code Conventions
+
+Ein unangenehmes Thema, da aber der Plan ist, dass in das Repo Code aus Projekt- und Examensarbeiten integriert wird würde ich mich sehr freuen wenn Sie Code schreiben der dem Muster des vorhandenen Codes folgt.
+Im Zweifel, oder wenn meine Stilbeschreibung unterspezifiziert ist, schauen Sie sich um und orientieren Sie sich an dem, was Sie sehen.
+
+Es wird ein Separates Dokument geben das den Stil beschreibt und auch darauf eingeht wie und wann Sie ohne große Konsequenz davon abweichen können.
+Hier geht es nicht darum Ihnen meine Sicht der Welt aufzudrücken, sondern nachfolgenden Studis eine konsistente Codebasis zur Verfügung zu stellen. Erfahrungsgemäß macht das die Einarbeitung etwas einfacher.
 
