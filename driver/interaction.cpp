@@ -10,8 +10,11 @@
 
 #include <iostream>
 #include <sstream>
-#include <glm/glm.hpp>
 
+#include <glm/glm.hpp>
+#if GLM_VERSION < 997
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/gtx/string_cast.hpp>
 inline std::ostream& operator<<(std::ostream &out, const vec3 &x) {
 	out << to_string(x);
