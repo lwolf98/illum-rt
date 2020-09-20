@@ -9,7 +9,7 @@
 #include <mutex>
 
 struct timer {
-	typedef std::chrono::time_point<std::chrono::system_clock> timepoint;
+	typedef std::chrono::time_point<std::chrono::steady_clock> timepoint;
     virtual ~timer() {}
 
     virtual void start(const std::string &name);

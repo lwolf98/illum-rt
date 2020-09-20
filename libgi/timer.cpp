@@ -5,10 +5,10 @@
 #include <iostream>
 #include <sstream>
 
-void timer::start(const std::string& name) { starts[name] = std::chrono::system_clock::now(); }
+void timer::start(const std::string& name) { starts[name] = std::chrono::steady_clock::now(); }
 
 void timer::stop(const std::string& name) {
-    times[name] += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - starts[name]) .count();
+    times[name] += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - starts[name]) .count();
     counts[name]++;
 }
 
