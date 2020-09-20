@@ -1,5 +1,7 @@
 #include "bvh.h"
 
+#include "libgi/timer.h"
+
 #include <algorithm>
 #include <iostream>
 #include <chrono>
@@ -14,6 +16,7 @@ binary_bvh_tracer::binary_bvh_tracer() {
 }
 
 void binary_bvh_tracer::build(::scene *scene) {
+	time_this_block(build_bvh);
 	this->scene = scene;
 	std::cout << "Building BVH..." << std::endl;
 	auto t1 = std::chrono::high_resolution_clock::now();
@@ -83,6 +86,7 @@ uint32_t binary_bvh_tracer::subdivide_om(std::vector<triangle> &triangles, std::
 }
 
 triangle_intersection binary_bvh_tracer::closest_hit(const ray &ray) {
+	time_this_block(closest_hit);
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;
