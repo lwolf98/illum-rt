@@ -18,8 +18,8 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
-
-AC_MSG_CHECKING([MagickWand])
+## support older systems with obsolete imagemagick version
+AC_MSG_CHECKING([MagickWand version])
 if pkg-config --atleast-version=7.0.0 MagickWand ; then
 	AC_MSG_RESULT([v7])
 	WAND_CFLAGS="$(pkg-config MagickWand --cflags) -D RTGI_WAND7"
@@ -36,6 +36,16 @@ fi
 AC_SUBST([WAND_CFLAGS])
 AC_SUBST([WAND_LIBS])
 
+## g++-8 filesystem troubles
+## earlier versions are not supported
+AC_MSG_CHECKING([whether g++ needs libstdc++fs])
+case "$(g++ --version | head -n1)" in
+*8.?.?)	LIBS="$LIBS -lstdc++fs"
+	AC_MSG_RESULT([yes, sadly])
+	;;
+*)
+	AC_MSG_RESULT([no, all is well])
+esac
 
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile

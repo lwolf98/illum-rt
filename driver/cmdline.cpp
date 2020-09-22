@@ -24,6 +24,7 @@ static struct argp_option options[] =
 	{ "verbose", 			'v', 	0,         		0, "Be verbose." },
 	{ "script",             's',    "file",         0, "Use file instead of stdin to read commands from" },
 	{ "load",               'l',    "file",         0, "Read commands from file, then from stdin" },
+	{ "outfile",            'o',    "file",         0, "Store generated image (in png format) to this file" },
 	{ 0 }
 };
 
@@ -56,6 +57,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	{
 	case 's':   cmdline.script = sarg; cmdline.interact = false; break;
 	case 'l':   cmdline.script = sarg; break;
+	case 'o':   cmdline.outfile = sarg; break;
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}

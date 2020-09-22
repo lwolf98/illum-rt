@@ -1,4 +1,5 @@
 #include "interaction.h"
+#include "cmdline.h"
 
 #include "libgi/scene.h"
 #include "libgi/algorithm.h"
@@ -10,8 +11,11 @@
 
 #include <iostream>
 #include <sstream>
-#include <glm/glm.hpp>
 
+#include <glm/glm.hpp>
+#if GLM_VERSION < 997
+#define GLM_ENABLE_EXPERIMENTAL
+#endif
 #include <glm/gtx/string_cast.hpp>
 inline std::ostream& operator<<(std::ostream &out, const vec3 &x) {
 	out << to_string(x);
@@ -121,6 +125,12 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				delete algo;
 				algo = a;
 			}
+		}
+		else ifcmd("outfile") {
+			string name;
+			in >> name;
+			check_in_complete("Syntax error, only accepts a single file name (no spaces, sorry)");
+			cmdline.outfile = name;
 		}
 // 		else ifcmd("bookmark") {
 // 			

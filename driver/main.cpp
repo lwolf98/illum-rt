@@ -66,7 +66,7 @@ void run(render_context &rc, gi_algorithm *algo) {
 	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 	cout << "Took " << timediff(delta_ms) << " to complete" << endl;
 	
-	rc.framebuffer.png().write("out.png");
+	rc.framebuffer.png().write(cmdline.outfile);
 }
 
 int main(int argc, char **argv)
