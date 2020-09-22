@@ -31,3 +31,10 @@ inline float cosine_hemisphere_pdf(float cos_t) {
     return cos_t / pi;
 }
 
+// triangles (returns baryzentric coordinates)
+inline vec2 uniform_sample_triangle(const glm::vec2 &sample) {
+    const float su0 = sqrtf(sample.x);
+    return glm::vec2(1.0f - su0, sample.y * su0);
+}
+
+

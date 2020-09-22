@@ -2,6 +2,7 @@
 
 #include "color.h"
 #include "util.h"
+#include "sampling.h"
 
 #include "rt/bbvh-base/bvh.h"
 
@@ -221,9 +222,10 @@ tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const ve
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
 	const vertex &c = scene.vertices[this->c];
-	vec3 target = (1.0f-xis.x-xis.y)*a.pos + xis.x*b.pos + xis.y*c.pos;
-	vec3 n = (1.0f-xis.x-xis.y)*a.norm + xis.x*b.norm + xis.y*c.norm;
-	vec3 w_i = target - from.x;
+	vec2 bc     = uniform_sample_triangle(xis);
+	vec3 target = (1.0f-bc.x-bc.y)*a.pos + bc.x*b.pos + bc.y*c.pos;
+	vec3 n      = (1.0f-bc.x-bc.y)*a.norm + bc.x*b.norm + bc.y*c.norm;
+	vec3 w_i    = target - from.x;
 	
 	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
 	const material &m = scene.materials[material_id];
