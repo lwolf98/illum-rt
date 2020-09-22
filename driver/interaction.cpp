@@ -1,4 +1,5 @@
 #include "interaction.h"
+#include "cmdline.h"
 
 #include "libgi/scene.h"
 #include "libgi/algorithm.h"
@@ -124,6 +125,12 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				delete algo;
 				algo = a;
 			}
+		}
+		else ifcmd("outfile") {
+			string name;
+			in >> name;
+			check_in_complete("Syntax error, only accepts a single file name (no spaces, sorry)");
+			cmdline.outfile = name;
 		}
 // 		else ifcmd("bookmark") {
 // 			
