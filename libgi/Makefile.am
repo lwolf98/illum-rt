@@ -9,7 +9,8 @@ libgi_a_SOURCES = 	camera.cpp \
 					material.cpp \
 					random.cpp \
 					rt.cpp \
-					scene.cpp
+					scene.cpp \
+					timer.cpp
 
 noinst_HEADERS = 	algorithm.h \
 					camera.h \
@@ -23,4 +24,5 @@ noinst_HEADERS = 	algorithm.h \
 					rt.h \
 					sampling.h \
 					scene.h \
+					timer.h \
 					util.h

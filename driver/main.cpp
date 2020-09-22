@@ -4,6 +4,7 @@
 #include "libgi/intersect.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
+#include "libgi/timer.h"
 
 #include "interaction.h"
 
@@ -80,6 +81,8 @@ int main(int argc, char **argv)
 	}
 	if (cmdline.interact)
 		repl(cin, rc, uc);
+
+	stats_timer.print();
 
 	delete rc.algo;
 	return 0;
