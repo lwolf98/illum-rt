@@ -7,7 +7,7 @@ enum render_mode { simple_rt, raster };
 
 struct cmdline {
 	bool verbose = false;
-	std::string script, outfile;
+	std::string script, outfile = "out.png";
 	bool interact = true;
 };
 
