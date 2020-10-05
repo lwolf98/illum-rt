@@ -13,6 +13,8 @@ resolution 1280 720
 #resolution 640 360
 brdf layered-gtr2
 is light
+bvh sm
+outfile out.png
 
 material select pod
 material roughness 0.055

@@ -270,6 +270,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 		else if (command == "") ;
 		else if (command[0] == '#') ;
 		else if (algo && algo->interprete(command, in)) ;
+		else if (scene.rt && scene.rt->interprete(command, in)) ;
 		else {
 			error("Unknown command");
 		}
