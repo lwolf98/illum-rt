@@ -14,3 +14,11 @@ out.png
 stamp-h1
 aclocal.m4
 autom4te.cache
+driver/rtgi
+gi/libprimary-hit.a
+libgi/libgi.a
+render-data/sibenik/
+rt/bbvh-base/libbbvh-base.a
+test.obj
+render-data/sponza/
+render-data/dragon/
