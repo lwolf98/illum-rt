@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <utility>
+#include <string>
 
 using glm::vec3;
 using glm::vec2;
@@ -81,6 +82,7 @@ protected:
 public:
 	virtual void build(::scene *) = 0;
 	virtual triangle_intersection closest_hit(const ray &) = 0;
-	virtual bool visible(const vec3 &) = 0;
+	virtual bool any_hit(const ray &) = 0;
+	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual ~ray_tracer() {}
 };

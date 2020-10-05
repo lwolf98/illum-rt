@@ -47,12 +47,16 @@ struct binary_bvh_tracer : public ray_tracer {
 	};
 
 	std::vector<node> nodes;
+	enum binary_split_type {sm, om};
+	enum binary_split_type binary_split_type = om;
 	uint32_t root;
 	binary_bvh_tracer();
 	void build(::scene *scene) override;
 	triangle_intersection closest_hit(const ray &ray) override;
-	bool visible(const vec3&) override { return false; }
+	bool any_hit(const ray &ray) override;
+	bool interprete(const std::string &command, std::istringstream &in) override;
 private:
 	uint32_t subdivide_om(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
+	uint32_t subdivide_sm(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
 };
 

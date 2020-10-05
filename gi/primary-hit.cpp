@@ -43,7 +43,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 					light *l = rc.scene.lights[l_id];
 					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
 					if (col != vec3(0))
-						if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+						if (!rc.scene.rt->any_hit(shadow_ray))
 							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 				}
 				else if (sampling_mode == sample_brdf) {
