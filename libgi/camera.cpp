@@ -9,10 +9,10 @@ using namespace std;
 
 ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
 	// find basis
-	vec3 U = cross(cam.up, cam.dir);
-	vec3 V = cross(cam.dir, U);
+	vec3 U = cross(cam.dir, cam.up);
+	vec3 V = cross(U, cam.dir);
 	// pixel position on near plane
-	float u = ((float)(cam.w-x-1)+0.5f+offset.x)/(float)cam.w * 2.0f - 1.0f;	// \in (-1,1)
+	float u = ((float)x+0.5f+offset.x)/(float)cam.w * 2.0f - 1.0f;	// \in (-1,1)
 	float v = ((float)y+0.5f+offset.y)/(float)cam.h * 2.0f - 1.0f;
 	u = cam.near_w * u;	// \in (-near_w,near_w)
 	v = cam.near_h * v;
