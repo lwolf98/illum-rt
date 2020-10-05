@@ -52,7 +52,7 @@ brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const ve
 	vec3 w_i = align(cosine_sample_hemisphere(xis), geom.ns);
 	if (!same_hemisphere(w_i, geom.ng)) return { w_i, vec3(0), 0 };
 	float pdf_val = pdf(geom, w_o, w_i);
-    assert(std::isfinite(pdf_val));
+	assert(std::isfinite(pdf_val));
 	return { w_i, f(geom, w_o, w_i), pdf_val };
 }
 
@@ -72,7 +72,6 @@ float phong_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, con
 	float exp = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
 	float z = cdot(r,w_i);
-// 	return powf(z, exp) * (exp+1.0f) * one_over_2pi;
 	return z* (exp+1.0f) * one_over_2pi;
 }
 
@@ -87,8 +86,6 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 	vec3 w_i = align(sample, r);
 	if (!same_hemisphere(w_i, geom.ng)) return { w_i, vec3(0), 0 };
 	float pdf_val = z * (exp+1.0f) * one_over_2pi;
-// 	float pdf_val = powf(z,exp) * (exp+1.0f) * one_over_2pi;
-// 	float comp_pdf = pdf(geom, w_o, w_i);
 	return { w_i, f(geom, w_o, w_i), pdf_val };
 }
 
@@ -150,13 +147,14 @@ float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w
 }
 
 brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
-    // reflect around sampled macro normal w_h
-    const vec3 w_h = align(ggx_sample(xis, geom.mat->roughness), geom.ns);
-    vec3 w_i = 2.0f*w_h*dot(w_h, w_o) - w_o;
-    if (!same_hemisphere(geom.ng, w_i)) return { w_i, vec3(0), 0 };
-    float sample_pdf = pdf(geom, w_o, w_i);
-    assert(std::isfinite(sample_pdf));
-    return { w_i, f(geom, w_o, w_i), sample_pdf };
+	// reflect around sampled macro normal w_h
+	const vec3 w_h = align(ggx_sample(xis, geom.mat->roughness), geom.ns);
+	vec3 w_i = 2.0f*w_h*dot(w_h, w_o) - w_o;
+	if (!same_hemisphere(geom.ng, w_i)) return { w_i, vec3(0), 0 };
+	float sample_pdf = pdf(geom, w_o, w_i);
+	assert(sample_pdf > 0);
+	assert(std::isfinite(sample_pdf));
+	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }
 
 

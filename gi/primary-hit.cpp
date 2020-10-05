@@ -42,9 +42,9 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 					auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
 					light *l = rc.scene.lights[l_id];
 					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
-					if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max) {
-						radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
-					}
+					if (col != vec3(0))
+						if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 				}
 				else if (sampling_mode == sample_brdf) {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
@@ -62,23 +62,38 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 						auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
 						pdf_light = l_pdf*pdf;
 						pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
-						if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
-							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
+						if (col != vec3(0))
+							if (auto is = rc.scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+								radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
 					}
 					else {
 						auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
 						ray light_ray(nextafter(dg.x, w_i), w_i);
 						pdf_brdf  = pdf;
-						if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
-							if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0)) {
-								trianglelight tl(rc.scene, is.ref);
-								pdf_light = luma(tl.power()) / rc.scene.light_distribution->integral();
-								pdf_light *= tl.pdf(light_ray, hit_geom);
-								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
-							}
+						if (f != vec3(0))
+							if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
+								if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0)) {
+									trianglelight tl(rc.scene, is.ref);
+									pdf_light = luma(tl.power()) / rc.scene.light_distribution->integral();
+									pdf_light *= tl.pdf(light_ray, hit_geom);
+									radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
+								}
 					}
+					assert(pdf_light >= 0);
+					assert(pdf_brdf >= 0);
+					assert(radiance.x >= 0);assert(std::isfinite(radiance.x));
+					assert(radiance.y >= 0);assert(std::isfinite(radiance.y));
+					assert(radiance.z >= 0);assert(std::isfinite(radiance.z));
+					assert(std::isfinite(pdf_light));
+					assert(std::isfinite(pdf_brdf));
 					float balance = pdf_light + pdf_brdf; // 1920/229
-					radiance /= balance;
+					if (balance != 0.0f)
+						radiance /= balance*0.5;
+					else {
+						// do another round as this was useless
+						sample--;
+						continue;
+					}
 				}
 			}
 		}

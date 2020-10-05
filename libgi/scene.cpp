@@ -237,7 +237,9 @@ tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const ve
 	r.length_exclusive(tmax);
 	
 	// pbrt3/838
-	float pdf = tmax*tmax/(cdot(n,-w_i) * area);
+	float cos_theta_light = dot(n,-w_i);
+	if (cos_theta_light <= 0.0f) return { r, vec3(0), 0.0f };
+	float pdf = tmax*tmax/(cos_theta_light * area);
 	return { r, col, pdf };
 	
 }
@@ -248,6 +250,8 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	const vertex &c = scene.vertices[this->c];
 	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
 	float d = length(on_light.x - r.o);
-	float pdf = d*d/(cdot(on_light.ns, -r.d)*area);
+	float cos_theta_light = dot(on_light.ns, -r.d);
+	if (cos_theta_light <= 0.0f) return 0.0f;
+	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
 }
