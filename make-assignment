@@ -1,0 +1,36 @@
+#!/bin/bash
+
+if [ "$#" != "1" ] ; then
+	echo "Need one argument: the assignment number"
+	exit 1
+fi
+
+ASS="$1"
+
+DEF="-D RTGI_AXX"
+for nr in $(seq $ASS 15) ; do
+	DEF=$(printf "%s -D RTGI_A%02d" "$DEF" $nr)
+done
+for nr in $(seq 1 $((ASS-1))) ; do
+	DEF=$(printf "%s -U RTGI_A%02d" "$DEF" $nr)
+done
+
+git archive --prefix make-ass/ -o make-ass.tar master
+if [ -e make-ass ] ; then
+	echo make-ass already exists!
+	exit 1
+fi
+tar xf make-ass.tar
+cd make-ass
+
+sed -i 's/\[2020\]/[2020-a'$ASS']/' configure.ac
+
+for f in $(find . -name "*.cpp" -o -name "*.h" -o -name "Makefile.am") configure.ac ; do
+	unifdef -x2 -m $DEF "$f"
+done
+
+autoreconf -if && ./configure && make -j20
+make dist-bzip2
+cp rtgi-2020-a??.tar.bz2 ..
+cd ..
+rm -r make-ass

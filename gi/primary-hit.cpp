@@ -11,6 +11,7 @@ using namespace std;
 
 gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
+#ifndef RTGI_A01
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f));
@@ -21,9 +22,13 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 		}
 		result.push_back({radiance,vec2(0)});
 	}
+#else
+	result.push_back({vec3(0),vec2(0)});
+#endif
 	return result;
 }
 
+#ifndef RTGI_AXX
 
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
@@ -125,3 +130,4 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 	return false;
 }
 
+#endif

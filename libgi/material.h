@@ -25,6 +25,8 @@ struct material {
 	float ior = 1.3f, roughness = 0.1f;
 };
 
+#ifndef RTGI_AXX
+
 struct brdf {
 	//          w_i,f(w_i),pdf(w_i)
 	typedef tuple<vec3,vec3,float> sampling_res;
@@ -66,3 +68,5 @@ struct gtr2_reflection : public specular_brdf {
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 };
+
+#endif

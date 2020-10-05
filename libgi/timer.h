@@ -8,6 +8,14 @@
 #include <omp.h>
 #include <mutex>
 
+/*  \brief Wall-timer.
+ *
+ *  Note: We often use this timer in very small sections and the results might thus be skewed to some degree. Take the
+ *  resulting measurements with a grain of salt.
+ *
+ *  To time a block, use \ref time_thid_block
+ *
+ */
 struct timer {
 	typedef std::chrono::time_point<std::chrono::steady_clock> timepoint;
     virtual ~timer() {}

@@ -7,21 +7,6 @@
 using namespace glm;
 
 // 
-//    no_bvh
-//
-
-triangle_intersection no_bvh::closest_hit(const ray &ray) {
-	triangle_intersection closest, intersection;
-	for (int i = 0; i < scene->triangles.size(); ++i)
-		if (intersect(scene->triangles[i], scene->vertices.data(), ray, intersection))
-			if (intersection.t < closest.t) {
-				closest = intersection;
-				closest.ref = i;
-			}
-	return closest;
-}
-
-// 
 //    naive_bvh
 //
 
@@ -31,13 +16,14 @@ void naive_bvh::build(::scene *scene) {
 	auto t1 = std::chrono::high_resolution_clock::now();
 
 	root = subdivide(scene->triangles, scene->vertices, 0, scene->triangles.size());
-    
+	
 	auto t2 = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 	std::cout << "Done after " << duration << "ms" << std::endl;
 }
 
 uint32_t naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end) {
+#ifndef RTGI_A02
 	assert(start < end);
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
@@ -90,9 +76,15 @@ uint32_t naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector<vert
 	nodes[id].right = r;
 	nodes[id].box = box;
 	return id;
+#else
+	// todo
+	throw std::logic_error("Not implemented, yet");
+	return 0;
+#endif
 }
 
 triangle_intersection naive_bvh::closest_hit(const ray &ray) {
+#ifndef RTGI_A02
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;
@@ -125,4 +117,18 @@ triangle_intersection naive_bvh::closest_hit(const ray &ray) {
 	closest.ref = hits;
 #endif
 	return closest;
+#else
+	// todo
+	throw std::logic_error("Not implemented, yet");
+	return triangle_intersection();
+#endif
 }
+
+
+bool naive_bvh::any_hit(const ray &ray) {
+	auto is = closest_hit(ray);
+	if (is.valid())
+		return true;
+	return false;
+}
+

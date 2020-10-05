@@ -1,3 +1,9 @@
+/*
+ * 	Command line parsing.
+ * 	By the use of -l and -s this is kept to a minimum.
+ * 	Cmdline options should superseede the script's options.
+ *
+ */
 #include "cmdline.h"
 
 #include "libgi/rt.h"

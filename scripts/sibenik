@@ -12,7 +12,7 @@ sppx 64
 resolution 1280 720
 #resolution 640 360
 brdf layered-gtr2
-is light
+is mis
 bvh om
 outfile out.png
 
@@ -55,8 +55,8 @@ material emissive 1.61177 2.82549 16.9216
 material select staklo_zeleno
 material emissive 1.9 18.3 2.15
         
-material select staklo_zuto
-material emissive 37.5 32.2 0.3
+#material select staklo_zuto
+#material emissive 37.5 32.2 0.3
 
 commit
 

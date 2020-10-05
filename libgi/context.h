@@ -6,6 +6,9 @@
 
 struct gi_algorithm;
 
+/* \brief Stores contextual information the rendering functions make use of.
+ *
+ */
 struct render_context {
 	::rng rng;
 	::scene scene;

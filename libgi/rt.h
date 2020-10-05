@@ -63,19 +63,29 @@ struct triangle_intersection {
 class scene;
 class material;
 
+/*  \brief Ray/Geometry intersections are represented as differential geometry patches
+ *
+ *  That is, a locally flat, infinitessimally small part of a surface.
+ */
 struct diff_geom {
-	const vec3 x, ng, ns;
-	const vec2 tc;
-	const uint32_t tri;
-	const material *mat;
+	const vec3 x, ng, ns;	// position in space, geometric normal, shading normal
+	const vec2 tc;          // texture coordinate
+	const uint32_t tri;     // reference to triangle
+	const material *mat;    // reference to triangle's material
 	explicit diff_geom(const triangle_intersection &is, const scene &scene);
 
-	vec3 albedo() const;
+	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 };
 
+/*  \brief Ray tracing interface.
+ *
+ *  Do not confuse with \ref gi_algorithm, a ray tracer's job is to compute ray intersections with scene geometry,
+ *  nothing more.
+ *
+ */
 class ray_tracer {
 protected:
 	::scene *scene;

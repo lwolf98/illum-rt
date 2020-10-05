@@ -9,11 +9,6 @@
 
 // #define COUNT_HITS
 
-struct no_bvh : public ray_tracer {
-	void build(::scene *scene) { this->scene = scene; }
-	triangle_intersection closest_hit(const ray &ray);
-};
-
 struct naive_bvh : public ray_tracer {
 	struct node {
 		aabb box;
@@ -27,7 +22,8 @@ struct naive_bvh : public ray_tracer {
 	void build(::scene *scene);
 private:
 	uint32_t subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
-	triangle_intersection closest_hit(const ray &ray);
+	triangle_intersection closest_hit(const ray &ray) override;
+	bool any_hit(const ray &ray) override;
 };
 
 struct binary_bvh_tracer : public ray_tracer {

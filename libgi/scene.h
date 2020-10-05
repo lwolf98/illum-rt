@@ -2,9 +2,9 @@
 
 #include "camera.h"
 #include "material.h"
+#ifndef RTGI_AXX
 #include "discrete_distributions.h"
-
-#include "rt/bbvh-base/bvh.h"
+#endif
 
 #include <vector>
 #include <map>
@@ -41,6 +41,7 @@ struct texture {
 
 texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
 
+#ifndef RTGI_AXX
 struct light {
 	virtual vec3 power() const = 0;
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
@@ -71,7 +72,15 @@ struct trianglelight : public light, private triangle {
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 	float pdf(const ray &r, const diff_geom &on_light) const;
 };
+#endif
 
+/*  \brief The scene culminates all the geometric information that we use.
+ *
+ *  This naturally includes the surface geometry to be displayed, but also light sources and cameras.
+ *
+ *  The scene also holds a reference to the ray tracer as the tracer runs on the scene's data.
+ *
+ */
 struct scene {
 	struct object {
 		std::string name;
@@ -83,13 +92,15 @@ struct scene {
 	std::vector<::material>  materials;
 	std::vector<::texture*>  textures;
 	std::vector<object>      objects;
+#ifndef RTGI_AXX
 	std::vector<object>      light_geom;
 	std::vector<light*>      lights;
+	distribution_1d *light_distribution;
+	void compute_light_distribution();
+#endif
 	std::map<std::string, ::camera> cameras;
 	::camera camera;
 	vec3 up;
-	distribution_1d *light_distribution;
-	void compute_light_distribution();
 	const ::material material(uint32_t triangle_index) const {
 		return materials[triangles[triangle_index].material_id];
 	}

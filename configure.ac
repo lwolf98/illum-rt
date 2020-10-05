@@ -50,7 +50,13 @@ esac
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile
 				libgi/Makefile
-				rt/Makefile rt/bbvh-base/Makefile
-				gi/Makefile])
+				rt/Makefile
+				rt/seq/Makefile
+				gi/Makefile
+				scripts/Makefile])
+
+#ifndef RTGI_A01
+AC_CONFIG_FILES([rt/bbvh-base/Makefile])
+#endif
 
 AC_OUTPUT

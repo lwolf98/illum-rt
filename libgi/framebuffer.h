@@ -6,6 +6,7 @@
 #include <png++/png.hpp>
 #include <functional>
 
+//! A 2D buffer with parallel operations
 template<typename T> struct buffer {
 	unsigned w, h;
 	T *data = nullptr;
@@ -31,6 +32,7 @@ template<typename T> struct buffer {
 		for (int i = 0; i < w*h; ++i)
 			data[i] = to;
 	}
+	//! RUn function \c fn for each entry in the 2D grid
 	void for_each(const std::function<void(unsigned x, unsigned y)> &fn) const {
 		#pragma omp parallel for
 		for (unsigned y = 0; y < h; ++y)

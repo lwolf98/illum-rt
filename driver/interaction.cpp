@@ -1,3 +1,9 @@
+/*
+ * 	Defindes the user-interaction via shell prompt and script file.
+ * 	
+ * 	Would be nice to extend with readline capabilities.
+ *
+ */
 #include "interaction.h"
 #include "cmdline.h"
 
@@ -6,7 +12,10 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 
+#include "rt/seq/seq.h"
+#ifndef RTGI_A01
 #include "rt/bbvh-base/bvh.h"
+#endif
 #include "gi/primary-hit.h"
 
 #include <iostream>
@@ -119,7 +128,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			in >> name;
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
+#ifndef RTGI_AXX
 			else if (name == "direct")  a = new direct_light;
+#endif
 			else error("There is no gi algorithm called '" << name << "'");
 			if (a) {
 				delete algo;
@@ -138,7 +149,10 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 		else ifcmd("raytracer") {
 			string name;
 			in >> name;
-			if (name == "bbvh") scene.rt = new binary_bvh_tracer;
+			if (name == "seq") scene.rt = new seq_tri_is;
+#ifndef RTGI_A01
+			else if (name == "bbvh") scene.rt = new binary_bvh_tracer;
+#endif
 			else error("There is no ray tracer called '" << name << "'");
 			uc.tracer_touched_at = uc.cmdid;
 		}
@@ -147,7 +161,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				error("There is no scene data to work with");
 			if (!scene.rt)
 				error("There is no ray traversal scheme to commit the scene data to");
+#ifndef RTGI_AXX
 			scene.compute_light_distribution();
+#endif
 			scene.rt->build(&scene);
 			uc.accel_touched_at = uc.cmdid;
 		}
@@ -238,6 +254,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			}
 			else error("Unknown subcommand");
 		}
+#ifndef RTGI_AXX
 		else ifcmd("pointlight") {
 			vec3 p, c;
 			string cmd;
@@ -267,6 +284,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			else
 				scene.lights.push_back(pl);
 		}
+#endif
 		else if (command == "") ;
 		else if (command[0] == '#') ;
 		else if (algo && algo->interprete(command, in)) ;

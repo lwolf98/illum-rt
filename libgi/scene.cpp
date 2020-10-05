@@ -2,9 +2,9 @@
 
 #include "color.h"
 #include "util.h"
+#ifndef RTGI_AXX
 #include "sampling.h"
-
-#include "rt/bbvh-base/bvh.h"
+#endif
 
 #include <vector>
 #include <iostream>
@@ -116,8 +116,10 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		uint32_t index_offset = vertices.size();
 		std::string object_name = mesh_ai->mName.C_Str();
 		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
+#ifndef RTGI_AXX
 		if (materials[material_id].emissive != vec3(0))
 			light_geom.push_back(objects.back());
+#endif
 		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
@@ -146,8 +148,13 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	}
 }
 	
+#ifndef RTGI_AXX
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
+	if (prims == 0) {
+		std::cerr << "WARNING: There is no emissive geometry" << std::endl;
+		return;
+	}
 	cout << "light distribution of " << prims << " triangles" << endl;
 	for (auto l : lights) delete l;
 	lights.clear();
@@ -165,6 +172,7 @@ void scene::compute_light_distribution() {
 	light_distribution = new distribution_1d(power);	
 	light_distribution->debug_out("/tmp/light-dist");
 }
+#endif
 
 scene::~scene() {
 	delete rt;
@@ -186,7 +194,7 @@ vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri,
 	return (*tex)(tc);
 }
 
-/////
+#ifndef RTGI_AXX
 
 vec3 pointlight::power() const {
 	return 4*pi*col;
@@ -255,3 +263,5 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
 }
+
+#endif

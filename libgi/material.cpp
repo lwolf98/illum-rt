@@ -157,4 +157,3 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }
 
-

@@ -7,7 +7,9 @@
 using namespace glm;
 using namespace std;
 
+//! Set up a camera ray using cam.up, cam.dir, cam.w, cam.h (see \ref camera::update_frustum)
 ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
+#ifndef RTGI_A01
 	// find basis
 	vec3 U = cross(cam.dir, cam.up);
 	vec3 V = cross(U, cam.dir);
@@ -18,6 +20,11 @@ ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
 	v = cam.near_h * v;
 	// near is implicitly at 1 (as per tanf above)
 	return ray(cam.pos, normalize(cam.dir + U*u + V*v));
+#else
+	// todo: compute the camera rays for each pixel.
+	// note: you can use the following function to export them as an obj model and look at them in blender.
+	return ray(cam.pos, vec3(0,0,-1));
+#endif
 }
 
 void test_camrays(const camera &camera, int stride) {

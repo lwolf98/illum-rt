@@ -30,6 +30,7 @@ rgb_pixel to_png(vec3 col01) {
 	return rgb_pixel(col01.x*255, col01.y*255, col01.z*255);
 }
 
+//! A hacky way to convert ms to a human readable indication of how long this is going to be.
 std::string timediff(unsigned ms) {
 	if (ms > 2000) {
 		ms /= 1000;
@@ -47,6 +48,14 @@ std::string timediff(unsigned ms) {
 	else return std::to_string(ms) + " ms";
 }
 
+/*! \brief This is called from the \ref repl to compute a single image
+ *  
+ *  Note: We first compute a single sample to get a rough estimate of how long rendering is going to take.
+ *
+ *  Note: Times reported via \ref stats_timer might not be perfectly reliable as of now.  This is because the
+ *        timer-overhead is in the one (at times even two) digit percentages of the individual fragments measured.
+ *
+ */
 void run(render_context &rc, gi_algorithm *algo) {
 	using namespace std::chrono;
 	algo->prepare_frame(rc);

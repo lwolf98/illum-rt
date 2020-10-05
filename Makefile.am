@@ -1,2 +1,2 @@
-SUBDIRS = libgi rt gi driver
-EXTRA_DIST = README.md script-sibenik script-brdftest script script-mis render-data
+SUBDIRS = libgi rt gi driver scripts
+EXTRA_DIST = README.md render-data rtgi

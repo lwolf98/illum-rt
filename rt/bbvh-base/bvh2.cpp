@@ -34,6 +34,7 @@ void binary_bvh_tracer::build(::scene *scene) {
 }
 
 uint32_t binary_bvh_tracer::subdivide_om(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end) {
+#ifndef RTGI_A02
 	assert(start < end);
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
@@ -88,9 +89,15 @@ uint32_t binary_bvh_tracer::subdivide_om(std::vector<triangle> &triangles, std::
 	for (int i = start; i < mid; ++i) nodes[id].box_l.grow(bounding_box(triangles[i]));
 	for (int i = mid;   i < end; ++i) nodes[id].box_r.grow(bounding_box(triangles[i]));
 	return id;
+#else
+	// todo
+	std::logic_error("Not implemented, yet");
+	return 0;
+#endif
 }
 
 uint32_t binary_bvh_tracer::subdivide_sm(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end) {
+#ifndef RTGI_A02
 	assert(start < end);
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
@@ -170,10 +177,16 @@ uint32_t binary_bvh_tracer::subdivide_sm(std::vector<triangle> &triangles, std::
 	for (int i = start; i < mid; ++i) nodes[id].box_l.grow(bounding_box(triangles[i]));
 	for (int i = mid;   i < end; ++i) nodes[id].box_r.grow(bounding_box(triangles[i]));
 	return id;
+#else
+	// todo (optional)
+	std::logic_error("Not implemented, yet");
+	return 0;
+#endif
 }
 
 triangle_intersection binary_bvh_tracer::closest_hit(const ray &ray) {
 	time_this_block(closest_hit);
+#ifndef RTGI_A02
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;
@@ -216,10 +229,16 @@ triangle_intersection binary_bvh_tracer::closest_hit(const ray &ray) {
 	closest.ref = hits;
 #endif
 	return closest;
+#else
+	// todo
+	std::logic_error("Not implemented, yet");
+	return triangle_intersection();
+#endif
 }
 
 bool binary_bvh_tracer::any_hit(const ray &ray) {
 	time_this_block(any_hit);
+#ifndef RTGI_A02
 	triangle_intersection intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;
@@ -250,6 +269,11 @@ bool binary_bvh_tracer::any_hit(const ray &ray) {
 		}
 	}
 	return false;
+#else
+	// todo
+	std::logic_error("Not implemented, yet");
+	return false;
+#endif
 }
 
 bool binary_bvh_tracer::interprete(const std::string &command, std::istringstream &in) {
