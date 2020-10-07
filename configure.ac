@@ -47,6 +47,17 @@ case "$(g++ --version | head -n1)" in
 	AC_MSG_RESULT([no, all is well])
 esac
 
+AC_ARG_VAR([ASS], [If set, define preprocessor variables for given assignment number])
+
+AS_IF([test x$ASS != x],
+	  [
+	  	assignment_defs="-DRTGI_AXX"
+		for nr in $(seq $ASS 15) ; do
+			assignment_defs=$(printf "%s -DRTGI_A%02d" "$assignment_defs" $nr)
+		done
+		CPPFLAGS="$CPPFLAGS $assignment_defs"
+	  ])
+
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile
 				libgi/Makefile

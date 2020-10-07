@@ -28,7 +28,7 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 	return result;
 }
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A02
 
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
@@ -38,6 +38,16 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc.scene);
+			brdf *f = dg.mat->brdf;
+			assert(!rc.scene.lights.empty());
+			pointlight *pl = dynamic_cast<pointlight*>(rc.scene.lights[0]);
+			assert(pl);
+			vec3 to_light = pl->pos - dg.x;
+			vec3 w_i = normalize(to_light);
+			vec3 w_o = -view_ray.d;
+			radiance = pl->power() * f->f(dg, w_o, w_i) / (dot(to_light,to_light));
+
+#ifndef RTGI_AXX
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
 			}
@@ -49,6 +59,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
 					if (col != vec3(0))
 						if (!rc.scene.rt->any_hit(shadow_ray))
+							// col already in brdf. inconsistent?
 							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 				}
 				else if (sampling_mode == sample_brdf) {
@@ -101,14 +112,16 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 					}
 				}
 			}
+#endif
 		}
 		result.push_back({radiance,vec2(0)});
 	}
 	return result;
 }
-	
+
 bool direct_light::interprete(const std::string &command, std::istringstream &in) {
 	string value;
+	/*
 	if (command == "brdf") {
 		in >> value;
 		if (value == "lambertian")         brdf = &d_brdf;
@@ -119,7 +132,7 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 		else cerr << "unknown brdf in " << __func__ << ": " << value << endl;
 		return true;
 	}
-	else if (command == "is") {
+	else */if (command == "is") {
 		in >> value;
 		if (value == "light") sampling_mode = sample_light;
 		else if (value == "brdf") sampling_mode = sample_brdf;

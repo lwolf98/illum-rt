@@ -41,11 +41,14 @@ struct texture {
 
 texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A02
 struct light {
+	virtual ~light() {}
 	virtual vec3 power() const = 0;
+#ifndef RTGI_AXX
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
 // 	virtual float pdf(const ray &r) const = 0;
+#endif
 };
 
 struct pointlight : public light {
@@ -53,10 +56,14 @@ struct pointlight : public light {
 	vec3 col;
 	pointlight(const vec3 pos, const vec3 col) : pos(pos), col(col) {}
 	vec3 power() const override;
+#ifndef RTGI_AXX
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 // 	float pdf(const ray &r) const override { return 0; }
+#endif
 };
+#endif
 
+#ifndef RTGI_AXX
 /*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
  *  It is. However, this way the BVH is allowed to reshuffle triangle positions (not vertex positions!)
  *  without having an effect on this.
@@ -92,9 +99,12 @@ struct scene {
 	std::vector<::material>  materials;
 	std::vector<::texture*>  textures;
 	std::vector<object>      objects;
+#ifndef RTGI_A02
+	std::map<std::string, brdf*> brdfs;
+	std::vector<light*>      lights;
+#endif
 #ifndef RTGI_AXX
 	std::vector<object>      light_geom;
-	std::vector<light*>      lights;
 	distribution_1d *light_distribution;
 	void compute_light_distribution();
 #endif

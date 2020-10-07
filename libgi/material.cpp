@@ -10,7 +10,8 @@ vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	vec3 spec = coat->f(geom, w_o, w_i);
 	return (1.0f-F)*diff + F*spec;
 }
-	
+
+#ifndef RTGI_AXX
 float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	float pdf_diff = base->pdf(geom, w_o, w_i);
@@ -36,6 +37,7 @@ brdf::sampling_res layered_brdf::sample(const diff_geom &geom, const vec3 &w_o, 
 		return { w_i, (1.0f-F)*f_diff + F*f_spec, (1.0f-F)*pdf_diff + F*pdf_spec };
 	}
 }
+#endif
 
 // lambertian_reflection
 
@@ -44,6 +46,7 @@ vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3
 	return one_over_pi * geom.albedo();
 }
 
+#ifndef RTGI_AXX
 float lambertian_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
     return absdot(geom.ns, w_i) * one_over_pi;
 }
@@ -55,19 +58,20 @@ brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const ve
 	assert(std::isfinite(pdf_val));
 	return { w_i, f(geom, w_o, w_i), pdf_val };
 }
+#endif
 
 // specular_reflection
 
 vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
-	if (!same_hemisphere(w_i, geom.ns)) return vec3(0);
-	const float exponent = exponent_from_roughness(geom.mat->roughness);
-	vec3 w_h = normalize(w_o + w_i);
-	const float cos_theta = cdot(w_h, geom.ns);
-	const float norm_f = (exponent + 1.0f) * one_over_2pi;
-	//const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
-	return (coat ? vec3(1) : geom.albedo()) * powf(cos_theta, exponent) * norm_f;
+	if (!same_hemisphere(w_i, geom.ng)) return vec3(0);
+	float exponent = exponent_from_roughness(geom.mat->roughness);
+	vec3 r = 2.0f*geom.ns*dot(w_i,geom.ns)-w_i;
+	float cos_theta = cdot(w_o, r);
+	const float norm_f = (exponent + 2.0f) * one_over_2pi;
+	return (coat ? vec3(1) : geom.albedo()) * powf(cos_theta, exponent) * norm_f * cdot(w_i,geom.ns);
 }
 
+#ifndef RTGI_AXX
 float phong_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	float exp = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
@@ -88,8 +92,10 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 	float pdf_val = z * (exp+1.0f) * one_over_2pi;
 	return { w_i, f(geom, w_o, w_i), pdf_val };
 }
+#endif
 
 
+// #ifndef RTGI_AXX
 
 // Microfacet distribution helper functions
 #define sqr(x) ((x)*(x))
@@ -135,9 +141,10 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
     const float D = ggx_d(NdotH, roughness);
     const float G = ggx_g1(NdotV, roughness) * ggx_g1(NdotL, roughness);
     const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
-    return coat ? vec3(microfacet) : geom.albedo() * microfacet;
+    return coat ? vec3(microfacet) : 15.f*geom.albedo() * microfacet;
 }
 
+#ifndef RTGI_AXX
 float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
     const vec3 H = normalize(w_o + w_i);
     const float NdotH = dot(geom.ns, H);
@@ -156,4 +163,22 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 	assert(std::isfinite(sample_pdf));
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }
+#endif
 
+// #endif
+
+brdf *new_brdf(const std::string name) {
+	if (name == "lambert")
+		return new lambertian_reflection;
+	else if (name == "phong")
+		return new phong_specular_reflection;
+	else if (name == "layered-phong") {
+		brdf *base = new lambertian_reflection;
+		specular_brdf *coat = new phong_specular_reflection;
+		// fixme: how are base and coat deleted?
+		return new layered_brdf(coat, base);
+	}
+	else if (name == "gtr2")
+		return new gtr2_reflection;
+	throw std::runtime_error(std::string("No such brdf defined: ") + name);
+}

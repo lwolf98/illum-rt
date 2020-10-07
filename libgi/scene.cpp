@@ -75,6 +75,11 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 
 	// todo: store indices prior to adding anything to allow "transform-last"
 
+	// initialize brdfs
+	if (brdfs.empty() || brdfs.count("default") == 0) {
+		brdfs["default"] = brdfs["lambert"] = new lambertian_reflection;
+	}
+
 	// load materials
 	unsigned material_offset = materials.size();
     for (uint32_t i = 0; i < scene_ai->mNumMaterials; ++i) {
@@ -97,7 +102,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		else                 material.albedo = ks;
 		material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
 		material.emissive = ke;
-			
+		
 		if (mat_ai->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
 			aiString path_ai;
 			mat_ai->GetTexture(aiTextureType_DIFFUSE, 0, &path_ai);
@@ -105,6 +110,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			material.albedo_tex = load_image3f(p);
 			textures.push_back(material.albedo_tex);
 		}
+
+		material.brdf = brdfs["default"];
 	
 		materials.push_back(material);
 	}
@@ -142,8 +149,10 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 				triangle.material_id = material_id;
 				triangles.push_back(triangle);
 			}
+#ifndef RTGI_A03
 			else
 				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
+#endif
 		}
 	}
 }
@@ -178,6 +187,9 @@ scene::~scene() {
 	delete rt;
 	for (auto *x : textures)
 		delete x;
+	brdfs.erase("default");
+	for (auto [str,brdf] : brdfs)
+		delete brdf;
 }
 
 vec3 scene::normal(const triangle &tri) const {
@@ -194,11 +206,15 @@ vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri,
 	return (*tex)(tc);
 }
 
-#ifndef RTGI_AXX
 
+#ifndef RTGI_A02
 vec3 pointlight::power() const {
 	return 4*pi*col;
 }
+#endif
+
+#ifndef RTGI_AXX
+
 
 tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	vec3 to_light = pos - from.x;

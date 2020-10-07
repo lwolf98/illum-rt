@@ -128,7 +128,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			in >> name;
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
-#ifndef RTGI_AXX
+#ifndef RTGI_A02
 			else if (name == "direct")  a = new direct_light;
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
@@ -244,6 +244,25 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 						mat->albedo_tex = tex;
 				}
 			}
+#ifndef RTGI_A02
+			else ifcmd("brdf") {
+				in >> cmd;
+				check_in_complete("Expected a single (no whitespace) string value");
+				brdf *f = nullptr;
+				try {
+					if (scene.brdfs.count(cmd) == 0) {
+						f = new_brdf(cmd);
+						scene.brdfs[cmd] = f;
+					}
+					else
+						f = scene.brdfs[cmd];
+					mat->brdf = f;
+				}
+				catch (std::runtime_error &e) {
+					error(e.what());
+				}
+			}
+#endif
 			else ifcmd("show") {
 				check_in_complete("Does not take further arguments");
 				cout << "albedo     " << mat->albedo << endl;
@@ -254,7 +273,25 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			}
 			else error("Unknown subcommand");
 		}
-#ifndef RTGI_AXX
+#ifndef RTGI_A02
+		else ifcmd("default-brdf") {
+			string name;
+			in >> name;
+			check_in_complete("Expected a single (no whitespace) string value");
+			if (scene.brdfs.count("default") != 0)
+				cout << "Replacing default brdfs that has already been applied to some materials." << endl;
+			if (scene.brdfs.count(name) == 0) {
+				try {
+					brdf *f = new_brdf(name);
+					scene.brdfs[name] = scene.brdfs["default"] = f;
+				}
+				catch (std::runtime_error &e) {
+					error(e.what());
+				}
+			}
+			else
+				scene.brdfs["default"] = scene.brdfs[name];
+		}
 		else ifcmd("pointlight") {
 			vec3 p, c;
 			string cmd;
