@@ -45,7 +45,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 			vec3 to_light = pl->pos - dg.x;
 			vec3 w_i = normalize(to_light);
 			vec3 w_o = -view_ray.d;
-			radiance = pl->power() * f->f(dg, w_o, w_i) / (dot(to_light,to_light));
+			radiance = pl->power() * f->f(dg, w_o, w_i) / ((dot(to_light,to_light)));
 
 #ifndef RTGI_AXX
 			if (dg.mat->emissive != vec3(0)) {

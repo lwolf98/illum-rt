@@ -1,0 +1,16 @@
+at 0 0 0
+look 0 0 -1
+up 0 1 0
+
+load render-data/2tri.obj
+raytracer seq
+#raytracer naive-bvh
+#raytracer bbvh
+algo primary
+sppx 32
+resolution 640 360
+outfile out.png
+
+commit
+
+run

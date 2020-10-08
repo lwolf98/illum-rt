@@ -151,6 +151,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			in >> name;
 			if (name == "seq") scene.rt = new seq_tri_is;
 #ifndef RTGI_A01
+			else if (name == "naive-bvh") scene.rt = new naive_bvh;
 			else if (name == "bbvh") scene.rt = new binary_bvh_tracer;
 #endif
 			else error("There is no ray tracer called '" << name << "'");

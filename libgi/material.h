@@ -36,6 +36,7 @@ struct specular_brdf : public brdf {
 	bool coat = false;
 };
 
+#ifndef RTGI_A03
 struct layered_brdf : public brdf {
 	specular_brdf *coat;
 	brdf *base;
@@ -47,6 +48,7 @@ struct layered_brdf : public brdf {
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
 };
+#endif
 
 struct lambertian_reflection : public brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
@@ -64,7 +66,7 @@ struct phong_specular_reflection : public specular_brdf {
 #endif
 };
 
-// #ifndef RTGI_AXX
+#ifndef RTGI_AXX
 
 struct gtr2_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
@@ -74,7 +76,7 @@ struct gtr2_reflection : public specular_brdf {
 #endif
 };
 
-// #endif
+#endif
 
 brdf *new_brdf(const std::string name);
 #endif

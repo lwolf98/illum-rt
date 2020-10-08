@@ -4,12 +4,20 @@
 
 using namespace glm;
 
+#ifndef RTGI_A03
 vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
+#ifndef RTGI_AXX
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	vec3 diff = base->f(geom, w_o, w_i);
 	vec3 spec = coat->f(geom, w_o, w_i);
 	return (1.0f-F)*diff + F*spec;
+#else
+	vec3 diff = base->f(geom, w_o, w_i);
+	vec3 spec = coat->f(geom, w_o, w_i);
+	return diff+spec;
+#endif
 }
+#endif
 
 #ifndef RTGI_AXX
 float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
@@ -95,7 +103,7 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 #endif
 
 
-// #ifndef RTGI_AXX
+#ifndef RTGI_AXX
 
 // Microfacet distribution helper functions
 #define sqr(x) ((x)*(x))
@@ -165,7 +173,7 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 }
 #endif
 
-// #endif
+#endif
 
 brdf *new_brdf(const std::string name) {
 	if (name == "lambert")
@@ -173,12 +181,19 @@ brdf *new_brdf(const std::string name) {
 	else if (name == "phong")
 		return new phong_specular_reflection;
 	else if (name == "layered-phong") {
+#ifndef RTGI_A03
 		brdf *base = new lambertian_reflection;
 		specular_brdf *coat = new phong_specular_reflection;
 		// fixme: how are base and coat deleted?
 		return new layered_brdf(coat, base);
+#else
+		throw std::logic_error("Not implemented, yet");
+#endif
+
 	}
+#ifndef RTGI_AXX
 	else if (name == "gtr2")
 		return new gtr2_reflection;
+#endif
 	throw std::runtime_error(std::string("No such brdf defined: ") + name);
 }

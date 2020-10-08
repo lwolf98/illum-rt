@@ -1,0 +1,14 @@
+at -13 -12 0
+look 1 0 0
+up 0 1 0
+load render-data/sibenik/sibenik.obj
+raytracer naive-bvh
+#raytracer bbvh
+algo primary
+sppx 32
+resolution 1280 720
+outfile out.png
+       
+commit
+
+run

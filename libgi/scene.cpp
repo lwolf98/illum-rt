@@ -75,10 +75,12 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 
 	// todo: store indices prior to adding anything to allow "transform-last"
 
+#ifndef RTGI_A02
 	// initialize brdfs
 	if (brdfs.empty() || brdfs.count("default") == 0) {
 		brdfs["default"] = brdfs["lambert"] = new lambertian_reflection;
 	}
+#endif
 
 	// load materials
 	unsigned material_offset = materials.size();
@@ -111,7 +113,9 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			textures.push_back(material.albedo_tex);
 		}
 
+#ifndef RTGI_A02
 		material.brdf = brdfs["default"];
+#endif
 	
 		materials.push_back(material);
 	}
@@ -187,9 +191,11 @@ scene::~scene() {
 	delete rt;
 	for (auto *x : textures)
 		delete x;
+#ifndef RTGI_A02
 	brdfs.erase("default");
 	for (auto [str,brdf] : brdfs)
 		delete brdf;
+#endif
 }
 
 vec3 scene::normal(const triangle &tri) const {
