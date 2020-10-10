@@ -129,6 +129,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_A02
+			else if (name == "local")  a = new local_illumination;
+#endif
+#ifndef RTGI_AXX
 			else if (name == "direct")  a = new direct_light;
 #endif
 			else error("There is no gi algorithm called '" << name << "'");

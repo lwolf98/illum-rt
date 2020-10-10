@@ -1,6 +1,8 @@
 #include "material.h"
 #include "util.h"
+#ifndef RTGI_AXX
 #include "sampling.h"
+#endif
 
 using namespace glm;
 
@@ -26,7 +28,7 @@ float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 	float pdf_spec = coat->pdf(geom, w_o, w_i);
 	return (1.0f-F)*pdf_diff + F*pdf_spec;
 }
-	
+
 brdf::sampling_res layered_brdf::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	if (xis.x < F) {
