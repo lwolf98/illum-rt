@@ -4,11 +4,14 @@ at -13 -13 0
 #at 1 -12.5 1
 look 1 0 0
 up 0 1 0
-#default-brdf gtr2
+
+
 default-brdf lambert
+
+
 load render-data/sibenik/sibenik.obj
 raytracer bbvh
-algo direct
+algo local
 sppx 32
 #pointlight pos 0 -4 0 col 35 30 26
 pointlight pos 7 -8 0 col 7 4 2
@@ -28,8 +31,7 @@ material select pod
 material albedo  0.73412 0.70941 0.67412
 material ior  2.289
 material roughness  0.155
-material brdf layered-phong
-        
+ 
 material select pod_tepih
 material albedo  0.54627 0.21961 0.18392
 material ior 1.3

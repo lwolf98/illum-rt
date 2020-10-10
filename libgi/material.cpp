@@ -1,6 +1,9 @@
 #include "material.h"
+#include "scene.h"
 #include "util.h"
+#ifndef RTGI_AXX
 #include "sampling.h"
+#endif
 
 using namespace glm;
 
@@ -26,7 +29,7 @@ float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 	float pdf_spec = coat->pdf(geom, w_o, w_i);
 	return (1.0f-F)*pdf_diff + F*pdf_spec;
 }
-	
+
 brdf::sampling_res layered_brdf::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	if (xis.x < F) {
@@ -51,7 +54,12 @@ brdf::sampling_res layered_brdf::sample(const diff_geom &geom, const vec3 &w_o, 
 
 vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	if (!same_hemisphere(w_i, geom.ns)) return vec3(0);
+#ifndef RTGI_A03
 	return one_over_pi * geom.albedo();
+#else
+	// todo
+	return vec3(0);
+#endif
 }
 
 #ifndef RTGI_AXX
@@ -72,11 +80,16 @@ brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const ve
 
 vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	if (!same_hemisphere(w_i, geom.ng)) return vec3(0);
+#ifndef RTGI_A03
 	float exponent = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(w_i,geom.ns)-w_i;
 	float cos_theta = cdot(w_o, r);
 	const float norm_f = (exponent + 2.0f) * one_over_2pi;
 	return (coat ? vec3(1) : geom.albedo()) * powf(cos_theta, exponent) * norm_f * cdot(w_i,geom.ns);
+#else
+	// todo
+	return vec3(0);
+#endif
 }
 
 #ifndef RTGI_AXX
@@ -175,25 +188,30 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 
 #endif
 
-brdf *new_brdf(const std::string name) {
-	if (name == "lambert")
-		return new lambertian_reflection;
-	else if (name == "phong")
-		return new phong_specular_reflection;
-	else if (name == "layered-phong") {
+brdf *new_brdf(const std::string name, scene &scene) {
+	if (scene.brdfs.count(name) == 0) {
+		brdf *f = nullptr;
+		if (name == "lambert")
+			f = new lambertian_reflection;
+		else if (name == "phong")
+			f = new phong_specular_reflection;
+		else if (name == "layered-phong") {
 #ifndef RTGI_A03
-		brdf *base = new lambertian_reflection;
-		specular_brdf *coat = new phong_specular_reflection;
-		// fixme: how are base and coat deleted?
-		return new layered_brdf(coat, base);
+			brdf *base = new_brdf("lambert", scene);
+			specular_brdf *coat = dynamic_cast<specular_brdf*>(new_brdf("phong", scene));
+			assert(coat);
+			f = new layered_brdf(coat, base);
 #else
-		throw std::logic_error("Not implemented, yet");
+			throw std::logic_error("Not implemented, yet");
 #endif
-
-	}
+		}
 #ifndef RTGI_AXX
-	else if (name == "gtr2")
-		return new gtr2_reflection;
+		else if (name == "gtr2")
+			f = new gtr2_reflection;
 #endif
-	throw std::runtime_error(std::string("No such brdf defined: ") + name);
+		else
+			throw std::runtime_error(std::string("No such brdf defined: ") + name);
+		return f;
+	}
+	return scene.brdfs[name];
 }

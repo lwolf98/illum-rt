@@ -10,6 +10,10 @@ libgi_a_SOURCES = 	camera.cpp \
 					scene.cpp \
 					timer.cpp
 
+#ifndef RTGI_A02
+libgi_a_SOURCES +=  material.cpp
+#endif
+
 #ifndef RTGI_AXX
 libgi_a_SOURCES +=  discrete_distributions.cpp \
 					material.cpp

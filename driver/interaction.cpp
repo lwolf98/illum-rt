@@ -129,6 +129,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_A02
+			else if (name == "local")  a = new local_illumination;
+#endif
+#ifndef RTGI_AXX
 			else if (name == "direct")  a = new direct_light;
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
@@ -251,10 +254,8 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				check_in_complete("Expected a single (no whitespace) string value");
 				brdf *f = nullptr;
 				try {
-					if (scene.brdfs.count(cmd) == 0) {
-						f = new_brdf(cmd);
-						scene.brdfs[cmd] = f;
-					}
+					if (scene.brdfs.count(cmd) == 0)
+						f = new_brdf(cmd, scene);
 					else
 						f = scene.brdfs[cmd];
 					mat->brdf = f;
@@ -281,17 +282,13 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			check_in_complete("Expected a single (no whitespace) string value");
 			if (scene.brdfs.count("default") != 0)
 				cout << "Replacing default brdfs that has already been applied to some materials." << endl;
-			if (scene.brdfs.count(name) == 0) {
-				try {
-					brdf *f = new_brdf(name);
-					scene.brdfs[name] = scene.brdfs["default"] = f;
-				}
-				catch (std::runtime_error &e) {
-					error(e.what());
-				}
+			try {
+				brdf *f = new_brdf(name, scene);
+				scene.brdfs["default"] = f;
 			}
-			else
-				scene.brdfs["default"] = scene.brdfs[name];
+			catch (std::runtime_error &e) {
+				error(e.what());
+			}
 		}
 		else ifcmd("pointlight") {
 			vec3 p, c;

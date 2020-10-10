@@ -78,7 +78,7 @@ struct gtr2_reflection : public specular_brdf {
 
 #endif
 
-brdf *new_brdf(const std::string name);
+brdf *new_brdf(const std::string name, scene &scene);
 #endif
 
 struct material {
