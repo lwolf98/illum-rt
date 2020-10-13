@@ -66,8 +66,7 @@ struct phong_specular_reflection : public specular_brdf {
 #endif
 };
 
-#ifndef RTGI_AXX
-
+#ifndef RTGI_A03
 struct gtr2_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 #ifndef RTGI_AXX
@@ -75,7 +74,6 @@ struct gtr2_reflection : public specular_brdf {
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
 };
-
 #endif
 
 brdf *new_brdf(const std::string name, scene &scene);

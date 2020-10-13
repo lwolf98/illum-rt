@@ -1,0 +1,38 @@
+at -2.6908 1.7537 -0.050779
+at -2.4008 1.7537 -0.050779
+look 0.85235 -0.52249 -0.022323
+up 0 1 0
+camup 0.52233 0.85264 -0.013184
+
+default-brdf layered-phong
+#default-brdf layered-gtr2
+
+load render-data/brdf-test-noal.obj
+raytracer bbvh
+commit
+algo local
+sppx 16
+pointlight pos 2 1.5 0 col 4 2 1
+resolution 1280 720
+
+material select microfacet
+material ior 2.4
+material roughness 0.025
+material texture drop
+
+material select microfacet.001
+material ior 2.4
+material roughness 0.075
+material texture drop
+
+material select microfacet.002
+material ior 2.4
+material roughness 0.15
+material texture drop
+
+material select specular
+material ior 2.4
+material roughness 0.001
+material texture drop
+
+run

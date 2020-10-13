@@ -40,6 +40,7 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
  */
 
 inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_material) {
+#ifndef RTGI_A04
     // check if entering or leaving material
     const float ei = cos_wi < 0.0f ? ior_material : ior_medium;
     const float et = cos_wi < 0.0f ? ior_medium : ior_material;
@@ -53,6 +54,15 @@ inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_materi
     const float Rparl = ((et * cos_wi) - (ei * cos_t)) / ((et * cos_wi) + (ei * cos_t));
     const float Rperp = ((ei * cos_wi) - (et * cos_t)) / ((ei * cos_wi) + (et * cos_t));
     return (Rparl * Rparl + Rperp * Rperp) / 2;
+#else
+    // check if entering or leaving material
+    const float n1 = cos_wi < 0.0f ? ior_material : ior_medium;
+    const float n2 = cos_wi < 0.0f ? ior_medium : ior_material;
+    cos_wi = glm::clamp(glm::abs(cos_wi), 0.0f, 1.0f);
+	// todo fresnel term for dielectrics.
+	// make sure to handle internal reflection
+	return 0.0f;
+#endif
 }
 
 

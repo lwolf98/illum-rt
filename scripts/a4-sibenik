@@ -1,0 +1,50 @@
+at -10 -10 0
+at -13 -12 0
+at -13 -13 0
+#at 1 -12.5 1
+look 1 0 0
+up 0 1 0
+
+
+#default-brdf phong
+default-brdf layered-phong
+#default-brdf gtr2
+#default-brdf layered-gtr2
+
+
+load render-data/sibenik/sibenik.obj
+raytracer bbvh
+algo local
+sppx 32
+#pointlight pos 0 -4 0 col 35 30 26
+pointlight pos 7 -8 0 col 7 4 2
+resolution 1280 720
+outfile out.png
+
+#material select pod
+#material roughness 0.055
+#material ior 2.289
+
+material select kamen_zid_parapet
+material albedo  0.73412 0.73059 0.67412
+material ior  1.3
+material roughness  0.50372
+        
+material select pod
+material albedo  0.73412 0.70941 0.67412
+material ior  2.289
+material roughness  0.155
+ 
+material select pod_tepih
+material albedo  0.54627 0.21961 0.18392
+material ior 1.3
+material roughness  0.50372
+        
+material select sprljci
+material albedo  0.78431 0.78431 0.78431
+material ior 1.3
+material roughness  0.50372
+        
+commit
+
+run

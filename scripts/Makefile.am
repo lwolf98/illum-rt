@@ -5,6 +5,8 @@ EXTRA_DIST += a1-tri a1-sibenik
 EXTRA_DIST += a2-tris a2-sibenik a2-sponza
 #elif defined RTGI_A03
 EXTRA_DIST += a3-sibenik a3-brdf-test
+#elif defined RTGI_A04
+EXTRA_DIST += a4-sibenik a4-brdf-test
 #else
 EXTRA_DIST += brdf-test mis sibenik sponza
 #endif

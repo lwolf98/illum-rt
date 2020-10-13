@@ -9,12 +9,13 @@ using namespace glm;
 
 #ifndef RTGI_A03
 vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	vec3 diff = base->f(geom, w_o, w_i);
 	vec3 spec = coat->f(geom, w_o, w_i);
 	return (1.0f-F)*diff + F*spec;
 #else
+	// todo proper fresnel reflection for layered material
 	vec3 diff = base->f(geom, w_o, w_i);
 	vec3 spec = coat->f(geom, w_o, w_i);
 	return diff+spec;
@@ -116,26 +117,42 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 #endif
 
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A03
 
+#ifndef RTGI_A04
 // Microfacet distribution helper functions
 #define sqr(x) ((x)*(x))
+#else
+// In the following, make sure that corner cases are taken care of (positive
+// dot products, >0 denominators, correctly aligned directions, etc)
+#endif
 
 inline float ggx_d(const float NdotH, float roughness) {
+#ifndef RTGI_A04
     if (NdotH <= 0) return 0.f;
     const float tan2 = tan2_theta(NdotH);
     if (!std::isfinite(tan2)) return 0.f;
     const float a2 = sqr(roughness);
     return a2 / (pi * sqr(sqr(NdotH)) * sqr(a2 + tan2));
+#else
+	// todo TR NDF
+	return 0.0f;
+#endif
 }
 
 inline float ggx_g1(const float NdotV, float roughness) {
+#ifndef RTGI_A04
     if (NdotV <= 0) return 0.f;
     const float tan2 = tan2_theta(NdotV);
     if (!std::isfinite(tan2)) return 0.f;
     return 2.f / (1.f + sqrtf(1.f + sqr(roughness) * tan2));
+#else
+	// todo TR Smith G_1
+	return 0.0f;
+#endif
 }
 
+#ifndef RTGI_AXX
 vec3 ggx_sample(const vec2 &xi, float roughness) {
     const float theta = atanf((roughness * sqrtf(xi.x)) / sqrtf(1.f - xi.x));
     if (!std::isfinite(theta)) return vec3(0, 0, 1);
@@ -147,9 +164,14 @@ vec3 ggx_sample(const vec2 &xi, float roughness) {
 inline float ggx_pdf(float D, float NdotH, float HdotV) {
     return (D * (NdotH<0 ? -NdotH : NdotH)) / (4.f * (HdotV<0 ? -HdotV : HdotV));
 }
+#endif
+
+#ifndef RTGI_A04
 #undef sqr
+#endif
 
 vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
+#ifndef RTGI_A04
     if (!same_hemisphere(geom.ng, w_i)) return vec3(0);
     const float NdotV = dot(geom.ns, w_o);
     const float NdotL = dot(geom.ns, w_i);
@@ -163,6 +185,10 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
     const float G = ggx_g1(NdotV, roughness) * ggx_g1(NdotL, roughness);
     const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
     return coat ? vec3(microfacet) : 15.f*geom.albedo() * microfacet;
+#else
+	// todo full TR Microfacet BRDF, use ggx_d and ggx_g1
+	return vec3(0);
+#endif
 }
 
 #ifndef RTGI_AXX
@@ -205,9 +231,19 @@ brdf *new_brdf(const std::string name, scene &scene) {
 			throw std::logic_error("Not implemented, yet");
 #endif
 		}
-#ifndef RTGI_AXX
+#ifndef RTGI_A03
 		else if (name == "gtr2")
 			f = new gtr2_reflection;
+		else if (name == "layered-gtr2") {
+#ifndef RTGI_A04
+			brdf *base = new_brdf("lambert", scene);
+			specular_brdf *coat = dynamic_cast<specular_brdf*>(new_brdf("gtr2", scene));
+			assert(coat);
+			f = new layered_brdf(coat, base);
+#else
+			throw std::runtime_error(std::string("Not implemented yet: ") + name);
+#endif
+		}
 #endif
 		else
 			throw std::runtime_error(std::string("No such brdf defined: ") + name);
