@@ -81,11 +81,10 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 				if (sampling_mode == sample_light) {
 					auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
 					light *l = rc.scene.lights[l_id];
-					auto [shadow_ray,col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
-					if (col != vec3(0))
+					auto [shadow_ray,l_col,pdf] = l->sample_Li(dg, rc.rng.uniform_float2());
+					if (l_col != vec3(0))
 						if (!rc.scene.rt->any_hit(shadow_ray))
-							// col already in brdf. inconsistent?
-							radiance = col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
+							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns) / (pdf * l_pdf);
 				}
 				else if (sampling_mode == sample_brdf) {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
@@ -138,6 +137,10 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 				}
 			}
 		}
+		else
+			if (rc.scene.sky)
+				radiance = rc.scene.sky->Le(view_ray);
+
 		result.push_back({radiance,vec2(0)});
 	}
 	return result;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "camera.h"
+#include "intersect.h"
 #include "material.h"
 #ifndef RTGI_AXX
 #include "discrete_distributions.h"
@@ -37,9 +38,16 @@ struct texture {
 	const vec3& operator()(vec2 uv) const {
 		return sample(uv.x, uv.y);
 	}
+	const vec3& value(int x, int y) const {
+		return texel[y*w+x];
+	}
+	const vec3& operator[](glm::uvec2 xy) const {
+		return value(xy.x, xy.y);
+	}
 };
 
 texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
+texture* load_hdr_image3f(const std::filesystem::path &path);
 
 #ifndef RTGI_A02
 struct light {
@@ -79,6 +87,23 @@ struct trianglelight : public light, private triangle {
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 	float pdf(const ray &r, const diff_geom &on_light) const;
 };
+
+struct skylight : public light {
+	texture *tex = nullptr;
+	float intensity_scale;
+	distribution_2d *distribution = nullptr;
+	float scene_radius;
+
+	skylight(const std::filesystem::path &file, float intensity_scale) : intensity_scale(intensity_scale) {
+		tex = load_hdr_image3f(file);
+	}
+	void build_distribution();
+	void scene_bounds(aabb box);
+	vec3 Le(const ray &ray) const;
+	virtual vec3 power() const;
+	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const;
+};
+
 #endif
 
 /*  \brief The scene culminates all the geometric information that we use.
@@ -107,10 +132,12 @@ struct scene {
 	std::vector<object>      light_geom;
 	distribution_1d *light_distribution;
 	void compute_light_distribution();
+	skylight *sky = nullptr;
 #endif
 	std::map<std::string, ::camera> cameras;
 	::camera camera;
 	vec3 up;
+	aabb scene_bounds;
 	const ::material material(uint32_t triangle_index) const {
 		return materials[triangles[triangle_index].material_id];
 	}

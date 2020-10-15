@@ -4,10 +4,12 @@
 #include "util.h"
 #ifndef RTGI_AXX
 #include "sampling.h"
+#include "framebuffer.h"
 #endif
 
 #include <vector>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <filesystem>
 #include <glm/glm.hpp>
@@ -16,6 +18,9 @@
 #include <assimp/postprocess.h>
 #include <assimp/mesh.h>
 #include <assimp/material.h>
+
+// debug
+// #include <png++/png.hpp>
 
 #ifdef RTGI_WAND7
 #include <MagickWand/MagickWand.h>
@@ -61,6 +66,24 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 		tex->texel[i] = pow(tex->texel[i], vec3(2.2f, 2.2f, 2.2f));
 	DestroyMagickWand(img);
 	MagickWandTerminus();
+	return tex;
+}
+
+texture* load_hdr_image3f(const std::filesystem::path &path) {
+	cout << "loading hdr texture from floats-file " << path << endl;
+	ifstream in;
+	in.open(path, ios::in | ios::binary);
+	if (!in.is_open())
+		throw runtime_error("Cannot open file '" + path.string() + "' for hdr floats texture.");
+	texture *tex = new texture;
+	tex->name = path;
+	tex->path = path;
+	in.read(((char*)&tex->w), sizeof(int));
+	in.read(((char*)&tex->h), sizeof(int));
+	tex->texel = new vec3[tex->w * tex->h];
+	in.read(((char*)tex->texel), tex->w * tex->h * sizeof(vec3));
+	if (!in.good())
+		throw runtime_error("Error loading data from '" + path.string() + "' for hdr floats texture.");
 	return tex;
 }
 
@@ -141,6 +164,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			else
 				vertex.tc = vec2(0,0);
 			vertices.push_back(vertex);
+			scene_bounds.grow(vertex.pos);
 		}
  
 		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
@@ -171,8 +195,14 @@ void scene::compute_light_distribution() {
 	cout << "light distribution of " << prims << " triangles" << endl;
 	for (auto l : lights) delete l;
 	lights.clear();
-	lights.resize(prims);
-	std::vector<float> power(prims);
+	int n = prims;
+	if (sky) {
+		n++;
+		sky->build_distribution();
+		sky->scene_bounds(scene_bounds);
+	}
+	lights.resize(n);
+	std::vector<float> power(n);
 	int l = 0;
 	for (auto g : light_geom) {
 		for (int i = g.start; i < g.end; ++i) {
@@ -180,6 +210,10 @@ void scene::compute_light_distribution() {
 			power[l] = luma(lights[l]->power());
 			l++;
 		}
+	}
+	if (sky) {
+		lights[n-1] = sky;
+		power[n-1] = sky->power().x;
 	}
 // 	light_distribution = new distribution_1d(std::move(power));	
 	light_distribution = new distribution_1d(power);	
@@ -285,5 +319,59 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
 }
+
+
+/////
+
+
+void skylight::build_distribution() {
+	assert(tex);
+	buffer<float> lum(tex->w, tex->h);
+	lum.for_each([&](unsigned x, unsigned y) {
+				 	lum(x,y) = luma(tex->value(x,y)) * sinf(pi*(y+0.5f)/tex->h);
+				 });
+	
+// 	png::image<png::rgb_pixel> out(tex->w, tex->h);
+// 	lum.for_each([&](int x, int y) {
+// 						vec3 col = heatmap(lum(x,y));
+// 						out[y][x] = png::rgb_pixel(col.x*255, col.y*255, col.z*255);
+// 					});
+// 	out.write("sky-luma.png");
+
+	distribution = new distribution_2d(lum.data, lum.w, lum.h);
+}
+
+void skylight::scene_bounds(aabb box) {
+	vec3 d = (box.max - box.min);
+	scene_radius = sqrtf(dot(d,d));
+}
+
+tuple<ray, vec3, float> skylight::sample_Li(const diff_geom &from, const vec2 &xis) const {
+	assert(tex && distribution);
+	auto [uv,pdf] = distribution->sample(xis);
+	float phi = uv.x * 2 * pi;
+	float theta = uv.y * pi;
+	float sin_theta = sinf(theta),
+		  cos_theta = cosf(theta);
+	if (pdf <= 0.0f || sin_theta <= 0.0f)
+		return { ray(vec3(0), vec3(0)), vec3(0), 0.0f };
+	vec3 w_i = vec3(sin_theta * cosf(phi), cos_theta, sin_theta * sinf(phi));
+	ray r(from.x, w_i);
+	pdf /= 2.0f * pi * pi * sin_theta;
+	return { r, tex->sample(uv) * intensity_scale, pdf };
+}
+
+vec3 skylight::Le(const ray &ray) const {
+    float u = atan2f(ray.d.z, ray.d.x) / (2 * M_PI);
+    float v = acosf(ray.d.y) / M_PI;
+    assert(std::isfinite(u));
+    assert(std::isfinite(v));
+    return tex->sample(u, v) * intensity_scale;
+}
+
+vec3 skylight::power() const {
+	return vec3(pi * scene_radius * scene_radius * distribution->unit_integral());
+}
+
 
 #endif

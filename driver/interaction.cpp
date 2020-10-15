@@ -320,6 +320,31 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				scene.lights.push_back(pl);
 		}
 #endif
+#ifndef RTGI_AXX
+		else ifcmd("skylight") {
+			float scale;
+			string file;
+			in >> file >> scale;
+			check_in_complete("Syntax error: skylight filename intensity-scale (note: filename is not allowed to contain spaces)");
+			delete scene.sky;
+			scene.sky = new skylight(file, scale);
+		}
+		else ifcmd("skytest") {
+			string file;
+			int samples;
+			in >> file >> samples;
+			check_in_complete("Syntax error: skytest filename samples (note: filename without spaces)");
+			if (!scene.sky)
+				error("No skylight defined")
+			else if (!scene.sky->distribution)
+				error("Skylight distribution not set up yet (use commit)")
+			else {
+				cout << "Running sky test..." << endl;
+				scene.sky->distribution->debug_out(file, samples);
+				cout << "Done." << endl;
+			}
+		}
+#endif
 		else if (command == "") ;
 		else if (command[0] == '#') ;
 		else if (algo && algo->interprete(command, in)) ;
