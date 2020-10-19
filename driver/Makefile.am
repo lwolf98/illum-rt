@@ -4,6 +4,9 @@ rtgi_SOURCES = main.cpp cmdline.cpp interaction.cpp
 noinst_HEADERS = interaction.h cmdline.h
 
 rtgi_LDADD  = ../gi/libprimary-hit.a ../rt/seq/libseq-is.a
+#ifndef RTGI_AXX
+rtgi_LDADD += ../gi/libdirect.a
+#endif
 #ifndef RTGI_A01
 rtgi_LDADD += ../rt/bbvh-base/libbbvh-base.a 
 #endif
