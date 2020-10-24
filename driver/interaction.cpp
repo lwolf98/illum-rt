@@ -17,6 +17,9 @@
 #include "rt/bbvh-base/bvh.h"
 #endif
 #include "gi/primary-hit.h"
+#ifndef RTGI_AXX
+#include "gi/direct.h"
+#endif
 
 #include <iostream>
 #include <sstream>

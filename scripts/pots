@@ -10,14 +10,15 @@ at -3.5638 1.8637 -4.8895
 load render-data/checkerpots/checkerpots.obj
 raytracer bbvh
 
-skylight render-data/skylight-blue.floats .25
+#skylight render-data/skylight-blue.floats .25
+skylight render-data/skylight-day.floats .25
 
 commit
 algo direct
 sppx 128
 resolution 1280 720
 
-skytest skytest.png 1000000
+#skytest skytest.png 1000000
 
 material select light
 material emissive 0 0 0
@@ -26,5 +27,6 @@ material select Material.001
 material texture drop
 
 brdf layered-gtr2
+is uniform
 
 run
