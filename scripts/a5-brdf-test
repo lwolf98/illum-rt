@@ -1,0 +1,68 @@
+at -2.8908 1.7537 -0.050779
+look 0.85235 -0.52249 -0.022323
+up 0 1 0
+camup 0.52233 0.85264 -0.013184
+
+default-brdf layered-gtr2
+
+load render-data/brdf-test.obj
+raytracer bbvh
+commit
+algo direct
+sppx 128
+resolution 1280 720
+
+material select microfacet
+material ior 2.4
+material roughness 0.025
+#material texture drop
+
+material select microfacet.001
+material ior 2.4
+material roughness 0.075
+#material texture drop
+
+material select microfacet.002
+material ior 2.4
+material roughness 0.15
+#material texture drop
+
+material select specular
+material ior 2.4
+material roughness 0.001
+#material texture drop
+
+#is brdf
+
+is uniform
+outfile brdf-test-1-uniform.png
+run
+
+is cosine
+outfile brdf-test-2-cosine.png
+run
+
+is light
+outfile brdf-test-3-light.png
+run
+
+material select microfacet
+material texture drop
+material select microfacet.001
+material texture drop
+material select microfacet.002
+material texture drop
+material select specular
+material texture drop
+
+is uniform
+outfile brdf-test-notex-1-uniform.png
+run
+
+is cosine
+outfile brdf-test-notex-2-cosine.png
+run
+
+is light
+outfile brdf-test-notex-3-light.png
+run

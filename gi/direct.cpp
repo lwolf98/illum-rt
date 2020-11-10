@@ -5,6 +5,7 @@
 #include "libgi/intersect.h"
 #include "libgi/util.h"
 #include "libgi/color.h"
+#include "libgi/sampling.h"
 
 using namespace glm;
 using namespace std;
@@ -29,6 +30,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 				brdf *brdf = dg.mat->brdf;
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
 				if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(dg, view_ray);
+				else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(dg, view_ray);
 				else if (sampling_mode == sample_light)     radiance = sample_lights(dg, view_ray);
 				else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(dg, view_ray);
 			}
@@ -51,6 +53,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	vec3 sampled_dir = vec3(sin_theta * cosf(phi),
 							sin_theta * sinf(phi),
 							z);
+	
 	vec3 w_i = align(sampled_dir, hit.ng);
 	ray sample_ray(hit.x, w_i);
 
@@ -66,6 +69,27 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 
 	// evaluate reflectance
 	return 2*pi * brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * cdot(sample_ray.d, hit.ns);
+}
+
+vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
+	// set up a ray in the hemisphere that is uniformly distributed
+	vec2 xi = rc->rng.uniform_float2();
+	vec3 sampled_dir = cosine_sample_hemisphere(xi);
+	vec3 w_i = align(sampled_dir, hit.ng);
+	ray sample_ray(hit.x, w_i);
+
+	// find intersection and store brightness if it is a light
+	vec3 brightness(0);
+	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	if (closest.valid()) {
+		diff_geom dg(closest, rc->scene);
+		brightness = dg.mat->emissive;
+	}
+	else if (rc->scene.sky)
+		brightness = rc->scene.sky->Le(sample_ray);
+
+	// evaluate reflectance
+	return brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
 }
 
 vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
@@ -171,6 +195,7 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 	else */if (command == "is") {
 		in >> value;
 		if (value == "uniform") sampling_mode = sample_uniform;
+		else if (value == "cosine") sampling_mode = sample_cosine;
 		else if (value == "light") sampling_mode = sample_light;
 		else if (value == "brdf") sampling_mode = sample_brdf;
 		else if (value == "mis") sampling_mode = both;

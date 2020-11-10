@@ -27,6 +27,6 @@ material select Material.001
 material texture drop
 
 brdf layered-gtr2
-is uniform
+is cosine
 
 run

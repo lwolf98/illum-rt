@@ -12,7 +12,8 @@ sppx 64
 resolution 1280 720
 #resolution 640 360
 brdf layered-gtr2
-is mis
+#is mis
+is uniform
 bvh om
 outfile out.png
 

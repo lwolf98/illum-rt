@@ -33,6 +33,7 @@ using namespace std;
 
 inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
+static bool verbose_scene = false;
 
 void magickwand_error(MagickWand *wand, bool crash) {
 	char *description;
@@ -45,7 +46,7 @@ void magickwand_error(MagickWand *wand, bool crash) {
 }
 
 texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
-	cout << "loading texture " << path << endl;
+	if (verbose_scene) cout << "loading texture " << path << endl;
 	MagickWandGenesis();
 	MagickWand *img = NewMagickWand();
 	int status = MagickReadImage(img, path.c_str());
@@ -192,7 +193,7 @@ void scene::compute_light_distribution() {
 		std::cerr << "WARNING: There is no emissive geometry" << std::endl;
 		return;
 	}
-	cout << "light distribution of " << prims << " triangles" << endl;
+	if (verbose_scene) cout << "light distribution of " << prims << " triangles" << endl;
 	for (auto l : lights) delete l;
 	lights.clear();
 	int n = prims;
