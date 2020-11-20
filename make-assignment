@@ -1,19 +1,33 @@
 #!/bin/bash
 
-if [ "$#" != "1" ] ; then
+if [ $# -eq 0 -o $# -gt 2 ] ; then
 	echo "Need one argument: the assignment number"
 	exit 1
 fi
 
 ASS="$1"
-
+REF="$2"
 DEF="-D RTGI_AXX"
-for nr in $(seq $ASS 15) ; do
+
+if [ "$REF" == "ref" ] ; then
+	ASS_DEF_START=$((ASS+1))
+	DEF="$DEF -D RTGI_A${ASS}_REF"
+	REF="-ref"
+elif [ "$REF" == "" ] ; then
+	ASS_DEF_START="$ASS"
+else
+	echo "Invalid value for REF (arg 2)" >&2
+	exit 1
+fi
+
+for nr in $(seq $ASS_DEF_START 15) ; do
 	DEF=$(printf "%s -D RTGI_A%02d" "$DEF" $nr)
 done
-for nr in $(seq 1 $((ASS-1))) ; do
+for nr in $(seq 1 $((ASS_DEF_START-1))) ; do
 	DEF=$(printf "%s -U RTGI_A%02d" "$DEF" $nr)
 done
+
+echo "---> $DEF"
 
 git archive --prefix make-ass/ -o make-ass.tar master
 if [ -e make-ass ] ; then
@@ -23,7 +37,7 @@ fi
 tar xf make-ass.tar
 cd make-ass
 
-sed -i 's/\[2020\]/[2020-a'$ASS']/' configure.ac
+sed -i 's/\[2020\]/[2020-a'$ASS$REF']/' configure.ac
 
 for f in $(find . -name "*.cpp" -o -name "*.h" -o -name "Makefile.am") configure.ac ; do
 	unifdef -x2 -m $DEF "$f"
@@ -31,6 +45,6 @@ done
 
 autoreconf -if && ./configure && make -j20
 make dist-bzip2
-cp rtgi-2020-a??.tar.bz2 ..
+cp rtgi-2020-a??$REF.tar.bz2 ..
 cd ..
 rm -r make-ass

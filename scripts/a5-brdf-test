@@ -35,15 +35,11 @@ material roughness 0.001
 #is brdf
 
 is uniform
-outfile brdf-test-1-uniform.png
-run
-
-is cosine
-outfile brdf-test-2-cosine.png
+outfile a5-brdf-test-1-uniform.png
 run
 
 is light
-outfile brdf-test-3-light.png
+outfile a5-brdf-test-2-light.png
 run
 
 material select microfacet
@@ -56,13 +52,9 @@ material select specular
 material texture drop
 
 is uniform
-outfile brdf-test-notex-1-uniform.png
-run
-
-is cosine
-outfile brdf-test-notex-2-cosine.png
+outfile a5-brdf-test-notex-1-uniform.png
 run
 
 is light
-outfile brdf-test-notex-3-light.png
+outfile a5-brdf-test-notex-2-light.png
 run

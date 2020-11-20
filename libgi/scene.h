@@ -3,7 +3,7 @@
 #include "camera.h"
 #include "intersect.h"
 #include "material.h"
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 #include "discrete_distributions.h"
 #endif
 
@@ -53,7 +53,7 @@ texture* load_hdr_image3f(const std::filesystem::path &path);
 struct light {
 	virtual ~light() {}
 	virtual vec3 power() const = 0;
-#ifndef RTGI_AXX
+#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
 // 	virtual float pdf(const ray &r) const = 0;
 #endif
@@ -64,14 +64,14 @@ struct pointlight : public light {
 	vec3 col;
 	pointlight(const vec3 pos, const vec3 col) : pos(pos), col(col) {}
 	vec3 power() const override;
-#ifndef RTGI_AXX
+#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 // 	float pdf(const ray &r) const override { return 0; }
 #endif
 };
 #endif
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A04 
 /*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
  *  It is. However, this way the BVH is allowed to reshuffle triangle positions (not vertex positions!)
  *  without having an effect on this.
@@ -80,6 +80,16 @@ struct pointlight : public light {
  *  triangles. I opted against that at first, as not to intorduce overhead, but any more efficient representation
  *  copy the triangle data on the GPU or in SIMD formats anyway.
  */
+#endif
+
+#if defined(RTGI_A05) || defined(RTGI_A05_REF)
+struct trianglelight : public light, public triangle {
+	const ::scene& scene;
+	trianglelight(const ::scene &scene, uint32_t i);
+	vec3 power() const override;
+};
+#endif
+#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 struct trianglelight : public light, private triangle {
 	const ::scene& scene;
 	trianglelight(const ::scene &scene, uint32_t i);
@@ -87,7 +97,9 @@ struct trianglelight : public light, private triangle {
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 	float pdf(const ray &r, const diff_geom &on_light) const;
 };
+#endif
 
+#ifndef RTGI_AXX
 struct skylight : public light {
 	texture *tex = nullptr;
 	float intensity_scale;
@@ -128,10 +140,14 @@ struct scene {
 	std::map<std::string, brdf*> brdfs;
 	std::vector<light*>      lights;
 #endif
-#ifndef RTGI_AXX
-	std::vector<object>      light_geom;
-	distribution_1d *light_distribution;
+#ifndef RTGI_A04
+	std::vector<object>      light_geom;	// Expires after bvh is built, do not use!
 	void compute_light_distribution();
+#endif
+#ifndef RTGI_A05
+	distribution_1d *light_distribution;
+#endif
+#ifndef RTGI_AXX
 	skylight *sky = nullptr;
 #endif
 	std::map<std::string, ::camera> cameras;

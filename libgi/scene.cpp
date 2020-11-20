@@ -2,8 +2,10 @@
 
 #include "color.h"
 #include "util.h"
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 #include "sampling.h"
+#endif
+#ifndef RTGI_AXX
 #include "framebuffer.h"
 #endif
 
@@ -151,7 +153,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		uint32_t index_offset = vertices.size();
 		std::string object_name = mesh_ai->mName.C_Str();
 		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 		if (materials[material_id].emissive != vec3(0))
 			light_geom.push_back(objects.back());
 #endif
@@ -186,7 +188,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	}
 }
 	
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
 	if (prims == 0) {
@@ -197,11 +199,13 @@ void scene::compute_light_distribution() {
 	for (auto l : lights) delete l;
 	lights.clear();
 	int n = prims;
+#ifndef RTGI_AXX
 	if (sky) {
 		n++;
 		sky->build_distribution();
 		sky->scene_bounds(scene_bounds);
 	}
+#endif
 	lights.resize(n);
 	std::vector<float> power(n);
 	int l = 0;
@@ -212,13 +216,17 @@ void scene::compute_light_distribution() {
 			l++;
 		}
 	}
+#ifndef RTGI_AXX
 	if (sky) {
 		lights[n-1] = sky;
 		power[n-1] = sky->power().x;
 	}
+#endif
+#ifndef RTGI_A05
 // 	light_distribution = new distribution_1d(std::move(power));	
 	light_distribution = new distribution_1d(power);	
 	light_distribution->debug_out("/tmp/light-dist");
+#endif
 }
 #endif
 
@@ -253,9 +261,7 @@ vec3 pointlight::power() const {
 	return 4*pi*col;
 }
 #endif
-
-#ifndef RTGI_AXX
-
+#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 
 tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	vec3 to_light = pos - from.x;
@@ -267,10 +273,16 @@ tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 
 	return { r, c, 1.0f };
 }
 
+#endif
+
 /////
+
+#ifndef RTGI_A04
 
 trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
 }
+#endif
+#if !defined(RTGI_A04) && !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 
 vec3 trianglelight::power() const {
 	const vertex &a = scene.vertices[this->a];
@@ -320,10 +332,15 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
 }
-
+#elif !defined(RTGI_A04)
+vec3 trianglelight::power() const {
+	return vec3(0);
+}
+#endif
 
 /////
 
+#ifndef RTGI_AXX
 
 void skylight::build_distribution() {
 	assert(tex);

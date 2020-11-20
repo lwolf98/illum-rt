@@ -10,11 +10,12 @@
 using namespace glm;
 using namespace std;
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
+#ifndef RTGI_AXX
 	if (sampling_mode == both)
 		return full_mis(x, y, samples, rc);
-
+#endif
 	sample_result result;
 	this->rc = &rc;
 	for (int sample = 0; sample < samples; ++sample) {
@@ -23,6 +24,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc.scene);
+#ifndef RTGI_A05
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
 			}
@@ -30,14 +32,23 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 				brdf *brdf = dg.mat->brdf;
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
 				if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(dg, view_ray);
+#ifndef RTGI_AXX
 				else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(dg, view_ray);
+#endif
 				else if (sampling_mode == sample_light)     radiance = sample_lights(dg, view_ray);
+#ifndef RTGI_AXX
 				else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(dg, view_ray);
+#endif
 			}
+#else
+			// todo: compute direct lighting contribution
+#endif
 		}
+#ifndef RTGI_AXX
 		else
 			if (rc.scene.sky)
 				radiance = rc.scene.sky->Le(view_ray);
+#endif
 		result.push_back({radiance,vec2(0)});
 	}
 	return result;
@@ -46,6 +57,10 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
+#ifdef RTGI_A05
+	// todo: implement uniform hemisphere sampling
+	return vec3(0);
+#else
 	float z = xi.x;
 	float phi = 2*pi*xi.y;
 	// z is cos(theta), sin(theta) = sqrt(1-cos(theta)^2)
@@ -64,13 +79,16 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 		diff_geom dg(closest, rc->scene);
 		brightness = dg.mat->emissive;
 	}
+#ifndef RTGI_AXX
 	else if (rc->scene.sky)
 		brightness = rc->scene.sky->Le(sample_ray);
-
+#endif
 	// evaluate reflectance
 	return 2*pi * brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * cdot(sample_ray.d, hit.ns);
+#endif
 }
 
+#ifndef RTGI_AXX
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
@@ -91,8 +109,45 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 	// evaluate reflectance
 	return brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
 }
+#endif
 
 vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
+#ifdef RTGI_A05
+	// todo: implement uniform sampling on the first few of the scene's lights' surfaces
+	return vec3(0);
+#elif defined(RTGI_A05_REF)
+	const size_t N_max = 2;
+	int lighs_processed = 0;
+	vec3 accum(0);
+	for (int i = 0; i < rc->scene.lights.size(); ++i) {
+		const trianglelight *tl = dynamic_cast<trianglelight*>(rc->scene.lights[i]);
+		vec2 xi = rc->rng.uniform_float2();
+		float sqrt_xi1 = sqrt(xi.x);
+		float beta = 1.0f - sqrt_xi1;
+		float gamma = xi.y * sqrt_xi1;
+		float alpha = 1.0f - beta - gamma;
+		const vertex &a = rc->scene.vertices[tl->a];
+		const vertex &b = rc->scene.vertices[tl->b];
+		const vertex &c = rc->scene.vertices[tl->c];
+		vec3 target = alpha*a.pos  + beta*b.pos  + gamma*c.pos;
+		vec3 normal = alpha*a.norm + beta*b.norm + gamma*c.norm;
+	
+		vec3 w_i = target - hit.x;
+		float tmax = length(w_i);
+		w_i /= tmax;
+		ray r(hit.x, w_i);
+		r.length_exclusive(tmax);
+
+		if (!rc->scene.rt->any_hit(r)) {
+			auto mat = rc->scene.materials[tl->material_id];
+			accum += mat.emissive * hit.mat->brdf->f(hit, -view_ray.d, r.d) * cdot(hit.ns, r.d) * cdot(normal, -r.d) / (tmax*tmax);
+		}
+
+		if (++lighs_processed == N_max)
+			break;
+	}
+	return accum / (float)lighs_processed;
+#else
 	auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
 	light *l = rc->scene.lights[l_id];
 	auto [shadow_ray,l_col,pdf] = l->sample_Li(hit, rc->rng.uniform_float2());
@@ -100,8 +155,10 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 		if (!rc->scene.rt->any_hit(shadow_ray))
 			return l_col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, hit.ns) / (pdf * l_pdf);
 	return vec3(0);
+#endif
 }
 
+#ifndef RTGI_AXX
 vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
 	ray light_ray(nextafter(hit.x, w_i), w_i);
@@ -110,6 +167,7 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 			return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 	return vec3(0);
 }
+#endif
 
 #ifndef RTGI_AXX
 // separate version to not include the rejection part in all methods

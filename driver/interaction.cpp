@@ -17,7 +17,7 @@
 #include "rt/bbvh-base/bvh.h"
 #endif
 #include "gi/primary-hit.h"
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 #include "gi/direct.h"
 #endif
 
@@ -134,7 +134,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #ifndef RTGI_A02
 			else if (name == "local")  a = new local_illumination;
 #endif
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 			else if (name == "direct")  a = new direct_light;
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
@@ -168,7 +168,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				error("There is no scene data to work with");
 			if (!scene.rt)
 				error("There is no ray traversal scheme to commit the scene data to");
-#ifndef RTGI_AXX
+#ifndef RTGI_A04
 			scene.compute_light_distribution();
 #endif
 			scene.rt->build(&scene);

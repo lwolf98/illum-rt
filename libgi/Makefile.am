@@ -14,9 +14,8 @@ libgi_a_SOURCES = 	camera.cpp \
 libgi_a_SOURCES +=  material.cpp
 #endif
 
-#ifndef RTGI_AXX
-libgi_a_SOURCES +=  discrete_distributions.cpp \
-					material.cpp
+#ifndef RTGI_A05
+libgi_a_SOURCES +=  discrete_distributions.cpp
 #endif
 
 noinst_HEADERS = 	algorithm.h \
@@ -33,7 +32,9 @@ noinst_HEADERS = 	algorithm.h \
 					util.h
 
 
-#ifndef RTGI_AXX
-noinst_HEADERS +=	discrete_distributions.h \
-					sampling.h
+#ifndef RTGI_A05
+noinst_HEADERS +=	discrete_distributions.h
+#endif
+#ifndef RTGI_A04
+noinst_HEADERS +=	sampling.h
 #endif
