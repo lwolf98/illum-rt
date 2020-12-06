@@ -147,6 +147,10 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 			break;
 	}
 	return accum / (float)lighs_processed;
+#elif defined(RTGI_A06)
+	// todo: implement importance sampling on the light sources
+	//       use rc->scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
+	//       don't forget to divide by the respective PDF values
 #else
 	auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
 	light *l = rc->scene.lights[l_id];

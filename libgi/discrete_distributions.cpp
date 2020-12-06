@@ -11,15 +11,26 @@
 
 using namespace std;;
 
-distribution_1d::distribution_1d(const std::vector<float> &f) : f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
+distribution_1d::distribution_1d(const std::vector<float> &f)
+#ifndef RTGI_AXX
+: f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
+#else
+: f(f), cdf(f.size()+1) {
+#endif
 	build_cdf();
 }
 
-distribution_1d::distribution_1d(std::vector<float> &&f) : f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
+distribution_1d::distribution_1d(std::vector<float> &&f)
+#ifndef RTGI_AXX
+: f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
+#else
+: f(f), cdf(f.size()+1) {
+#endif
 	build_cdf();
 }
 
 void distribution_1d::build_cdf() {
+#ifndef RTGI_A06
 	cdf[0] = 0;
 	unsigned N = f.size();
 	for (unsigned i = 1; i < N+1; ++i)
@@ -28,13 +39,21 @@ void distribution_1d::build_cdf() {
 	for (unsigned i = 1; i < N+1; ++i)
 		cdf[i] = integral_1spaced > 0 ? cdf[i]/integral_1spaced : i/float(N);
 	assert(cdf[N] == 1.0f);
+#else
+	// todo: set up cdf table for given discrete pdf (stored in f)
+#endif
 }
 
 pair<uint32_t,float> distribution_1d::sample_index(float xi) const {
+#ifndef RTGI_A06
 	unsigned index = unsigned(lower_bound(cdf.begin(), cdf.end(), xi) - cdf.begin());
 	index = index > 0 ? index - 1 : index; // might happen for xi==0
 	float pdf = integral_1spaced > 0.0f ? f[index] / integral_1spaced : 0.0f;
 	return pair{index,pdf};;
+#else
+	// todo: find index corresponding to xi, also return the proper PDF value for that index
+	return {0,1.0f};
+#endif
 }
 
 float distribution_1d::pdf(uint32_t index) const {
@@ -53,6 +72,7 @@ void distribution_1d::debug_out(const std::string &p) const {
 	cdf.close();
 }
 
+#ifndef RTGI_AXX
 pair<float,float> distribution_1d::linearly_interpolated_01::sample(float xi) const {
 	unsigned index = unsigned(lower_bound(discrete.cdf.begin(), discrete.cdf.end(), xi) - discrete.cdf.begin());
 	index = index > 0 ? index - 1 : index; // might happen for xi==0
@@ -67,8 +87,9 @@ float distribution_1d::linearly_interpolated_01::pdf(float t) const {
 	assert(t >= 0 && t<1.0f);
 	return discrete.f[t*discrete.f.size()] / integral();
 }
+#endif
 
-
+#ifndef RTGI_AXX
 
 distribution_2d::distribution_2d(const float *f, int w, int h) : f(f), w(w), h(h) {
 	conditional.reserve(h);
@@ -118,3 +139,4 @@ void distribution_2d::debug_out(const std::string &p, int n) const {
 					});
 	out.write(p);
 }
+#endif

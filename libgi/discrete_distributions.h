@@ -23,6 +23,7 @@ public:
 	float value_at(int index) const { return f[index]; }
 	int size() const { return f.size(); }
 	
+#ifndef RTGI_AXX
 	struct linearly_interpolated_01 {
 		distribution_1d &discrete;
 		linearly_interpolated_01(distribution_1d &discrete) : discrete(discrete) {}
@@ -33,10 +34,11 @@ public:
 	}
 	linearly_interpolated_on_01;
 	friend linearly_interpolated_01;
-
+#endif
 
 };
 
+#ifndef RTGI_AXX
 class distribution_2d {
 	const float *f;
 	int w, h;
@@ -54,3 +56,4 @@ public:
 	float unit_integral() const { assert(marginal); return marginal->integral() / (w*h); }
 	void debug_out(const std::string &p, int n) const;
 };
+#endif

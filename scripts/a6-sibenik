@@ -1,0 +1,74 @@
+at -10 -10 0
+at -13 -12 0
+#at 1 -12.5 1
+look 1 0 0
+up 0 1 0
+load render-data/sibenik/sibenik.obj
+load render-data/sibenik/sibenbunny.obj
+raytracer bbvh
+algo direct
+sppx 64
+#pointlight pos 0 -4 0 col 35 30 26
+resolution 1280 720
+#resolution 640 360
+brdf layered-gtr2
+#is mis
+is uniform
+bvh om
+outfile out.png
+
+material select pod
+material roughness 0.055
+material ior 2.289
+
+
+
+
+material select kamen_zid_parapet
+material albedo  0.73412 0.73059 0.67412
+material ior  1.3
+material roughness  0.50372
+        
+material select pod
+material albedo  0.73412 0.70941 0.67412
+material ior  2.289
+material roughness  0.055
+
+material select pod_tepih
+material albedo  0.54627 0.21961 0.18392
+material ior 1.3
+material roughness  0.50372
+        
+material select sprljci
+material albedo  0.78431 0.78431 0.78431
+material ior 1.3
+material roughness  0.50372
+
+material select staklo
+material emissive 7.8431 7.8431 7.8431
+        
+material select staklo_crveno
+material emissive 50.118 8.392 0.562
+        
+material select staklo_plavo
+material emissive 1.61177 2.82549 16.9216
+        
+material select staklo_zeleno
+material emissive 1.9 18.3 2.15
+        
+#material select staklo_zuto
+#material emissive 37.5 32.2 0.3
+
+commit
+
+
+at 2 -14 0
+look -1 0 0
+
+is uniform
+outfile a6-sibenik-1-uniform.png
+run
+
+is light
+outfile a6-sibenik-2-lights.png
+run
