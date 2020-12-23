@@ -1,7 +1,7 @@
 #include "material.h"
 #include "scene.h"
 #include "util.h"
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 #include "sampling.h"
 #endif
 
@@ -23,7 +23,7 @@ vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 }
 #endif
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	float pdf_diff = base->pdf(geom, w_o, w_i);
@@ -63,12 +63,13 @@ vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3
 #endif
 }
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 float lambertian_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
     return absdot(geom.ns, w_i) * one_over_pi;
 }
 
 brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
+	// uses malley's method, not what is asked on the assignment sheet
 	vec3 w_i = align(cosine_sample_hemisphere(xis), geom.ns);
 	if (!same_hemisphere(w_i, geom.ng)) return { w_i, vec3(0), 0 };
 	float pdf_val = pdf(geom, w_o, w_i);
@@ -93,17 +94,18 @@ vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const 
 #endif
 }
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 float phong_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	float exp = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
 	float z = cdot(r,w_i);
-	return z* (exp+1.0f) * one_over_2pi;
+	return powf(z, exp) * (exp+1.0f) * one_over_2pi;
 }
 
 brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
 	float exp = exponent_from_roughness(geom.mat->roughness);
-	float z = powf(xis.x, 1.0f/exp);
+#ifndef RTGI_A06
+	float z = powf(xis.x, 1.0f/(exp+1));
 	float phi = 2.0f*pi*xis.y;
 	vec3 sample(sqrtf(1.0f-z*z) * cos(phi),
 				sqrtf(1.0f-z*z) * sin(phi),
@@ -111,8 +113,14 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 	vec3 r = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
 	vec3 w_i = align(sample, r);
 	if (!same_hemisphere(w_i, geom.ng)) return { w_i, vec3(0), 0 };
-	float pdf_val = z * (exp+1.0f) * one_over_2pi;
+	float pdf_val = pow(z,exp) * (exp+1.0f) * one_over_2pi;
 	return { w_i, f(geom, w_o, w_i), pdf_val };
+#else
+	// todo: derive the proper sampling formulas for phong and implement them here
+	// note: make sure that the sampled direction is above the surface
+	// note: for the pdf, do not forget the rotational-part for phi
+	return { vec3(0), vec3(0), 0 };
+#endif
 }
 #endif
 
@@ -152,7 +160,7 @@ inline float ggx_g1(const float NdotV, float roughness) {
 #endif
 }
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 vec3 ggx_sample(const vec2 &xi, float roughness) {
     const float theta = atanf((roughness * sqrtf(xi.x)) / sqrtf(1.f - xi.x));
     if (!std::isfinite(theta)) return vec3(0, 0, 1);
@@ -191,7 +199,7 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 #endif
 }
 
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
     const vec3 H = normalize(w_o + w_i);
     const float NdotH = dot(geom.ns, H);

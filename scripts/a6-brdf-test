@@ -4,6 +4,7 @@ up 0 1 0
 camup 0.52233 0.85264 -0.013184
 
 default-brdf layered-gtr2
+#default-brdf phong
 
 load render-data/brdf-test.obj
 raytracer bbvh
@@ -32,14 +33,20 @@ material ior 2.4
 material roughness 0.001
 #material texture drop
 
-#is brdf
-
 is uniform
-outfile a6-brdf-test-1-uniform.png
+outfile a6-brdf-test-tex-1-uniform.png
+run
+
+is cosine
+outfile a6-brdf-test-tex-2-cosine.png
 run
 
 is light
-outfile a6-brdf-test-2-light.png
+outfile a6-brdf-test-tex-3-light.png
+run
+
+is brdf
+outfile a6-brdf-test-tex-4-brdf.png
 run
 
 material select microfacet
@@ -55,6 +62,14 @@ is uniform
 outfile a6-brdf-test-notex-1-uniform.png
 run
 
+is cosine
+outfile a6-brdf-test-notex-2-cosine.png
+run
+
 is light
-outfile a6-brdf-test-notex-2-light.png
+outfile a6-brdf-test-notex-3-light.png
+run
+
+is brdf
+outfile a6-brdf-test-notex-4-brdf.png
 run

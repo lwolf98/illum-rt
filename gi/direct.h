@@ -12,7 +12,7 @@ class direct_light : public gi_algorithm {
 	
 	vec3 sample_uniformly(const diff_geom &hit, const ray &view_ray);
 	vec3 sample_lights(const diff_geom &hit, const ray &view_ray);
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	vec3 sample_cosine_weighted(const diff_geom &hit, const ray &view_ray);
 	vec3 sample_brdfs(const diff_geom &hit, const ray &view_ray);
 #endif

@@ -26,6 +26,10 @@ done
 for nr in $(seq 1 $((ASS_DEF_START-1))) ; do
 	DEF=$(printf "%s -U RTGI_A%02d" "$DEF" $nr)
 done
+for nr in $(seq 1 $((ASS_DEF_START-2))) ; do
+	DEF=$(printf "%s -U RTGI_A%02d_REF" "$DEF" $nr)
+done
+
 
 echo "---> $DEF"
 

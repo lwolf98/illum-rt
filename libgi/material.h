@@ -19,13 +19,13 @@ inline float exponent_from_roughness(float roughness) {
 #ifndef RTGI_A02
 
 struct brdf {
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	//          w_i,f(w_i),pdf(w_i)
 	typedef tuple<vec3,vec3,float> sampling_res;
 #endif
 	
 	virtual vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) = 0;
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	virtual float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) = 0;
 	virtual sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) = 0;
 #endif
@@ -43,7 +43,7 @@ struct layered_brdf : public brdf {
 	layered_brdf(specular_brdf *coat, brdf *base) : coat(coat), base(base) { coat->coat = true; }
 	
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
@@ -52,7 +52,7 @@ struct layered_brdf : public brdf {
 
 struct lambertian_reflection : public brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
@@ -60,7 +60,7 @@ struct lambertian_reflection : public brdf {
 
 struct phong_specular_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
@@ -69,7 +69,7 @@ struct phong_specular_reflection : public specular_brdf {
 #ifndef RTGI_A03
 struct gtr2_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
-#ifndef RTGI_AXX
+#ifndef RTGI_A05
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
