@@ -1,0 +1,92 @@
+at -516 584 -138
+at -516 300 0
+look 1 0 0
+up 0 1 0
+load render-data/mis.obj
+raytracer bbvh
+algo direct/mis
+sppx 32
+resolution 640 640
+
+at -0.85342 4.161 2.3017
+look 0.050643 -0.48166 -0.87489
+camup 0.031138 0.87635 -0.48066
+    
+material select light_big
+material emissive 2.5438 8.3755 50
+        
+material select light_mid_big
+material emissive 5.0876 100 9.5962
+
+material select light_mid_small
+material emissive 500 436.87 25.4355
+
+material select light_small
+material emissive 2000 101.708 101.708
+
+material select microfacet_high
+material brdf gtr2
+material albedo 0.3 0.3 0.3
+material ior 2.42
+material roughness 0.0025
+
+material select microfacet_low
+material brdf gtr2
+material albedo 0.3 0.3 0.3
+material ior 2.42
+material roughness 0.1
+
+material select microfacet_mid_high
+material brdf gtr2
+material albedo 0.3 0.3 0.3
+material ior 2.42
+material roughness 0.01
+
+material select microfacet_mid_low
+material brdf gtr2
+material albedo 0.3 0.3 0.3
+material ior 2.42
+material roughness 0.05
+
+material select plane
+material brdf gtr2
+material albedo 0.64 0.64 0.64
+material ior 1.3
+material roughness 0.1428
+commit
+
+# TODO feel free to adapt those numbers
+sppx 2500
+
+algo direct
+
+is light
+outfile mis-2500-1-light.png
+run
+
+is brdf
+outfile mis-2500-3-brdf.png
+run
+
+algo direct/mis
+
+is mis
+outfile mis-2500-2-mis.png
+run
+
+algo direct
+
+sppx 100
+is light
+outfile mis-100-1-light.png
+run
+
+is brdf
+outfile mis-100-3-brdf.png
+run
+
+algo direct/mis
+
+is mis
+outfile mis-100-2-mis.png
+run

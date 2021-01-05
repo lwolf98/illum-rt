@@ -33,4 +33,8 @@ class direct_light_mis : public direct_light {
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
+#else
+#ifndef RTGI_A06
+// todo: derive direct_light_mis from direct_light
+#endif
 #endif

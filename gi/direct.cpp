@@ -258,9 +258,11 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 				}
 			}
 		}
+#ifndef RTGI_AXX
 		else
 			if (rc.scene.sky)
 				radiance = rc.scene.sky->Le(view_ray);
+#endif
 		result.push_back({radiance,vec2(0)});
 	}
 	return result;
@@ -270,7 +272,11 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 	// nothing to do but prevent call to base
 	return false;
 }
-
+#else
+#ifndef RTGI_A06
+// todo: implement member functions of direct_light_mis
+// Note: feel free to make use of the helper functions provided in the base class
+#endif
 #endif
 
 

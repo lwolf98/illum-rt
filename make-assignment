@@ -8,11 +8,13 @@ fi
 ASS="$1"
 REF="$2"
 DEF="-D RTGI_AXX"
+REF_DEC=1
 
 if [ "$REF" == "ref" ] ; then
 	ASS_DEF_START=$((ASS+1))
 	DEF="$DEF -D RTGI_A${ASS}_REF"
 	REF="-ref"
+	REF_DEC=2
 elif [ "$REF" == "" ] ; then
 	ASS_DEF_START="$ASS"
 else
@@ -26,7 +28,7 @@ done
 for nr in $(seq 1 $((ASS_DEF_START-1))) ; do
 	DEF=$(printf "%s -U RTGI_A%02d" "$DEF" $nr)
 done
-for nr in $(seq 1 $((ASS_DEF_START-2))) ; do
+for nr in $(seq 1 $((ASS_DEF_START-REF_DEC))) ; do
 	DEF=$(printf "%s -U RTGI_A%02d_REF" "$DEF" $nr)
 done
 

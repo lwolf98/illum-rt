@@ -139,6 +139,8 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #endif
 #ifndef RTGI_A07
 			else if (name == "direct/mis")  a = new direct_light_mis;
+#elif !defined(RTGI_A06)
+			// todo: set up mis algorithm here
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
 			if (a) {
