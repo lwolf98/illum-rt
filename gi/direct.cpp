@@ -12,10 +12,6 @@ using namespace std;
 
 #ifndef RTGI_A04
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
-#ifndef RTGI_AXX
-	if (sampling_mode == both)
-		return full_mis(x, y, samples, rc);
-#endif
 	sample_result result;
 	this->rc = &rc;
 	for (int sample = 0; sample < samples; ++sample) {
@@ -171,7 +167,7 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_A06
 	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
-	ray light_ray(nextafter(hit.x, w_i), w_i);
+	ray light_ray(hit.x, w_i);
 	if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 		if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 			return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
@@ -185,10 +181,27 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 }
 #endif
 
-#ifndef RTGI_AXX
+bool direct_light::interprete(const std::string &command, std::istringstream &in) {
+	string value;
+	if (command == "is") {
+		in >> value;
+		if (value == "uniform") sampling_mode = sample_uniform;
+		else if (value == "cosine") sampling_mode = sample_cosine;
+		else if (value == "light") sampling_mode = sample_light;
+		else if (value == "brdf") sampling_mode = sample_brdf;
+		else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
+		return true;
+	}
+	return false;
+}
+#endif
+
+
+
+#ifndef RTGI_A07
 // separate version to not include the rejection part in all methods
 // this should be improved upon
-gi_algorithm::sample_result direct_light::full_mis(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
+gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
@@ -216,7 +229,7 @@ gi_algorithm::sample_result direct_light::full_mis(uint32_t x, uint32_t y, uint3
 				}
 				else {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc.rng.uniform_float2());
-					ray light_ray(nextafter(dg.x, w_i), w_i);
+					ray light_ray(dg.x, w_i);
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 						if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
@@ -227,6 +240,7 @@ gi_algorithm::sample_result direct_light::full_mis(uint32_t x, uint32_t y, uint3
 								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
 							}
 				}
+				// make sure to really be on the safest side possible ;)
 				assert(pdf_light >= 0);
 				assert(pdf_brdf >= 0);
 				assert(radiance.x >= 0);assert(std::isfinite(radiance.x));
@@ -251,20 +265,12 @@ gi_algorithm::sample_result direct_light::full_mis(uint32_t x, uint32_t y, uint3
 	}
 	return result;
 }
-#endif
 
-bool direct_light::interprete(const std::string &command, std::istringstream &in) {
-	string value;
-	if (command == "is") {
-		in >> value;
-		if (value == "uniform") sampling_mode = sample_uniform;
-		else if (value == "cosine") sampling_mode = sample_cosine;
-		else if (value == "light") sampling_mode = sample_light;
-		else if (value == "brdf") sampling_mode = sample_brdf;
-		else if (value == "mis") sampling_mode = both;
-		else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
-		return true;
-	}
+bool direct_light_mis::interprete(const std::string &command, std::istringstream &in) {
+	// nothing to do but prevent call to base
 	return false;
 }
+
 #endif
+
+
