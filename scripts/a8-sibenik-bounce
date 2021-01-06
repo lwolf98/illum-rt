@@ -66,8 +66,27 @@ at 2 -14 0
 look -1 0 0
 
 
-algo direct/mis
-#is light
+algo simple-pt
+# --------
+path bounce uniform
+path len 10
+path rr-start 10
+outfile a8-sibenik-RR-1.png
+run
+echo >>>> WITHOUT RR @ 64sppx
+stats print
+stats clear
+path rr-start 2
+outfile a8-sibenik-RR-2.png
+run
+echo >>>> WITH RR @ 64sppx
+stats print
+stats clear
+
+exit
+
+algo direct
+is uniform
 outfile a8-sibenik-01-sibenik-direct.png
 run
 

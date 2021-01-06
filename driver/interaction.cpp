@@ -24,6 +24,8 @@
 #include "gi/pt.h"
 #endif
 
+#include "libgi/timer.h"
+
 #include <iostream>
 #include <sstream>
 
@@ -83,6 +85,10 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			for (auto &x : commands)
 				cout << x << endl;
 		}
+		else ifcmd("quit")
+			return;
+		else ifcmd("exit")
+			return;
 		else ifcmd("at") {
 			in >> tmp;
 			check_in_complete("Syntax error, requires 3 numerical components");
@@ -147,6 +153,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #endif
 #ifndef RTGI_A07_REF
 			else if (name == "simple-pt")  a = new simple_pt(rc);
+			else if (name == "pt")  a = new pt_nee(rc);
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
 			if (a) {
@@ -359,6 +366,22 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			}
 		}
 #endif
+		else ifcmd("stats") {
+			string sub;
+			in >> sub;
+			if (sub == "clear")
+				stats_timer.clear();
+			else if (sub == "print")
+				stats_timer.print();
+			else
+				error("No such stats subcommand");
+		}
+		else ifcmd("echo") {
+			string text;
+			char c; in >> c; // skip first whitespace
+			getline(in, text);
+			cout << text << endl;
+		}
 		else if (command == "") ;
 		else if (command[0] == '#') ;
 		else if (algo && algo->interprete(command, in)) ;

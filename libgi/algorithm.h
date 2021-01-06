@@ -29,6 +29,8 @@ class render_context;
 class gi_algorithm {
 protected:
 	const render_context &rc;
+	float uniform_float() const;
+	glm::vec2 uniform_float2() const;
 #ifndef RTGI_A07_REF
 	// maybe these should go into a seperate with_importance_sampling mixin...
 	std::tuple<ray,float> sample_uniform_direction(const diff_geom &hit) const;

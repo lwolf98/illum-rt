@@ -4,6 +4,14 @@
 #include "libgi/context.h"
 #include "libgi/util.h"
 #include "libgi/sampling.h"
+	
+float gi_algorithm::uniform_float() const {
+	return rc.rng.uniform_float();
+}
+
+glm::vec2 gi_algorithm::uniform_float2() const {
+	return rc.rng.uniform_float2();
+}
 
 std::tuple<ray,float> gi_algorithm::sample_uniform_direction(const diff_geom &hit) const {
 	// set up a ray in the hemisphere that is uniformly distributed

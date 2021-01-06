@@ -6,7 +6,8 @@
 #ifndef RTGI_A07_REF
 class simple_pt : public gi_algorithm {
 protected:
-	int max_path_len = 1;
+	int max_path_len = 10;
+	int rr_start = 2;  // start RR after this many unrestricted bounces
 	enum class bounce { uniform, cosine, brdf } bounce = bounce::uniform;
 
 	virtual vec3 path(ray view_ray);
@@ -18,3 +19,12 @@ public:
 };
 #endif
 
+#ifndef RTGI_A08_REF
+class pt_nee : public simple_pt {
+	vec3 path(ray view_ray) override;
+	std::tuple<ray,vec3,float> sample_light(const diff_geom &hit);
+public:
+	pt_nee(const render_context &rc) : simple_pt(rc) {}
+	bool interprete(const std::string &command, std::istringstream &in) override;
+};
+#endif
