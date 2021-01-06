@@ -7,6 +7,9 @@ rtgi_LDADD  = ../gi/libprimary-hit.a ../rt/seq/libseq-is.a
 #ifndef RTGI_A04
 rtgi_LDADD += ../gi/libdirect.a
 #endif
+#ifndef RTGI_A06
+rtgi_LDADD += ../gi/libpt.a
+#endif
 #ifndef RTGI_A01
 rtgi_LDADD += ../rt/bbvh-base/libbbvh-base.a 
 #endif

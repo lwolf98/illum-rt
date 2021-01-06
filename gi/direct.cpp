@@ -13,7 +13,6 @@ using namespace std;
 #ifndef RTGI_A04
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
-	this->rc = &rc;
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f));
@@ -50,7 +49,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 
 vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
-	vec2 xi = rc->rng.uniform_float2();
+	vec2 xi = rc.rng.uniform_float2();
 #ifdef RTGI_A05
 	// todo: implement uniform hemisphere sampling
 	return vec3(0);
@@ -68,14 +67,14 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	triangle_intersection closest = rc.scene.rt->closest_hit(sample_ray);
 	if (closest.valid()) {
-		diff_geom dg(closest, rc->scene);
+		diff_geom dg(closest, rc.scene);
 		brightness = dg.mat->emissive;
 	}
 #ifndef RTGI_AXX
-	else if (rc->scene.sky)
-		brightness = rc->scene.sky->Le(sample_ray);
+	else if (rc.scene.sky)
+		brightness = rc.scene.sky->Le(sample_ray);
 #endif
 	// evaluate reflectance
 	return 2*pi * brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * cdot(sample_ray.d, hit.ns);
@@ -84,7 +83,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 
 #ifndef RTGI_A05
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
-	vec2 xi = rc->rng.uniform_float2();
+	vec2 xi = rc.rng.uniform_float2();
 #ifndef RTGI_A06
 	// todo: implement importance sampling on the cosine-term
 	vec3 sampled_dir = cosine_sample_hemisphere(xi);
@@ -93,14 +92,14 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	triangle_intersection closest = rc.scene.rt->closest_hit(sample_ray);
 	if (closest.valid()) {
-		diff_geom dg(closest, rc->scene);
+		diff_geom dg(closest, rc.scene);
 		brightness = dg.mat->emissive;
 	}
 #ifndef RTGI_AXX
-	else if (rc->scene.sky)
-		brightness = rc->scene.sky->Le(sample_ray);
+	else if (rc.scene.sky)
+		brightness = rc.scene.sky->Le(sample_ray);
 #endif
 
 	// evaluate reflectance
@@ -119,16 +118,16 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 	const size_t N_max = 2;
 	int lighs_processed = 0;
 	vec3 accum(0);
-	for (int i = 0; i < rc->scene.lights.size(); ++i) {
-		const trianglelight *tl = dynamic_cast<trianglelight*>(rc->scene.lights[i]);
-		vec2 xi = rc->rng.uniform_float2();
+	for (int i = 0; i < rc.scene.lights.size(); ++i) {
+		const trianglelight *tl = dynamic_cast<trianglelight*>(rc.scene.lights[i]);
+		vec2 xi = rc.rng.uniform_float2();
 		float sqrt_xi1 = sqrt(xi.x);
 		float beta = 1.0f - sqrt_xi1;
 		float gamma = xi.y * sqrt_xi1;
 		float alpha = 1.0f - beta - gamma;
-		const vertex &a = rc->scene.vertices[tl->a];
-		const vertex &b = rc->scene.vertices[tl->b];
-		const vertex &c = rc->scene.vertices[tl->c];
+		const vertex &a = rc.scene.vertices[tl->a];
+		const vertex &b = rc.scene.vertices[tl->b];
+		const vertex &c = rc.scene.vertices[tl->c];
 		vec3 target = alpha*a.pos  + beta*b.pos  + gamma*c.pos;
 		vec3 normal = alpha*a.norm + beta*b.norm + gamma*c.norm;
 	
@@ -138,8 +137,8 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 		ray r(hit.x, w_i);
 		r.length_exclusive(tmax);
 
-		if (!rc->scene.rt->any_hit(r)) {
-			auto mat = rc->scene.materials[tl->material_id];
+		if (!rc.scene.rt->any_hit(r)) {
+			auto mat = rc.scene.materials[tl->material_id];
 			accum += mat.emissive * hit.mat->brdf->f(hit, -view_ray.d, r.d) * cdot(hit.ns, r.d) * cdot(normal, -r.d) / (tmax*tmax);
 		}
 
@@ -149,15 +148,15 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 	return accum / (float)lighs_processed;
 #elif defined(RTGI_A06)
 	// todo: implement importance sampling on the light sources
-	//       use rc->scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
+	//       use rc.scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
 	//       don't forget to divide by the respective PDF values
 	return vec3(0);
 #else
-	auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
-	light *l = rc->scene.lights[l_id];
-	auto [shadow_ray,l_col,pdf] = l->sample_Li(hit, rc->rng.uniform_float2());
+	auto [l_id, l_pdf] = rc.scene.light_distribution->sample_index(rc.rng.uniform_float());
+	light *l = rc.scene.lights[l_id];
+	auto [shadow_ray,l_col,pdf] = l->sample_Li(hit, rc.rng.uniform_float2());
 	if (l_col != vec3(0))
-		if (!rc->scene.rt->any_hit(shadow_ray))
+		if (!rc.scene.rt->any_hit(shadow_ray))
 			return l_col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, hit.ns) / (pdf * l_pdf);
 	return vec3(0);
 #endif
@@ -166,10 +165,10 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_A05
 vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_A06
-	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
+	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc.rng.uniform_float2());
 	ray light_ray(hit.x, w_i);
-	if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
-		if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
+	if (auto is = rc.scene.rt->closest_hit(light_ray); is.valid())
+		if (diff_geom hit_geom(is, rc.scene); hit_geom.mat->emissive != vec3(0))
 			return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 	return vec3(0);
 #else

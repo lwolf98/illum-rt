@@ -20,6 +20,9 @@
 #ifndef RTGI_A04
 #include "gi/direct.h"
 #endif
+#ifndef RTGI_A07_REF
+#include "gi/pt.h"
+#endif
 
 #include <iostream>
 #include <sstream>
@@ -130,17 +133,20 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			string name;
 			in >> name;
 			gi_algorithm *a = nullptr;
-			if (name == "primary")      a = new primary_hit_display;
+			if (name == "primary")      a = new primary_hit_display(rc);
 #ifndef RTGI_A02
-			else if (name == "local")  a = new local_illumination;
+			else if (name == "local")  a = new local_illumination(rc);
 #endif
 #ifndef RTGI_A04
-			else if (name == "direct")  a = new direct_light;
+			else if (name == "direct")  a = new direct_light(rc);
 #endif
 #ifndef RTGI_A07
-			else if (name == "direct/mis")  a = new direct_light_mis;
+			else if (name == "direct/mis")  a = new direct_light_mis(rc);
 #elif !defined(RTGI_A06)
 			// todo: set up mis algorithm here
+#endif
+#ifndef RTGI_A07_REF
+			else if (name == "simple-pt")  a = new simple_pt(rc);
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
 			if (a) {
