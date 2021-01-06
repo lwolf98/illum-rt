@@ -90,18 +90,33 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 		else ifcmd("exit")
 			return;
 		else ifcmd("at") {
+			in.get();
+			if (in.eof()) {
+				cout << scene.camera.pos << endl;
+				continue;
+			}
 			in >> tmp;
 			check_in_complete("Syntax error, requires 3 numerical components");
 			scene.camera.pos = tmp;
 			cam_has_pos = true;
 		}
 		else ifcmd("look") {
+			in.get();
+			if (in.eof()) {
+				cout << scene.camera.dir << endl;
+				continue;
+			}
 			in >> tmp;
 			check_in_complete("Syntax error, requires 3 numerical components");
 			scene.camera.dir = tmp;
 			cam_has_dir = true;
 		}
 		else ifcmd("up") {
+			in.get();
+			if (in.eof() && scene_up_set) {
+				cout << scene.up << endl;
+				continue;
+			}
 			if (scene_up_set)
 				error("Cannot set scene up vector twice, did you mean camup?");
 			in >> tmp;
@@ -114,6 +129,11 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			}
 		}
 		else ifcmd("camup") {
+			in.get();
+			if (in.eof()) {
+				cout << scene.camera.up << endl;
+				continue;
+			}
 			in >> tmp;
 			check_in_complete("Syntax error, requires 3 numerical components");
 			scene.camera.up = tmp;
@@ -343,12 +363,28 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #endif
 #ifndef RTGI_AXX
 		else ifcmd("skylight") {
-			float scale;
-			string file;
-			in >> file >> scale;
-			check_in_complete("Syntax error: skylight filename intensity-scale (note: filename is not allowed to contain spaces)");
-			delete scene.sky;
-			scene.sky = new skylight(file, scale);
+			string sub;
+			in >> sub;
+			if (sub == "load") {
+				float scale;
+				string file;
+				in >> file >> scale;
+				check_in_complete("Syntax error: skylight load filename intensity-scale (note: filename is not allowed to contain spaces)");
+				delete scene.sky;
+				scene.sky = new skylight(file, scale);
+			}
+			else if (sub == "scale") {
+				float scale;
+				in >> scale;
+				check_in_complete("Syntax error: skylight scale new-scale-value");
+				if (!scene.sky)
+					error("There is no skylight to scale");
+				if (scale <= 0)
+					error("Intensity scale has to be a value > 0");
+				scene.sky->intensity_scale = scale;
+			}
+			else
+				error("No such skylight subcommand");
 		}
 		else ifcmd("skytest") {
 			string file;

@@ -191,10 +191,17 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 #ifndef RTGI_A04
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
+#ifndef RTGI_AXX
+	if (prims == 0 && !sky) {
+		std::cerr << "WARNING: There is neither emissive geometry nor a skylight" << std::endl;
+		return;
+	}
+#else
 	if (prims == 0) {
 		std::cerr << "WARNING: There is no emissive geometry" << std::endl;
 		return;
 	}
+#endif
 	if (verbose_scene) cout << "light distribution of " << prims << " triangles" << endl;
 	for (auto l : lights) delete l;
 	lights.clear();
