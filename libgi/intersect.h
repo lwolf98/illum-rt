@@ -1,7 +1,6 @@
 #pragma once
 
 #include "rt.h"
-#include "scene.h"
 
 struct aabb {
 	vec3 min, max;

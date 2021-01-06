@@ -3,7 +3,8 @@ noinst_LIBRARIES = libgi.a
 libgi_a_CXXFLAGS = $(WAND_CFLAGS)
 #libgi_a_LIBADD = $(WAND_LIBS)
 
-libgi_a_SOURCES = 	camera.cpp \
+libgi_a_SOURCES = 	algorithm.cpp \
+					camera.cpp \
 					framebuffer.cpp \
 					random.cpp \
 					rt.cpp \

@@ -27,7 +27,17 @@ class render_context;
  *
  */
 class gi_algorithm {
+protected:
+	const render_context &rc;
+#ifndef RTGI_A07_REF
+	// maybe these should go into a seperate with_importance_sampling mixin...
+	std::tuple<ray,float> sample_uniform_direction(const diff_geom &hit) const;
+	std::tuple<ray,float> sample_cosine_distributed_direction(const diff_geom &hit) const;
+	std::tuple<ray,float> sample_brdf_distributed_direction(const diff_geom &hit, const ray &to_hit) const;
+#endif
+
 public:
+	gi_algorithm(const render_context &rc) : rc(rc) {}
 	typedef std::vector<pair<vec3, vec2>> sample_result;
 
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
