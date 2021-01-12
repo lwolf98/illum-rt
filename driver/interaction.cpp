@@ -7,6 +7,7 @@
 #include "interaction.h"
 #include "cmdline.h"
 
+#include "libgi/timer.h"
 #include "libgi/scene.h"
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
@@ -50,6 +51,7 @@ const char *prompt = "rtgi > ";
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
 void run(render_context &rc, gi_algorithm *algo);
+void rt_bench(render_context &rc);
 
 void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 	bool cam_has_pos = false,
@@ -188,6 +190,19 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			if (uc.accel_touched_at < uc.scene_touched_at)
 				error("The current acceleration structure is out-dated");
 			run(rc, algo);
+		}
+		else ifcmd("rt_bench") {
+#ifndef WITH_STATS		
+			if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0)
+				error("We have to have a scene loaded, a ray tracer set, an acceleration structure built prior to running");
+			if (uc.accel_touched_at < uc.tracer_touched_at)
+				error("The current tracer does (might?) not have an up-to-date acceleration structure");
+			if (uc.accel_touched_at < uc.scene_touched_at)
+				error("The current acceleration structure is out-dated");
+			rt_bench(rc);
+#else
+			cerr << "ERROR: cannot run rt-bench when WITH_STATS is defined" << endl;
+#endif
 		}
 		else ifcmd("mesh") {
 			string name, cmd;

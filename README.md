@@ -81,3 +81,7 @@ Im Zweifel, oder wenn meine Stilbeschreibung unterspezifiziert ist, schauen Sie 
 Es wird ein Separates Dokument geben das den Stil beschreibt und auch darauf eingeht wie und wann Sie ohne große Konsequenz davon abweichen können.
 Hier geht es nicht darum Ihnen meine Sicht der Welt aufzudrücken, sondern nachfolgenden Studis eine konsistente Codebasis zur Verfügung zu stellen. Erfahrungsgemäß macht das die Einarbeitung etwas einfacher.
 
+## BVH Export
+
+Die verwendeten AABBs (bisher nur für Binary BVHs) können mit dem Kommando `bvh export TIEFE DATEINAME.obj` als OBJ-Datei exportiert, und in Blender zur Veranschaulichung importiert werden.
+Hierbei muss das export Kommando nach dem `commit` stehen. Wenn beim Import in Blender die Einstellungen `Split by Group` gesetzt wird, ist es möglich die verschiedenen Tiefen/Level der BVH ein- und auszublenden. Mit `Z` kann in Blender zwischen Solid und Wireframe Ansicht gewechselt werden.
