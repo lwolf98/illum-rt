@@ -61,4 +61,3 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 	return result;
 }
 #endif
-

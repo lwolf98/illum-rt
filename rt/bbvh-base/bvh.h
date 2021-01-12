@@ -43,9 +43,15 @@ struct binary_bvh_tracer : public ray_tracer {
 	};
 
 	std::vector<node> nodes;
-	enum binary_split_type {sm, om};
-	enum binary_split_type binary_split_type = om;
+	enum binary_split_type {sm, om, sah};
+	binary_split_type  binary_split_type = om;
+	enum triangles_per_node {single, multiple};
+	triangles_per_node  triangles_per_node = single;
+	int max_triangles_per_node;
+	int number_of_planes;
 	uint32_t root;
+	bool should_export = false;
+	uint32_t max_depth;
 	binary_bvh_tracer();
 	void build(::scene *scene) override;
 	triangle_intersection closest_hit(const ray &ray) override;
@@ -54,5 +60,8 @@ struct binary_bvh_tracer : public ray_tracer {
 private:
 	uint32_t subdivide_om(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
 	uint32_t subdivide_sm(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
+	uint32_t subdivide_sah(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
+	void print_node_stats();
+	void export_bvh(uint32_t node, uint32_t *id, uint32_t depth, std::string *filename);
 };
 

@@ -89,5 +89,5 @@ struct raii_timer {
 #ifdef WITH_STATS
 #define time_this_block(name) raii_timer raii_timer__##name(#name)
 #else
-#define time_thid_block(name)
+#define time_this_block(name)
 #endif
