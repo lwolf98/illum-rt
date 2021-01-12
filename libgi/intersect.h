@@ -9,7 +9,7 @@ struct aabb {
 		min = glm::min(v, min);
 		max = glm::max(v, max);
 	}
-	void grow(aabb other) {
+	void grow(const aabb &other) {
 		min = glm::min(other.min, min);
 		max = glm::max(other.max, max);
 	}

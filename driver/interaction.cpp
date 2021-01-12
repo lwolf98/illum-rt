@@ -198,7 +198,17 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			if (name == "seq") scene.rt = new seq_tri_is;
 #ifndef RTGI_A01
 			else if (name == "naive-bvh") scene.rt = new naive_bvh;
-			else if (name == "bbvh") scene.rt = new binary_bvh_tracer;
+			else if (name == "bbvh") {
+				in >> name;
+				if (in.eof())
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat>;
+				if (name == "flat")
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat>;
+				else if (name == "indexed")
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed>;
+				else
+					error("There is no such bbvh variant");
+			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");
 			uc.tracer_touched_at = uc.cmdid;
