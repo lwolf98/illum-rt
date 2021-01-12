@@ -29,12 +29,13 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::buil
 	// convert triangles to boxes
 	std::vector<prim> prims(scene->triangles.size());
 	std::vector<uint32_t> index(prims.size());
-	for (int i = 0; i < prims.size(); ++i) {
+	for (int i = 0; i < prims.size(); ++i) {	// i think we could use just plain boxes
 		prims[i].grow(scene->vertices[scene->triangles[i].a].pos);
 		prims[i].grow(scene->vertices[scene->triangles[i].b].pos);
 		prims[i].grow(scene->vertices[scene->triangles[i].c].pos);
-		index[i] = i;
 	}
+
+	early_split_clipping(prims, index);
 
 	if (binary_split_type == om) {
 		root = subdivide_om(prims, index, 0, scene->triangles.size());
@@ -52,7 +53,99 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::buil
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
 	std::cout << "Done after " << duration << "ms" << std::endl;
 }
+
+std::vector<aabb> split(std::vector<vec3> poly, float threshold) {
+	auto area = [&](const aabb &box) {
+		vec3 extent = box.max - box.min;
+		return (2*(extent.x*extent.y+extent.x*extent.z+extent.y*extent.z));
+	};
+
+	aabb b;
+	for (vec3 v : poly) b.grow(v);
+	assert(area(b) > 0);
+	if (area(b) <= threshold)
+		return {b};
+	vec3 ext = b.max - b.min;
+	float largest = max(ext.x, max(ext.y, ext.z));
+	auto c = (largest == ext.x) ? [](const vec3 &v) { return v.x; }
+	                            : (largest == ext.y) ? [](const vec3 &v) { return v.y; }
+								                     : [](const vec3 &v) { return v.z; };
+	float center = (c(b.max) + c(b.min)) * 0.5f;
 	
+	// find adjacent vertices that cross the split plane
+	bool last_left = c(poly[0]) < center;
+	int cross_first = -1, cross_second = -1;
+	for (int i = 0; i < poly.size(); ++i) {
+		bool left = c(poly[i]) < center;
+		if (left != last_left)
+			if (cross_first == -1)
+				cross_first = i-1;
+			else
+				cross_second = i-1;
+		last_left = left;
+	}
+	if (cross_second == -1) cross_second = poly.size()-1;
+	assert(cross_first != -1);
+
+	// compute intersection points on the split plane
+	auto intersection_point = [&](int a) {
+		float delta = center - c(poly[a]);
+		int b = a+1 < poly.size() ? a+1 : 0;
+		return poly[a] + (poly[b] - poly[a])  * (delta / (c(poly[b]) - c(poly[a])));
+	};
+
+	vec3 cross1 = intersection_point(cross_first);
+	vec3 cross2 = intersection_point(cross_second);
+	std::vector<vec3> poly1, poly2;
+	for (int i = 0; i <= cross_first; ++i) poly1.push_back(poly[i]);
+	poly1.push_back(cross1);
+	poly2.push_back(cross1);
+	for (int i = cross_first+1; i <= cross_second; ++i) poly2.push_back(poly[i]);
+	poly2.push_back(cross2);
+	poly1.push_back(cross2);
+	for (int i = cross_second+1; i < poly.size(); ++i) poly1.push_back(poly[i]);
+
+	auto sub1 = split(poly1, threshold);
+	auto sub2 = split(poly2, threshold);
+	sub1.insert(sub1.end(), sub2.begin(), sub2.end());
+	return sub1;
+}
+
+template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::early_split_clipping(std::vector<prim> &prims, std::vector<uint32_t> &index) {
+	std::vector<prim> stats = prims;
+	auto area = [&](const prim &box) {
+		vec3 extent = box.max - box.min;
+		return (2*(extent.x*extent.y+extent.x*extent.z+extent.y*extent.z));
+	};
+	std::sort(std::begin(stats), std::end(stats), [&](const prim &a, const prim &b) { return area(a) < area(b); });
+	float first = area(stats[0]);
+	float last  = area(stats[stats.size()-1]);
+	float q1 = area(stats[stats.size()/4]);
+	float q2 = area(stats[stats.size()/2]);
+	float q3 = area(stats[3*stats.size()/4]);
+	std::cout << first << "     [" << q1 << "   " << q2 << "   " << q3 << "]     " << last << std::endl;
+
+	float thres = q3;
+
+	std::vector<vec3> test { vec3(5,4,0), vec3(6,2,0), vec3(0,0,0), vec3(2,2,0), vec3(2,5,0.1) };
+	split(test, 4);
+	exit(0);
+	
+	int N = prims.size(); // we modify the array as we go, but are only interested in the original elements
+	for (int i = 0; i < N; ++i) {
+		std::vector<vec3> poly;
+		poly.push_back(scene->vertices[scene->triangles[i].a].pos);
+		poly.push_back(scene->vertices[scene->triangles[i].b].pos);
+		poly.push_back(scene->vertices[scene->triangles[i].c].pos);
+		std::vector<aabb> generated = split(poly, thres);
+		prims[i] = prim(generated[0]);
+		for (int j = 1; j < generated.size(); ++j) {
+			prims.push_back(prim(generated[j]));
+			index.push_back(i); // they all refer to the same triangle
+		}
+	}
+}
+
 template<bbvh_triangle_layout tr_layout>
 template<bbvh_triangle_layout LO> 
 typename std::enable_if<LO==bbvh_triangle_layout::flat,void>::type binary_bvh_tracer<tr_layout>::commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index) {

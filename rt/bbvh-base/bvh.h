@@ -44,7 +44,8 @@ template<bbvh_triangle_layout tr_layout> struct binary_bvh_tracer : public ray_t
 	};
 
 	struct prim : public aabb {
-		uint32_t index;
+		prim() {}
+		prim(const aabb &box) : aabb(box) {}
 		vec3 center() const { return (min+max)*0.5f; }
 	};
 
@@ -74,6 +75,7 @@ template<bbvh_triangle_layout tr_layout> struct binary_bvh_tracer : public ray_t
 	bool interprete(const std::string &command, std::istringstream &in) override;
 
 private:
+	void early_split_clipping(std::vector<prim> &prims, std::vector<uint32_t> &index);
 	uint32_t subdivide_om(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
 	uint32_t subdivide_sm(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
 	uint32_t subdivide_sah(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
