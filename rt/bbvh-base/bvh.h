@@ -27,7 +27,9 @@ private:
 };
 
 enum class bbvh_triangle_layout { flat, indexed };
-template<bbvh_triangle_layout tr_layout> struct binary_bvh_tracer : public ray_tracer {
+enum class bbvh_esc_mode { off, on };
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+struct binary_bvh_tracer : public ray_tracer {
 	/* Innere und Blattknoten werden durch trickserei unterschieden.
 	 * Für Blattknoten gilt:
 	 * - link_l = -tri_offset
@@ -44,22 +46,20 @@ template<bbvh_triangle_layout tr_layout> struct binary_bvh_tracer : public ray_t
 	};
 
 	struct prim : public aabb {
-		prim() {}
-		prim(const aabb &box) : aabb(box) {}
+		prim() : aabb() {}
+		prim(const aabb &box, uint32_t tri_index) : aabb(box), tri_index(tri_index) {}
 		vec3 center() const { return (min+max)*0.5f; }
+		uint32_t tri_index;
 	};
 
 	template<bool cond, typename T>
     using variant = typename std::enable_if<cond, T>::type;
 
 	std::vector<node> nodes;
-	
-	std::vector<triangle> triangle_copy;	// can be empty if we use the scene's triangles
-	std::vector<uint32_t> index;			// can be empty if we don't use indexing
+	std::vector<uint32_t> index;  // can be empty if we don't use indexing
 	
 	enum binary_split_type {sm, om, sah};
 	binary_split_type binary_split_type = om;
-	bool esc = false;
 	
 	int max_triangles_per_node = 1;
 
@@ -91,6 +91,7 @@ private:
 	variant<LO!=bbvh_triangle_layout::flat,void>
 		commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index);
 
+	// Get triangle index (if an index is used)
 	template<bbvh_triangle_layout LO=tr_layout> 
 	variant<LO==bbvh_triangle_layout::flat, int>
 		triangle_index(int i) {

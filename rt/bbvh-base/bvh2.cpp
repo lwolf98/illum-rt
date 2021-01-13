@@ -7,6 +7,9 @@
 #include <fstream>
 #include <chrono>
 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+
 #define K_T 1
 #define K_I 1
 #define error(x) { std::cerr << "command " << " (" << command << "): " << x << std::endl; return true;}
@@ -17,10 +20,12 @@ using namespace glm;
 //    a more realistic binary bvh
 //
 
-template<bbvh_triangle_layout tr_layout> binary_bvh_tracer<tr_layout>::binary_bvh_tracer() {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+binary_bvh_tracer<tr_layout, esc_mode>::binary_bvh_tracer() {
 }
 
-template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::build(::scene *scene) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+void binary_bvh_tracer<tr_layout, esc_mode>::build(::scene *scene) {
 	time_this_block(build_bvh);
 	this->scene = scene;
 	std::cout << "Building BVH..." << std::endl;
@@ -29,23 +34,26 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::buil
 	// convert triangles to boxes
 	std::vector<prim> prims(scene->triangles.size());
 	std::vector<uint32_t> index(prims.size());
-	for (int i = 0; i < prims.size(); ++i) {	// i think we could use just plain boxes
+	for (int i = 0; i < prims.size(); ++i) {
 		prims[i].grow(scene->vertices[scene->triangles[i].a].pos);
 		prims[i].grow(scene->vertices[scene->triangles[i].b].pos);
 		prims[i].grow(scene->vertices[scene->triangles[i].c].pos);
+		prims[i].tri_index = i; // with esc, this is different form the box index
+		index[i] = i;
 	}
 
-	early_split_clipping(prims, index);
+	if (esc_mode == bbvh_esc_mode::on)
+		early_split_clipping(prims, index);
 
 	if (binary_split_type == om) {
-		root = subdivide_om(prims, index, 0, scene->triangles.size());
+		root = subdivide_om(prims, index, 0, prims.size());
 	}
 	else if (binary_split_type == sm) {
-		root = subdivide_sm(prims, index, 0, scene->triangles.size());
+		root = subdivide_sm(prims, index, 0, prims.size());
 	}
-// 	else if(binary_split_type == sah) {
-// 		root = subdivide_sah(prims, index, 0, scene->triangles.size());
-// 	}
+	else if(binary_split_type == sah) {
+		root = subdivide_sah(prims, index, 0, prims.size());
+	}
 
 	commit_shuffled_triangles(prims, index);
 
@@ -62,7 +70,6 @@ std::vector<aabb> split(std::vector<vec3> poly, float threshold) {
 
 	aabb b;
 	for (vec3 v : poly) b.grow(v);
-	assert(area(b) > 0);
 	if (area(b) <= threshold)
 		return {b};
 	vec3 ext = b.max - b.min;
@@ -105,13 +112,21 @@ std::vector<aabb> split(std::vector<vec3> poly, float threshold) {
 	poly1.push_back(cross2);
 	for (int i = cross_second+1; i < poly.size(); ++i) poly1.push_back(poly[i]);
 
+	unique(poly1.begin(), poly1.end());
+	unique(poly2.begin(), poly2.end());
+
 	auto sub1 = split(poly1, threshold);
 	auto sub2 = split(poly2, threshold);
-	sub1.insert(sub1.end(), sub2.begin(), sub2.end());
-	return sub1;
+// 	sub1.insert(sub1.end(), sub2.begin(), sub2.end());
+// 	return sub1;
+	std::vector<aabb> res;
+	for (auto x : sub1) res.push_back(x);
+	for (auto x : sub2) res.push_back(x);
+	return res;
 }
 
-template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::early_split_clipping(std::vector<prim> &prims, std::vector<uint32_t> &index) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+void binary_bvh_tracer<tr_layout, esc_mode>::early_split_clipping(std::vector<prim> &prims, std::vector<uint32_t> &index) {
 	std::vector<prim> stats = prims;
 	auto area = [&](const prim &box) {
 		vec3 extent = box.max - box.min;
@@ -126,50 +141,54 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::earl
 	std::cout << first << "     [" << q1 << "   " << q2 << "   " << q3 << "]     " << last << std::endl;
 
 	float thres = q3;
+	//thres = 8;
 
-	std::vector<vec3> test { vec3(5,4,0), vec3(6,2,0), vec3(0,0,0), vec3(2,2,0), vec3(2,5,0.1) };
-	split(test, 4);
-	exit(0);
+// 	std::vector<vec3> test { vec3(5,4,0), vec3(6,2,0), vec3(0,0,0), vec3(2,2,0), vec3(2,5,0.1) };
+// 	split(test, 4);
 	
+	auto pbox = [&](aabb b) {
+		std::cout << "[ " << glm::to_string(b.min) << "\t|  "<< glm::to_string(b.max) << " ]" << std::endl;
+	};
 	int N = prims.size(); // we modify the array as we go, but are only interested in the original elements
 	for (int i = 0; i < N; ++i) {
 		std::vector<vec3> poly;
-		poly.push_back(scene->vertices[scene->triangles[i].a].pos);
-		poly.push_back(scene->vertices[scene->triangles[i].b].pos);
-		poly.push_back(scene->vertices[scene->triangles[i].c].pos);
+		poly.push_back(scene->vertices[scene->triangles[index[i]].a].pos);
+		poly.push_back(scene->vertices[scene->triangles[index[i]].b].pos);
+		poly.push_back(scene->vertices[scene->triangles[index[i]].c].pos);
 		std::vector<aabb> generated = split(poly, thres);
-		prims[i] = prim(generated[0]);
+// 		for (int j = 0; j < generated.size(); ++j)
+// 			pbox(generated[j]);
+		prims[i] = prim(generated[0], i);
 		for (int j = 1; j < generated.size(); ++j) {
-			prims.push_back(prim(generated[j]));
-			index.push_back(i); // they all refer to the same triangle
+			prims.push_back(prim(generated[j], i));
+			index.push_back(prims.size()-1); // they all refer to the same triangle
 		}
 	}
+	std::cout << "ESC " << N << " --> " << prims.size() << " primitives" << std::endl;
 }
 
-template<bbvh_triangle_layout tr_layout>
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 template<bbvh_triangle_layout LO> 
-typename std::enable_if<LO==bbvh_triangle_layout::flat,void>::type binary_bvh_tracer<tr_layout>::commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index) {
-	std::vector<triangle> new_tris(scene->triangles.size());
+typename std::enable_if<LO==bbvh_triangle_layout::flat,void>::type binary_bvh_tracer<tr_layout, esc_mode>::commit_shuffled_triangles(std::vector<prim> &prims,
+																																	 std::vector<uint32_t> &index) {
+	std::vector<triangle> new_tris(index.size());
 	for (int i = 0; i < new_tris.size(); ++i)
 		new_tris[i] = scene->triangles[index[i]];
-	if (!esc) {
-		scene->triangles = std::move(new_tris);
-	}
-	else {
-		throw std::logic_error("This branch is not implemented yet -- and will complicate matters by making ESC a template argument");
-	}
+	scene->triangles = std::move(new_tris);
 }
 
-template<bbvh_triangle_layout tr_layout>
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 template<bbvh_triangle_layout LO> 
-typename std::enable_if<LO!=bbvh_triangle_layout::flat,void>::type binary_bvh_tracer<tr_layout>::commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index) {
+typename std::enable_if<LO!=bbvh_triangle_layout::flat,void>::type binary_bvh_tracer<tr_layout, esc_mode>::commit_shuffled_triangles(std::vector<prim> &prims,
+																																	 std::vector<uint32_t> &index) {
+	if (esc_mode == bbvh_esc_mode::on)
+		for (int i = 0; i < index.size(); ++i)
+			index[i] = prims[index[i]].tri_index;
 	this->index = std::move(index);
-	if (esc) {
-	}
 }
 
-template<bbvh_triangle_layout tr_layout>
-uint32_t binary_bvh_tracer<tr_layout>::subdivide_om(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_om(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
 #ifndef RTGI_A02
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
@@ -219,7 +238,8 @@ uint32_t binary_bvh_tracer<tr_layout>::subdivide_om(std::vector<prim> &prims, st
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout> uint32_t binary_bvh_tracer<tr_layout>::subdivide_sm(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sm(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
 #ifndef RTGI_A02
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
@@ -287,7 +307,8 @@ template<bbvh_triangle_layout tr_layout> uint32_t binary_bvh_tracer<tr_layout>::
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout> uint32_t binary_bvh_tracer<tr_layout>::subdivide_sah(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sah(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
 
@@ -401,7 +422,8 @@ template<bbvh_triangle_layout tr_layout> uint32_t binary_bvh_tracer<tr_layout>::
 	return id;
 }
 
-template<bbvh_triangle_layout tr_layout> triangle_intersection binary_bvh_tracer<tr_layout>::closest_hit(const ray &ray) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const ray &ray) {
 	time_this_block(closest_hit);
 #ifndef RTGI_A02
 	triangle_intersection closest, intersection;
@@ -456,7 +478,8 @@ template<bbvh_triangle_layout tr_layout> triangle_intersection binary_bvh_tracer
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout> bool binary_bvh_tracer<tr_layout>::any_hit(const ray &ray) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
 	time_this_block(any_hit);
 #ifndef RTGI_A02
 	triangle_intersection intersection;
@@ -485,7 +508,8 @@ template<bbvh_triangle_layout tr_layout> bool binary_bvh_tracer<tr_layout>::any_
 		}
 		else {
 			for (int i = 0; i < node.tri_count(); ++i) {
-				if (intersect(scene->triangles[node.tri_offset()+i], scene->vertices.data(), ray, intersection))
+				int tri_idx = triangle_index(node.tri_offset()+i);
+				if (intersect(scene->triangles[tri_idx], scene->vertices.data(), ray, intersection))
 					return true;
 			}
 		}
@@ -498,7 +522,8 @@ template<bbvh_triangle_layout tr_layout> bool binary_bvh_tracer<tr_layout>::any_
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout> bool binary_bvh_tracer<tr_layout>::interprete(const std::string &command, std::istringstream &in) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+bool binary_bvh_tracer<tr_layout, esc_mode>::interprete(const std::string &command, std::istringstream &in) {
 	std::string value;
 	if (command == "bvh") {
 		in >> value;
@@ -551,7 +576,8 @@ template<bbvh_triangle_layout tr_layout> bool binary_bvh_tracer<tr_layout>::inte
 	return false;
 }
 
-template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::export_bvh(uint32_t node_id, uint32_t *id, uint32_t depth, std::string *filename) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+void binary_bvh_tracer<tr_layout, esc_mode>::export_bvh(uint32_t node_id, uint32_t *id, uint32_t depth, std::string *filename) {
 	using namespace std;
 	auto export_aabb = [&](const aabb box, const uint32_t vert[]) {
 		ofstream out(*filename, ios::app);
@@ -592,7 +618,8 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::expo
 	}
 }
 
-template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::print_node_stats() {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+void binary_bvh_tracer<tr_layout, esc_mode>::print_node_stats() {
 	std::vector<int> leaf_nodes;
 	uint32_t total_triangles = 0;
 	uint32_t number_of_leafs = 0;
@@ -625,6 +652,7 @@ template<bbvh_triangle_layout tr_layout> void binary_bvh_tracer<tr_layout>::prin
 }
 
 // trigger the two variants of interest to be generated
-template class binary_bvh_tracer<bbvh_triangle_layout::flat>;
-template class binary_bvh_tracer<bbvh_triangle_layout::indexed>;
+template class binary_bvh_tracer<bbvh_triangle_layout::flat,    bbvh_esc_mode::off>;
+template class binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>;
+template class binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>;
 

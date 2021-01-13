@@ -199,13 +199,20 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #ifndef RTGI_A01
 			else if (name == "naive-bvh") scene.rt = new naive_bvh;
 			else if (name == "bbvh") {
-				in >> name;
-				if (in.eof())
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat>;
-				if (name == "flat")
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat>;
-				else if (name == "indexed")
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed>;
+				string tag1, tag2;
+				in >> tag1 >> tag2;
+				bool flat = true;
+				bool esc = false;
+				if (tag1 == "indexed" || tag2 == "indexed") flat = false;
+				if (tag1 == "esc" || tag2 == "esc") esc = true;
+				if (flat && !esc)
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>;
+				else if (!flat && !esc)
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>;
+				else if (!flat && esc)
+					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>;
+				else if (flat && esc)
+					error("This combination is technically problematic")
 				else
 					error("There is no such bbvh variant");
 			}
