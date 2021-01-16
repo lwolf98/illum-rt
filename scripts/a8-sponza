@@ -5,12 +5,12 @@ up 0 1 0
 #load /home/kai/lehre/cg/gl/cg/render-data/models/sponza/sponza.fixed.obj
 load render-data/sponza/sponza.fixed.obj
 #load render-data/sibenik/sibenik.obj
-raytracer bbvh
-skylight load render-data/skylight-day.floats 5
+raytracer bbvh indexed esc
+skylight load render-data/skylight-day.floats 30
 
 commit
 algo direct/mis
-sppx 32
+sppx 512
 resolution 320 180
 #resolution 640 360
 

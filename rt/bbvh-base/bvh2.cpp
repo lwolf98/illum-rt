@@ -112,8 +112,8 @@ std::vector<aabb> split(std::vector<vec3> poly, float threshold) {
 	poly1.push_back(cross2);
 	for (int i = cross_second+1; i < poly.size(); ++i) poly1.push_back(poly[i]);
 
-	unique(poly1.begin(), poly1.end());
-	unique(poly2.begin(), poly2.end());
+	poly1.erase(unique(poly1.begin(), poly1.end()), poly1.end());
+	poly2.erase(unique(poly2.begin(), poly2.end()), poly2.end());
 
 	auto sub1 = split(poly1, threshold);
 	auto sub2 = split(poly2, threshold);
@@ -140,7 +140,8 @@ void binary_bvh_tracer<tr_layout, esc_mode>::early_split_clipping(std::vector<pr
 	float q3 = area(stats[3*stats.size()/4]);
 	std::cout << first << "     [" << q1 << "   " << q2 << "   " << q3 << "]     " << last << std::endl;
 
-	float thres = q3;
+	float q = area(stats[9*stats.size()/10]);
+	float thres = q;
 	//thres = 8;
 
 // 	std::vector<vec3> test { vec3(5,4,0), vec3(6,2,0), vec3(0,0,0), vec3(2,2,0), vec3(2,5,0.1) };
@@ -155,6 +156,7 @@ void binary_bvh_tracer<tr_layout, esc_mode>::early_split_clipping(std::vector<pr
 		poly.push_back(scene->vertices[scene->triangles[index[i]].a].pos);
 		poly.push_back(scene->vertices[scene->triangles[index[i]].b].pos);
 		poly.push_back(scene->vertices[scene->triangles[index[i]].c].pos);
+		
 		std::vector<aabb> generated = split(poly, thres);
 // 		for (int j = 0; j < generated.size(); ++j)
 // 			pbox(generated[j]);
