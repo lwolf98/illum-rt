@@ -114,6 +114,7 @@ struct skylight : public light {
 	vec3 Le(const ray &ray) const;
 	virtual vec3 power() const;
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const;
+	float pdf_Li(const ray &ray) const;
 };
 
 #endif

@@ -126,6 +126,17 @@ inline bool same_hemisphere(const vec3 &N, const vec3 &v) {
     return glm::dot(N, v) > 0;
 }
 
+inline vec2 to_spherical(const vec3 &w) {
+    const float theta = acosf(w.y);
+    const float phi = atan2f(w.z, w.x);
+    return vec2(glm::clamp(theta, 0.f, pi), phi < 0.f ? phi + 2.0f * pi : phi);
+}
+
+inline vec3 to_cartesian(const vec2 &w) {
+    const float sin_t = sinf(w.x);
+    return vec3(sin_t * cosf(w.y), sin_t * sinf(w.y), cosf(w.x));
+}
+
 
 /*! align vector v with given axis (e.g. to transform a tangent space sample along a world normal)
  *  \attention parameter-order inverted with regards to niho's code

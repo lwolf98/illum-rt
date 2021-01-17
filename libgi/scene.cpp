@@ -387,6 +387,13 @@ tuple<ray, vec3, float> skylight::sample_Li(const diff_geom &from, const vec2 &x
 	return { r, tex->sample(uv) * intensity_scale, pdf };
 }
 
+float skylight::pdf_Li(const ray &ray) const {
+    const vec2 spherical = to_spherical(ray.d);
+    const float sin_t = sinf(spherical.x);
+    if (sin_t <= 0.f) return 0.f;
+    return distribution->pdf(vec2(spherical.y * one_over_2pi, spherical.x * one_over_pi)) / (2.f * pi * pi * sin_t);
+}
+
 vec3 skylight::Le(const ray &ray) const {
     float u = atan2f(ray.d.z, ray.d.x) / (2 * M_PI);
     float v = acosf(ray.d.y) / M_PI;
