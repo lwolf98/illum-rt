@@ -19,6 +19,8 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc.scene);
+			flip_normals_to_ray(dg, view_ray);
+
 #ifndef RTGI_A05
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
@@ -208,6 +210,8 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc.scene);
+			flip_normals_to_ray(dg, view_ray);
+
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
 			}

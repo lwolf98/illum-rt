@@ -37,8 +37,10 @@ look 1 0 -0.4
 #at -516 300 0
 #look 1 0 0
 
-algo simple-pt
+#algo direct/mis
+#algo simple-pt
+algo pt
+path bounce brdf
 path mis on
-#path bounce uniform
 sppx 2500
 run

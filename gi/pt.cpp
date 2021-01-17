@@ -39,11 +39,7 @@ vec3 simple_pt::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc.scene);
-		if (same_hemisphere(ray.d, hit.ns)) {
-			hit.ng *= -1;
-			hit.ns *= -1;
-		}
-
+		flip_normals_to_ray(hit, ray);
 		
 		// if it is a light, add the light's contribution
 		if (hit.mat->emissive != vec3(0)) {
@@ -142,10 +138,7 @@ vec3 pt_nee::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc.scene);
-		if (same_hemisphere(ray.d, hit.ns)) {
-			hit.ng *= -1;
-			hit.ns *= -1;
-		}
+		flip_normals_to_ray(hit, ray);
 
 		// if it is a light AND we have not bounced yet, add the light's contribution
 		if (i == 0 && hit.mat->emissive != vec3(0)) {
