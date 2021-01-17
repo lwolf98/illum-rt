@@ -203,10 +203,11 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	const vec3 H = normalize(w_o + w_i);
 	const float NdotH = cdot(geom.ns, H);
-	const float HdotV = cdot(H, w_o);
+	const float HdotV = dot(H, w_o);
 	const float D = ggx_d(NdotH, geom.mat->roughness);
 	const float pdf = ggx_pdf(D, NdotH, HdotV);
 	assert(pdf >= 0);
+	assert(std::isfinite(pdf));
 	return pdf;
 }
 
@@ -220,8 +221,6 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 	assert(same_hemisphere(geom.ns, w_h));
 	assert(same_hemisphere(geom.ns, w_o));
 	float sample_pdf = pdf(geom, w_o, w_i);
-	assert(sample_pdf >= 0);
-	assert(std::isfinite(sample_pdf));
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }
 #endif
