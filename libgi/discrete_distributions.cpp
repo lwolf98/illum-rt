@@ -112,8 +112,8 @@ pair<vec2,float> distribution_2d::sample(vec2 xi) const {
 }
 
 float distribution_2d::pdf(vec2 sample) const {
-	assert(sample.x >= 0 && sample.x < 1);
-	assert(sample.y >= 0 && sample.y < 1);
+	assert(sample.x >= 0 && sample.x <= 1); // TODO <= ??
+	assert(sample.y >= 0 && sample.y <= 1);
 	return conditional[int(sample.y*h)].value_at(int(sample.x*w)) / marginal->integral();
 }
 

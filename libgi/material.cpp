@@ -181,18 +181,18 @@ inline float ggx_pdf(float D, float NdotH, float HdotV) {
 vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 #ifndef RTGI_A04
     if (!same_hemisphere(geom.ng, w_i)) return vec3(0);
-    const float NdotV = dot(geom.ns, w_o);
-    const float NdotL = dot(geom.ns, w_i);
+    const float NdotV = cdot(geom.ns, w_o);
+    const float NdotL = cdot(geom.ns, w_i);
     if (NdotV == 0.f || NdotV == 0.f) return vec3(0);
     const vec3 H = normalize(w_o + w_i);
-    const float NdotH = dot(geom.ns, H);
-    const float HdotL = dot(H, w_i);
+    const float NdotH = cdot(geom.ns, H);
+    const float HdotL = cdot(H, w_i);
     const float roughness = geom.mat->roughness;
     const float F = fresnel_dielectric(HdotL, 1.f, geom.mat->ior);
     const float D = ggx_d(NdotH, roughness);
     const float G = ggx_g1(NdotV, roughness) * ggx_g1(NdotL, roughness);
     const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
-    return coat ? vec3(microfacet) : 15.f*geom.albedo() * microfacet;
+    return coat ? vec3(microfacet) : geom.albedo() * microfacet;
 #else
 	// todo full TR Microfacet BRDF, use ggx_d and ggx_g1
 	return vec3(0);
@@ -201,20 +201,26 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 
 #ifndef RTGI_A05
 float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
-    const vec3 H = normalize(w_o + w_i);
-    const float NdotH = dot(geom.ns, H);
-    const float HdotV = dot(H, w_o);
-    const float D = ggx_d(NdotH, geom.mat->roughness);
-    return ggx_pdf(D, NdotH, HdotV);
+	const vec3 H = normalize(w_o + w_i);
+	const float NdotH = cdot(geom.ns, H);
+	const float HdotV = cdot(H, w_o);
+	const float D = ggx_d(NdotH, geom.mat->roughness);
+	const float pdf = ggx_pdf(D, NdotH, HdotV);
+	assert(pdf >= 0);
+	return pdf;
 }
 
 brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
 	// reflect around sampled macro normal w_h
 	const vec3 w_h = align(ggx_sample(xis, geom.mat->roughness), geom.ns);
 	vec3 w_i = 2.0f*w_h*dot(w_h, w_o) - w_o;
-	if (!same_hemisphere(geom.ng, w_i)) return { w_i, vec3(0), 0 };
+	if (!same_hemisphere(geom.ns, w_i)) return { w_i, vec3(0), 0 };
+	assert(same_hemisphere(w_h, w_i));
+	assert(same_hemisphere(w_o, w_h));
+	assert(same_hemisphere(geom.ns, w_h));
+	assert(same_hemisphere(geom.ns, w_o));
 	float sample_pdf = pdf(geom, w_o, w_i);
-	assert(sample_pdf > 0);
+	assert(sample_pdf >= 0);
 	assert(std::isfinite(sample_pdf));
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }
