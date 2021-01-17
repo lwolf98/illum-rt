@@ -126,6 +126,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		if (mat_ai->Get(AI_MATKEY_COLOR_EMISSIVE, col) == AI_SUCCESS) ke = vec4(col.r, col.g, col.b, 1.0f);
 		if (mat_ai->Get(AI_MATKEY_SHININESS,      tmp) == AI_SUCCESS) material.roughness = roughness_from_exponent(tmp);
 		if (mat_ai->Get(AI_MATKEY_REFRACTI,       tmp) == AI_SUCCESS) material.ior = tmp;
+		if (material.ior == 1.0f) material.ior = 1.3;
 		if (luma(kd) > 1e-4) material.albedo = kd;
 		else                 material.albedo = ks;
 		material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
