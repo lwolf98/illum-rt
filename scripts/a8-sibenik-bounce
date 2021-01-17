@@ -3,15 +3,14 @@ at -13 -12 0
 #at 1 -12.5 1
 look 1 0 0
 up 0 1 0
-load render-data/sibenik/sibenik.obj
-load render-data/sibenik/sibenbunny.obj
+load render-data/sibenik/sibenik-nostaklo.obj
 raytracer bbvh
 algo direct
 sppx 64
 #pointlight pos 0 -4 0 col 35 30 26
 #resolution 1280 720
 resolution 960 540
-brdf layered-gtr2
+default-brdf layered-gtr2
 #is mis
 is uniform
 bvh om
@@ -22,6 +21,7 @@ material roughness 0.055
 material ior 2.289
 
 
+skylight load render-data/skylight-sunset.floats 30
 
 
 material select kamen_zid_parapet
@@ -67,19 +67,32 @@ look -1 0 0
 
 
 algo simple-pt
+#algo pt
+
+
+#sppx 2000
+#path rr-start 3
+#path bounce brdf
+#outfile a8-sibenik-RR-3.png
+#run
+#exit
+
+stats print
+stats clear
+
 # --------
-path bounce uniform
+path bounce brdf
 path len 10
 path rr-start 10
 outfile a8-sibenik-RR-1.png
 run
-echo >>>> WITHOUT RR @ 64sppx
+echo >>>> WITHOUT RR @ 640sppx
 stats print
 stats clear
 path rr-start 2
 outfile a8-sibenik-RR-2.png
 run
-echo >>>> WITH RR @ 64sppx
+echo >>>> WITH RR @ 640sppx
 stats print
 stats clear
 

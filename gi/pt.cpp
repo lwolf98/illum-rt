@@ -39,6 +39,11 @@ vec3 simple_pt::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc.scene);
+		if (same_hemisphere(ray.d, hit.ns)) {
+			hit.ng *= -1;
+			hit.ns *= -1;
+		}
+
 		
 		// if it is a light, add the light's contribution
 		if (hit.mat->emissive != vec3(0)) {
@@ -60,6 +65,8 @@ vec3 simple_pt::path(ray ray) {
 			else
 				break;
 		}
+		else if (luma(throughput) == 0)
+			break;
 	}
 	return radiance;
 }
@@ -175,15 +182,15 @@ vec3 pt_nee::path(ray ray) {
 		if (pdf <= 0.0f || luma(throughput) <= 0.0f) break;
 		ray = bounced;
 
-// 		// apply RR
-// 		if (i > rr_start) {
-// 			float xi = uniform_float();
-// 			float p_term = 1.0f - luma(throughput);
-// 			if (xi > p_term)
-// 				throughput *= 1.0f/(1.0f-p_term);
-// 			else
-// 				break;
-// 		}
+		// apply RR
+		if (i > rr_start) {
+			float xi = uniform_float();
+			float p_term = 1.0f - luma(throughput);
+			if (xi > p_term)
+				throughput *= 1.0f/(1.0f-p_term);
+			else
+				break;
+		}
 	}
 	return radiance;
 }
@@ -198,10 +205,11 @@ std::tuple<ray,vec3,float> pt_nee::sample_light(const diff_geom &hit) {
 bool pt_nee::interprete(const std::string &command, std::istringstream &in) {
 	string sub, val;
 	std::istringstream local_in(in.str());
+	local_in >> sub; // remove command that has already been read
 	if (command == "path") {
 		local_in >> sub;
 		if (sub == "mis") {
-			in >> val;
+			local_in >> val;
 			if (val == "on") mis = true;
 			else if (val == "off") mis = false;
 			else cerr << "usage: path mis [on|off]" << endl;

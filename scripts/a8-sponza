@@ -10,14 +10,15 @@ default-brdf layered-gtr2
 load render-data/sponza/sponza.fixed.obj
 #load render-data/sibenik/sibenik.obj
 raytracer bbvh indexed esc
-#skylight load render-data/skylight-day.floats 30
+skylight load render-data/skylight-day.floats 30
 
 material select vase_round.001
 material emissive 760 600 200
+material emissive 0 0 0
 
-#material select floor.001
-#material ior 2.3
-#material roughness 0.05
+material select floor.001
+material ior 2.3
+material roughness 0.05
 
 commit
 algo direct
@@ -33,10 +34,11 @@ look 1 0 -0.4
 
 
 # floor
-at -516 300 0
-look 1 0 0
+#at -516 300 0
+#look 1 0 0
 
-algo pt
+algo simple-pt
+path mis on
 #path bounce uniform
-sppx 250
+sppx 2500
 run
