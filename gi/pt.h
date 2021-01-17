@@ -8,7 +8,7 @@ class simple_pt : public gi_algorithm {
 protected:
 	int max_path_len = 10;
 	int rr_start = 2;  // start RR after this many unrestricted bounces
-	enum class bounce { uniform, cosine, brdf } bounce = bounce::uniform;
+	enum class bounce { uniform, cosine, brdf } bounce = bounce::brdf;
 
 	virtual vec3 path(ray view_ray);
 	std::tuple<ray,float> bounce_ray(const diff_geom &dg, const ray &to_hit);
@@ -23,6 +23,8 @@ public:
 class pt_nee : public simple_pt {
 	vec3 path(ray view_ray) override;
 	std::tuple<ray,vec3,float> sample_light(const diff_geom &hit);
+	bool mis = true;
+// 	bool mis = false;
 public:
 	pt_nee(const render_context &rc) : simple_pt(rc) {}
 	bool interprete(const std::string &command, std::istringstream &in) override;

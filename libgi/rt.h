@@ -68,7 +68,8 @@ class material;
  *  That is, a locally flat, infinitessimally small part of a surface.
  */
 struct diff_geom {
-	const vec3 x, ng, ns;	// position in space, geometric normal, shading normal
+	const vec3 x;           // position in space
+	vec3 ng, ns;            // geometric normal, shading normal, TODO: currently set to be equal!
 	const vec2 tc;          // texture coordinate
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material

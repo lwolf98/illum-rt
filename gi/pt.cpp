@@ -33,8 +33,11 @@ vec3 simple_pt::path(ray ray) {
 		
 		// find hitpoint with scene
 		triangle_intersection closest = rc.scene.rt->closest_hit(ray);
-		if (!closest.valid())
+		if (!closest.valid()) {
+			if (rc.scene.sky)
+				radiance = throughput * rc.scene.sky->Le(ray);
 			break;
+		}
 		diff_geom hit(closest, rc.scene);
 		
 		// if it is a light, add the light's contribution
@@ -116,40 +119,71 @@ vec3 pt_nee::path(ray ray) {
 	time_this_block(pathtrace);
 	vec3 radiance(0);
 	vec3 throughput(1);
+	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {
 		
 		// find hitpoint with scene
 		triangle_intersection closest = rc.scene.rt->closest_hit(ray);
-		if (!closest.valid())
+		if (!closest.valid()) {
+			if (rc.scene.sky)
+				if (!mis)
+					radiance = throughput * rc.scene.sky->Le(ray);
+				else {
+					float light_pdf = rc.scene.sky->pdf_Li(ray);
+					radiance = throughput * rc.scene.sky->Le(ray) * brdf_pdf / (light_pdf+brdf_pdf);
+				}
 			break;
+		}
 		diff_geom hit(closest, rc.scene);
+		if (same_hemisphere(ray.d, hit.ns)) {
+			hit.ng *= -1;
+			hit.ns *= -1;
+		}
 
 		// if it is a light AND we have not bounced yet, add the light's contribution
 		if (i == 0 && hit.mat->emissive != vec3(0)) {
 			radiance = throughput * hit.mat->emissive;
 			break;
 		}
+		// for mis we take the next path vertex to be the brdf sample of the next-event path
+		if (mis && hit.mat->emissive != vec3(0)) {
+			trianglelight tl(rc.scene, closest.ref);
+			float light_pdf = luma(tl.power()) / rc.scene.light_distribution->integral();
+			light_pdf *= tl.pdf(ray, hit);
+			radiance += throughput * hit.mat->emissive * brdf_pdf / (light_pdf + brdf_pdf);
+		}
 
 		// branch off direct lighting path that directly terminates
 		auto [shadow_ray,light_col,light_pdf] = sample_light(hit);
 		if (light_pdf != 0 && light_col != vec3(0))
-			if (!rc.scene.rt->any_hit(shadow_ray))
-				radiance += throughput * light_col * hit.mat->brdf->f(hit, -ray.d, shadow_ray.d) * cdot(shadow_ray.d, hit.ns) / light_pdf;
+			if (!rc.scene.rt->any_hit(shadow_ray)) {
+				float divisor = light_pdf;
+				assert(light_pdf > 0);
+				if (mis)
+					divisor += hit.mat->brdf->pdf(hit, -ray.d, shadow_ray.d);
+				radiance += throughput
+				            * light_col
+							* hit.mat->brdf->f(hit, -ray.d, shadow_ray.d)
+							* cdot(shadow_ray.d, hit.ns)
+							/ divisor;
+			}
 
 		// bounce the ray
 		auto [bounced,pdf] = bounce_ray(hit, ray);
+		brdf_pdf = pdf;	// for mis in next iteration
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
+		if (pdf <= 0.0f || luma(throughput) <= 0.0f) break;
 		ray = bounced;
 
-		// apply RR
-		if (i > rr_start) {
-			float xi = uniform_float();
-			float p_term = 1.0f - luma(throughput);
-			if (xi > p_term)
-				throughput *= 1.0f/(1.0f-p_term);
-			else
-				break;
-		}
+// 		// apply RR
+// 		if (i > rr_start) {
+// 			float xi = uniform_float();
+// 			float p_term = 1.0f - luma(throughput);
+// 			if (xi > p_term)
+// 				throughput *= 1.0f/(1.0f-p_term);
+// 			else
+// 				break;
+// 		}
 	}
 	return radiance;
 }
@@ -162,8 +196,20 @@ std::tuple<ray,vec3,float> pt_nee::sample_light(const diff_geom &hit) {
 }
 
 bool pt_nee::interprete(const std::string &command, std::istringstream &in) {
-	if (simple_pt::interprete(command, in)) 
+	string sub, val;
+	std::istringstream local_in(in.str());
+	if (command == "path") {
+		local_in >> sub;
+		if (sub == "mis") {
+			in >> val;
+			if (val == "on") mis = true;
+			else if (val == "off") mis = false;
+			else cerr << "usage: path mis [on|off]" << endl;
+		}
+		else
+			simple_pt::interprete(command, in);
 		return true;
+	}
 
 	return false;
 }
