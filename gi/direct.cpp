@@ -14,7 +14,7 @@ using namespace std;
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) {
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
-		vec3 radiance(1,0,0);
+		vec3 radiance(0,0,0);
 		ray view_ray = cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f));
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {

@@ -73,7 +73,7 @@ void run(render_context &rc, gi_algorithm *algo) {
 										rc.framebuffer.add(x, y, algo->sample_pixel(x, y, rc.sppx-1, rc));
     								});
 	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	cout << "Took " << timediff(delta_ms) << " to complete" << endl;
+	cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << endl;
 	
 	rc.framebuffer.png().write(cmdline.outfile);
 }

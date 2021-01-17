@@ -18,7 +18,8 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 		triangle_intersection closest = rc.scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc.scene);
-			radiance = dg.albedo();
+			// radiance = dg.albedo();
+			radiance = dg.mat->albedo;
 		}
 		result.push_back({radiance,vec2(0)});
 	}
