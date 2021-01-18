@@ -219,7 +219,7 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 	assert(same_hemisphere(w_h, w_i));
 	assert(same_hemisphere(w_o, w_h));
 	assert(same_hemisphere(geom.ns, w_h));
-	assert(same_hemisphere(geom.ns, w_o));
+	assert(same_hemisphere(geom.ns, w_o) || dot(geom.ns,w_o)==0.0f);
 	float sample_pdf = pdf(geom, w_o, w_i);
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }

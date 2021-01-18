@@ -152,7 +152,7 @@ inline vec3 align(const vec3& v, const vec3& axis) {
 inline void flip_normals_to_ray(diff_geom &dg, const ray &ray) {
 	// todo: all computations rely on the shading normal for now,
 	// this is not exactly correct.
-	if (same_hemisphere(view_ray.d, dg.ns)) {
+	if (same_hemisphere(ray.d, dg.ns)) {
 		dg.ng *= -1;
 		dg.ns *= -1;
 	}

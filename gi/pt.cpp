@@ -26,6 +26,10 @@ gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint
 }
 
 vec3 simple_pt::path(ray ray) {
+#ifdef RTGI_A08
+	// it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
+	return vec3(0);
+#else
 	time_this_block(pathtrace);
 	vec3 radiance(0);
 	vec3 throughput(1);
@@ -65,6 +69,7 @@ vec3 simple_pt::path(ray ray) {
 			break;
 	}
 	return radiance;
+#endif
 }
 
 std::tuple<ray,float> simple_pt::bounce_ray(const diff_geom &hit, const ray &to_hit) {
@@ -113,6 +118,8 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 	}
 	return false;
 }
+
+#ifndef RTGI_A08_REF
 
 // 
 // ----------------------- pt with next event estimation -----------------------
@@ -214,3 +221,5 @@ bool pt_nee::interprete(const std::string &command, std::istringstream &in) {
 
 	return false;
 }
+
+#endif
