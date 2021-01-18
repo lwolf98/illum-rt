@@ -7,6 +7,10 @@
 #include <utility>
 #include <cstdint>
 
+#if !defined(RTGI_A07_REF) && !defined(RTGI_A07)
+#define RTGI_WITH_SKY
+#endif
+
 class distribution_1d {
 	std::vector<float> f, cdf;
 	float integral_1spaced;
@@ -23,7 +27,7 @@ public:
 	float value_at(int index) const { return f[index]; }
 	int size() const { return f.size(); }
 	
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	struct linearly_interpolated_01 {
 		distribution_1d &discrete;
 		linearly_interpolated_01(distribution_1d &discrete) : discrete(discrete) {}
@@ -38,7 +42,7 @@ public:
 
 };
 
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 class distribution_2d {
 	const float *f;
 	int w, h;

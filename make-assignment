@@ -12,7 +12,7 @@ REF_DEC=1
 
 if [ "$REF" == "ref" ] ; then
 	ASS_DEF_START=$((ASS+1))
-	DEF="$DEF -D RTGI_A${ASS}_REF"
+	DEF=$(printf "%s -D RTGI_A%02d_REF" "$DEF" "$ASS")
 	REF="-ref"
 	REF_DEC=2
 elif [ "$REF" == "" ] ; then
@@ -21,6 +21,7 @@ else
 	echo "Invalid value for REF (arg 2)" >&2
 	exit 1
 fi
+ASS=$(printf "%02d" "$ASS")
 
 for nr in $(seq $ASS_DEF_START 15) ; do
 	DEF=$(printf "%s -D RTGI_A%02d" "$DEF" $nr)
@@ -49,6 +50,7 @@ for f in $(find . -name "*.cpp" -o -name "*.h" -o -name "Makefile.am") configure
 	unifdef -x2 -m $DEF "$f"
 done
 
+#cd ..; cp -r make-ass /tmp/; cd -;
 autoreconf -if && ./configure && make -j20
 make dist-bzip2
 cp rtgi-2020-a??$REF.tar.bz2 ..

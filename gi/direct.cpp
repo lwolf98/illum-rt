@@ -39,7 +39,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 			// todo: compute direct lighting contribution
 #endif
 		}
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 		else
 			if (rc.scene.sky)
 				radiance = rc.scene.sky->Le(view_ray);
@@ -74,7 +74,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 		diff_geom dg(closest, rc.scene);
 		brightness = dg.mat->emissive;
 	}
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	else if (rc.scene.sky)
 		brightness = rc.scene.sky->Le(sample_ray);
 #endif
@@ -99,7 +99,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 		diff_geom dg(closest, rc.scene);
 		brightness = dg.mat->emissive;
 	}
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	else if (rc.scene.sky)
 		brightness = rc.scene.sky->Le(sample_ray);
 #endif
@@ -261,7 +261,8 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 				}
 			}
 		}
-#ifndef RTGI_AXX
+
+#ifdef RTGI_WITH_SKY
 		else
 			if (rc.scene.sky)
 				radiance = rc.scene.sky->Le(view_ray);

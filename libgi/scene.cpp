@@ -5,7 +5,7 @@
 #ifndef RTGI_A05
 #include "sampling.h"
 #endif
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 #include "framebuffer.h"
 #endif
 
@@ -192,7 +192,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 #ifndef RTGI_A04
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	if (prims == 0 && !sky) {
 		std::cerr << "WARNING: There is neither emissive geometry nor a skylight" << std::endl;
 		return;
@@ -207,7 +207,7 @@ void scene::compute_light_distribution() {
 	for (auto l : lights) delete l;
 	lights.clear();
 	int n = prims;
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	if (sky) {
 		n++;
 		sky->build_distribution();
@@ -224,7 +224,7 @@ void scene::compute_light_distribution() {
 			l++;
 		}
 	}
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 	if (sky) {
 		lights[n-1] = sky;
 		power[n-1] = sky->power().x;
@@ -348,7 +348,7 @@ vec3 trianglelight::power() const {
 
 /////
 
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 
 void skylight::build_distribution() {
 	assert(tex);

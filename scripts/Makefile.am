@@ -14,7 +14,7 @@ EXTRA_DIST += a6-sibenik a6-brdf-test
 #elif defined RTGI_A07 || defined RTGI_A07_REF
 EXTRA_DIST += a7-mis
 #elif defined RTGI_A08 || defined RTGI_A08_REF
-EXTRA_DIST += a8-sibenik-bounce a8-sibenik-rr
+EXTRA_DIST += a8-sibenik a8-sibenik-bounce a8-sibenik-rr a8-sponza a8-sponza-sky1 a8-sponza-sky2
 #else
 EXTRA_DIST += brdf-test mis sibenik sponza
 #endif

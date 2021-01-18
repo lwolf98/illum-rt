@@ -12,6 +12,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
+#include "libgi/discrete_distributions.h" // for RTGI_WITH_SKY
 
 #include "rt/seq/seq.h"
 #ifndef RTGI_A01
@@ -175,7 +176,9 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 #endif
 #ifndef RTGI_A07_REF
 			else if (name == "simple-pt")  a = new simple_pt(rc);
+#if !defined(RTGI_A08) && !defined(RTGI_A08_REF)
 			else if (name == "pt")  a = new pt_nee(rc);
+#endif
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
 			if (a) {
@@ -393,7 +396,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				scene.lights.push_back(pl);
 		}
 #endif
-#ifndef RTGI_AXX
+#ifdef RTGI_WITH_SKY
 		else ifcmd("skylight") {
 			string sub;
 			in >> sub;

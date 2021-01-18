@@ -119,7 +119,9 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 	return false;
 }
 
-#ifndef RTGI_A08_REF
+#ifdef RTGI_A08
+#elif defined(RTGI_A08_REF)
+#else
 
 // 
 // ----------------------- pt with next event estimation -----------------------
