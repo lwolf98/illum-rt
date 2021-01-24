@@ -44,6 +44,7 @@ public:
 
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual void prepare_frame(const render_context &rc) {}
+	virtual void finalize_frame() {}
 	virtual sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) = 0;
 	virtual ~gi_algorithm(){}
 };

@@ -12,15 +12,36 @@
 using namespace glm;
 using namespace std;
 
+#define WITH_RAY_EXPORT
+
+#ifdef WITH_RAY_EXPORT
+static std::string rayfile = "/tmp/raydata";
+static std::vector<std::pair<int,ray>> all_rays;
+
+static void record_ray(int bounce_and_kind, const ray &ray) {
+	#pragma omp critical
+	all_rays.push_back({bounce_and_kind, ray});
+}
+#else
+static void record_ray(int bounce_and_kind, const ray &ray) {}
+#endif
+
 // 
 // ----------------------- simple pt -----------------------
 //
-	
+// #define SIGNIFICANT_RAY_COUNT
+
 gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) {
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
+#ifdef SIGNIFICANT_RAY_COUNT
+		vec3 r = path(cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f)));
+		
+		result.push_back({ r==vec3(0) ? vec3(0) : vec3(1), vec2(0) });
+#else
 		result.push_back({path(cam_ray(rc.scene.camera, x, y, glm::vec2(rc.rng.uniform_float()-0.5f, rc.rng.uniform_float()-0.5f))),
 						  vec2(0)});
+#endif
 	}
 	return result;
 }
@@ -133,12 +154,12 @@ vec3 pt_nee::path(ray ray) {
 	vec3 throughput(1);
 	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {
-		
+		record_ray(i, ray);
 		// find hitpoint with scene
 		triangle_intersection closest = rc.scene.rt->closest_hit(ray);
 		if (!closest.valid()) {
 			if (rc.scene.sky)
-				if (!mis)
+				if (!mis || i==0)
 					radiance = throughput * rc.scene.sky->Le(ray);
 				else {
 					float light_pdf = rc.scene.sky->pdf_Li(ray);
@@ -164,7 +185,8 @@ vec3 pt_nee::path(ray ray) {
 
 		// branch off direct lighting path that directly terminates
 		auto [shadow_ray,light_col,light_pdf] = sample_light(hit);
-		if (light_pdf != 0 && light_col != vec3(0))
+		if (light_pdf != 0 && light_col != vec3(0)) {
+			record_ray(i+100,shadow_ray);
 			if (!rc.scene.rt->any_hit(shadow_ray)) {
 				float divisor = light_pdf;
 				assert(light_pdf > 0);
@@ -176,6 +198,7 @@ vec3 pt_nee::path(ray ray) {
 							* cdot(shadow_ray.d, hit.ns)
 							/ divisor;
 			}
+		}
 
 		// bounce the ray
 		auto [bounced,pdf] = bounce_ray(hit, ray);
@@ -216,12 +239,25 @@ bool pt_nee::interprete(const std::string &command, std::istringstream &in) {
 			else if (val == "off") mis = false;
 			else cerr << "usage: path mis [on|off]" << endl;
 		}
+#ifdef WITH_RAY_EXPORT
+		if (sub == "rayfile") {
+			local_in >> rayfile;
+		}
+#endif
 		else
 			simple_pt::interprete(command, in);
 		return true;
 	}
 
 	return false;
+}
+
+void pt_nee::finalize_frame() {
+#ifdef WITH_RAY_EXPORT
+	ofstream out(rayfile);
+	for (auto [i,r] : all_rays)
+		out << i << " " << r.o.x << " " << r.o.y << " " << r.o.z << " " << r.d.x << " " << r.d.y << " " << r.d.z << " " << r.t_min << " " << r.t_max << endl;
+#endif
 }
 
 #endif

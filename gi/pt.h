@@ -30,5 +30,6 @@ class pt_nee : public simple_pt {
 public:
 	pt_nee(const render_context &rc) : simple_pt(rc) {}
 	bool interprete(const std::string &command, std::istringstream &in) override;
+	void finalize_frame();
 };
 #endif

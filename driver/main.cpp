@@ -75,6 +75,8 @@ void run(render_context &rc, gi_algorithm *algo) {
 	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 	cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << endl;
 	
+	algo->finalize_frame();
+	
 	rc.framebuffer.png().write(cmdline.outfile);
 }
 
