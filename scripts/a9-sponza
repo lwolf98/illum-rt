@@ -1,0 +1,69 @@
+#at -516 584 -138
+at -516 300 0
+look 1 0 0
+up 0 1 0
+default-brdf layered-gtr2
+#default-brdf lambert
+#default-brdf gtr2
+
+#load /home/kai/lehre/cg/gl/cg/render-data/models/sponza/sponza.fixed.obj
+load render-data/sponza/sponza.fixed.obj
+#load render-data/sibenik/sibenik.obj
+raytracer bbvh indexed esc
+#skylight load render-data/skylight-day.floats 30
+
+material select vase_round.001
+material emissive 760 600 200
+#material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.01
+
+commit
+algo direct
+sppx 512
+#resolution 320 180
+resolution 640 360
+
+at -1250 100 200
+look 1 0 -0.3
+
+at -1250 650 300
+look 1 0 -0.4
+
+algo simple-pt
+path rr-start 3
+path bounce brdf
+sppx 2500
+
+# center
+at -516 300 0
+look 1 0 0
+outfile a9-sponza-center-1-simplept.png
+run
+
+# corridor
+at 200 180 400
+look 1 0 -0.6
+outfile a9-sponza-corridor-1-simplept.png
+run
+
+
+algo pt
+path rr-start 3
+path bounce brdf
+
+# center
+at -516 300 0
+look 1 0 0
+outfile a9-sponza-center-2-nee.png
+run
+
+# corridor
+at 200 180 400
+look 1 0 -0.6
+outfile a9-sponza-corridor-2-nee.png
+run
+
+

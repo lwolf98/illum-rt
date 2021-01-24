@@ -3,27 +3,28 @@ at -13 -12 0
 #at 1 -12.5 1
 look 1 0 0
 up 0 1 0
-load render-data/sibenik/sibenik.obj
-load render-data/sibenik/sibenbunny.obj
-raytracer bbvh
+
+raytracer bbvh indexed esc
+bvh sm
+
 algo direct
-sppx 64
-#pointlight pos 0 -4 0 col 35 30 26
-#resolution 1280 720
+sppx 500
 resolution 960 540
-brdf layered-gtr2
-#is mis
-is uniform
-bvh om
-outfile out.png
+
+default-brdf layered-gtr2
+load render-data/sibenik/sibenik-nostaklo.obj
 
 material select pod
 material roughness 0.055
 material ior 2.289
 
 
+skylight load render-data/skylight-sunset.floats 30
 
 
+# kept this in in case you want to render the regular sibenik model
+# but then don't forget to disable the skylight
+# same not applies to all a8-sibenik files
 material select kamen_zid_parapet
 material albedo  0.73412 0.73059 0.67412
 material ior  1.3
@@ -32,8 +33,8 @@ material roughness  0.50372
 material select pod
 material albedo  0.73412 0.70941 0.67412
 material ior  2.289
-material roughness  0.055
-        
+material roughness  0.155
+ 
 material select pod_tepih
 material albedo  0.54627 0.21961 0.18392
 material ior 1.3
@@ -67,77 +68,19 @@ look -1 0 0
 
 
 algo direct/mis
-#is light
-outfile a9-sibenik-01-sibenik-direct.png
+outfile a9-sibenik-00-500-direct.png
+run
+
+algo simple-pt
+path bounce brdf
+path len 10
+outfile a9-sibenik-01-500-simplept.png
 run
 
 algo pt
-# --------
-path bounce uniform
-path len 1
-outfile a9-sibenik-11-sibenik-spt-1.png
-run
-
-path len 2
-outfile a9-sibenik-12-sibenik-spt-2.png
-run
-
-path len 3
-outfile a9-sibenik-13-sibenik-spt-3.png
-run
-
-path len 4
-outfile a9-sibenik-14-sibenik-spt-4.png
-run
-
-#path len 9
-#outfile a9-sibenik-19-sibenik-spt-9.png
-#run
-
-
-# --------
-path bounce cosine
-path len 1
-outfile a9-sibenik-21-sibenik-spt-1.png
-run
-
-path len 2
-outfile a9-sibenik-22-sibenik-spt-2.png
-run
-
-path len 3
-outfile a9-sibenik-23-sibenik-spt-3.png
-run
-
-path len 4
-outfile a9-sibenik-24-sibenik-spt-4.png
-run
-
-#path len 9
-#outfile a9-sibenik-29-sibenik-spt-9.png
-#run
-
-
-# --------
 path bounce brdf
-path len 1
-outfile a9-sibenik-31-sibenik-spt-1.png
+path len 10
+outfile a9-sibenik-02-500-pt.png
 run
-
-path len 2
-outfile a9-sibenik-32-sibenik-spt-2.png
-run
-
-path len 3
-outfile a9-sibenik-33-sibenik-spt-3.png
-run
-
-path len 4
-outfile a9-sibenik-34-sibenik-spt-4.png
-run
-
-#path len 9
-#outfile a9-sibenik-39-sibenik-spt-9.png
-#run
 
 
