@@ -12,7 +12,7 @@
 using namespace glm;
 using namespace std;
 
-#define WITH_RAY_EXPORT
+// #define WITH_RAY_EXPORT
 
 #ifdef WITH_RAY_EXPORT
 static std::string rayfile = "/tmp/raydata";
@@ -29,7 +29,7 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 // 
 // ----------------------- simple pt -----------------------
 //
-// #define SIGNIFICANT_RAY_COUNT
+#define SIGNIFICANT_RAY_COUNT
 
 gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) {
 	sample_result result;
