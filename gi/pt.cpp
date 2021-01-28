@@ -29,7 +29,7 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 // 
 // ----------------------- simple pt -----------------------
 //
-#define SIGNIFICANT_RAY_COUNT
+// #define SIGNIFICANT_RAY_COUNT
 
 gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) {
 	sample_result result;
@@ -149,8 +149,8 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 //
 
 vec3 pt_nee::path(ray ray) {
-	time_this_block(pathtrace);
 	vec3 radiance(0);
+#ifndef RTGI_A09
 	vec3 throughput(1);
 	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {
@@ -217,6 +217,7 @@ vec3 pt_nee::path(ray ray) {
 				break;
 		}
 	}
+#endif
 	return radiance;
 }
 
