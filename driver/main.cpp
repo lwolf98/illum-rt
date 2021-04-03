@@ -30,31 +30,8 @@ rgb_pixel to_png(vec3 col01) {
 	return rgb_pixel(col01.x*255, col01.y*255, col01.z*255);
 }
 
-//! A hacky way to convert ms to a human readable indication of how long this is going to be.
-std::string timediff(unsigned ms) {
-	if (ms > 2000) {
-		ms /= 1000;
-		if (ms > 60) {
-			ms /= 60;
-			if (ms > 60) {
-				return "hours";
-			}
-			else return std::to_string((int)floor(ms)) + " min";
-		}
-		else {
-			return std::to_string((int)ms) + " sec";
-		}
-	}
-	else return std::to_string(ms) + " ms";
-}
-
 /*! \brief This is called from the \ref repl to compute a single image
  *  
- *  Note: We first compute a single sample to get a rough estimate of how long rendering is going to take.
- *
- *  Note: Times reported via \ref stats_timer might not be perfectly reliable as of now.  This is because the
- *        timer-overhead is in the one (at times even two) digit percentages of the individual fragments measured.
- *
  */
 void run(render_context &rc, gi_algorithm *algo) {
 	using namespace std::chrono;
@@ -62,19 +39,7 @@ void run(render_context &rc, gi_algorithm *algo) {
 	test_camrays(rc.scene.camera);
 	rc.framebuffer.clear();
 
-	auto start = system_clock::now();
-	rc.framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc.framebuffer.add(x, y, algo->sample_pixel(x, y, 1, rc));
-    								});
-	auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	cout << "Will take around " << timediff(delta_ms*(rc.sppx-1)) << " to complete" << endl;
-	
-	rc.framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc.framebuffer.add(x, y, algo->sample_pixel(x, y, rc.sppx-1, rc));
-    								});
-	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << endl;
-	
+	algo->compute_samples(rc);
 	algo->finalize_frame();
 	
 	rc.framebuffer.png().write(cmdline.outfile);

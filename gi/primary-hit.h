@@ -10,16 +10,16 @@
  * - render_context holds contextual information for rendering (e.g. a random number generator)
  *
  */
-class primary_hit_display : public gi_algorithm {
+class primary_hit_display : public recursive_algorithm {
 public:
-	primary_hit_display(const render_context &rc) : gi_algorithm(rc) {}
+	primary_hit_display(const render_context &rc) : recursive_algorithm(rc) {}
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
 };
 
 #ifndef RTGI_A02
-class local_illumination : public gi_algorithm {
+class local_illumination : public recursive_algorithm {
 public:
-	local_illumination(const render_context &rc) : gi_algorithm(rc) {}
+	local_illumination(const render_context &rc) : recursive_algorithm(rc) {}
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
 };
 #endif

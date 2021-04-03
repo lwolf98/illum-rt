@@ -4,7 +4,7 @@
 #include "libgi/material.h"
 
 #ifndef RTGI_A04
-class direct_light : public gi_algorithm {
+class direct_light : public recursive_algorithm {
 	enum sampling_mode { sample_uniform, sample_cosine, sample_light, sample_brdf };
 	enum sampling_mode sampling_mode = sample_light;
 
@@ -21,7 +21,7 @@ protected:
 #endif
 
 public:
-	direct_light(const render_context &rc) : gi_algorithm(rc) {}
+	direct_light(const render_context &rc) : recursive_algorithm(rc) {}
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
