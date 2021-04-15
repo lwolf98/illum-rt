@@ -12,15 +12,15 @@
  */
 class primary_hit_display : public recursive_algorithm {
 public:
-	primary_hit_display(const render_context &rc) : recursive_algorithm(rc) {}
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
+	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 };
 
 #ifndef RTGI_A02
 class local_illumination : public recursive_algorithm {
 public:
-	local_illumination(const render_context &rc) : recursive_algorithm(rc) {}
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
+	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 };
 #endif
 
+class primary_hit_display_wf : public wavefront_algorithm {
+};

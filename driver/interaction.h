@@ -17,5 +17,5 @@ struct repl_update_checks {
 };
 
 //! Call the read-eval-print-loop (can be called multiple times, e.g. for the script and the cin)
-void repl(std::istream &infile, render_context &rc, repl_update_checks &uc);
+void repl(std::istream &infile, repl_update_checks &uc);
 

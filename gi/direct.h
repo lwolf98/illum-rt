@@ -17,12 +17,11 @@ protected:
 #endif
 	
 #ifndef RTGI_AXX
-	sample_result full_mis(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc);
+	sample_result full_mis(uint32_t x, uint32_t y, uint32_t samples);
 #endif
 
 public:
-	direct_light(const render_context &rc) : recursive_algorithm(rc) {}
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
+	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
 #endif
@@ -30,8 +29,7 @@ public:
 #ifndef RTGI_A07
 class direct_light_mis : public direct_light {
 public:
-	direct_light_mis(const render_context &rc) : direct_light(rc) {}
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &r) override;
+	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
 #else

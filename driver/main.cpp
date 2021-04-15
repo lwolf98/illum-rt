@@ -6,6 +6,8 @@
 #include "libgi/context.h"
 #include "libgi/timer.h"
 
+#include "libgi/global-context.h"
+
 #include "interaction.h"
 
 #include "cmdline.h"
@@ -33,32 +35,32 @@ rgb_pixel to_png(vec3 col01) {
 /*! \brief This is called from the \ref repl to compute a single image
  *  
  */
-void run(render_context &rc, gi_algorithm *algo) {
+void run(gi_algorithm *algo) {
 	using namespace std::chrono;
-	algo->prepare_frame(rc);
-	test_camrays(rc.scene.camera);
-	rc.framebuffer.clear();
+	algo->prepare_frame();
+	test_camrays(rc->scene.camera);
+	rc->framebuffer.clear();
 
-	algo->compute_samples(rc);
+	algo->compute_samples();
 	algo->finalize_frame();
 	
-	rc.framebuffer.png().write(cmdline.outfile);
+	rc->framebuffer.png().write(cmdline.outfile);
 }
 
-void rt_bench(render_context &rc) {
+void rt_bench() {
 	//create Buffer for rays and intersections with the size of the camera resolution
-	buffer<triangle_intersection> triangle_intersections(rc.scene.camera.w, rc.scene.camera.h);
-	buffer<ray> rays(rc.scene.camera.w, rc.scene.camera.h);
+	buffer<triangle_intersection> triangle_intersections(rc->scene.camera.w, rc->scene.camera.h);
+	buffer<ray> rays(rc->scene.camera.w, rc->scene.camera.h);
 	
 	//init Buffer with Camera rays
 	rays.for_each([&](unsigned x, unsigned y) {
-		rays(x, y) = cam_ray(rc.scene.camera, x, y);
+		rays(x, y) = cam_ray(rc->scene.camera, x, y);
 	});
 	
 	//calculate closest triangle intersection for each ray
 	raii_timer bench_timer("rt_bench");
 	rays.for_each([&](unsigned x, unsigned y) {
-		triangle_intersections(x, y) = rc.scene.rt->closest_hit(rays(x, y));
+		triangle_intersections(x, y) = rc->scene.rt->closest_hit(rays(x, y));
 	});
 }
 
@@ -66,17 +68,16 @@ int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);
 
-	render_context rc;
 	repl_update_checks uc;
 	if (cmdline.script != "") {
 		ifstream script(cmdline.script);
-		repl(script, rc, uc);
+		repl(script, uc);
 	}
 	if (cmdline.interact)
-		repl(cin, rc, uc);
+		repl(cin, uc);
 
 	stats_timer.print();
 
-	delete rc.algo;
+	delete rc->algo;
 	return 0;
 }

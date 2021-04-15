@@ -5,19 +5,21 @@
 #include "libgi/util.h"
 #include "libgi/sampling.h"
 
+#include "libgi/global-context.h"
+
 #include <chrono>
-	
+
 float gi_algorithm::uniform_float() const {
-	return rc.rng.uniform_float();
+	return rc->rng.uniform_float();
 }
 
 glm::vec2 gi_algorithm::uniform_float2() const {
-	return rc.rng.uniform_float2();
+	return rc->rng.uniform_float2();
 }
 
 std::tuple<ray,float> gi_algorithm::sample_uniform_direction(const diff_geom &hit) const {
 	// set up a ray in the hemisphere that is uniformly distributed
-	vec2 xi = rc.rng.uniform_float2();
+	vec2 xi = rc->rng.uniform_float2();
 	float z = xi.x;
 	float phi = 2*pi*xi.y;
 	// z is cos(theta), sin(theta) = sqrt(1-cos(theta)^2)
@@ -32,7 +34,7 @@ std::tuple<ray,float> gi_algorithm::sample_uniform_direction(const diff_geom &hi
 }
 
 std::tuple<ray,float> gi_algorithm::sample_cosine_distributed_direction(const diff_geom &hit) const {
-	vec2 xi = rc.rng.uniform_float2();
+	vec2 xi = rc->rng.uniform_float2();
 	vec3 sampled_dir = cosine_sample_hemisphere(xi);
 	vec3 w_i = align(sampled_dir, hit.ng);
 	ray sample_ray(hit.x, w_i);
@@ -40,7 +42,7 @@ std::tuple<ray,float> gi_algorithm::sample_cosine_distributed_direction(const di
 }
 
 std::tuple<ray,float> gi_algorithm::sample_brdf_distributed_direction(const diff_geom &hit, const ray &to_hit) const {
-	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -to_hit.d, rc.rng.uniform_float2());
+	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -to_hit.d, rc->rng.uniform_float2());
 	ray sample_ray(hit.x, w_i);
 	return {sample_ray, pdf};
 }
@@ -73,18 +75,18 @@ static std::string timediff(unsigned ms) {
  *
  */
 
-void recursive_algorithm::compute_samples(render_context &rc) {
+void recursive_algorithm::compute_samples() {
 	using namespace std::chrono;
 	auto start = system_clock::now();
-	rc.framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc.framebuffer.add(x, y, sample_pixel(x, y, 1, rc));
-    								});
+	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
+										rc->framebuffer.add(x, y, sample_pixel(x, y, 1));
+    							   });
 	auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	std::cout << "Will take around " << timediff(delta_ms*(rc.sppx-1)) << " to complete" << std::endl;
+	std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << std::endl;
 	
-	rc.framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc.framebuffer.add(x, y, sample_pixel(x, y, rc.sppx-1, rc));
-    								});
+	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
+										rc->framebuffer.add(x, y, sample_pixel(x, y, rc->sppx-1));
+    							   });
 	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 	std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
 }

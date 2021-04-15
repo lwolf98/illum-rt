@@ -17,3 +17,4 @@ struct render_context {
 	unsigned int sppx = 1;
 	render_context() : framebuffer(scene.camera.w, scene.camera.h) {}
 };
+

@@ -28,6 +28,8 @@
 
 #include "libgi/timer.h"
 
+#include "libgi/global-context.h"
+
 #include <iostream>
 #include <sstream>
 
@@ -56,18 +58,18 @@ const char *prompt = "rtgi > ";
 #define check_in(x) { if (in.bad() || in.fail()) error(x); }
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
-void run(render_context &rc, gi_algorithm *algo);
-void rt_bench(render_context &rc);
+void run(gi_algorithm *algo);
+void rt_bench();
 
-void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
+void repl(istream &infile, repl_update_checks &uc) {
 	bool cam_has_pos = false,
 		 cam_has_dir = false,
 		 cam_has_up = false,
 		 scene_up_set = false;
 
-	gi_algorithm *&algo = rc.algo;
-	scene &scene = rc.scene;
-	framebuffer &framebuffer = rc.framebuffer;
+	gi_algorithm *&algo = rc->algo;
+	scene &scene = rc->scene;
+	framebuffer &framebuffer = rc->framebuffer;
 
 	material *mat = nullptr;
 	vector<string> commands;
@@ -162,22 +164,22 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			string name;
 			in >> name;
 			gi_algorithm *a = nullptr;
-			if (name == "primary")      a = new primary_hit_display(rc);
+			if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_A02
-			else if (name == "local")  a = new local_illumination(rc);
+			else if (name == "local")  a = new local_illumination;
 #endif
 #ifndef RTGI_A04
-			else if (name == "direct")  a = new direct_light(rc);
+			else if (name == "direct")  a = new direct_light;
 #endif
 #ifndef RTGI_A07
-			else if (name == "direct/mis")  a = new direct_light_mis(rc);
+			else if (name == "direct/mis")  a = new direct_light_mis;
 #elif !defined(RTGI_A06)
 			// todo: set up mis algorithm here
 #endif
 #ifndef RTGI_A07_REF
-			else if (name == "simple-pt")  a = new simple_pt(rc);
+			else if (name == "simple-pt")  a = new simple_pt;
 #if !defined(RTGI_A08) && !defined(RTGI_A08_REF)
-			else if (name == "pt")  a = new pt_nee(rc);
+			else if (name == "pt")  a = new pt_nee;
 #endif
 #endif
 			else error("There is no gi algorithm called '" << name << "'");
@@ -238,7 +240,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 			int sppx;
 			in >> sppx;
 			check_in_complete("Syntax error, requires exactly one positive integral value");
-			rc.sppx = sppx;
+			rc->sppx = sppx;
 		}
 		else ifcmd("run") {
 			if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || algo == nullptr)
@@ -247,7 +249,7 @@ void repl(istream &infile, render_context &rc, repl_update_checks &uc) {
 				error("The current tracer does (might?) not have an up-to-date acceleration structure");
 			if (uc.accel_touched_at < uc.scene_touched_at)
 				error("The current acceleration structure is out-dated");
-			run(rc, algo);
+			run(algo);
 		}
 		else ifcmd("rt_bench") {
 #ifndef WITH_STATS		

@@ -19,6 +19,7 @@ public:
 	rng();
 	rng(const rng&) = delete;
 	rng& operator=(const rng&) = delete;
+	rng(rng &&other) = default;
 
 	vec2 uniform_float2() const;
 };

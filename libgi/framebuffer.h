@@ -14,7 +14,12 @@ template<typename T> struct buffer {
 		data = new T[w*h];
 	}
 	buffer(const buffer &) = delete;
-	buffer(buffer &&) = delete;
+	buffer(buffer &&other) {
+		data = other.data;
+		other.data = nullptr;
+		w = other.w;
+		h = other.h;
+	}
 	~buffer() {
 		delete [] data;
 	}
@@ -45,6 +50,8 @@ class framebuffer {
 public:
 	buffer<vec4> color;
 	framebuffer(unsigned w, unsigned h) : color(w, h) {
+	}
+	framebuffer(framebuffer &&other) : color(std::move(other.color)) {
 	}
 	~framebuffer() {
 	}

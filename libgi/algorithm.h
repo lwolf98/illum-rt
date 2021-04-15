@@ -28,8 +28,6 @@ class render_context;
  */
 class gi_algorithm {
 protected:
-	const render_context &rc;
-	
 	float uniform_float() const;
 	glm::vec2 uniform_float2() const;
 #ifndef RTGI_A07_REF
@@ -41,13 +39,12 @@ protected:
 #endif
 
 public:
-	gi_algorithm(const render_context &rc) : rc(rc) {}
 	typedef std::vector<pair<vec3, vec2>> sample_result;
 
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
-	virtual void prepare_frame(const render_context &rc) {}
+	virtual void prepare_frame() {}
 	virtual void finalize_frame() {}
-	virtual void compute_samples(render_context &rc) = 0;
+	virtual void compute_samples() = 0;
 	virtual ~gi_algorithm(){}
 };
  
@@ -66,9 +63,9 @@ class recursive_algorithm : public gi_algorithm {
 public:
 	using gi_algorithm::gi_algorithm;
 
-	virtual sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples, const render_context &rc) = 0;
+	virtual sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) = 0;
 
-	void compute_samples(render_context &rc) override;
+	void compute_samples() override;
 };
 
 

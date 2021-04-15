@@ -5,6 +5,7 @@ libgi_a_CXXFLAGS = $(WAND_CFLAGS)
 
 libgi_a_SOURCES = 	algorithm.cpp \
 					camera.cpp \
+					context.cpp \
 					framebuffer.cpp \
 					random.cpp \
 					rt.cpp \
@@ -23,6 +24,7 @@ noinst_HEADERS = 	algorithm.h \
 					camera.h \
 					color.h \
 					context.h \
+					global-context.h \
 					framebuffer.h \
 					intersect.h \
 					material.h \
