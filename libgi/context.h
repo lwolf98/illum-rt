@@ -16,5 +16,9 @@ struct render_context {
 	gi_algorithm *algo = nullptr;
 	unsigned int sppx = 1;
 	render_context() : framebuffer(scene.camera.w, scene.camera.h) {}
+
+	glm::ivec2 resolution() const {
+		return glm::ivec2(framebuffer.color.w, framebuffer.color.h);
+	}
 };
 

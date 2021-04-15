@@ -165,6 +165,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			in >> name;
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
+			else if (name == "primary-wf")  a = new primary_hit_display_wf;
 #ifndef RTGI_A02
 			else if (name == "local")  a = new local_illumination;
 #endif

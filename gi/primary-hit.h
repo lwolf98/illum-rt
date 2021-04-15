@@ -22,5 +22,8 @@ public:
 };
 #endif
 
+
+
 class primary_hit_display_wf : public wavefront_algorithm {
+	void compute_samples() override;
 };

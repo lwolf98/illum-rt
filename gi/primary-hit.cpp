@@ -64,3 +64,25 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 	return result;
 }
 #endif
+
+
+
+void primary_hit_display_wf::compute_samples() {
+	auto res = rc->resolution();
+	float one_over_samples = 1.0f/rc->sppx;
+	#pragma omp parallel for
+	for (int y = 0; y < res.y; ++y)
+		for (int x = 0; x < res.x; ++x) {
+			vec3 radiance(0);
+			for (int sample = 0; sample < rc->sppx; ++sample) {
+				ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
+				triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+				if (closest.valid()) {
+					diff_geom dg(closest, rc->scene);
+					radiance += dg.albedo();
+				}
+			}
+			radiance *= one_over_samples;
+			rc->framebuffer.color(x,y) = vec4(radiance, 1);
+		}
+}
