@@ -66,6 +66,7 @@ public:
 	virtual sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) = 0;
 
 	void compute_samples() override;
+	void prepare_frame() override;
 };
 
 
@@ -77,4 +78,6 @@ public:
  */
 class wavefront_algorithm : public gi_algorithm {
 	using gi_algorithm::gi_algorithm;
+public:
+	void prepare_frame() override;
 };

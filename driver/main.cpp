@@ -60,7 +60,7 @@ void rt_bench() {
 	//calculate closest triangle intersection for each ray
 	raii_timer bench_timer("rt_bench");
 	rays.for_each([&](unsigned x, unsigned y) {
-		triangle_intersections(x, y) = rc->scene.rt->closest_hit(rays(x, y));
+		triangle_intersections(x, y) = rc->scene.single_rt->closest_hit(rays(x, y));
 	});
 }
 

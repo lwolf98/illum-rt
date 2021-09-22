@@ -12,6 +12,10 @@
 #include <string>
 #include <filesystem>
 
+namespace wf {
+	class batch_ray_tracer;
+}
+
 struct texture {
 	std::string name;
 	std::filesystem::path path;
@@ -170,7 +174,13 @@ struct scene {
 		return sample_texture(is, triangles[is.ref], tex);
 	}
 
+	//! The scene takes ownership of the RT, deletes it upon destruction and when taking ownership of a new RT.
+	void release_rt();
+	void use(ray_tracer *new_rt);
+
 	ray_tracer *rt = nullptr;
+	individual_ray_tracer *single_rt = nullptr;
+	wf::batch_ray_tracer *batch_rt = nullptr;
 };
 
 // std::vector<triangle> scene_triangles();

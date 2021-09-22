@@ -13,6 +13,7 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 #include "libgi/discrete_distributions.h" // for RTGI_WITH_SKY
+#include "libgi/wavefront-rt.h"
 
 #include "rt/seq/seq.h"
 #ifndef RTGI_A01
@@ -38,10 +39,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #endif
 #include <glm/gtx/string_cast.hpp>
-inline std::ostream& operator<<(std::ostream &out, const vec3 &x) {
-	out << to_string(x);
-	return out;
-}
 
 inline std::istream& operator>>(std::istream &in, vec3 &x) {
 	in >> x.x >> x.y >> x.z;
@@ -54,12 +51,27 @@ using namespace std;
 const char *prompt = "rtgi > ";
 
 #define ifcmd(c) if (command==c)
-#define error(x) { cerr << "command " << uc.cmdid << " (" << command << "): " << x << endl; continue; }
+#define error_no_continue(x) { cerr << "command " << uc.cmdid << " (" << command << "): " << x << endl; }
+#define error(x) { error_no_continue(x);  continue; }
 #define check_in(x) { if (in.bad() || in.fail()) error(x); }
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
 void run(gi_algorithm *algo);
 void rt_bench();
+
+static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_checks &uc, const std::string &command) {
+	if (scene.single_rt && dynamic_cast<wavefront_algorithm*>(algo)) {
+		cout << "Wavefront algorithm used with invidividually tracing RT, promoting RT to batch tracing." << endl;
+		auto *rt = scene.single_rt;
+		scene.release_rt();
+		scene.use(new wf::cpu::batch_rt_adapter(rt));
+	}
+	else if (scene.batch_rt && dynamic_cast<recursive_algorithm*>(algo)) {
+		error_no_continue("Cannot drive a recursive algorithm by a batch ray tracer");
+		return false;
+	}
+	return true;
+}
 
 void repl(istream &infile, repl_update_checks &uc) {
 	bool cam_has_pos = false,
@@ -157,8 +169,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			int w, h;
 			in >> w >> h;
 			check_in_complete("Syntax error, requires 2 integral values");
-			framebuffer.resize(w, h);
-			scene.camera.update_frustum(scene.camera.fovy, w, h);
+			rc->change_resolution(w, h);
 		}
 		else ifcmd("algo") {
 			string name;
@@ -188,6 +199,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 				delete algo;
 				algo = a;
 			}
+			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 		}
 		else ifcmd("outfile") {
 			string name;
@@ -201,9 +213,9 @@ void repl(istream &infile, repl_update_checks &uc) {
 		else ifcmd("raytracer") {
 			string name;
 			in >> name;
-			if (name == "seq") scene.rt = new seq_tri_is;
+			if (name == "seq") scene.use(new seq_tri_is);
 #ifndef RTGI_A01
-			else if (name == "naive-bvh") scene.rt = new naive_bvh;
+			else if (name == "naive-bvh") scene.use(new naive_bvh);
 			else if (name == "bbvh") {
 				string tag1, tag2;
 				in >> tag1 >> tag2;
@@ -212,15 +224,16 @@ void repl(istream &infile, repl_update_checks &uc) {
 				if (tag1 == "indexed" || tag2 == "indexed") flat = false;
 				if (tag1 == "esc" || tag2 == "esc") esc = true;
 				if (flat && !esc)
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>;
+					scene.use(new binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>);
 				else if (!flat && !esc)
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>;
+					scene.use(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>);
 				else if (!flat && esc)
-					scene.rt = new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>;
+					scene.use(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>);
 				else if (flat && esc)
 					error("This combination is technically problematic")
 				else
 					error("There is no such bbvh variant");
+				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");
@@ -231,6 +244,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 				error("There is no scene data to work with");
 			if (!scene.rt)
 				error("There is no ray traversal scheme to commit the scene data to");
+			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 #ifndef RTGI_A04
 			scene.compute_light_distribution();
 #endif
@@ -440,6 +454,16 @@ void repl(istream &infile, repl_update_checks &uc) {
 			}
 		}
 #endif
+		else ifcmd("omp") {
+			string sub;
+			in >> sub;
+			if (sub == "off")
+				omp_set_num_threads(1);
+			else if (sub == "on")
+				omp_set_num_threads(omp_get_max_threads());
+			else
+				error("Syntax error: expected 'on' or 'off'");
+		}
 		else ifcmd("stats") {
 			string sub;
 			in >> sub;

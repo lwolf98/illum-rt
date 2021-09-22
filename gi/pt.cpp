@@ -59,7 +59,7 @@ vec3 simple_pt::path(ray ray) {
 	for (int i = 0; i < max_path_len; ++i) {
 		
 		// find hitpoint with scene
-		triangle_intersection closest = rc->scene.rt->closest_hit(ray);
+		triangle_intersection closest = rc->scene.single_rt->closest_hit(ray);
 		if (!closest.valid()) {
 			if (rc->scene.sky)
 				radiance = throughput * rc->scene.sky->Le(ray);
@@ -158,7 +158,7 @@ vec3 pt_nee::path(ray ray) {
 	for (int i = 0; i < max_path_len; ++i) {
 		record_ray(i, ray);
 		// find hitpoint with scene
-		triangle_intersection closest = rc->scene.rt->closest_hit(ray);
+		triangle_intersection closest = rc->scene.single_rt->closest_hit(ray);
 		if (!closest.valid()) {
 			if (rc->scene.sky)
 				if (!mis || i==0)
@@ -189,7 +189,7 @@ vec3 pt_nee::path(ray ray) {
 		auto [shadow_ray,light_col,light_pdf] = sample_light(hit);
 		if (light_pdf != 0 && light_col != vec3(0)) {
 			record_ray(i+100,shadow_ray);
-			if (!rc->scene.rt->any_hit(shadow_ray)) {
+			if (!rc->scene.single_rt->any_hit(shadow_ray)) {
 				float divisor = light_pdf;
 				assert(light_pdf > 0);
 				if (mis)

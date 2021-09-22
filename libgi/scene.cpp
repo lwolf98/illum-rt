@@ -8,6 +8,7 @@
 #ifdef RTGI_WITH_SKY
 #include "framebuffer.h"
 #endif
+#include "wavefront-rt.h"
 
 #include <vector>
 #include <iostream>
@@ -262,6 +263,20 @@ vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri,
 	vec2 tc = (1.0f-is.beta-is.gamma)*vertices[tri.a].tc + is.beta*vertices[tri.b].tc + is.gamma*vertices[tri.c].tc;
 	return (*tex)(tc);
 }
+	
+void scene::release_rt() {
+	rt = nullptr;
+	single_rt = nullptr;
+	batch_rt = nullptr;
+}
+
+void scene::use(ray_tracer *new_rt) {
+	delete rt;
+	rt = new_rt;
+	single_rt = dynamic_cast<individual_ray_tracer*>(rt);
+	batch_rt = dynamic_cast<wf::batch_ray_tracer*>(rt);
+}
+
 
 
 #ifndef RTGI_A02

@@ -18,7 +18,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0,0,0);
 		ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-		triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+		triangle_intersection closest = rc->scene.single_rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc->scene);
 			flip_normals_to_ray(dg, view_ray);
@@ -71,7 +71,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	triangle_intersection closest = rc->scene.single_rt->closest_hit(sample_ray);
 	if (closest.valid()) {
 		diff_geom dg(closest, rc->scene);
 		brightness = dg.mat->emissive;
@@ -96,7 +96,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	triangle_intersection closest = rc->scene.single_rt->closest_hit(sample_ray);
 	if (closest.valid()) {
 		diff_geom dg(closest, rc->scene);
 		brightness = dg.mat->emissive;
@@ -141,7 +141,7 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 		ray r(hit.x, w_i);
 		r.length_exclusive(tmax);
 
-		if (!rc->scene.rt->any_hit(r)) {
+		if (!rc->scene.single_rt->any_hit(r)) {
 			auto mat = rc->scene.materials[tl->material_id];
 			accum += mat.emissive * hit.mat->brdf->f(hit, -view_ray.d, r.d) * cdot(hit.ns, r.d) * cdot(normal, -r.d) / (tmax*tmax);
 		}
@@ -160,7 +160,7 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 	light *l = rc->scene.lights[l_id];
 	auto [shadow_ray,l_col,pdf] = l->sample_Li(hit, rc->rng.uniform_float2());
 	if (l_col != vec3(0))
-		if (!rc->scene.rt->any_hit(shadow_ray))
+		if (!rc->scene.single_rt->any_hit(shadow_ray))
 			return l_col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, hit.ns) / (pdf * l_pdf);
 	return vec3(0);
 #endif
@@ -171,7 +171,7 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_A06
 	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
 	ray light_ray(hit.x, w_i);
-	if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
+	if (auto is = rc->scene.single_rt->closest_hit(light_ray); is.valid())
 		if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 			return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 	return vec3(0);
@@ -209,7 +209,7 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-		triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+		triangle_intersection closest = rc->scene.single_rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc->scene);
 			flip_normals_to_ray(dg, view_ray);
@@ -229,7 +229,7 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 					pdf_light = l_pdf*pdf;
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
 					if (l_col != vec3(0))
-						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+						if (auto is = rc->scene.single_rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
 				}
 				else {
@@ -237,7 +237,7 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 					ray light_ray(dg.x, w_i);
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
-						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
+						if (auto is = rc->scene.single_rt->closest_hit(light_ray); is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								trianglelight tl(rc->scene, is.ref);
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();

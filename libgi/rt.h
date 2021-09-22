@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <utility>
 #include <string>
+#include <ostream>
 
 using glm::vec3;
 using glm::vec2;
@@ -73,7 +74,7 @@ struct diff_geom {
 	const vec2 tc;          // texture coordinate
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
-	explicit diff_geom(const triangle_intersection &is, const scene &scene);
+	diff_geom(const triangle_intersection &is, const scene &scene);
 
 	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
 private:
@@ -92,8 +93,23 @@ protected:
 	::scene *scene;
 public:
 	virtual void build(::scene *) = 0;
-	virtual triangle_intersection closest_hit(const ray &) = 0;
-	virtual bool any_hit(const ray &) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual ~ray_tracer() {}
 };
+
+class individual_ray_tracer : public ray_tracer {
+protected:
+	::scene *scene;
+public:
+	virtual triangle_intersection closest_hit(const ray &) = 0;
+	virtual bool any_hit(const ray &) = 0;
+	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
+};
+
+
+static inline std::ostream& operator<<(std::ostream &o, const vec2 &v) { o << v.x << ", " << v.y; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec3 &v) { o << v.x << ", " << v.y << ", " << v.z; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec4 &v) { o << v.x << ", " << v.y << ", " << v.z << ", " << v.w; return o; }
+
+static inline std::ostream& operator<<(std::ostream &o, const glm::ivec2 &v) { o << v.x << ", " << v.y; return o; }
+

@@ -9,7 +9,7 @@
 
 // #define COUNT_HITS
 
-struct naive_bvh : public ray_tracer {
+struct naive_bvh : public individual_ray_tracer {
 	struct node {
 		aabb box;
 		uint32_t left, right;
@@ -29,7 +29,7 @@ private:
 enum class bbvh_triangle_layout { flat, indexed };
 enum class bbvh_esc_mode { off, on };
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-struct binary_bvh_tracer : public ray_tracer {
+struct binary_bvh_tracer : public individual_ray_tracer {
 	/* Innere und Blattknoten werden durch trickserei unterschieden.
 	 * Für Blattknoten gilt:
 	 * - link_l = -tri_offset

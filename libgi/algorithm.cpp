@@ -66,6 +66,8 @@ static std::string timediff(unsigned ms) {
 	else return std::to_string(ms) + " ms";
 }
 
+
+
 /*  Implementaiton for "one path at a time" traversal on the CPU over the complete image.
  *
  *  Note: We first compute a single sample to get a rough estimate of how long rendering is going to take.
@@ -90,3 +92,19 @@ void recursive_algorithm::compute_samples() {
 	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 	std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
 }
+
+void recursive_algorithm::prepare_frame() {
+	assert(rc->scene.single_rt != nullptr);
+}
+
+
+
+/*  Implementaiton for "one bounce at a time" traversal
+ *
+ *
+ */
+
+void wavefront_algorithm::prepare_frame() {
+	assert(rc->scene.batch_rt != nullptr);
+}
+
