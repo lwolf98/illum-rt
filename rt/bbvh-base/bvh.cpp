@@ -23,7 +23,7 @@ void naive_bvh::build(::scene *scene) {
 }
 
 uint32_t naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH1_OM_IMPL
 	assert(start < end);
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
@@ -84,7 +84,7 @@ uint32_t naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector<vert
 }
 
 triangle_intersection naive_bvh::closest_hit(const ray &ray) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH1_TRAV_IMPL
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;

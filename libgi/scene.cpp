@@ -102,7 +102,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 
 	// todo: store indices prior to adding anything to allow "transform-last"
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 	// initialize brdfs
 	if (brdfs.empty() || brdfs.count("default") == 0) {
 		brdfs["default"] = brdfs["lambert"] = new lambertian_reflection;
@@ -141,7 +141,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			textures.push_back(material.albedo_tex);
 		}
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 		material.brdf = brdfs["default"];
 #endif
 	
@@ -243,7 +243,7 @@ scene::~scene() {
 	delete rt;
 	for (auto *x : textures)
 		delete x;
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 	brdfs.erase("default");
 	for (auto [str,brdf] : brdfs)
 		delete brdf;
@@ -279,7 +279,7 @@ void scene::use(ray_tracer *new_rt) {
 
 
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 vec3 pointlight::power() const {
 	return 4*pi*col;
 }

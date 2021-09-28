@@ -53,7 +53,7 @@ struct texture {
 texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
 texture* load_hdr_image3f(const std::filesystem::path &path);
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 struct light {
 	virtual ~light() {}
 	virtual vec3 power() const = 0;
@@ -141,8 +141,10 @@ struct scene {
 	std::vector<::material>  materials;
 	std::vector<::texture*>  textures;
 	std::vector<object>      objects;
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 	std::map<std::string, brdf*> brdfs;
+#endif
+#ifndef RTGI_SKIP_LOCAL_ILLUM
 	std::vector<light*>      lights;
 #endif
 #ifndef RTGI_A04

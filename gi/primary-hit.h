@@ -15,7 +15,7 @@ public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 };
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_LOCAL_ILLUM
 class local_illumination : public recursive_algorithm {
 public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;

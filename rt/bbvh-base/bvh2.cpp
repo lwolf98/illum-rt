@@ -191,7 +191,7 @@ typename std::enable_if<LO!=bbvh_triangle_layout::flat,void>::type binary_bvh_tr
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_om(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH2_OM_IMPL
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
 
@@ -242,7 +242,7 @@ uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_om(std::vector<prim> 
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sm(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH2_SM_IMPL
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
 
@@ -311,6 +311,7 @@ uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sm(std::vector<prim> 
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sah(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) {
+#ifndef RTGI_SKIP_BVH2_SAH_IMPL
 	assert(start < end);
 	auto p = [&](uint32_t i) { return prims[index[i]]; };
 
@@ -422,12 +423,17 @@ uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sah(std::vector<prim>
 	nodes[id].box_l = box_l;
 	nodes[id].box_r = box_r;
 	return id;
+#else
+	// todo (highly optional)
+	std::logic_error("Not implemented, yet");
+	return 0;
+#endif
 }
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const ray &ray) {
 	time_this_block(closest_hit);
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;
@@ -483,7 +489,7 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
 	time_this_block(any_hit);
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection intersection;
 	uint32_t stack[25];
 	int32_t sp = 0;

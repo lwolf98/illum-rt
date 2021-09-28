@@ -12,7 +12,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					scene.cpp \
 					timer.cpp
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_LOCAL_ILLUM
 libgi_a_SOURCES +=  material.cpp
 #endif
 

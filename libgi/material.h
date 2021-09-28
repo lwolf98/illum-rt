@@ -16,7 +16,7 @@ inline float exponent_from_roughness(float roughness) {
 	return 2 / (roughness * roughness) - 2;
 }
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 
 struct brdf {
 #ifndef RTGI_A05

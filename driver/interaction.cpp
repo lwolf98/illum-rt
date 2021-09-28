@@ -177,7 +177,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
 			else if (name == "primary-wf")  a = new primary_hit_display_wf;
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_LOCAL_ILLUM
 			else if (name == "local")  a = new local_illumination;
 #endif
 #ifndef RTGI_A04
@@ -341,7 +341,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 						mat->albedo_tex = tex;
 				}
 			}
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 			else ifcmd("brdf") {
 				in >> cmd;
 				check_in_complete("Expected a single (no whitespace) string value");
@@ -368,7 +368,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			}
 			else error("Unknown subcommand");
 		}
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_BRDF
 		else ifcmd("default-brdf") {
 			string name;
 			in >> name;
