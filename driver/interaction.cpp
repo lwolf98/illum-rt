@@ -23,7 +23,7 @@
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "gi/direct.h"
 #endif
-#ifndef RTGI_A07_REF
+#ifndef RTGI_SKIP_PT
 #include "gi/pt.h"
 #endif
 
@@ -188,7 +188,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			// todo: set up mis algorithm here
 #endif
 #endif
-#ifndef RTGI_A07_REF
+#ifndef RTGI_SKIP_PT
 			else if (name == "simple-pt")  a = new simple_pt;
 #if !defined(RTGI_A08) && !defined(RTGI_A08_REF)
 			else if (name == "pt")  a = new pt_nee;

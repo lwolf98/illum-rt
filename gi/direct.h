@@ -26,14 +26,10 @@ public:
 };
 #endif
 
-#ifndef RTGI_A07
+#ifndef RTGI_SKIP_DIRECT_MIS
 class direct_light_mis : public direct_light {
 public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
-#else
-#ifndef RTGI_SKIP_DIRECT_MIS
-// todo: derive direct_light_mis from direct_light
-#endif
 #endif

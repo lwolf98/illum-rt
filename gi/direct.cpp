@@ -201,10 +201,11 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 
 
 
-#ifndef RTGI_A07
+#ifndef RTGI_SKIP_DIRECT_MIS
 // separate version to not include the rejection part in all methods
 // this should be improved upon
 gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
+#ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
@@ -272,17 +273,17 @@ gi_algorithm::sample_result direct_light_mis::sample_pixel(uint32_t x, uint32_t 
 		result.push_back({radiance,vec2(0)});
 	}
 	return result;
+#else
+	sample_result result;
+	result.push_back({vec3(0),vec2(0)});
+	return result;
+#endif
 }
 
 bool direct_light_mis::interprete(const std::string &command, std::istringstream &in) {
 	// nothing to do but prevent call to base
 	return false;
 }
-#else
-#ifndef RTGI_SKIP_DIRECT_MIS
-// todo: implement member functions of direct_light_mis
-// Note: feel free to make use of the helper functions provided in the base class
-#endif
 #endif
 
 

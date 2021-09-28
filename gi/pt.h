@@ -3,7 +3,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
 
-#ifndef RTGI_A07_REF
+#ifndef RTGI_SKIP_PT
 class simple_pt : public recursive_algorithm {
 protected:
 	int max_path_len = 10;

@@ -30,7 +30,7 @@ class gi_algorithm {
 protected:
 	float uniform_float() const;
 	glm::vec2 uniform_float2() const;
-#ifndef RTGI_A07_REF
+#ifndef RTGI_SKIP_PT
 	// maybe these should go into a seperate with_importance_sampling mixin...
 	// or be free standing functions, is there any need for those to be grouped in here?
 	std::tuple<ray,float> sample_uniform_direction(const diff_geom &hit) const;

@@ -7,10 +7,6 @@
 #include <utility>
 #include <cstdint>
 
-#if !defined(RTGI_A07_REF) && !defined(RTGI_A07)
-#define RTGI_WITH_SKY
-#endif
-
 class distribution_1d {
 	std::vector<float> f, cdf;
 	float integral_1spaced;
