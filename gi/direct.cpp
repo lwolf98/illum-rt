@@ -12,7 +12,7 @@
 using namespace glm;
 using namespace std;
 
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {

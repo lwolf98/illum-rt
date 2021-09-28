@@ -128,7 +128,7 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 
 #ifndef RTGI_SKIP_MF_BRDF
 
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_MF_BRDF_IMPL
 // Microfacet distribution helper functions
 #define sqr(x) ((x)*(x))
 #else
@@ -137,7 +137,7 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 #endif
 
 inline float ggx_d(const float NdotH, float roughness) {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_MF_BRDF_IMPL
     if (NdotH <= 0) return 0.f;
     const float tan2 = tan2_theta(NdotH);
     if (!std::isfinite(tan2)) return 0.f;
@@ -150,7 +150,7 @@ inline float ggx_d(const float NdotH, float roughness) {
 }
 
 inline float ggx_g1(const float NdotV, float roughness) {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_MF_BRDF_IMPL
     if (NdotV <= 0) return 0.f;
     const float tan2 = tan2_theta(NdotV);
     if (!std::isfinite(tan2)) return 0.f;
@@ -175,12 +175,12 @@ inline float ggx_pdf(float D, float NdotH, float HdotV) {
 }
 #endif
 
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_MF_BRDF_IMPL
 #undef sqr
 #endif
 
 vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_MF_BRDF_IMPL
     if (!same_hemisphere(geom.ng, w_i)) return vec3(0);
     const float NdotV = cdot(geom.ns, w_o);
     const float NdotL = cdot(geom.ns, w_i);
@@ -249,7 +249,7 @@ brdf *new_brdf(const std::string name, scene &scene) {
 		else if (name == "gtr2")
 			f = new gtr2_reflection;
 		else if (name == "layered-gtr2") {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_LAYERED_BRDF_IMPL
 			brdf *base = new_brdf("lambert", scene);
 			specular_brdf *coat = dynamic_cast<specular_brdf*>(new_brdf("gtr2", scene));
 			assert(coat);

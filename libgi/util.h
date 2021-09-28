@@ -40,7 +40,7 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
  */
 
 inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_material) {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_LAYERED_BRDF_IMPL
     // check if entering or leaving material
     const float ei = cos_wi < 0.0f ? ior_material : ior_medium;
     const float et = cos_wi < 0.0f ? ior_medium : ior_material;

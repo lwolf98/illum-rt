@@ -155,7 +155,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		uint32_t index_offset = vertices.size();
 		std::string object_name = mesh_ai->mName.C_Str();
 		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 		if (materials[material_id].emissive != vec3(0))
 			light_geom.push_back(objects.back());
 #endif
@@ -188,7 +188,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	}
 }
 	
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
 #ifdef RTGI_WITH_SKY
@@ -298,14 +298,12 @@ tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 
 
 /////
 
-#ifndef RTGI_A04
-
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
 }
-#endif
-#if !defined(RTGI_A04) && !(defined(RTGI_A05) || defined(RTGI_A05_REF))
 
 vec3 trianglelight::power() const {
+#ifdef RTGI_SKIP_DIRECT_ILLUM_LIGHT_POWER_IMPL
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
 	const vertex &c = scene.vertices[this->c];
@@ -313,8 +311,13 @@ vec3 trianglelight::power() const {
 	vec3 e2 = c.pos-a.pos;
 	const material &m = scene.materials[this->material_id];
 	return m.emissive * 0.5f * length(cross(e1,e2)) * pi;
+#else
+	// todo: compute power emitted by this light
+	return vec3(0);
+#endif
 }
 
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	// pbrt3/845
 	const vertex &a = scene.vertices[this->a];
@@ -352,10 +355,6 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	if (cos_theta_light <= 0.0f) return 0.0f;
 	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
-}
-#elif !defined(RTGI_A04)
-vec3 trianglelight::power() const {
-	return vec3(0);
 }
 #endif
 

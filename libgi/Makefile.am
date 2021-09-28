@@ -38,6 +38,6 @@ noinst_HEADERS = 	algorithm.h \
 #ifndef RTGI_A05
 noinst_HEADERS +=	discrete_distributions.h
 #endif
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_HEADERS +=	sampling.h
 #endif

@@ -20,7 +20,7 @@
 #include "rt/bbvh-base/bvh.h"
 #endif
 #include "gi/primary-hit.h"
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "gi/direct.h"
 #endif
 #ifndef RTGI_A07_REF
@@ -180,7 +180,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 			else if (name == "local")  a = new local_illumination;
 #endif
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 			else if (name == "direct")  a = new direct_light;
 #endif
 #ifndef RTGI_A07
@@ -245,7 +245,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			if (!scene.rt)
 				error("There is no ray traversal scheme to commit the scene data to");
 			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 			scene.compute_light_distribution();
 #endif
 			scene.rt->build(&scene);

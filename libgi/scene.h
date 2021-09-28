@@ -75,7 +75,7 @@ struct pointlight : public light {
 };
 #endif
 
-#ifndef RTGI_A04 
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 /*! Keeping the emissive triangles as seperate copies might seem like a strange design choice.
  *  It is. However, this way the BVH is allowed to reshuffle triangle positions (not vertex positions!)
  *  without having an effect on this.
@@ -84,22 +84,14 @@ struct pointlight : public light {
  *  triangles. I opted against that at first, as not to intorduce overhead, but any more efficient representation
  *  copy the triangle data on the GPU or in SIMD formats anyway.
  */
-#endif
-
-#if defined(RTGI_A05) || defined(RTGI_A05_REF)
 struct trianglelight : public light, public triangle {
 	const ::scene& scene;
 	trianglelight(const ::scene &scene, uint32_t i);
 	vec3 power() const override;
-};
-#endif
-#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
-struct trianglelight : public light, private triangle {
-	const ::scene& scene;
-	trianglelight(const ::scene &scene, uint32_t i);
-	vec3 power() const override;
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 	float pdf(const ray &r, const diff_geom &on_light) const;
+#endif
 };
 #endif
 
@@ -147,7 +139,7 @@ struct scene {
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 	std::vector<light*>      lights;
 #endif
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 	std::vector<object>      light_geom;	// Expires after bvh is built, do not use!
 	void compute_light_distribution();
 #endif
