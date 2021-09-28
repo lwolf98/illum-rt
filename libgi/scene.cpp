@@ -5,7 +5,7 @@
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "sampling.h"
 #endif
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 #include "framebuffer.h"
 #endif
 #include "wavefront-rt.h"
@@ -191,7 +191,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 void scene::compute_light_distribution() {
 	unsigned prims = 0; for (auto g : light_geom) prims += g.end-g.start;
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 	if (prims == 0 && !sky) {
 		std::cerr << "WARNING: There is neither emissive geometry nor a skylight" << std::endl;
 		return;
@@ -206,7 +206,7 @@ void scene::compute_light_distribution() {
 	for (auto l : lights) delete l;
 	lights.clear();
 	int n = prims;
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 	if (sky) {
 		n++;
 		sky->build_distribution();
@@ -223,7 +223,7 @@ void scene::compute_light_distribution() {
 			l++;
 		}
 	}
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 	if (sky) {
 		lights[n-1] = sky;
 		power[n-1] = sky->power().x;
@@ -360,7 +360,7 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 
 /////
 
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 
 void skylight::build_distribution() {
 	assert(tex);

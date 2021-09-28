@@ -12,7 +12,7 @@
 using namespace std;;
 
 distribution_1d::distribution_1d(const std::vector<float> &f)
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 : f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
 #else
 : f(f), cdf(f.size()+1) {
@@ -21,7 +21,7 @@ distribution_1d::distribution_1d(const std::vector<float> &f)
 }
 
 distribution_1d::distribution_1d(std::vector<float> &&f)
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 : f(f), cdf(f.size()+1), linearly_interpolated_on_01(*this) {
 #else
 : f(f), cdf(f.size()+1) {
@@ -72,7 +72,7 @@ void distribution_1d::debug_out(const std::string &p) const {
 	cdf.close();
 }
 
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 pair<float,float> distribution_1d::linearly_interpolated_01::sample(float xi) const {
 	unsigned index = unsigned(lower_bound(discrete.cdf.begin(), discrete.cdf.end(), xi) - discrete.cdf.begin());
 	index = index > 0 ? index - 1 : index; // might happen for xi==0
@@ -89,7 +89,7 @@ float distribution_1d::linearly_interpolated_01::pdf(float t) const {
 }
 #endif
 
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 
 distribution_2d::distribution_2d(const float *f, int w, int h) : f(f), w(w), h(h) {
 	conditional.reserve(h);

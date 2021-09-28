@@ -23,7 +23,7 @@ public:
 	float value_at(int index) const { return f[index]; }
 	int size() const { return f.size(); }
 	
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 	struct linearly_interpolated_01 {
 		distribution_1d &discrete;
 		linearly_interpolated_01(distribution_1d &discrete) : discrete(discrete) {}
@@ -38,7 +38,7 @@ public:
 
 };
 
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 class distribution_2d {
 	const float *f;
 	int w, h;

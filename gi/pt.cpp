@@ -151,7 +151,7 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 
 vec3 pt_nee::path(ray ray) {
 	vec3 radiance(0);
-#ifndef RTGI_A09
+#ifndef RTGI_SKIP_PT_IMPL
 	vec3 throughput(1);
 	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {

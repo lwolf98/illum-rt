@@ -95,7 +95,7 @@ struct trianglelight : public light, public triangle {
 };
 #endif
 
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 struct skylight : public light {
 	texture *tex = nullptr;
 	float intensity_scale;
@@ -146,7 +146,7 @@ struct scene {
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	distribution_1d *light_distribution;
 #endif
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 	skylight *sky = nullptr;
 #endif
 	std::map<std::string, ::camera> cameras;

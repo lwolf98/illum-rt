@@ -12,7 +12,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
-#include "libgi/discrete_distributions.h" // for RTGI_WITH_SKY
+#include "libgi/discrete_distributions.h" // for sky
 #include "libgi/wavefront-rt.h"
 
 #include "rt/seq/seq.h"
@@ -413,7 +413,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 				scene.lights.push_back(pl);
 		}
 #endif
-#ifdef RTGI_WITH_SKY
+#ifndef RTGI_SKIP_SKY
 		else ifcmd("skylight") {
 			string sub;
 			in >> sub;
