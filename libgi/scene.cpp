@@ -182,10 +182,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 				triangle.material_id = material_id;
 				triangles.push_back(triangle);
 			}
-#ifndef RTGI_A03
 			else
 				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
-#endif
 		}
 	}
 }

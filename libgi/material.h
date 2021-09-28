@@ -36,7 +36,7 @@ struct specular_brdf : public brdf {
 	bool coat = false;
 };
 
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_LAYERED_BRDF
 struct layered_brdf : public brdf {
 	specular_brdf *coat;
 	brdf *base;
@@ -66,7 +66,7 @@ struct phong_specular_reflection : public specular_brdf {
 #endif
 };
 
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_MF_BRDF
 struct gtr2_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 #ifndef RTGI_A05

@@ -7,9 +7,10 @@
 
 using namespace glm;
 
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_BRDF
+#ifndef RTGI_SKIP_LAYERED_BRDF
 vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
-#ifndef RTGI_A04
+#ifndef RTGI_SKIP_LAYERED_BRDF_IMPL
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	vec3 diff = base->f(geom, w_o, w_i);
 	vec3 spec = coat->f(geom, w_o, w_i);
@@ -55,7 +56,7 @@ brdf::sampling_res layered_brdf::sample(const diff_geom &geom, const vec3 &w_o, 
 
 vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	if (!same_hemisphere(w_i, geom.ns)) return vec3(0);
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_BRDF_IMPL
 	return one_over_pi * geom.albedo();
 #else
 	// todo
@@ -82,7 +83,7 @@ brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const ve
 
 vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	if (!same_hemisphere(w_i, geom.ng)) return vec3(0);
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_BRDF_IMPL
 	float exponent = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(w_i,geom.ns)-w_i;
 	float cos_theta = cdot(w_o, r);
@@ -125,7 +126,7 @@ brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, cons
 #endif
 
 
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_MF_BRDF
 
 #ifndef RTGI_A04
 // Microfacet distribution helper functions
@@ -235,7 +236,7 @@ brdf *new_brdf(const std::string name, scene &scene) {
 		else if (name == "phong")
 			f = new phong_specular_reflection;
 		else if (name == "layered-phong") {
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_LAYERED_BRDF
 			brdf *base = new_brdf("lambert", scene);
 			specular_brdf *coat = dynamic_cast<specular_brdf*>(new_brdf("phong", scene));
 			assert(coat);
@@ -244,7 +245,7 @@ brdf *new_brdf(const std::string name, scene &scene) {
 			throw std::logic_error("Not implemented, yet");
 #endif
 		}
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_MF_BRDF
 		else if (name == "gtr2")
 			f = new gtr2_reflection;
 		else if (name == "layered-gtr2") {
@@ -264,3 +265,5 @@ brdf *new_brdf(const std::string name, scene &scene) {
 	}
 	return scene.brdfs[name];
 }
+#endif
+
