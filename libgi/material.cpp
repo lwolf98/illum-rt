@@ -105,7 +105,7 @@ float phong_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, con
 
 brdf::sampling_res phong_specular_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
 	float exp = exponent_from_roughness(geom.mat->roughness);
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
 	float z = powf(xis.x, 1.0f/(exp+1));
 	float phi = 2.0f*pi*xis.y;
 	vec3 sample(sqrtf(1.0f-z*z) * cos(phi),

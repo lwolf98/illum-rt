@@ -33,7 +33,7 @@ public:
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
 #else
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_DIRECT_MIS
 // todo: derive direct_light_mis from direct_light
 #endif
 #endif

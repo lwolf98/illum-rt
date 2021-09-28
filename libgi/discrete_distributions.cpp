@@ -30,7 +30,7 @@ distribution_1d::distribution_1d(std::vector<float> &&f)
 }
 
 void distribution_1d::build_cdf() {
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
 	cdf[0] = 0;
 	unsigned N = f.size();
 	for (unsigned i = 1; i < N+1; ++i)
@@ -45,7 +45,7 @@ void distribution_1d::build_cdf() {
 }
 
 pair<uint32_t,float> distribution_1d::sample_index(float xi) const {
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
 	unsigned index = unsigned(lower_bound(cdf.begin(), cdf.end(), xi) - cdf.begin());
 	index = index > 0 ? index - 1 : index; // might happen for xi==0
 	float pdf = integral_1spaced > 0.0f ? f[index] / integral_1spaced : 0.0f;

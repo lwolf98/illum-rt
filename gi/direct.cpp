@@ -88,7 +88,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
 	vec2 xi = rc->rng.uniform_float2();
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
 	// todo: implement importance sampling on the cosine-term
 	vec3 sampled_dir = cosine_sample_hemisphere(xi);
 	vec3 w_i = align(sampled_dir, hit.ng);
@@ -279,7 +279,7 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 	return false;
 }
 #else
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_DIRECT_MIS
 // todo: implement member functions of direct_light_mis
 // Note: feel free to make use of the helper functions provided in the base class
 #endif

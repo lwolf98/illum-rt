@@ -182,11 +182,11 @@ void repl(istream &infile, repl_update_checks &uc) {
 #endif
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 			else if (name == "direct")  a = new direct_light;
-#endif
-#ifndef RTGI_A07
+#ifndef RTGI_SKIP_DIRECT_MIS
 			else if (name == "direct/mis")  a = new direct_light_mis;
-#elif !defined(RTGI_A06)
+#else
 			// todo: set up mis algorithm here
+#endif
 #endif
 #ifndef RTGI_A07_REF
 			else if (name == "simple-pt")  a = new simple_pt;
