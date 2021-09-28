@@ -357,6 +357,7 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	return pdf;
 }
 #endif
+#endif
 
 /////
 
