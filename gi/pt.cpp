@@ -28,6 +28,7 @@ static void record_ray(int bounce_and_kind, const ray &ray) {
 static void record_ray(int bounce_and_kind, const ray &ray) {}
 #endif
 
+#ifndef RTGI_SKIP_SIMPLE_PT
 // 
 // ----------------------- simple pt -----------------------
 //
@@ -49,7 +50,7 @@ gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint
 }
 
 vec3 simple_pt::path(ray ray) {
-#ifdef RTGI_A08
+#ifdef RTGI_SKIP_SIMPLE_PT_IMPL
 	// it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
 	return vec3(0);
 #else
@@ -142,9 +143,7 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 	return false;
 }
 
-#ifdef RTGI_A08
-#elif defined(RTGI_A08_REF)
-#else
+#ifndef RTGI_SKIP_PT
 
 // 
 // ----------------------- pt with next event estimation -----------------------

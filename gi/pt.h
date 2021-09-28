@@ -3,7 +3,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
 
-#ifndef RTGI_SKIP_PT
+#ifndef RTGI_SKIP_SIMPLE_PT
 class simple_pt : public recursive_algorithm {
 protected:
 	int max_path_len = 10;
@@ -16,11 +16,8 @@ public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
-#endif
 
-#ifdef RTGI_A08
-#elif defined(RTGI_A08_REF)
-#else
+#ifndef RTGI_SKIP_PT
 class pt_nee : public simple_pt {
 	vec3 path(ray view_ray) override;
 	std::tuple<ray,vec3,float> sample_light(const diff_geom &hit);
@@ -30,4 +27,5 @@ public:
 	bool interprete(const std::string &command, std::istringstream &in) override;
 	void finalize_frame();
 };
+#endif
 #endif

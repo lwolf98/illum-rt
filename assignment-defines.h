@@ -60,6 +60,10 @@ RTGI_SKIP_BRDF
 
 // main a7 themes
 #define RTGI_CONFIG_A7
-#undef  RTGI_SKIP_PT
 #undef  RTGI_SKIP_DIRECT_MIS
 #define RTGI_SKIP_DIRECT_MIS_IMPL
+
+// main a8 themes
+#undef  RTGI_SKIP_SIMPLE_PT
+#define RTGI_SKIP_SIMPLE_PT_IMPL
+#define RTGI_SKIP_PT

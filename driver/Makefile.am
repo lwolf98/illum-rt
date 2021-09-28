@@ -7,7 +7,7 @@ rtgi_LDADD  = ../gi/libprimary-hit.a ../rt/seq/libseq-is.a
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 rtgi_LDADD += ../gi/libdirect.a
 #endif
-#ifndef RTGI_SKIP_PT
+#ifndef RTGI_SKIP_SIMPLE_PT
 rtgi_LDADD += ../gi/libpt.a
 #endif
 #ifndef RTGI_SKIP_BVH
