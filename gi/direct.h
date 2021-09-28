@@ -11,7 +11,7 @@ class direct_light : public recursive_algorithm {
 protected:
 	vec3 sample_uniformly(const diff_geom &hit, const ray &view_ray);
 	vec3 sample_lights(const diff_geom &hit, const ray &view_ray);
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 	vec3 sample_cosine_weighted(const diff_geom &hit, const ray &view_ray);
 	vec3 sample_brdfs(const diff_geom &hit, const ray &view_ray);
 #endif

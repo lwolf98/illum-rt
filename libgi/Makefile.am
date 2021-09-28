@@ -16,7 +16,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 libgi_a_SOURCES +=  material.cpp
 #endif
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 libgi_a_SOURCES +=  discrete_distributions.cpp
 #endif
 
@@ -35,7 +35,7 @@ noinst_HEADERS = 	algorithm.h \
 					util.h
 
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 noinst_HEADERS +=	discrete_distributions.h
 #endif
 #ifndef RTGI_SKIP_DIRECT_ILLUM

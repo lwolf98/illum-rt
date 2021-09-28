@@ -1,7 +1,7 @@
 #include "material.h"
 #include "scene.h"
 #include "util.h"
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "sampling.h"
 #endif
 
@@ -24,7 +24,7 @@ vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 }
 #endif
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 float layered_brdf::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	const float F = fresnel_dielectric(absdot(geom.ns, w_o), 1.0f, geom.mat->ior);
 	float pdf_diff = base->pdf(geom, w_o, w_i);
@@ -64,7 +64,7 @@ vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 float lambertian_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
     return absdot(geom.ns, w_i) * one_over_pi;
 }
@@ -95,7 +95,7 @@ vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const 
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 float phong_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	float exp = exponent_from_roughness(geom.mat->roughness);
 	vec3 r = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
@@ -161,7 +161,7 @@ inline float ggx_g1(const float NdotV, float roughness) {
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 vec3 ggx_sample(const vec2 &xi, float roughness) {
     const float theta = atanf((roughness * sqrtf(xi.x)) / sqrtf(1.f - xi.x));
     if (!std::isfinite(theta)) return vec3(0, 0, 1);
@@ -200,7 +200,7 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 float gtr2_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	const vec3 H = normalize(w_o + w_i);
 	const float NdotH = cdot(geom.ns, H);

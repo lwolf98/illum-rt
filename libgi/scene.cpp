@@ -2,7 +2,7 @@
 
 #include "color.h"
 #include "util.h"
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "sampling.h"
 #endif
 #ifdef RTGI_WITH_SKY
@@ -229,7 +229,7 @@ void scene::compute_light_distribution() {
 		power[n-1] = sky->power().x;
 	}
 #endif
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 // 	light_distribution = new distribution_1d(std::move(power));	
 	light_distribution = new distribution_1d(power);	
 	light_distribution->debug_out("/tmp/light-dist");
@@ -282,7 +282,7 @@ vec3 pointlight::power() const {
 	return 4*pi*col;
 }
 #endif
-#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 
 tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 &xis) const {
 	vec3 to_light = pos - from.x;

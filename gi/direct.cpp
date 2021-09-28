@@ -23,7 +23,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 			diff_geom dg(closest, rc->scene);
 			flip_normals_to_ray(dg, view_ray);
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
 			}
@@ -32,7 +32,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
 				if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(dg, view_ray);
 				else if (sampling_mode == sample_light)     radiance = sample_lights(dg, view_ray);
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 				else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(dg, view_ray);
 				else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(dg, view_ray);
 #endif
@@ -54,7 +54,7 @@ gi_algorithm::sample_result direct_light::sample_pixel(uint32_t x, uint32_t y, u
 vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
-#ifdef RTGI_A05
+#ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
 	// todo: implement uniform hemisphere sampling
 	return vec3(0);
 #else
@@ -85,7 +85,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
 	vec2 xi = rc->rng.uniform_float2();
 #ifndef RTGI_A06
@@ -115,10 +115,10 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 #endif
 
 vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
-#ifdef RTGI_A05
+#ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
 	// todo: implement uniform sampling on the first few of the scene's lights' surfaces
 	return vec3(0);
-#elif defined(RTGI_A05_REF)
+#elif defined(RTGI_DIRECT_ILLUM_IMPL_SIMPLE)
 	const size_t N_max = 2;
 	int lighs_processed = 0;
 	vec3 accum(0);
@@ -150,7 +150,7 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 			break;
 	}
 	return accum / (float)lighs_processed;
-#elif defined(RTGI_A06)
+#elif defined(RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL)
 	// todo: implement importance sampling on the light sources
 	//       use rc->scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
 	//       don't forget to divide by the respective PDF values
@@ -166,9 +166,9 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 #endif
 }
 
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
-#ifndef RTGI_A06
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
 	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
 	ray light_ray(hit.x, w_i);
 	if (auto is = rc->scene.single_rt->closest_hit(light_ray); is.valid())

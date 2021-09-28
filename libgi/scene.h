@@ -3,7 +3,7 @@
 #include "camera.h"
 #include "intersect.h"
 #include "material.h"
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 #include "discrete_distributions.h"
 #endif
 
@@ -57,7 +57,7 @@ texture* load_hdr_image3f(const std::filesystem::path &path);
 struct light {
 	virtual ~light() {}
 	virtual vec3 power() const = 0;
-#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
 // 	virtual float pdf(const ray &r) const = 0;
 #endif
@@ -68,7 +68,7 @@ struct pointlight : public light {
 	vec3 col;
 	pointlight(const vec3 pos, const vec3 col) : pos(pos), col(col) {}
 	vec3 power() const override;
-#if !(defined(RTGI_A05) || defined(RTGI_A05_REF))
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 // 	float pdf(const ray &r) const override { return 0; }
 #endif
@@ -143,7 +143,7 @@ struct scene {
 	std::vector<object>      light_geom;	// Expires after bvh is built, do not use!
 	void compute_light_distribution();
 #endif
-#ifndef RTGI_A05
+#ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	distribution_1d *light_distribution;
 #endif
 #ifdef RTGI_WITH_SKY
