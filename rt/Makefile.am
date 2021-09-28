@@ -1,5 +1,5 @@
 SUBDIRS = seq
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_BVH
 SUBDIRS += bbvh-base
 # for rtgi-related use ifndef RTGI_AXX
 #endif

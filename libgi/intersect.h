@@ -17,7 +17,7 @@ struct aabb {
 
 // See Shirley (2nd Ed.), pp. 206. (library or excerpt online)
 inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray, triangle_intersection &info) {
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_RAY_TRI_IS_IMPL
 	vec3 pos = vertices[t.a].pos;
 	const float a_x = pos.x;
 	const float a_y = pos.y;
@@ -73,9 +73,9 @@ inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray,
 #endif
 }	
 
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_RAY_BOX_IS
 inline bool intersect(const aabb &box, const ray &ray, float &is) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_RAY_BOX_IS_1
 	float t_near = -FLT_MAX;
 	float t_far  =  FLT_MAX;
 
@@ -148,7 +148,7 @@ inline bool intersect(const aabb &box, const ray &ray, float &is) {
 }
 
 inline bool intersect2(const aabb &box, const ray &ray, float &is) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_RAY_BOX_IS_2
 		
 	float t1x_tmp = (box.min.x - ray.o.x) / ray.d.x;
 	float t2x_tmp = (box.max.x - ray.o.x) / ray.d.x;
@@ -184,7 +184,7 @@ inline bool intersect2(const aabb &box, const ray &ray, float &is) {
 
 
 inline bool intersect3(const aabb &box, const ray &ray, float &is) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_RAY_BOX_IS_3
 		
 	float idx = 1.0f / ray.d.x;
 	float idy = 1.0f / ray.d.y;
@@ -223,7 +223,7 @@ inline bool intersect3(const aabb &box, const ray &ray, float &is) {
 }
 
 inline bool intersect4(const aabb &box, const ray &ray, float &is) {
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_RAY_BOX_IS_4
 		
 	float idx = ray.id.x;
 	float idy = ray.id.y;

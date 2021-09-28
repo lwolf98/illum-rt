@@ -66,7 +66,7 @@ AC_CONFIG_FILES([Makefile
 				gi/Makefile
 				scripts/Makefile])
 
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])
 #endif
 

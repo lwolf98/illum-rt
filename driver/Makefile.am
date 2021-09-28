@@ -10,7 +10,7 @@ rtgi_LDADD += ../gi/libdirect.a
 #ifndef RTGI_A06
 rtgi_LDADD += ../gi/libpt.a
 #endif
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_BVH
 rtgi_LDADD += ../rt/bbvh-base/libbbvh-base.a 
 #endif
 rtgi_LDADD += ../libgi/libgi.a

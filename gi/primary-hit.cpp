@@ -15,7 +15,7 @@ using namespace std;
 
 gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
 	sample_result result;
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_PRIM_HIT_IMPL
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
@@ -28,12 +28,13 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 		result.push_back({radiance,vec2(0)});
 	}
 #else
+	// todo: implement primary hitpoint algorithm
 	result.push_back({vec3(0),vec2(0)});
 #endif
 	return result;
 }
 
-#ifndef RTGI_A02
+#ifndef RTGI_SKIP_LOCAL_ILLUM
 gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
 	sample_result result;
 	for (int sample = 0; sample < samples; ++sample) {
@@ -46,7 +47,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 			assert(!rc->scene.lights.empty());
 			pointlight *pl = dynamic_cast<pointlight*>(rc->scene.lights[0]);
 			assert(pl);
-#ifndef RTGI_A03
+#ifndef RTGI_SKIP_LOCAL_ILLUM_IMPL
 			vec3 to_light = pl->pos - dg.x;
 			vec3 w_i = normalize(to_light);
 			vec3 w_o = -view_ray.d;
@@ -57,7 +58,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 			if (!rc->scene.single_rt->any_hit(shadow_ray))
 				radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
 #else
-			// todo
+			// todo: implement phong lighting
 			radiance = dg.albedo();
 #endif
 		}

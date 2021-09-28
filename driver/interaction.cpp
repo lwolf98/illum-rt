@@ -16,7 +16,7 @@
 #include "libgi/wavefront-rt.h"
 
 #include "rt/seq/seq.h"
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_BVH
 #include "rt/bbvh-base/bvh.h"
 #endif
 #include "gi/primary-hit.h"
@@ -214,7 +214,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			string name;
 			in >> name;
 			if (name == "seq") scene.use(new seq_tri_is);
-#ifndef RTGI_A01
+#ifndef RTGI_SKIP_BVH
 			else if (name == "naive-bvh") scene.use(new naive_bvh);
 			else if (name == "bbvh") {
 				string tag1, tag2;
