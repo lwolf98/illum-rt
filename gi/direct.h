@@ -24,7 +24,6 @@ public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
-#endif
 
 #ifndef RTGI_SKIP_DIRECT_MIS
 class direct_light_mis : public direct_light {
@@ -32,4 +31,5 @@ public:
 	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
+#endif
 #endif

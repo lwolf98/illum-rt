@@ -200,7 +200,7 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 #endif
 
 
-
+#ifndef RTGI_SKIP_DIRECT_ILLUM
 #ifndef RTGI_SKIP_DIRECT_MIS
 // separate version to not include the rejection part in all methods
 // this should be improved upon
@@ -285,5 +285,5 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 	return false;
 }
 #endif
-
+#endif
 

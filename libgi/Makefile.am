@@ -32,7 +32,8 @@ noinst_HEADERS = 	algorithm.h \
 					rt.h \
 					scene.h \
 					timer.h \
-					util.h
+					util.h \
+					wavefront-rt.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

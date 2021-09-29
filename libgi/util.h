@@ -39,6 +39,7 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
  *  starting here, many things will probably originate from niho's code
  */
 
+#ifndef RTGI_SKIP_LAYERED_BRDF
 inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_material) {
 #ifndef RTGI_SKIP_LAYERED_BRDF_IMPL
     // check if entering or leaving material
@@ -64,6 +65,7 @@ inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_materi
 	return 0.0f;
 #endif
 }
+#endif
 
 
 /* 

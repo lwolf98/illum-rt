@@ -12,7 +12,6 @@
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
-#include "libgi/discrete_distributions.h" // for sky
 #include "libgi/wavefront-rt.h"
 
 #include "rt/seq/seq.h"

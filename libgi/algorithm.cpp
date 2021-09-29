@@ -3,7 +3,9 @@
 #include "libgi/rt.h"
 #include "libgi/context.h"
 #include "libgi/util.h"
+#ifndef RTGI_SKIP_SIMPLE_PT
 #include "libgi/sampling.h"
+#endif
 
 #include "libgi/global-context.h"
 
@@ -17,6 +19,7 @@ glm::vec2 gi_algorithm::uniform_float2() const {
 	return rc->rng.uniform_float2();
 }
 
+#ifndef RTGI_SKIP_SIMPLE_PT
 std::tuple<ray,float> gi_algorithm::sample_uniform_direction(const diff_geom &hit) const {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
@@ -46,6 +49,7 @@ std::tuple<ray,float> gi_algorithm::sample_brdf_distributed_direction(const diff
 	ray sample_ray(hit.x, w_i);
 	return {sample_ray, pdf};
 }
+#endif
 
 
 //! A hacky way to convert ms to a human readable indication of how long this is going to be.

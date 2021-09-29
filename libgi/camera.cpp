@@ -9,7 +9,7 @@ using namespace std;
 
 //! Set up a camera ray using cam.up, cam.dir, cam.w, cam.h (see \ref camera::update_frustum)
 ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
-#ifndef RTGI_SKIP_CAMRAY_SETUP
+#ifndef RTGI_SKIP_CAMRAY_SETUP_IMPL
 	// find basis
 	vec3 U = cross(cam.dir, cam.up);
 	vec3 V = cross(U, cam.dir);

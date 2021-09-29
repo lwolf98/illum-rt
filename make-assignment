@@ -1,42 +1,20 @@
 #!/bin/bash
 
 if [ $# -eq 0 -o $# -gt 2 ] ; then
-	echo "Need one argument: the assignment number"
+	echo "Need arguments: the assignment number [ref]"
 	exit 1
 fi
 
 ASS="$1"
 REF="$2"
-DEF="-D RTGI_AXX"
-REF_DEC=1
 
-if [ "$REF" == "ref" ] ; then
-	ASS_DEF_START=$((ASS+1))
-	DEF=$(printf "%s -D RTGI_A%02d_REF" "$DEF" "$ASS")
-	REF="-ref"
-	REF_DEC=2
-elif [ "$REF" == "" ] ; then
-	ASS_DEF_START="$ASS"
-else
-	echo "Invalid value for REF (arg 2)" >&2
-	exit 1
+branch="master"
+if [ "$(git branch --show-current)" != "$branch" ] ; then
+	echo -e "\e[31mWarning: generating assignment from $(git branch --show-current), not $branch!\e[0m"
 fi
-ASS=$(printf "%02d" "$ASS")
 
-for nr in $(seq $ASS_DEF_START 15) ; do
-	DEF=$(printf "%s -D RTGI_A%02d" "$DEF" $nr)
-done
-for nr in $(seq 1 $((ASS_DEF_START-1))) ; do
-	DEF=$(printf "%s -U RTGI_A%02d" "$DEF" $nr)
-done
-for nr in $(seq 1 $((ASS_DEF_START-REF_DEC))) ; do
-	DEF=$(printf "%s -U RTGI_A%02d_REF" "$DEF" $nr)
-done
-
-
-echo "---> $DEF"
-
-git archive --prefix make-ass/ -o make-ass.tar master
+# TODO use $branch
+git archive --prefix make-ass/ -o make-ass.tar $(git branch --show-current)
 if [ -e make-ass ] ; then
 	echo make-ass already exists!
 	exit 1
@@ -44,15 +22,19 @@ fi
 tar xf make-ass.tar
 cd make-ass
 
-sed -i 's/\[2020\]/[2020-a'$ASS$REF']/' configure.ac
+ASS=$(printf "%02d" "$ASS")
+if [ "$REF" != "" ] ; then
+	REF="-$REF"
+fi
+sed -i 's/\[2021\]/[2021-a'$ASS$REF']/' configure.ac
 
 for f in $(find . -name "*.cpp" -o -name "*.h" -o -name "Makefile.am") configure.ac ; do
-	unifdef -x2 -m $DEF "$f"
+	unifdef -x2 -m -f assconf/a$ASS$REF "$f"
 done
 
 #cd ..; cp -r make-ass /tmp/; cd -;
 autoreconf -if && ./configure && make -j20
 make dist-bzip2
-cp rtgi-2020-a??$REF.tar.bz2 ..
+cp rtgi-2021-a??$REF.tar.bz2 ..
 cd ..
 rm -r make-ass
