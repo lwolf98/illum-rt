@@ -47,12 +47,6 @@ case "$(g++ --version | head -n1)" in
 	AC_MSG_RESULT([no, all is well])
 esac
 
-AC_ARG_VAR([ASS], [If set, define preprocessor variables for given assignment number])
-AS_CASE([$ASS],
-		[none|""], [AC_MSG_WARN([ ------ no ass])],
-		[0|1|2|3|4|5|6|7|8|9], [AC_MSG_WARN([ ------ ass $ASS]); CPPFLAGS="$CPPFLAGS -DASSIGNMENT=$ASS" ],
-		[*], [ AC_MSG_ERROR([Invalid assignment $ASS])])
-
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile
 				libgi/Makefile
