@@ -10,14 +10,14 @@ sppx 32
 resolution 960 540
 
 default-brdf layered-gtr2
-load render-data/sibenik/sibenik-nostaklo.obj
+load render-data/sibenik/sibenik.obj
 
 material select pod
 material roughness 0.055
 material ior 2.289
 
 
-skylight load render-data/skylight-sunset.floats 30
+#skylight load render-data/skylight-sunset.floats 30
 
 
 # kept this in in case you want to render the regular sibenik model
