@@ -3,6 +3,9 @@
 /* define if the compiler supports basic C++17 syntax */
 #undef HAVE_CXX17
 
+/* Do we have OpenGL */
+#undef HAVE_GL
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 

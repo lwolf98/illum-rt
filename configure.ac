@@ -18,6 +18,13 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
+AC_CHECK_LIB([OpenGL], [main], 
+			 [AC_DEFINE([HAVE_GL], [1], [Do we have OpenGL])
+			  have_gl=yes], 
+			 [AC_MSG_WARN([Compiling without OpenGL support])
+			  have_gl=no])
+AM_CONDITIONAL([have_gl], [test x$have_gl = xyes])
+
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])
 if pkg-config --atleast-version=7.0.0 MagickWand ; then
@@ -58,5 +65,6 @@ AC_CONFIG_FILES([Makefile
 #ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])
 #endif
+AM_COND_IF([have_gl], [AC_CONFIG_FILES([rt/gl/Makefile])])
 
 AC_OUTPUT
