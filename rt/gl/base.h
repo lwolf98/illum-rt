@@ -8,17 +8,15 @@
 
 namespace wf {
 	namespace gl {
-		#pragma once
 
 		struct buffer {
 			GLuint id;
 			std::string name;
 			GLuint index;
 			unsigned size;
-			reset_type r_type;
 
-			buffer(std::string name, GLuint index, unsigned size, reset_type r_type = KEEP)
-			: id(0), name(name), index(index), size(size), r_type(r_type) {
+			buffer(std::string name, GLuint index, unsigned size)
+			: id(0), name(name), index(index), size(size) {
 				glGenBuffers(1, &id);
 			}
 			virtual ~buffer() {
@@ -32,13 +30,13 @@ namespace wf {
 		{
 			std::vector<T> org_data;
 		public:
-			ssbo(std::string name, GLuint index, unsigned size, reset_type r_type = CLEAR)
-			: buffer(name, index, size, r_type) {
+			ssbo(std::string name, GLuint index, unsigned size)
+			: buffer(name, index, size) {
 				if (size > 0) resize(size);
 			}
 
-			ssbo(std::string name, GLuint index, const std::vector<T> &data, reset_type r_type = CLEAR)
-			: buffer(name, index, data.size(), r_type), org_data(data) {
+			ssbo(std::string name, GLuint index, const std::vector<T> &data)
+			: buffer(name, index, data.size()), org_data(data) {
 				if (size > 0) resize(size, data);
 			}
 
@@ -94,6 +92,11 @@ namespace wf {
 			raydata rd;
 			batch_rt() : rd(rc->resolution()) {
 			}
+		};
+
+		class platform : public wf::platform {
+		public:
+			platform();
 		};
 	}
 }

@@ -13,5 +13,8 @@ rtgi_LDADD += ../gi/libpt.a
 #ifndef RTGI_SKIP_BVH
 rtgi_LDADD += ../rt/bbvh-base/libbbvh-base.a 
 #endif
+if have_gl
+rtgi_LDADD += ../rt/gl/libglrt.a 
+endif
 rtgi_LDADD += ../libgi/libgi.a
 rtgi_LDADD += $(WAND_LIBS)

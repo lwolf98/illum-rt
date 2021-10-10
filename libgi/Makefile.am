@@ -10,7 +10,10 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					random.cpp \
 					rt.cpp \
 					scene.cpp \
-					timer.cpp
+					timer.cpp \
+					wavefront-rt.cpp \
+					wavefront-scalar.cpp
+
 
 #ifndef RTGI_SKIP_BRDF
 libgi_a_SOURCES +=  material.cpp
@@ -33,7 +36,8 @@ noinst_HEADERS = 	algorithm.h \
 					scene.h \
 					timer.h \
 					util.h \
-					wavefront-rt.h
+					wavefront-rt.h \
+					wavefront-scalar.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

@@ -67,35 +67,6 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 }
 #endif
 
-namespace wf {
-	namespace cpu {
-		struct store_hitpoint_albedo : public batch_ray_and_intersection_processing_cpu {
-			void run() override {
-				auto res = rc->resolution();
-				float one_over_samples = 1.0f/rc->sppx;
-				auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-				assert(rt != nullptr);
-				cout << res << endl;
-				#pragma omp parallel for
-				for (int y = 0; y < res.y; ++y)
-					for (int x = 0; x < res.x; ++x) {
-						vec3 radiance(0);
-						for (int sample = 0; sample < rc->sppx; ++sample) {
-							triangle_intersection closest = rt->rd.intersections[y*res.x+x];
-							if (closest.valid()) {
-								diff_geom dg(closest, rc->scene);
-								radiance += dg.albedo();
-							}
-						}
-						radiance *= one_over_samples;
-						rc->framebuffer.color(x,y) = vec4(radiance, 1);
-					}
-
-			}
-		};
-	}
-}
-
 void primary_hit_display_wf::compute_samples() {
 
 // 	#pragma omp parallel for
@@ -103,10 +74,11 @@ void primary_hit_display_wf::compute_samples() {
 // 		for (int x = 0; x < res.x; ++x)
 // 			rays[y*w+x] = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 // 
-	wf::cpu::batch_cam_ray_setup_cpu().run();
+	// TODO cache and make sure platform change is managed gracefully
+	rc->platform->rni("setup camrays")->run();
 	auto *batch_rt = rc->scene.batch_rt;
 	assert(batch_rt != nullptr);
 	batch_rt->compute_closest_hit();
 
-	wf::cpu::store_hitpoint_albedo().run();
+	rc->platform->rni("store hitpoint albedo")->run();
 }

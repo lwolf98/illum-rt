@@ -5,6 +5,8 @@
  *
  */
 #include "interaction.h"
+#include "config.h"
+
 #include "cmdline.h"
 
 #include "libgi/timer.h"
@@ -13,6 +15,7 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 #include "libgi/wavefront-rt.h"
+#include "libgi/wavefront-scalar.h"
 
 #include "rt/seq/seq.h"
 #ifndef RTGI_SKIP_BVH
@@ -24,6 +27,10 @@
 #endif
 #ifndef RTGI_SKIP_SIMPLE_PT
 #include "gi/pt.h"
+#endif
+
+#ifdef HAVE_GL
+#include "rt/gl/seq.h"
 #endif
 
 #include "libgi/timer.h"
@@ -235,7 +242,33 @@ void repl(istream &infile, repl_update_checks &uc) {
 				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 			}
 #endif
+#ifdef HAVE_GL
+			else if (name == "opengl") {
+				string variant;
+				in >> variant;
+				check_in("Syntax error, requires opengl ray tracer variant name");
+				if (variant == "seq")
+					scene.use(new wf::gl::seq_tri_is);
+#ifndef RTGI_SKIP_BVH
+#endif
+				else
+					error("There is no such opengl ray tracer variant");
+			}
+#endif
 			else error("There is no ray tracer called '" << name << "'");
+			uc.tracer_touched_at = uc.cmdid;
+		}
+		else ifcmd("platform") {
+			string name;
+			in >> name;
+			check_in_complete("Syntax error, only a single platform name expected (no spaces, sorry)");
+			// this should be plugin-driven at some point
+			if (name == "scalar-cpu") rc->platform = new wf::cpu::scalar_cpu_batch_raytracing;
+#ifdef HAVE_GL
+			else if (name == "opengl") rc->platform = new wf::gl::platform;
+#endif
+			else error("There is no platform called '" << name << "'");
+			scene.use(rc->platform->tracer("default"));
 			uc.tracer_touched_at = uc.cmdid;
 		}
 		else ifcmd("commit") {

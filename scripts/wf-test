@@ -3,8 +3,13 @@ at -13 -12 0
 look 1 0 0
 up 0 1 0
 
-raytracer bbvh indexed esc
-bvh sm
+#raytracer bbvh indexed esc
+#bvh sm
+
+#raytracer opengl seq
+
+platform scalar-cpu
+platform opengl
 
 sppx 32
 resolution 960 540
@@ -64,8 +69,8 @@ commit
 at 2 -14 0
 look -1 0 0
 
-algo primary
-outfile /tmp/test.png
+#algo primary
+#outfile /tmp/test.png
 #run
 
 #omp off
