@@ -33,10 +33,10 @@ bool seq_tri_is::any_hit(const ray &ray) {
 namespace wf {
 	namespace gl {
 		seq_tri_is::seq_tri_is()
-		: vertex_pos("vertex_pos", 0, 0),
-		  vertex_norm("vertex_norm", 1, 0),
-		  vertex_tc("vertex_tc", 2, 0),
-		  triangles("triangles", 3, 0) {
+		: vertex_pos("vertex_pos", 4, 0),
+		  vertex_norm("vertex_norm", 5, 0),
+		  vertex_tc("vertex_tc", 6, 0),
+		  triangles("triangles", 7, 0) {
 		}
 		void seq_tri_is::build(::scene *scene) {
 			triangles.resize(scene->triangles.size(), reinterpret_cast<ivec4*>(scene->triangles.data()));

@@ -94,6 +94,9 @@ namespace wf {
 			}
 		};
 
+		struct ray_and_intersection_processing : public wf::ray_and_intersection_processing {
+		};
+
 		class platform : public wf::platform {
 		public:
 			platform();
