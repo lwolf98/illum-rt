@@ -82,6 +82,12 @@ public:
 		glDispatchCompute(w, h, d);
 	}
 
+	int uniform_location(const std::string &name) {
+		return glGetUniformLocation(program, name.c_str());
+	}
+	void uniform(const std::string &name, int x) {
+		glUniform1i(uniform_location(name), x);
+	}
 };
 
 

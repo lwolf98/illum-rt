@@ -28,8 +28,9 @@ namespace wf {
 
 		template<typename T> class ssbo : public buffer
 		{
-			std::vector<T> org_data;
 		public:
+			std::vector<T> org_data;
+
 			ssbo(std::string name, GLuint index, unsigned size)
 			: buffer(name, index, size) {
 				if (size > 0) resize(size);
@@ -59,6 +60,14 @@ namespace wf {
 				glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * size, data, GL_STATIC_READ);
 				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+			}
+			void download() {
+				if (org_data.size() == 0)
+					org_data.resize(size);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+				void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+				memcpy(org_data.data(), (T*)p, sizeof(T)*size);
+				glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 			}
 		};
 

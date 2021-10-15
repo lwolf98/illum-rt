@@ -6,7 +6,7 @@
 
 namespace wf {
 	namespace gl {
-		class seq_tri_is : public batch_ray_tracer {
+		class seq_tri_is : public batch_rt {
 			ssbo<vec4> vertex_pos, vertex_norm;
 			ssbo<vec2> vertex_tc;
 			ssbo<ivec4> triangles;
