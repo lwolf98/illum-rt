@@ -18,7 +18,8 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
-AC_CHECK_LIB([OpenGL], [main], [have_gl=yes], [have_gl=no])
+have_gl=yes
+AC_CHECK_LIB([OpenGL], [main], [], [have_gl=no])
 AC_CHECK_LIB([GLEW], [main], [], [have_gl=no])
 AC_CHECK_LIB([glfw], [main], [], [have_gl=no])
 AM_CONDITIONAL([have_gl], [test x$have_gl = xyes])
