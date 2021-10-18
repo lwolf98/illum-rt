@@ -13,6 +13,7 @@ platform opengl
 
 sppx 32
 resolution 960 540
+resolution 480 270
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik.obj

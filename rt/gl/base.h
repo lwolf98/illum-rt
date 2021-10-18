@@ -9,6 +9,11 @@
 namespace wf {
 	namespace gl {
 
+		
+		/*!	\brief Basic OpenGL Buffer abstraction (\see ssbo).
+		 *
+		 * 	Moste likely for internal/extension use.
+		 */
 		struct buffer {
 			GLuint id;
 			std::string name;
@@ -26,6 +31,12 @@ namespace wf {
 			}
 		};
 
+
+		/*! \brief Chunk of memory on the GPU available to OpenGL Shaders.
+		 *
+		 * 	The upload(onto the grpu)/download(from the gpu to ram) logic might be subject to change as this
+		 * 	implementation can be wasteful in terms of host ram.
+		 */
 		template<typename T> class ssbo : public buffer
 		{
 		public:
@@ -71,6 +82,12 @@ namespace wf {
 			}
 		};
 
+		
+		/*! \brief Ray data, including intersection points
+		 *
+		 *  The indices given for the Shader Storage Buffer Objects (ssbo) correspond to the binding locations in the
+		 *  shaders (\see compute_shader).
+		 */
 		struct raydata {
 			int w, h;
 			ssbo<vec4> rays_o;
@@ -97,18 +114,61 @@ namespace wf {
 			}
 		};
 
+		
+		/*! \brief A copy of the scene data kept on the GPU.
+		 *
+		 * 	At any changes to the scene, make sure to update this structure.
+		 */
+		struct scenedata {
+			ssbo<vec4> vertex_pos, vertex_norm;
+			ssbo<vec2> vertex_tc;
+			ssbo<ivec4> triangles;
+			scenedata()
+			: vertex_pos("vertex_pos", 4, 0),
+			  vertex_norm("vertex_norm", 5, 0),
+		 	  vertex_tc("vertex_tc", 6, 0),
+			  triangles("triangles", 7, 0) {
+			}
+			void upload(scene *scene);
+		};
+
+		
+		/*! \brief Default OpenGL Ray Tracer.
+		 *
+		 * 	We might build different variants that derive from this, but note that if a new OpenGL ray tracer uses
+		 * 	different data structures it will be best to have that ray tracer be a sibling, not a child, of this
+		 * 	interface (because this interface holds the ray- and scene data, which will be different in this case).
+		 */
 		struct batch_rt : public batch_ray_tracer {
 			raydata rd;
+			scenedata sd;
 			batch_rt() : rd(rc->resolution()) {
 			}
 		};
 
+		
+		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
+		 *
+		 */
 		struct ray_and_intersection_processing : public wf::ray_and_intersection_processing {
 		};
 
+
+		/*! \brief OpenGL Platform for Ray Tracing
+		 * 	
+		 * 	A non-optimized GL implementation of RTGI's interface, primarily as proof of concept and documentation for
+		 * 	more advanced GPU (or CPU/SIMD) driven implementations.
+		 *
+		 * 	Open issues:
+		 * 	- Headless GL
+		 * 	- Structs for triangle intersections
+		 * 	- Materials on the GPU
+		 *
+		 */
 		class platform : public wf::platform {
 		public:
 			platform();
+			static std::string standard_preamble;
 		};
 	}
 }

@@ -6,44 +6,62 @@ using namespace std;
 namespace wf {
 	namespace gl {
 
-		void batch_cam_ray_setup::run() {
-			compute_shader cs("batch_cam_ray_setup",
-							  	R"(
-								#version 450
-								layout (local_size_x = 32, local_size_y = 32) in;
-							  	layout (std430, binding = 0) buffer b_rays_o  { vec4 rays_o  []; };
-							  	layout (std430, binding = 1) buffer b_rays_d  { vec4 rays_d  []; };
-							  	layout (std430, binding = 2) buffer b_rays_id { vec4 rays_id []; };
-							  	layout (std430, binding = 3) buffer b_intersections { vec4 intersections[]; };
-							  	layout (std430, binding = 4) buffer b_vertex_pos  { vec4 vertex_pos []; };
-							  	layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
-							  	layout (std430, binding = 6) buffer b_vertex_tc   { vec4 vertex_tc  []; };
-								uniform int w;
-								uniform int h;
-							  	void main() {
-									if (gl_GlobalInvocationID.x >= w || gl_GlobalInvocationID.y >= h)
-										return;
-									uint id = gl_GlobalInvocationID.y * w + gl_GlobalInvocationID.x;
-									intersections[id].x = 123;
-							  	}
-							  )");
-			auto res = rc->resolution();
+		batch_cam_ray_setup::batch_cam_ray_setup()
+		: cs("batch_cam_ray_setup",
+			 platform::standard_preamble +
+			 R"(
+			   uniform vec3 p, d, U, V;
+			   uniform vec2 near_wh;
+			   void run(uint x, uint y) {
+			   		uint id = y * w + x;
+			   		vec2 offset = vec2(0,0);
+			   		float u = (float(x)+0.5+offset.x)/float(w) * 2.0f - 1.0f;	// \in (-1,1)
+			   		float v = (float(y)+0.5+offset.y)/float(h) * 2.0f - 1.0f;
+			   		u = near_wh.x * u;	// \in (-near_w,near_w)
+			   		v = near_wh.y * v;
+			   		vec3 dir = normalize(d + U*u + V*v);
+			   		rays_o[id] = vec4(p, 1);
+			   		rays_d[id] = vec4(dir, 0);
+			   		rays_id[id] = vec4(vec3(1)/dir, 1);
+			   }
+			 )") {
 			cs.compile();
+		}
+		void batch_cam_ray_setup::run() {
+			auto res = rc->resolution();
+			camera &cam = rc->scene.camera;
+			vec3 U = cross(cam.dir, cam.up);
+			vec3 V = cross(U, cam.dir);
+			
 			cs.bind();
-			cs.uniform("w", res.x);
-			cs.uniform("h", res.y);
+			cs.uniform("w", res.x).uniform("h", res.y);
+			cs.uniform("p", cam.pos).uniform("d", cam.dir).uniform("U", U).uniform("V", V);
+			cs.uniform("near_wh", cam.near_w, cam.near_h);
 			cs.dispatch(res.x, res.y);
 			cs.unbind();
+		}
+		
+		void store_hitpoint_albedo::run() {
+			auto res = rc->resolution();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 
 			// this conversion is going to be a pain
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			rt->rd.intersections.download();
 			triangle_intersection *is = (triangle_intersection*)rt->rd.intersections.org_data.data();
-			cout << "---t---> " << is[0].t << endl;
-		}
-		
-		void store_hitpoint_albedo::run() {
+
+			#pragma omp parallel for
+			for (int y = 0; y < res.y; ++y)
+				for (int x = 0; x < res.x; ++x) {
+					vec3 radiance(0);
+					triangle_intersection &hit = is[y*res.x+x];
+					if (hit.valid()) {
+						diff_geom dg(hit, rc->scene);
+						radiance += dg.albedo();
+					}
+					//radiance *= one_over_samples;
+					rc->framebuffer.color(x,y) = vec4(radiance, 1);
+				}
 		}
 	
 	}

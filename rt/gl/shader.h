@@ -85,8 +85,22 @@ public:
 	int uniform_location(const std::string &name) {
 		return glGetUniformLocation(program, name.c_str());
 	}
-	void uniform(const std::string &name, int x) {
+	compute_shader& uniform(const std::string &name, int x) {
 		glUniform1i(uniform_location(name), x);
+		return *this;
+	}
+	compute_shader& uniform(const std::string &name, int x, int y) {
+		glUniform2i(uniform_location(name), x, y);
+		return *this;
+	}
+	compute_shader& uniform(const std::string &name, float x, float y) {
+		int l = uniform_location(name);
+		glUniform2f(uniform_location(name), x, y);
+		return *this;
+	}
+	compute_shader& uniform(const std::string &name, const vec3 &v) {
+		glUniform3f(uniform_location(name), v.x, v.y, v.z);
+		return *this;
 	}
 };
 

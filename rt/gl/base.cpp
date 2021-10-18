@@ -3,14 +3,37 @@
 #include "seq.h"
 
 #include <stdexcept>
+#include <vector>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+using std::vector;
 
 namespace wf {
 	namespace gl {
 
 		static GLFWwindow *window;
+
+		void scenedata::upload(scene *scene) {
+			triangles.resize(scene->triangles.size(), reinterpret_cast<ivec4*>(scene->triangles.data()));
+
+			int N = scene->vertices.size();
+			vector<vec4> v4(N);
+
+			for (int i = 0; i < N; ++i)
+				v4[i] = vec4(scene->vertices[i].pos, 1);
+			vertex_pos.resize(v4);
+
+			for (int i = 0; i < N; ++i)
+				v4[i] = vec4(scene->vertices[i].norm, 0);
+			vertex_norm.resize(v4);
+
+			vector<vec2> v2(N);
+			for (int i = 0; i < N; ++i)
+				v2[i] = scene->vertices[i].tc;
+			vertex_tc.resize(v2);
+		}
 
 		platform::platform() : wf::platform("opengl") {
 			if (!glfwInit())
@@ -41,5 +64,25 @@ namespace wf {
 			rnis["store hitpoint albedo"] = new store_hitpoint_albedo;
 		}
 		
+		std::string platform::standard_preamble = R"(
+			#version 450
+			layout (local_size_x = 32, local_size_y = 32) in;
+			layout (std430, binding = 0) buffer b_rays_o  { vec4 rays_o  []; };
+			layout (std430, binding = 1) buffer b_rays_d  { vec4 rays_d  []; };
+			layout (std430, binding = 2) buffer b_rays_id { vec4 rays_id []; };
+			layout (std430, binding = 3) buffer b_intersections { vec4 intersections[]; };
+			layout (std430, binding = 4) buffer b_vertex_pos  { vec4 vertex_pos []; };
+			layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
+			layout (std430, binding = 6) buffer b_vertex_tc   { vec4 vertex_tc  []; };
+			layout (std430, binding = 7) buffer b_triangles   { ivec4 triangles []; };
+			uniform int w;
+			uniform int h;
+			void run(uint x, uint y);
+			void main() {
+				if (gl_GlobalInvocationID.x < w || gl_GlobalInvocationID.y < h)
+					run(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+			}
+			)";
+
 	}
 }
