@@ -98,7 +98,7 @@ public:
 		glUniform2f(uniform_location(name), x, y);
 		return *this;
 	}
-	compute_shader& uniform(const std::string &name, const vec3 &v) {
+	compute_shader& uniform(const std::string &name, const glm::vec3 &v) {
 		glUniform3f(uniform_location(name), v.x, v.y, v.z);
 		return *this;
 	}
