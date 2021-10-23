@@ -32,8 +32,9 @@ template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 struct binary_bvh_tracer : public individual_ray_tracer {
 	/* Innere und Blattknoten werden durch trickserei unterschieden.
 	 * Für Blattknoten gilt:
-	 * - link_l = -tri_offset
-	 * - link_r = -tri_count
+	 *   link_l = -tri_offset
+	 *   link_r = -tri_count
+	 * Blattknoten werden daran erkannt, dass link_r negativ ist (kein gültiger Array Index)
 	 */
 	struct node {
 		aabb box_l, box_r;
