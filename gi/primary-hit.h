@@ -23,7 +23,8 @@ public:
 #endif
 
 
-
+#ifndef RTGI_SKIP_WF
 class primary_hit_display_wf : public wavefront_algorithm {
 	void compute_samples() override;
 };
+#endif

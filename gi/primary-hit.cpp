@@ -57,7 +57,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 			if (!rc->scene.single_rt->any_hit(shadow_ray))
 				radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
 #else
-			// todo: implement phong lighting
+			// todo: implement local illumination via the BRDF
 			radiance = dg.albedo();
 #endif
 		}
@@ -67,6 +67,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 }
 #endif
 
+#ifndef RTGI_SKIP_WF
 namespace wf {
 	namespace cpu {
 		struct store_hitpoint_albedo : public batch_ray_and_intersection_processing_cpu {
@@ -110,3 +111,4 @@ void primary_hit_display_wf::compute_samples() {
 
 	wf::cpu::store_hitpoint_albedo().run();
 }
+#endif

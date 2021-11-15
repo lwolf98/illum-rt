@@ -59,6 +59,7 @@ void run(gi_algorithm *algo);
 void rt_bench();
 
 static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_checks &uc, const std::string &command) {
+#ifndef RTGI_SKIP_WF
 	if (scene.single_rt && dynamic_cast<wavefront_algorithm*>(algo)) {
 		cout << "Wavefront algorithm used with invidividually tracing RT, promoting RT to batch tracing." << endl;
 		auto *rt = scene.single_rt;
@@ -69,6 +70,7 @@ static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_chec
 		error_no_continue("Cannot drive a recursive algorithm by a batch ray tracer");
 		return false;
 	}
+#endif
 	return true;
 }
 
@@ -175,7 +177,9 @@ void repl(istream &infile, repl_update_checks &uc) {
 			in >> name;
 			gi_algorithm *a = nullptr;
 			if (name == "primary")      a = new primary_hit_display;
+#ifndef RTGI_SKIP_WF
 			else if (name == "primary-wf")  a = new primary_hit_display_wf;
+#endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 			else if (name == "local")  a = new local_illumination;
 #endif
