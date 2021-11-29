@@ -4,7 +4,8 @@ look 0.85235 -0.52249 -0.022323
 up 0 1 0
 camup 0.52233 0.85264 -0.013184
 
-default-brdf lambert
+default-brdf layered-phong
+#default-brdf layered-gtr2
 
 load render-data/brdf-test-noal.obj
 raytracer bbvh

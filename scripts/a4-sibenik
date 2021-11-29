@@ -7,17 +7,17 @@ up 0 1 0
 
 
 #default-brdf phong
-default-brdf layered-phong
+#default-brdf layered-phong
 #default-brdf gtr2
-#default-brdf layered-gtr2
+default-brdf layered-gtr2
 
+load render-data/sibenik/sibenik_light.obj
+load render-data/sibenik/sibenik_light_small.obj
 
 load render-data/sibenik/sibenik.obj
 raytracer bbvh
-algo local
+algo direct
 sppx 32
-#pointlight pos 0 -4 0 col 35 30 26
-pointlight pos 7 -8 0 col 7 4 2
 resolution 1280 720
 outfile out.png
 
@@ -44,7 +44,31 @@ material select sprljci
 material albedo  0.78431 0.78431 0.78431
 material ior 1.3
 material roughness  0.50372
+
+
+# turn off sibenik lights since we use a substitue
+material select staklo
+material emissive 0 0 0
+        
+material select staklo_crveno
+material emissive 0 0 0
+        
+material select staklo_plavo
+material emissive 0 0 0
+        
+material select staklo_zeleno
+material emissive 0 0 0
+        
+material select staklo_zuto
+material emissive 0 0 0
+
         
 commit
 
+is uniform
+outfile a5-sibenik-1-uniform.png
+run
+
+is light
+outfile a5-sibenik-2-lights.png
 run
