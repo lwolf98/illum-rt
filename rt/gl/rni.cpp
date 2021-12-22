@@ -1,38 +1,23 @@
 #include "rni.h"
 
+#include "libgi/timer.h"
+
 #include <iostream>
 using namespace std;
 
 namespace wf {
 	namespace gl {
 
-		batch_cam_ray_setup::batch_cam_ray_setup()
-		: cs("batch_cam_ray_setup",
-			 platform::standard_preamble +
-			 R"(
-			   uniform vec3 p, d, U, V;
-			   uniform vec2 near_wh;
-			   void run(uint x, uint y) {
-			   		uint id = y * w + x;
-			   		vec2 offset = vec2(0,0);
-			   		float u = (float(x)+0.5+offset.x)/float(w) * 2.0f - 1.0f;	// \in (-1,1)
-			   		float v = (float(y)+0.5+offset.y)/float(h) * 2.0f - 1.0f;
-			   		u = near_wh.x * u;	// \in (-near_w,near_w)
-			   		v = near_wh.y * v;
-			   		vec3 dir = normalize(d + U*u + V*v);
-			   		rays_o[id] = vec4(p, 1);
-			   		rays_d[id] = vec4(dir, 0);
-			   		rays_id[id] = vec4(vec3(1)/dir, 1);
-			   }
-			 )") {
-			cs.compile();
-		}
+		extern compute_shader ray_setup_shader;
+
 		void batch_cam_ray_setup::run() {
+			time_this_block(batch_cam_setup);
 			auto res = rc->resolution();
 			camera &cam = rc->scene.camera;
 			vec3 U = cross(cam.dir, cam.up);
 			vec3 V = cross(U, cam.dir);
 			
+			compute_shader &cs = ray_setup_shader;
 			cs.bind();
 			cs.uniform("w", res.x).uniform("h", res.y);
 			cs.uniform("p", cam.pos).uniform("d", cam.dir).uniform("U", U).uniform("V", V);
@@ -42,6 +27,7 @@ namespace wf {
 		}
 		
 		void store_hitpoint_albedo::run() {
+			time_this_block(download_hitpoints);
 			auto res = rc->resolution();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 

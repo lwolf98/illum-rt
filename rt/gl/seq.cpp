@@ -1,5 +1,7 @@
 #include "seq.h"
 
+#include "libgi/timer.h"
+
 #include <iostream>
 #include <GL/glew.h>
 
@@ -140,21 +142,25 @@ namespace wf {
 		}
 		
 		void seq_tri_is::compute_closest_hit() {
+			time_this_block(seq_tri_is_closest_hit);
 			auto res = rc->resolution();
 			cs_closest.bind();
 			cs_closest.uniform("w", res.x).uniform("h", res.y);
 			cs_closest.uniform("N", rc->scene.triangles.size());
 			cs_closest.dispatch(res.x, res.y);
 			cs_closest.unbind();
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 		
 		void seq_tri_is::compute_any_hit() {
+			time_this_block(seq_tri_is_any_hit);
 			auto res = rc->resolution();
 			cs_any.bind();
 			cs_any.uniform("w", res.x).uniform("h", res.y);
 			cs_any.uniform("N", rc->scene.triangles.size());
 			cs_any.dispatch(res.x, res.y);
 			cs_any.unbind();
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 	}
 }

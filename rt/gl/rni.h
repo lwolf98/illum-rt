@@ -10,8 +10,6 @@ namespace wf {
 		 *
 		 */
 		struct batch_cam_ray_setup : public ray_and_intersection_processing {
-			compute_shader cs;
-			batch_cam_ray_setup();
 			void run() override;
 		};
 		

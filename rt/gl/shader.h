@@ -64,6 +64,7 @@ public:
 	}
 
 	void bind() {
+		if (!program) compile();
 		glUseProgram(program);
 	}
 	void unbind() {

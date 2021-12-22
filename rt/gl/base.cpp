@@ -75,6 +75,7 @@ namespace wf {
 			layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
 			layout (std430, binding = 6) buffer b_vertex_tc   { vec4 vertex_tc  []; };
 			layout (std430, binding = 7) buffer b_triangles   { ivec4 triangles []; };
+			layout (std430, binding = 8) buffer b_radiance  { vec4 radiance[]; };
 			uniform int w;
 			uniform int h;
 			void run(uint x, uint y);
