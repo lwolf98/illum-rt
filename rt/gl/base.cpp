@@ -13,6 +13,42 @@ using std::vector;
 namespace wf {
 	namespace gl {
 
+
+		timer::timer() {
+		}
+
+		void timer::start(const std::string &name) {
+			GLuint q0;
+			if (queries.find(name) == queries.end()) {
+				GLuint q[2];
+				glGenQueries(2, q);
+				queries[name] = {q[0], q[1]};
+				q0 = q[0];
+			}
+			else
+				q0 = queries[name].first;
+			glQueryCounter(q0, GL_TIMESTAMP);
+		}
+		
+		void timer::stop(const std::string &name) {
+			auto [q0,q1] = queries[name];
+			glQueryCounter(q1, GL_TIMESTAMP);
+			
+			GLint available = GL_FALSE;
+			while (available == GL_FALSE)
+				glGetQueryObjectiv(q1, GL_QUERY_RESULT_AVAILABLE, &available);
+
+			GLuint64 start, stop;
+			glGetQueryObjectui64v(q0, GL_QUERY_RESULT, &start);
+			glGetQueryObjectui64v(q1, GL_QUERY_RESULT, &stop);
+
+			// funnel to stats_timer
+			stats_timer.timers[0].times[name] += (stop - start);
+			stats_timer.timers[0].counts[name]++;
+		}
+
+		timer gpu_timer;
+
 		static GLFWwindow *window;
 
 		void scenedata::upload(scene *scene) {

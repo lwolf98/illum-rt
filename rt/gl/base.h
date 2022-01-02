@@ -1,5 +1,8 @@
 #pragma once
 
+#define WITH_SYNC_GL_STATS
+
+#include "libgi/timer.h"
 #include "libgi/wavefront-rt.h"
 
 #include <GL/glew.h>
@@ -9,7 +12,25 @@
 namespace wf {
 	namespace gl {
 
-		
+
+		/*! \brief Take time of otherwise asynchronously running GL calls.
+		 *
+		 *  Note: this sequentializes GL tasks and may hide race conditions
+		 */
+		struct timer : public ::timer {
+			std::map<std::string, std::pair<GLuint,GLuint>> queries;
+			timer();
+			void start(const std::string &name) override;
+			void stop(const std::string &name) override;
+		};
+		extern timer gpu_timer;
+		#ifdef WITH_SYNC_GL_STATS
+		#define time_this_block_gpu(name) raii_timer<wf::gl::timer> raii_timer__##name(#name, gpu_timer)
+		#else
+		#define time_this_block_gpu(name)
+		#endif
+	
+
 		/*!	\brief Basic OpenGL Buffer abstraction (\see ssbo).
 		 *
 		 * 	Moste likely for internal/extension use.

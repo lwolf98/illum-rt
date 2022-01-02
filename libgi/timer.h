@@ -77,9 +77,10 @@ struct omp_timer {
 
 extern omp_timer stats_timer;
 
-struct raii_timer {
-    raii_timer(const std::string &name) : name(name) { stats_timer.start(name); }
-    ~raii_timer() { stats_timer.stop(name); }
+template<typename T> struct raii_timer {
+	T &timer;
+    raii_timer(const std::string &name, T &timer) : name(name), timer(timer) { timer.start(name); }
+    ~raii_timer() { timer.stop(name); }
 
     std::string name; ///< timed section's name
 };
@@ -87,7 +88,7 @@ struct raii_timer {
 #define WITH_STATS
 
 #ifdef WITH_STATS
-#define time_this_block(name) raii_timer raii_timer__##name(#name)
+#define time_this_block(name) raii_timer raii_timer__##name(#name, stats_timer)
 #else
 #define time_this_block(name)
 #endif
