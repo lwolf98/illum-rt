@@ -6,7 +6,7 @@ namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
 	namespace cpu {
 
-		struct raydata {
+		struct raydata : public wf::raydata {
 			int w, h;
 			ray *rays = nullptr;
 			triangle_intersection *intersections = nullptr;
@@ -17,8 +17,8 @@ namespace wf {
 		};
 
 		struct batch_rt : public batch_ray_tracer {
-			raydata rd;
-			batch_rt() : rd(rc->resolution()) {
+			raydata &rd;
+			batch_rt(raydata *rd) : rd(*rd) {
 			}
 		};
 
@@ -26,7 +26,7 @@ namespace wf {
 		protected:
 			individual_ray_tracer *underlying_rt = nullptr;
 		public:
-			batch_rt_adapter(individual_ray_tracer *underlying_rt) : underlying_rt(underlying_rt) {
+			batch_rt_adapter(individual_ray_tracer *underlying_rt, raydata *rd) : batch_rt(rd), underlying_rt(underlying_rt) {
 			}
 			~batch_rt_adapter() {
 				delete underlying_rt;
@@ -37,6 +37,8 @@ namespace wf {
 		};
 
 		struct batch_ray_and_intersection_processing_cpu : public ray_and_intersection_processing {
+			batch_rt *rt;
+			virtual void use(batch_ray_tracer *that) override { rt = dynamic_cast<cpu::batch_rt*>(that); }
 			virtual void run() = 0;
 		};
 

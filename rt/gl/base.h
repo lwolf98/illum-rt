@@ -12,6 +12,7 @@
 namespace wf {
 	namespace gl {
 
+		struct platform;
 
 		/*! \brief Take time of otherwise asynchronously running GL calls.
 		 *
@@ -29,11 +30,17 @@ namespace wf {
 		#else
 		#define time_this_block_gpu(name)
 		#endif
+
+
+		void enable_gl_debug_output();
+		void disable_gl_debug_output();
+		void enable_gl_notifications();
+		void disable_gl_notifications();
 	
 
 		/*!	\brief Basic OpenGL Buffer abstraction (\see ssbo).
 		 *
-		 * 	Moste likely for internal/extension use.
+		 * 	Most likely for internal/extension use.
 		 */
 		struct buffer {
 			GLuint id;
@@ -108,8 +115,12 @@ namespace wf {
 		 *
 		 *  The indices given for the Shader Storage Buffer Objects (ssbo) correspond to the binding locations in the
 		 *  shaders (\see compute_shader).
+		 *  
+		 *  Note: If we add different ray layouts this might be called raydata_soa and raydata be the name of the
+		 *  platform-specific base class referenced in \ref gl::platform. Invidividual ray tracers would then hold the
+		 *  appropriate pointer to their ray data
 		 */
-		struct raydata {
+		struct raydata : public wf::raydata {
 			int w, h;
 			ssbo<vec4> rays_o;
 			ssbo<vec4> rays_d;
@@ -141,6 +152,9 @@ namespace wf {
 		 * 	At any changes to the scene, make sure to update this structure.
 		 */
 		struct scenedata {
+			struct material {
+				vec3 albedo, emissive;
+			};
 			ssbo<vec4> vertex_pos, vertex_norm;
 			ssbo<vec2> vertex_tc;
 			ssbo<ivec4> triangles;
@@ -156,14 +170,15 @@ namespace wf {
 		
 		/*! \brief Default OpenGL Ray Tracer.
 		 *
-		 * 	We might build different variants that derive from this, but note that if a new OpenGL ray tracer uses
-		 * 	different data structures it will be best to have that ray tracer be a sibling, not a child, of this
-		 * 	interface (because this interface holds the ray- and scene data, which will be different in this case).
 		 */
 		struct batch_rt : public batch_ray_tracer {
-			raydata rd;
-			scenedata sd;
-			batch_rt() : rd(rc->resolution()) {
+			gl::scenedata *sd = nullptr;
+			gl::raydata *rd = nullptr;
+			void build(::scene *scene) {
+				rd = new raydata(rc->resolution());
+				// make this a simple c'tor?
+				sd = new scenedata;
+				sd->upload(scene);
 			}
 		};
 
@@ -172,6 +187,9 @@ namespace wf {
 		 *
 		 */
 		struct ray_and_intersection_processing : public wf::ray_and_intersection_processing {
+			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
+			                // might have to be moved to derived classes
+			void use(wf::batch_ray_tracer *that) override { rt = dynamic_cast<gl::batch_rt*>(that); }
 		};
 
 

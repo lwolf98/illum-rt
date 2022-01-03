@@ -30,7 +30,7 @@
 #endif
 
 #ifdef HAVE_GL
-#include "rt/gl/seq.h"
+#include "rt/gl/find-hit.h"
 #endif
 
 #include "libgi/timer.h"
@@ -67,10 +67,8 @@ void rt_bench();
 
 static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_checks &uc, const std::string &command) {
 	if (scene.single_rt && dynamic_cast<wavefront_algorithm*>(algo)) {
-		cout << "Wavefront algorithm used with invidividually tracing RT, promoting RT to batch tracing." << endl;
-		auto *rt = scene.single_rt;
-		scene.release_rt();
-		scene.use(new wf::cpu::batch_rt_adapter(rt));
+		error_no_continue("Wavefront algorithm used with invidividually tracing RT does not work. Use the appropriate 'platform'.");
+		return false;
 	}
 	else if (scene.batch_rt && dynamic_cast<recursive_algorithm*>(algo)) {
 		error_no_continue("Cannot drive a recursive algorithm by a batch ray tracer");
@@ -268,7 +266,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			else if (name == "opengl") rc->platform = new wf::gl::platform;
 #endif
 			else error("There is no platform called '" << name << "'");
-			scene.use(rc->platform->tracer("default"));
+			scene.use(rc->platform->select("default"));
 			uc.tracer_touched_at = uc.cmdid;
 		}
 		else ifcmd("commit") {

@@ -7,18 +7,34 @@ namespace wf {
 			tracers.erase(tracers.find(x));
 		for (auto x : rni_links)
 			rnis.erase(rnis.find(x));
+		delete raydata;
+	}
+		
+	void platform::link_tracer(const std::string &existing, const std::string &linkname) {
+		tracer_links.insert(linkname);
+		tracers[linkname] = tracers[existing];
 	}
 
-	batch_ray_tracer* platform::tracer(const std::string &name) const {
-		auto it = tracers.find(name);
-		if (it != tracers.end()) return it->second;
-		throw std::logic_error("There is no tracer called '" + name + "' on platform '" + this->name + "'");
+	batch_ray_tracer* platform::select(const std::string &name) {
+		if (auto it = generated_tracers.find(name); it != generated_tracers.end())
+			selected_tracer = it->second;
+		else {
+			selected_tracer = tracers[name]();
+			generated_tracers[name] = selected_tracer;
+		}
+		for (auto [_,r] : generated_rnis)
+			r->use(selected_tracer);
+		return selected_tracer;
 	}
 
-	ray_and_intersection_processing* platform::rni(const std::string &name) const {
-		auto it = rnis.find(name);
-		if (it != rnis.end()) return it->second;
-		throw std::logic_error("There is no rni step called '" + name + "' on platform '" + this->name + "'");
+	ray_and_intersection_processing* platform::rni(const std::string &name) {
+		if (auto it = generated_rnis.find(name); it != generated_rnis.end())
+			return it->second;
+
+		ray_and_intersection_processing *r = rnis[name]();
+		r->use(selected_tracer);
+		generated_rnis[name] = r;
+		return r;
 	}
 
 	std::vector<platform*> platforms;

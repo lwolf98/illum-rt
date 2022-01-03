@@ -25,26 +25,29 @@ private:
 	triangle_intersection closest_hit(const ray &ray) override;
 	bool any_hit(const ray &ray) override;
 };
+	
+/* Innere und Blattknoten werden durch trickserei unterschieden.
+ * Für Blattknoten gilt:
+ * - link_l = -tri_offset
+ * - link_r = -tri_count
+ */
+struct bbvh_node {
+	aabb box_l, box_r;
+	int32_t link_l, link_r;
+	bool inner() const { return link_r >= 0; }
+	int32_t tri_offset() const { return -link_l; }
+	int32_t tri_count()  const { return -link_r; }
+	void tri_offset(int32_t offset) { link_l = -offset; }
+	void tri_count(int32_t count) { link_r = -count; }
+};
+static_assert(sizeof(bbvh_node) == 2*2*3*4+2*4);
+
 
 enum class bbvh_triangle_layout { flat, indexed };
 enum class bbvh_esc_mode { off, on };
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 struct binary_bvh_tracer : public individual_ray_tracer {
-	/* Innere und Blattknoten werden durch trickserei unterschieden.
-	 * Für Blattknoten gilt:
-	 * - link_l = -tri_offset
-	 * - link_r = -tri_count
-	 */
-	struct node {
-		aabb box_l, box_r;
-		int32_t link_l, link_r;
-		bool inner() const { return link_r >= 0; }
-		int32_t tri_offset() const { return -link_l; }
-		int32_t tri_count()  const { return -link_r; }
-		void tri_offset(int32_t offset) { link_l = -offset; }
-		void tri_count(int32_t count) { link_r = -count; }
-	};
-
+	typedef bbvh_node node;
 	struct prim : public aabb {
 		prim() : aabb() {}
 		prim(const aabb &box, uint32_t tri_index) : aabb(box), tri_index(tri_index) {}

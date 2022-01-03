@@ -1,7 +1,14 @@
+#version 450
+
 ifdef(BLOCK_W, , `define(BLOCK_W, 32)')
 ifdef(BLOCK_H, , `define(BLOCK_H, 32)')
 
-#version 450
+	
+struct bvh_node {
+	vec4 box1min_l, box1max_r, box2min_o, box2max_c;
+};
+
+
 layout (local_size_x = BLOCK_W, local_size_y = BLOCK_H) in;
 layout (std430, binding = 0) buffer b_rays_o  { vec4 rays_o  []; };
 layout (std430, binding = 1) buffer b_rays_d  { vec4 rays_d  []; };
@@ -11,7 +18,8 @@ layout (std430, binding = 4) buffer b_vertex_pos  { vec4 vertex_pos []; };
 layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
 layout (std430, binding = 6) buffer b_vertex_tc   { vec4 vertex_tc  []; };
 layout (std430, binding = 7) buffer b_triangles   { ivec4 triangles []; };
-layout (std430, binding = 8) buffer b_radiance  { vec4 radiance[]; };
+layout (std430, binding = 8) buffer b_nodes       { bvh_node nodes []; };
+layout (std430, binding = 9) buffer b_tri_ids     { uint tri_index []; };
 
 uniform int w;
 uniform int h;

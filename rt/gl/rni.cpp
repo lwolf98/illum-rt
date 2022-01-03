@@ -5,6 +5,9 @@
 #include <iostream>
 using namespace std;
 
+
+#include <unistd.h>
+
 namespace wf {
 	namespace gl {
 
@@ -29,12 +32,14 @@ namespace wf {
 		void store_hitpoint_albedo::run() {
 			time_this_block(download_hitpoints);
 			auto res = rc->resolution();
-			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 
 			// this conversion is going to be a pain
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			rt->rd.intersections.download();
-			triangle_intersection *is = (triangle_intersection*)rt->rd.intersections.org_data.data();
+			rt->rd->intersections.download();
+			triangle_intersection *is = (triangle_intersection*)rt->rd->intersections.org_data.data();
+
+			int x;
+			glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &x);
+			cout << "MAX ::: " << x << endl;
 
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -43,6 +48,7 @@ namespace wf {
 					triangle_intersection &hit = is[y*res.x+x];
 					if (hit.valid()) {
 						diff_geom dg(hit, rc->scene);
+// 						radiance += dg.mat->albedo;
 						radiance += dg.albedo();
 					}
 					//radiance *= one_over_samples;

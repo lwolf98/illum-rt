@@ -30,7 +30,7 @@ namespace wf {
 		// batch_rt_adapter
 
 		void batch_rt_adapter::compute_closest_hit() {
-			glm::ivec2 res = rc->resolution();	
+			glm::ivec2 res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x)  // ray data missing
@@ -88,12 +88,13 @@ namespace wf {
 		// THE PLATFORM
 
 		scalar_cpu_batch_raytracing::scalar_cpu_batch_raytracing() : platform("scalar-cpu") {
-			// TODO make this lambdas that create the respective objects?
-			// template<T> make_rni() { rni[name] = []() { return new T } }
-			tracers["default"] = new batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>);
+			cpu::raydata *rd = new cpu::raydata(rc->resolution());
+			raydata = rd;
+
+			register_batch_rt("default", batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
 			// bvh mode?
-			rnis["setup camrays"] = new batch_cam_ray_setup_cpu;
-			rnis["store hitpoint albedo"] = new store_hitpoint_albedo;
+			register_rni_step("setup camrays", batch_cam_ray_setup_cpu);
+			register_rni_step("store hitpoint albedo", store_hitpoint_albedo);
 		}
 
 	}

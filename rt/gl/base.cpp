@@ -1,6 +1,6 @@
 #include "base.h"
 #include "rni.h"
-#include "seq.h"
+#include "find-hit.h"
 
 #include <stdexcept>
 #include <vector>
@@ -93,11 +93,15 @@ namespace wf {
 				throw std::runtime_error("cannot initialize glew");
 			}
 			
-			
-			tracers["default"] = new seq_tri_is;
+			enable_gl_debug_output();
+
+			register_batch_rt("seq", seq_tri_is);
+			register_batch_rt("bbvh-1", bvh);
+			link_tracer("bbvh-1", "default");
+// 			link_tracer("seq", "default");
 			// bvh mode?
-			rnis["setup camrays"] = new batch_cam_ray_setup;
-			rnis["store hitpoint albedo"] = new store_hitpoint_albedo;
+			register_rni_step("setup camrays", batch_cam_ray_setup);
+			register_rni_step("store hitpoint albedo", store_hitpoint_albedo);
 		}
 		
 		std::string platform::standard_preamble = R"(
