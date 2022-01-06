@@ -5,7 +5,8 @@
 #include "libgi/timer.h"
 #include "libgi/wavefront-rt.h"
 
-#include <GL/glew.h>
+#include "opengl.h"
+
 #include <string>
 #include <iostream>
 

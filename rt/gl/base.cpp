@@ -2,11 +2,10 @@
 #include "rni.h"
 #include "find-hit.h"
 
+#include "opengl.h"
+
 #include <stdexcept>
 #include <vector>
-
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
 
 using std::vector;
 
@@ -49,8 +48,6 @@ namespace wf {
 
 		timer gpu_timer;
 
-		static GLFWwindow *window;
-
 		void scenedata::upload(scene *scene) {
 			triangles.resize(scene->triangles.size(), reinterpret_cast<ivec4*>(scene->triangles.data()));
 
@@ -72,26 +69,10 @@ namespace wf {
 		}
 
 		platform::platform() : wf::platform("opengl") {
-			if (!glfwInit())
-				throw std::runtime_error("cannot create glfw window required for fallback opengl context");
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-			glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-
-			window = glfwCreateWindow(1, 1, "Rasterizer", nullptr, nullptr);
-			if (!window) {
-				glfwTerminate();
-				throw std::runtime_error("cannot create glfw window required for fallback opengl context");
-			}
-
-			glfwMakeContextCurrent(window);
-			glfwSwapInterval(0);
-
-			if (glewInit() != GLEW_OK) {
-				glfwTerminate();
-				throw std::runtime_error("cannot initialize glew");
-			}
+			if (gl_variant_available(gl_truly_headless))
+				initialize_opengl_context(gl_truly_headless, 4, 4);
+			else
+				initialize_opengl_context(gl_glfw_headless, 4, 4);
 			
 			enable_gl_debug_output();
 
