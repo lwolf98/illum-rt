@@ -33,6 +33,10 @@
 #include "rt/gl/find-hit.h"
 #endif
 
+#ifdef HAVE_LIBEMBREE3
+#include "rt/embree/embree.h"
+#endif
+
 #include "libgi/timer.h"
 
 #include "libgi/global-context.h"
@@ -251,6 +255,11 @@ void repl(istream &infile, repl_update_checks &uc) {
 #endif
 				else
 					error("There is no such opengl ray tracer variant");
+			}
+#endif
+#ifdef HAVE_LIBEMBREE3
+			else if (name == "embree") {
+				scene.use(new embree_tracer);
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");

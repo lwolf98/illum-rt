@@ -32,6 +32,10 @@ AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 	  [AC_DEFINE([HAVE_GL], [1], [Do we have OpenGL])],
 	  [AC_MSG_WARN([Compiling without OpenGL support])])
 
+have_embree=yes
+AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
+AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
+
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])
 if pkg-config --atleast-version=7.0.0 MagickWand ; then
@@ -72,6 +76,7 @@ AC_CONFIG_FILES([Makefile
 #ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])
 #endif
+AM_COND_IF([have_embree], [AC_CONFIG_FILES([rt/embree/Makefile])])
 AM_COND_IF([have_gl], [AC_CONFIG_FILES([rt/gl/Makefile])])
 
 AC_OUTPUT
