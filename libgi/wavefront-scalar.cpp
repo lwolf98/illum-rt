@@ -91,10 +91,10 @@ namespace wf {
 			cpu::raydata *rd = new cpu::raydata(rc->resolution());
 			raydata = rd;
 
-			register_batch_rt("default", batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
+			register_batch_rt("default", rd, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
 			// bvh mode?
-			register_rni_step("setup camrays", batch_cam_ray_setup_cpu);
-			register_rni_step("store hitpoint albedo", store_hitpoint_albedo);
+			register_rni_step("setup camrays",, batch_cam_ray_setup_cpu);
+			register_rni_step("store hitpoint albedo",, store_hitpoint_albedo);
 		}
 
 	}
