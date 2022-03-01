@@ -35,7 +35,8 @@
 static GLFWwindow *window = nullptr;
 #endif
 
-std::string headless_render_device = "/dev/dri/renderD128";
+//std::string headless_render_device = "/dev/dri/renderD128";
+std::string headless_render_device = "/dev/dri/card0";
 
 #ifdef HAVE_HEADLESSGL
 void init_generic_buffer_managed_headless_gl(int major, int minor) {
