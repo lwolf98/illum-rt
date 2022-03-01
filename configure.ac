@@ -71,7 +71,8 @@ AC_CONFIG_FILES([Makefile
 				rt/Makefile
 				rt/seq/Makefile
 				gi/Makefile
-				scripts/Makefile])
+				scripts/Makefile
+				render-data/Makefile])
 
 #ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])

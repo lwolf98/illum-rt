@@ -12,11 +12,11 @@
 /* Define to 1 if you have the `assimp' library (-lassimp). */
 #undef HAVE_LIBASSIMP
 
-/* Define to 1 if you have the `embree3' library (-lembree3). */
-#undef HAVE_LIBEMBREE3
-
 /* Define to 1 if you have the `EGL' library (-lEGL). */
 #undef HAVE_LIBEGL
+
+/* Define to 1 if you have the `embree3' library (-lembree3). */
+#undef HAVE_LIBEMBREE3
 
 /* Define to 1 if you have the `gbm' library (-lgbm). */
 #undef HAVE_LIBGBM
