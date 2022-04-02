@@ -16,7 +16,7 @@ $ autoreconf -if
 $ ./configure
 ```
 
-Lesen Sie den Output von `configure' bitte sehr genau um zu sehen ob alle Libs die Sie brauchem auf Ihrem System auch gefunden werden.
+Lesen Sie den Output von `configure` bitte sehr genau um zu sehen ob alle Libs die Sie brauchem auf Ihrem System auch gefunden werden.
 
 ## Abhängigkeiten
 
@@ -33,8 +33,8 @@ sudo apt install autoconf automake autoconf-archive
 ```
 
 Für Vulkan, OpenGL und Cuda sind weitere Libs/Toolkits nötig, falls Embree verwendet werden soll muss die Lib auch verfügbar sein.
-Im Gralab findet sich das alles in /usr/gralab, siehe dazu auch `man gralab'
-Welche Libs genau benötig werden kann man ganz gut in `configure.ac' nachlesen.
+Im Gralab findet sich das alles in /usr/gralab, siehe dazu auch `man gralab`
+Welche Libs genau benötig werden kann man ganz gut in `configure.ac` nachlesen.
 
 ## Configure & Make
 
