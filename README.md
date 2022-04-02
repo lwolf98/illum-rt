@@ -98,6 +98,8 @@ Hier eine erste Sammlung
 
 Das ist bestimmt nicht vollständig und im Zweifel gilt natürlich immer "hauptsache lesbar und klar", aber ich würde darum bitten, dass Sie versuchen sich daran zu orientieren :)
 
+Eine weitere Bitte falls Sie keinen ausgeprägten C++ Hintergrund haben: Schauen Sie sich ein Tutorial für Newcomer von Ihrer "Heimatsprache" an, so dass Sie Code schreiben der "üblich" aussieht.
+
 ## BVH Export
 
 Die verwendeten AABBs (bisher nur für Binary BVHs) können mit dem Kommando `bvh export TIEFE DATEINAME.obj` als OBJ-Datei exportiert, und in Blender zur Veranschaulichung importiert werden.
