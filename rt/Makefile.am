@@ -6,6 +6,11 @@ SUBDIRS += bbvh-base
 if have_gl
 SUBDIRS += gl
 endif
+
+if have_cuda
+SUBDIRS += cuda
+endif
+
 if have_embree
 SUBDIRS += embree
 endif

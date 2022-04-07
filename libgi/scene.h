@@ -16,12 +16,12 @@ namespace wf {
 	class batch_ray_tracer;
 }
 
-struct texture {
+struct texture2d {
 	std::string name;
 	std::filesystem::path path;
 	unsigned w, h;
 	vec3 *texel = nullptr;
-	~texture() {
+	~texture2d() {
 		delete [] texel;
 	}
 	const vec3& sample(float u, float v) const {
@@ -50,8 +50,8 @@ struct texture {
 	}
 };
 
-texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
-texture* load_hdr_image3f(const std::filesystem::path &path);
+texture2d* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
+texture2d* load_hdr_image3f(const std::filesystem::path &path);
 
 #ifndef RTGI_SKIP_BRDF
 struct light {
@@ -97,7 +97,7 @@ struct trianglelight : public light, public triangle {
 
 #ifndef RTGI_SKIP_SKY
 struct skylight : public light {
-	texture *tex = nullptr;
+	texture2d *tex = nullptr;
 	float intensity_scale;
 	distribution_2d *distribution = nullptr;
 	float scene_radius;
@@ -131,7 +131,7 @@ struct scene {
 	std::vector<::vertex>    vertices;
 	std::vector<::triangle>  triangles;
 	std::vector<::material>  materials;
-	std::vector<::texture*>  textures;
+	std::vector<::texture2d*>  textures;
 	std::vector<object>      objects;
 #ifndef RTGI_SKIP_BRDF
 	std::map<std::string, brdf*> brdfs;
@@ -163,8 +163,8 @@ struct scene {
 
 	vec3 normal(const triangle &tri) const;
 	
-	vec3 sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const;
-	vec3 sample_texture(const triangle_intersection &is, const texture *tex) const {
+	vec3 sample_texture(const triangle_intersection &is, const triangle &tri, const texture2d *tex) const;
+	vec3 sample_texture(const triangle_intersection &is, const texture2d *tex) const {
 		return sample_texture(is, triangles[is.ref], tex);
 	}
 

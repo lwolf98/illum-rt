@@ -21,3 +21,7 @@ rtgi_LDADD += ../rt/embree/libembree.a
 endif
 rtgi_LDADD += ../libgi/libgi.a
 rtgi_LDADD += $(WAND_LIBS)
+
+if have_cuda
+rtgi_LDADD += ../rt/cuda/libcudaraytracing.a
+endif

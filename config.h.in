@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Do we have CUDA */
+#undef HAVE_CUDA
+
 /* define if the compiler supports basic C++17 syntax */
 #undef HAVE_CXX17
 
@@ -11,6 +14,12 @@
 
 /* Define to 1 if you have the `assimp' library (-lassimp). */
 #undef HAVE_LIBASSIMP
+
+/* Define to 1 if you have the `cuda' library (-lcuda). */
+#undef HAVE_LIBCUDA
+
+/* Define to 1 if you have the `cudart' library (-lcudart). */
+#undef HAVE_LIBCUDART
 
 /* Define to 1 if you have the `EGL' library (-lEGL). */
 #undef HAVE_LIBEGL

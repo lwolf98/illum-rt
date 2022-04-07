@@ -48,7 +48,7 @@ void magickwand_error(MagickWand *wand, bool crash) {
 		exit(1);
 }
 
-texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
+texture2d* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 	if (verbose_scene) cout << "loading texture " << path << endl;
 	MagickWandGenesis();
 	MagickWand *img = NewMagickWand();
@@ -58,7 +58,7 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 		return nullptr;
 	}
 	MagickFlipImage(img);
-	texture *tex = new texture;
+	texture2d *tex = new texture2d;
 	tex->name = path;
 	tex->path = path;
 	tex->w = MagickGetImageWidth(img);
@@ -73,13 +73,13 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 	return tex;
 }
 
-texture* load_hdr_image3f(const std::filesystem::path &path) {
+texture2d* load_hdr_image3f(const std::filesystem::path &path) {
 	cout << "loading hdr texture from floats-file " << path << endl;
 	ifstream in;
 	in.open(path, ios::in | ios::binary);
 	if (!in.is_open())
 		throw runtime_error("Cannot open file '" + path.string() + "' for hdr floats texture.");
-	texture *tex = new texture;
+	texture2d *tex = new texture2d;
 	tex->name = path;
 	tex->path = path;
 	in.read(((char*)&tex->w), sizeof(int));
@@ -238,7 +238,8 @@ void scene::compute_light_distribution() {
 #endif
 
 scene::~scene() {
-	delete rt;
+	if(!rc->platform)
+		delete rt;
 	for (auto *x : textures)
 		delete x;
 #ifndef RTGI_SKIP_BRDF
@@ -257,11 +258,11 @@ vec3 scene::normal(const triangle &tri) const {
 	return cross(e1, e2);
 }
 
-vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const {
+vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri, const texture2d *tex) const {
 	vec2 tc = (1.0f-is.beta-is.gamma)*vertices[tri.a].tc + is.beta*vertices[tri.b].tc + is.gamma*vertices[tri.c].tc;
 	return (*tex)(tc);
 }
-	
+
 void scene::release_rt() {
 	rt = nullptr;
 	single_rt = nullptr;
@@ -269,7 +270,8 @@ void scene::release_rt() {
 }
 
 void scene::use(ray_tracer *new_rt) {
-	delete rt;
+	if(!rc->platform)
+		delete rt;
 	rt = new_rt;
 	single_rt = dynamic_cast<individual_ray_tracer*>(rt);
 	batch_rt = dynamic_cast<wf::batch_ray_tracer*>(rt);
