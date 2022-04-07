@@ -29,8 +29,8 @@ namespace wf {
 		virtual ~raydata() {}
 	};
 
-	#define register_batch_rt(N,X) tracers[N] = [&]() -> wf::batch_ray_tracer* { return new X; }
-	#define register_rni_step(N,X) rnis[N] = [&]() -> wf::ray_and_intersection_processing* { return new X; }
+	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
+	#define register_rni_step(N,C,X) rnis[N] = [C]() -> wf::ray_and_intersection_processing* { return new X; }
 	class platform {
 	protected:
 		std::string name;

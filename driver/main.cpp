@@ -71,6 +71,10 @@ int main(int argc, char **argv)
 	repl_update_checks uc;
 	if (cmdline.script != "") {
 		ifstream script(cmdline.script);
+		if(script.fail()){
+			cerr << "Script file not found" << endl;
+			return -1;
+		}
 		repl(script, uc);
 	}
 	if (cmdline.interact)

@@ -16,5 +16,12 @@ rtgi_LDADD += ../rt/bbvh-base/libbbvh-base.a
 if have_gl
 rtgi_LDADD += ../rt/gl/libglrt.a 
 endif
+if have_embree
+rtgi_LDADD += ../rt/embree/libembree.a
+endif
 rtgi_LDADD += ../libgi/libgi.a
 rtgi_LDADD += $(WAND_LIBS)
+
+if have_cuda
+rtgi_LDADD += ../rt/cuda/libcudaraytracing.a
+endif

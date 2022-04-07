@@ -33,6 +33,21 @@
 #include "rt/gl/find-hit.h"
 #endif
 
+#ifdef HAVE_LIBEMBREE3
+#include "rt/embree/embree.h"
+#endif
+
+#ifdef HAVE_CUDA
+#include "rt/cuda/tracers/simple.h"
+#include "rt/cuda/tracers/if-if.h"
+#include "rt/cuda/tracers/while-while.h"
+#include "rt/cuda/tracers/persistent-if-if.h"
+#include "rt/cuda/tracers/persistent-while-while.h"
+#include "rt/cuda/tracers/speculative-while-while.h"
+#include "rt/cuda/tracers/persistent-speculative-while-while.h"
+#include "rt/cuda/tracers/dynamic-while-while.h"
+#endif
+
 #include "libgi/timer.h"
 
 #include "libgi/global-context.h"
@@ -253,6 +268,36 @@ void repl(istream &infile, repl_update_checks &uc) {
 					error("There is no such opengl ray tracer variant");
 			}
 #endif
+#ifdef HAVE_CUDA
+			else if (name == "cuda") {
+				string variant;
+				in >> variant;
+				check_in("Syntax error, requires cuda ray tracer variant name");
+				if (variant == "simple")
+					scene.use(rc->platform->select("simple"));
+				else if (variant == "if-if")
+					scene.use(rc->platform->select("if-if"));
+				else if (variant == "while-while")
+					scene.use(rc->platform->select("while-while"));
+				else if (variant == "persistent-if-if")
+					scene.use(rc->platform->select("persistent-if-if"));
+				else if (variant == "persistent-while-while")
+					scene.use(rc->platform->select("persistent-while-while"));
+				else if (variant == "speculative-while-while")
+					scene.use(rc->platform->select("speculative-while-while"));
+				else if (variant == "persistent-speculative-while-while")
+					scene.use(rc->platform->select("persistent-speculative-while-while"));
+				else if (variant == "dynamic-while-while")
+					scene.use(rc->platform->select("dynamic-while-while"));
+				else
+					error("There is no such cuda ray tracer variant");
+			}
+#endif
+#ifdef HAVE_LIBEMBREE3
+			else if (name == "embree") {
+				scene.use(new embree_tracer);
+			}
+#endif
 			else error("There is no ray tracer called '" << name << "'");
 			uc.tracer_touched_at = uc.cmdid;
 		}
@@ -264,6 +309,9 @@ void repl(istream &infile, repl_update_checks &uc) {
 			if (name == "scalar-cpu") rc->platform = new wf::cpu::scalar_cpu_batch_raytracing;
 #ifdef HAVE_GL
 			else if (name == "opengl") rc->platform = new wf::gl::platform;
+#endif
+#ifdef HAVE_CUDA
+			else if (name == "cuda") rc->platform = new wf::cuda::platform;
 #endif
 			else error("There is no platform called '" << name << "'");
 			scene.use(rc->platform->select("default"));
@@ -366,7 +414,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 				if (cmd == "drop")
 					mat->albedo_tex = nullptr;
 				else {
-					texture *tex = load_image3f(cmd);
+					texture2d *tex = load_image3f(cmd);
 					if (tex)
 						mat->albedo_tex = tex;
 				}

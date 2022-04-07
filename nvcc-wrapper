@@ -1,0 +1,48 @@
+#!/bin/bash
+
+## the purpose of this script is to prefix the PIC specific compiler options
+## produced by libtool with nvcc's compiler fowrading flag.
+
+## recklessly stolen from https://github.com/kiselgra/rta/blob/master/nvcc-wrapper
+
+shopt -s extglob
+
+#last_O="" # nvcc bitches about -O being specified multiple times.
+args=""
+while (( "$#" )); do
+ if [[ "$1" =~ -.PIC ]] ; then
+  args="$args -Xcompiler $1"
+ elif [[ "$1" == "-ggdb3" ]] ; then
+  args="$args -g -G"
+# elif [[ "$1" =~ -O. ]] ; then
+#  last_O="$1"
+# elif [[ "$1" == "-Wreturn-type" ]] ; then # not available in nvcc?
+#  true;
+ elif [[ "$1" == "-fopenmp" ]] ; then #forward openmp flag to g++
+  args="$args -Xcompiler -fopenmp"
+ else
+  #echo "plain forward: '$1'."
+  args="$args $1"
+ fi
+ shift
+done
+
+#args="$args $last_O"
+
+# #switch to cc 200 for AILA.cu, KDIS_SL.cu, presort.cu
+# if [[ "$args" == *"AILA.cu"* || "$args" == *"KDIS_SL.cu"* || "$args" == *"presort.cu"* ]] ; then
+#  args=$(echo "$args" | sed -e "s/12/20/g")
+# fi
+
+echo
+echo $args
+echo
+echo
+nvcc $args #2> /tmp/$USER/nvccwrapper-log
+ret=$?
+
+#cat /tmp/$USER/nvccwrapper-log >> /tmp/$USER/ptxas.log
+#grep -e "error" -e "fatal" -e "warning" /tmp/$USER/nvccwrapper-log
+
+exit $ret
+

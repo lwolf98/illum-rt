@@ -1,0 +1,289 @@
+#pragma once
+
+#include "libgi/wavefront-rt.h"
+#include "rt/bbvh-base/bvh.h"
+#include "libgi/timer.h"
+
+#include <iostream>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+
+#include "cuda-helpers.h"
+
+#define MULTIPROCESSOR_COUNT               82	// fixed (device dependent, 82 for RTX3090)
+#define WARPSIZE                           32	// fixed (architecture-dependent)
+#define MAX_WARPS_PER_MULTIPROCESSOR       48	// fixed (architecture-dependent)
+#define DESIRED_WARPS_PER_BLOCK            6	// mostly arbitrary, doesn't really matter
+#define DESIRED_THREADS_PER_BLOCK 		   DESIRED_WARPS_PER_BLOCK*32
+#define DESIRED_BLOCKS_PER_MULTIPROCESSOR  MAX_WARPS_PER_MULTIPROCESSOR/DESIRED_WARPS_PER_BLOCK		// = 8
+#define DESIRED_BLOCKS_COUNT               MULTIPROCESSOR_COUNT*DESIRED_BLOCKS_PER_MULTIPROCESSOR				//	= 656
+#define DESIRED_BLOCK_SIZE                 dim3(WARPSIZE, DESIRED_WARPS_PER_BLOCK, 1)
+#define NUM_BLOCKS_FOR_RESOLUTION(resolution) dim3((resolution.x/DESIRED_BLOCK_SIZE.x) + 1, (resolution.y/DESIRED_BLOCK_SIZE.y) + 1, 1)
+
+namespace wf {
+	namespace cuda {
+
+		struct __align__(16) tri_is {
+			float t;
+			float beta;
+			float gamma;
+			unsigned int ref;
+
+			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0){};
+			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref){};
+		};
+
+		struct __align__(16) simpleBVHNode /*: public node*/ {
+			float3 box_l_min;
+			float3 box_l_max;
+			int link_l;
+			float3 box_r_min;
+			float3 box_r_max;
+			int link_r;
+			__host__ __device__ simpleBVHNode(){};
+			__host__ simpleBVHNode(::aabb box_l, ::aabb box_r, int link_l, int link_r) : link_l(link_l), link_r(link_r){
+				box_l_min = {box_l.min.x, box_l.min.y, box_l.min.z};
+				box_l_max = {box_l.max.x, box_l.max.y, box_l.max.z};
+				box_r_min = {box_r.min.x, box_r.min.y, box_r.min.z};
+				box_r_max = {box_r.max.x, box_r.max.y, box_r.max.z};
+			};
+			__host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::on>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			__host__ __device__ __inline__ bool inner() const { return link_r >= 0; }
+			__host__ __device__ __inline__ int32_t tri_offset() const { return -link_l; }
+			__host__ __device__ __inline__ int32_t tri_count()  const { return -link_r; }
+		};
+
+		struct __align__(16) compactBVHNode {
+			/* Für innere Knoten gilt:
+			*    child_index < 0 => Child ist ein Blattknoten (mit dem Index -child_index)
+			*  Für Blattknoten gilt:
+			*   child_index0 = -tri_offset
+			*   child_index1 = -tri_count
+			*/
+			float4 data1;	// (c0.lo.x, c0.hi.x, c0.lo.y, c0.hi.y)
+			float4 data2;	// (c1.lo.x, c1.hi.x, c1.lo.y, c1.hi.y)
+			float4 data3;	// (c0.lo.z, c0.hi.z, c1.lo.z, c1.hi.z)
+			float4 data4;	// child_index0, child_index1
+			__host__ __device__ compactBVHNode(){};
+		};
+
+		class compactBVHNodeBuilder{
+			public:
+				__host__ static std::vector<compactBVHNode> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
+		};
+
+		struct buffer {
+			std::string name;
+			unsigned size = 0;	// number of elements! not bytes
+
+			buffer(std::string name, unsigned size)
+			: name(name), size(size) {
+			}
+			virtual ~buffer() {
+			}
+			virtual void print() {
+			}
+		};
+
+		template<typename T> class global_memory_buffer : public buffer
+		{
+		public:
+			std::vector<T> host_data;
+			T* device_memory = nullptr;
+
+			global_memory_buffer(std::string name, unsigned size)
+			: buffer(name, 0) {
+				if (size > 0) resize(size);
+			}
+
+			~global_memory_buffer(){
+				if (device_memory != nullptr){
+					CHECK_CUDA_ERROR(cudaFree(device_memory));
+					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				}
+				device_memory = nullptr;
+				size = 0;
+			}
+
+			void resize(int size) {
+				if(this->size == size) return;
+				if(device_memory != nullptr){
+					CHECK_CUDA_ERROR(cudaFree(device_memory));
+					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+					device_memory = nullptr;
+					this->size = 0;
+				}
+
+				T* new_device_memory = nullptr;
+				CHECK_CUDA_ERROR(cudaMalloc((void**) &new_device_memory, size*sizeof(T)));
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				this->device_memory = new_device_memory;
+				this->size = size;
+			}
+
+			void upload(const std::vector<T> &data) {
+				upload(data.size(), data.data());
+			}
+
+			void upload(int size, const T *data) {
+				resize(size);
+				host_data.resize(size);
+
+				std::copy(data, data + size, host_data.begin());
+
+				CHECK_CUDA_ERROR(cudaMemcpy(device_memory, host_data.data(), size*sizeof(T), cudaMemcpyHostToDevice));
+				CHECK_CUDA_ERROR(cudaGetLastError());
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			}
+			void download() {
+				time_this_block(intersections_download);
+				if (host_data.size() == 0){
+					host_data.resize(size);
+				}
+				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost));
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			}
+		};
+
+		template<typename T> class texture_buffer : public global_memory_buffer<T>
+		{
+			public:
+				cudaTextureObject_t tex = 0;
+
+			texture_buffer(std::string name, unsigned size)
+			: global_memory_buffer<T>(name, size) {
+				if(size > 0) updateTexture();
+			}
+
+			~texture_buffer(){
+				if(tex != 0){
+					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
+				}
+			}
+
+			void updateTexture(){
+				if(tex>0){
+					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
+				}
+				cudaResourceDesc resDesc = {};
+				resDesc.resType = cudaResourceTypeLinear;
+				resDesc.res.linear.devPtr = this->device_memory;
+				resDesc.res.linear.sizeInBytes = this->size*sizeof(T);
+				resDesc.res.linear.desc = cudaCreateChannelDesc<float4>();
+				cudaTextureDesc texDesc = {};
+				memset(&texDesc, 0, sizeof(texDesc));
+				texDesc.addressMode[0] = cudaAddressModeClamp;
+				texDesc.addressMode[1] = cudaAddressModeClamp;
+				texDesc.addressMode[2] = cudaAddressModeClamp;
+				texDesc.filterMode = cudaFilterModePoint;
+				texDesc.readMode = cudaReadModeElementType;
+				texDesc.normalizedCoords = 0;
+
+				CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL));
+			}
+
+			void resize(int size){
+				global_memory_buffer<T>::resize(size);
+				updateTexture();
+			}
+
+			void upload(const std::vector<T> &data) {
+				upload(data.size(), data.data());
+			}
+
+			void upload(int size, const T *data) {
+				global_memory_buffer<T>::upload(size, data);
+				updateTexture();
+			}
+
+			/*void download() {
+				global_memory_buffer<T>::download();
+			}*/
+		};
+
+		struct raydata : public wf::raydata {
+			int w, h;
+			texture_buffer<float4> rays;
+			global_memory_buffer<tri_is> intersections;
+
+			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {}
+			raydata(int w, int h) : w(w), h(h),
+									rays("rays", 2*w*h),
+									intersections("intersections", w*h) {
+				  rc->call_at_resolution_change[this] = [this](int w, int h) {
+					  this->w = w;
+					  this->h = h;
+					  this->rays.resize(2*w*h);
+					  this->intersections.resize(w*h);
+				  };
+			}
+			~raydata() {
+				rc->call_at_resolution_change.erase(this);
+			}
+		};
+
+		struct scenedata {
+			texture_buffer<float4> vertex_pos;
+			texture_buffer<uint4> triangles;
+			scenedata() : vertex_pos("vertex_pos", 0),
+						  triangles("triangles", 0){};
+			void upload(scene *scene);
+		};
+
+		struct batch_rt : public batch_ray_tracer {
+			raydata *rd = nullptr;
+			scenedata *sd = nullptr;
+
+			bool use_incoherence = false;
+			float incoherence_r1 = 0;
+			float incoherence_r2 = 0;
+
+			int bvh_max_tris_per_node = 4;
+			std::string bvh_type = "sah";
+
+			texture_buffer<wf::cuda::compactBVHNode> bvh_nodes;
+			texture_buffer<uint1> bvh_index;
+
+			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {}
+			~batch_rt() {
+				delete rd;
+				delete sd;
+			}
+			void build(::scene *scene) override;
+			bool interprete(const std::string &command, std::istringstream &in) override;
+			void compute_closest_hit() override {
+				time_this_block(closest_hit);
+				compute_hit(false);
+			}
+			void compute_any_hit() override {
+				time_this_block(any_hit);
+				compute_hit(true);
+			}
+			virtual void compute_hit(bool anyhit) = 0;
+		};
+
+		class platform : public wf::platform {
+		public:
+			int warpSize;
+			int multiProcessorCount;
+			platform();
+			~platform();
+		};
+
+		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
+		 *
+		 */
+		struct ray_and_intersection_processing : public wf::ray_and_intersection_processing {
+			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
+			                // might have to be moved to derived classes
+			void use(wf::batch_ray_tracer *that) override { 
+				rt = dynamic_cast<cuda::batch_rt*>(that); 
+			}
+		};
+
+
+	}
+}

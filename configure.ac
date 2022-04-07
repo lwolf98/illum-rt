@@ -4,7 +4,7 @@ AC_CONFIG_SRCDIR([driver/main.cpp])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_AUX_DIR([auxx])
 
-AM_INIT_AUTOMAKE()
+AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_PROG_CXX
 AC_LANG([C++])
@@ -31,6 +31,18 @@ AM_CONDITIONAL([have_gl], [test x$have_gl_with_glfw = xyes || test x$have_headle
 AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 	  [AC_DEFINE([HAVE_GL], [1], [Do we have OpenGL])],
 	  [AC_MSG_WARN([Compiling without OpenGL support])])
+
+have_cuda=yes
+AC_CHECK_LIB([cuda], [cuInit], [], [have_cuda=no])
+AC_CHECK_LIB([cudart], [cudaMalloc], [], [have_cuda=no])
+AM_CONDITIONAL([have_cuda], [test x$have_cuda = xyes])
+AS_IF([test x$have_cuda = xyes],
+	  [AC_DEFINE([HAVE_CUDA], [1], [Do we have CUDA])],
+	  [AC_MSG_WARN([Compiling without CUDA support])])
+
+have_embree=yes
+AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
+AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
 
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])
@@ -67,11 +79,15 @@ AC_CONFIG_FILES([Makefile
 				rt/Makefile
 				rt/seq/Makefile
 				gi/Makefile
-				scripts/Makefile])
+				scripts/Makefile
+				render-data/Makefile
+				])
 
 #ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])
 #endif
+AM_COND_IF([have_embree], [AC_CONFIG_FILES([rt/embree/Makefile])])
 AM_COND_IF([have_gl], [AC_CONFIG_FILES([rt/gl/Makefile])])
+AM_COND_IF([have_cuda], [AC_CONFIG_FILES([rt/cuda/Makefile])])
 
 AC_OUTPUT
