@@ -1,5 +1,5 @@
-SUBDIRS = libgi rt gi driver scripts render-data
-EXTRA_DIST = README.md
+SUBDIRS = libgi rt gi driver scripts #render-data
+EXTRA_DIST = README.md nvcc-wrapper
 
 all-local: rtgi
 

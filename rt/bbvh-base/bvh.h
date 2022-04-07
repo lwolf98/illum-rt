@@ -66,7 +66,7 @@ struct binary_bvh_tracer : public individual_ray_tracer {
 	
 	int max_triangles_per_node = 1;
 
-	int number_of_planes;
+	int number_of_planes = 1;
 	uint32_t root;
 	bool should_export = false;
 	uint32_t max_depth;
