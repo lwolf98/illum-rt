@@ -38,14 +38,7 @@
 #endif
 
 #ifdef HAVE_CUDA
-#include "rt/cuda/tracers/simple.h"
-#include "rt/cuda/tracers/if-if.h"
-#include "rt/cuda/tracers/while-while.h"
-#include "rt/cuda/tracers/persistent-if-if.h"
-#include "rt/cuda/tracers/persistent-while-while.h"
-#include "rt/cuda/tracers/speculative-while-while.h"
-#include "rt/cuda/tracers/persistent-speculative-while-while.h"
-#include "rt/cuda/tracers/dynamic-while-while.h"
+#include "rt/cuda/tracers.h"
 #endif
 
 #include "libgi/timer.h"

@@ -4,11 +4,9 @@
 #include "rt/bbvh-base/bvh.h"
 #include "libgi/timer.h"
 
-#include <iostream>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
-
 #include "cuda-helpers.h"
+
+#include <cuda_runtime_api.h>
 
 #define MULTIPROCESSOR_COUNT               82	// fixed (device dependent, 82 for RTX3090)
 #define WARPSIZE                           32	// fixed (architecture-dependent)
@@ -16,7 +14,7 @@
 #define DESIRED_WARPS_PER_BLOCK            6	// mostly arbitrary, doesn't really matter
 #define DESIRED_THREADS_PER_BLOCK 		   DESIRED_WARPS_PER_BLOCK*32
 #define DESIRED_BLOCKS_PER_MULTIPROCESSOR  MAX_WARPS_PER_MULTIPROCESSOR/DESIRED_WARPS_PER_BLOCK		// = 8
-#define DESIRED_BLOCKS_COUNT               MULTIPROCESSOR_COUNT*DESIRED_BLOCKS_PER_MULTIPROCESSOR				//	= 656
+#define DESIRED_BLOCKS_COUNT               MULTIPROCESSOR_COUNT*DESIRED_BLOCKS_PER_MULTIPROCESSOR				// = 656
 #define DESIRED_BLOCK_SIZE                 dim3(WARPSIZE, DESIRED_WARPS_PER_BLOCK, 1)
 #define NUM_BLOCKS_FOR_RESOLUTION(resolution) dim3((resolution.x/DESIRED_BLOCK_SIZE.x) + 1, (resolution.y/DESIRED_BLOCK_SIZE.y) + 1, 1)
 
@@ -29,50 +27,49 @@ namespace wf {
 			float gamma;
 			unsigned int ref;
 
-			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0){};
-			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref){};
+			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
+			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
 		};
 
-		struct __align__(16) simpleBVHNode /*: public node*/ {
+		struct __align__(16) simple_bvh_node /*: public node*/ {
 			float3 box_l_min;
 			float3 box_l_max;
 			int link_l;
 			float3 box_r_min;
 			float3 box_r_max;
 			int link_r;
-			__host__ __device__ simpleBVHNode(){};
-			__host__ simpleBVHNode(::aabb box_l, ::aabb box_r, int link_l, int link_r) : link_l(link_l), link_r(link_r){
+			__host__ __device__ simple_bvh_node() {};
+			__host__ simple_bvh_node(::aabb box_l, ::aabb box_r, int link_l, int link_r) : link_l(link_l), link_r(link_r) {
 				box_l_min = {box_l.min.x, box_l.min.y, box_l.min.z};
 				box_l_max = {box_l.max.x, box_l.max.y, box_l.max.z};
 				box_r_min = {box_r.min.x, box_r.min.y, box_r.min.z};
 				box_r_max = {box_r.max.x, box_r.max.y, box_r.max.z};
 			};
-			__host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
-			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
-			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::on>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
-			// __host__ simpleBVHNode(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node n) : simpleBVHNode(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			__host__ simple_bvh_node(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::off>::node n) : simple_bvh_node(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simple_bvh_node(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>::node n) : simple_bvh_node(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simple_bvh_node(binary_bvh_tracer<bbvh_triangle_layout::flat, bbvh_esc_mode::on>::node n) : simple_bvh_node(n.box_l, n.box_r, n.link_l, n.link_r) {};
+			// __host__ simple_bvh_node(binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node n) : simple_bvh_node(n.box_l, n.box_r, n.link_l, n.link_r) {};
 			__host__ __device__ __inline__ bool inner() const { return link_r >= 0; }
 			__host__ __device__ __inline__ int32_t tri_offset() const { return -link_l; }
 			__host__ __device__ __inline__ int32_t tri_count()  const { return -link_r; }
 		};
 
-		struct __align__(16) compactBVHNode {
+		struct __align__(16) compact_bvh_node {
 			/* Für innere Knoten gilt:
-			*    child_index < 0 => Child ist ein Blattknoten (mit dem Index -child_index)
-			*  Für Blattknoten gilt:
-			*   child_index0 = -tri_offset
-			*   child_index1 = -tri_count
-			*/
+			 *    child_index < 0 => Child ist ein Blattknoten (mit dem Index -child_index)
+			 * Für Blattknoten gilt:
+			 *   child_index0 = -tri_offset
+			 *   child_index1 = -tri_count
+			 */
 			float4 data1;	// (c0.lo.x, c0.hi.x, c0.lo.y, c0.hi.y)
 			float4 data2;	// (c1.lo.x, c1.hi.x, c1.lo.y, c1.hi.y)
 			float4 data3;	// (c0.lo.z, c0.hi.z, c1.lo.z, c1.hi.z)
 			float4 data4;	// child_index0, child_index1
-			__host__ __device__ compactBVHNode(){};
+			__host__ __device__ compact_bvh_node() {};
 		};
 
-		class compactBVHNodeBuilder{
-			public:
-				__host__ static std::vector<compactBVHNode> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
+		struct compact_bvh_node_builder{
+			__host__ static std::vector<compact_bvh_node> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
 		};
 
 		struct buffer {
@@ -92,15 +89,15 @@ namespace wf {
 		{
 		public:
 			std::vector<T> host_data;
-			T* device_memory = nullptr;
+			T *device_memory = nullptr;
 
 			global_memory_buffer(std::string name, unsigned size)
 			: buffer(name, 0) {
 				if (size > 0) resize(size);
 			}
 
-			~global_memory_buffer(){
-				if (device_memory != nullptr){
+			~global_memory_buffer() {
+				if (device_memory) {
 					CHECK_CUDA_ERROR(cudaFree(device_memory));
 					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 				}
@@ -109,15 +106,15 @@ namespace wf {
 			}
 
 			void resize(int size) {
-				if(this->size == size) return;
-				if(device_memory != nullptr){
+				if (this->size == size) return;
+				if (device_memory) {
 					CHECK_CUDA_ERROR(cudaFree(device_memory));
 					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 					device_memory = nullptr;
 					this->size = 0;
 				}
 
-				T* new_device_memory = nullptr;
+				T *new_device_memory = nullptr;
 				CHECK_CUDA_ERROR(cudaMalloc((void**) &new_device_memory, size*sizeof(T)));
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
 				this->device_memory = new_device_memory;
@@ -140,7 +137,7 @@ namespace wf {
 			}
 			void download() {
 				time_this_block(intersections_download);
-				if (host_data.size() == 0){
+				if (host_data.size() == 0) {
 					host_data.resize(size);
 				}
 				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost));
@@ -150,44 +147,44 @@ namespace wf {
 
 		template<typename T> class texture_buffer : public global_memory_buffer<T>
 		{
-			public:
-				cudaTextureObject_t tex = 0;
+		public:
+			cudaTextureObject_t tex = 0;
 
 			texture_buffer(std::string name, unsigned size)
 			: global_memory_buffer<T>(name, size) {
-				if(size > 0) updateTexture();
+				if (size > 0)
+					update_texture();
 			}
 
-			~texture_buffer(){
-				if(tex != 0){
+			~texture_buffer() {
+				if (tex != 0)
 					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
-				}
 			}
 
-			void updateTexture(){
-				if(tex>0){
+			void update_texture() {
+				if (tex>0)
 					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
-				}
-				cudaResourceDesc resDesc = {};
-				resDesc.resType = cudaResourceTypeLinear;
-				resDesc.res.linear.devPtr = this->device_memory;
-				resDesc.res.linear.sizeInBytes = this->size*sizeof(T);
-				resDesc.res.linear.desc = cudaCreateChannelDesc<float4>();
-				cudaTextureDesc texDesc = {};
-				memset(&texDesc, 0, sizeof(texDesc));
-				texDesc.addressMode[0] = cudaAddressModeClamp;
-				texDesc.addressMode[1] = cudaAddressModeClamp;
-				texDesc.addressMode[2] = cudaAddressModeClamp;
-				texDesc.filterMode = cudaFilterModePoint;
-				texDesc.readMode = cudaReadModeElementType;
-				texDesc.normalizedCoords = 0;
+				
+				cudaResourceDesc res_desc = {};
+				res_desc.resType = cudaResourceTypeLinear;
+				res_desc.res.linear.devPtr = this->device_memory;
+				res_desc.res.linear.sizeInBytes = this->size*sizeof(T);
+				res_desc.res.linear.desc = cudaCreateChannelDesc<float4>();
+				cudaTextureDesc tex_desc = {};
+				memset(&tex_desc, 0, sizeof(tex_desc));
+				tex_desc.addressMode[0] = cudaAddressModeClamp;
+				tex_desc.addressMode[1] = cudaAddressModeClamp;
+				tex_desc.addressMode[2] = cudaAddressModeClamp;
+				tex_desc.filterMode = cudaFilterModePoint;
+				tex_desc.readMode = cudaReadModeElementType;
+				tex_desc.normalizedCoords = 0;
 
-				CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL));
+				CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr));
 			}
 
-			void resize(int size){
+			void resize(int size) {
 				global_memory_buffer<T>::resize(size);
-				updateTexture();
+				update_texture();
 			}
 
 			void upload(const std::vector<T> &data) {
@@ -196,7 +193,7 @@ namespace wf {
 
 			void upload(int size, const T *data) {
 				global_memory_buffer<T>::upload(size, data);
-				updateTexture();
+				update_texture();
 			}
 
 			/*void download() {
@@ -229,7 +226,8 @@ namespace wf {
 			texture_buffer<float4> vertex_pos;
 			texture_buffer<uint4> triangles;
 			scenedata() : vertex_pos("vertex_pos", 0),
-						  triangles("triangles", 0){};
+						  triangles("triangles", 0) {
+			};
 			void upload(scene *scene);
 		};
 
@@ -244,10 +242,11 @@ namespace wf {
 			int bvh_max_tris_per_node = 4;
 			std::string bvh_type = "sah";
 
-			texture_buffer<wf::cuda::compactBVHNode> bvh_nodes;
+			texture_buffer<wf::cuda::compact_bvh_node> bvh_nodes;
 			texture_buffer<uint1> bvh_index;
 
-			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {}
+			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {
+			}
 			~batch_rt() {
 				delete rd;
 				delete sd;
@@ -267,8 +266,8 @@ namespace wf {
 
 		class platform : public wf::platform {
 		public:
-			int warpSize;
-			int multiProcessorCount;
+			int warp_size;
+			int multi_processor_count;
 			platform();
 			~platform();
 		};
