@@ -305,7 +305,7 @@ trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.
 }
 
 vec3 trianglelight::power() const {
-#ifdef RTGI_SKIP_DIRECT_ILLUM_LIGHT_POWER_IMPL
+#ifndef RTGI_SKIP_DIRECT_ILLUM_LIGHT_POWER_IMPL
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
 	const vertex &c = scene.vertices[this->c];
