@@ -49,6 +49,13 @@ namespace wf {
 			for (int i = 0; i < scene->materials.size(); ++i) {
 				mtls[i].albedo = f4(scene->materials[i].albedo);
 				mtls[i].emissive = f4(scene->materials[i].emissive);
+				if (scene->materials[i].albedo_tex) {
+					texture_image ti(*scene->materials[i].albedo_tex);
+					tex_images.push_back(ti);
+					mtls[i].albedo_tex = ti.tex;
+				}
+				else
+					mtls[i].albedo_tex = 0;
 			}
 			materials.upload(mtls);
 		}

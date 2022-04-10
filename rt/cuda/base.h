@@ -144,8 +144,7 @@ namespace wf {
 			}
 		};
 
-		template<typename T> class texture_buffer : public global_memory_buffer<T> {
-		public:
+		template<typename T> struct texture_buffer : public global_memory_buffer<T> {
 			cudaTextureObject_t tex = 0;
 
 			texture_buffer(std::string name, unsigned size)
@@ -199,6 +198,43 @@ namespace wf {
 			}*/
 		};
 
+		struct texture_image {
+			std::string name;
+			cudaArray *underlying = nullptr;
+			cudaTextureObject_t tex = 0;
+			int w, h;
+			int pitch;
+
+			texture_image(const texture2d &base)
+			: name(base.name + "-on-cuda"), w(base.w), h(base.h) {
+				float4 *src = new float4[w*h];
+				#pragma omp parallel for
+				for (int y = 0; y < h; ++y)
+					for (int x = 0; x < w; ++x)
+						src[y*w+x] = float4{ base.texel[y*w+x].x, base.texel[y*w+x].y, base.texel[y*w+x].z, 0 };
+				auto chan_desc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
+				CHECK_CUDA_ERROR(cudaMallocArray(&underlying, &chan_desc, w, h), name);
+				int spitch = w * sizeof(float4);
+				CHECK_CUDA_ERROR(cudaMemcpy2DToArray(underlying, 0, 0, src, spitch, w*sizeof(float4), h, cudaMemcpyHostToDevice), name);
+				delete [] src;
+
+				 cudaResourceDesc res_desc;
+				 memset(&res_desc, 0, sizeof(res_desc));
+				 res_desc.resType = cudaResourceTypeArray;
+				 res_desc.res.array.array = underlying;
+
+				 cudaTextureDesc tex_desc;
+				 memset(&tex_desc, 0, sizeof(tex_desc));
+				 tex_desc.addressMode[0] = cudaAddressModeWrap;
+				 tex_desc.addressMode[1] = cudaAddressModeWrap;
+				 tex_desc.filterMode = cudaFilterModeLinear;
+				 tex_desc.readMode = cudaReadModeElementType;
+				 tex_desc.normalizedCoords = 1;
+
+				 CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr), name);
+			}
+		};
+
 		struct raydata : public wf::raydata {
 			int w, h;
 			texture_buffer<float4> rays;
@@ -226,12 +262,14 @@ namespace wf {
 		struct material {
 			float4 albedo;
 			float4 emissive;
+			cudaTextureObject_t albedo_tex;
 		};
 
 		struct scenedata {
 			texture_buffer<float4> vertex_pos;
 			texture_buffer<uint4> triangles;
 			global_memory_buffer<material> materials;
+			std::vector<texture_image> tex_images;
 			scenedata() : vertex_pos("vertex_pos", 0),
 						  triangles("triangles", 0),
 						  materials("materials", 0)	{

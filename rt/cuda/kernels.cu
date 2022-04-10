@@ -164,6 +164,10 @@ __global__ void compute_hitpoint_albedo(int2 res,
 		uint4 tri = triangles[hit.ref];
 		result = materials[tri.w].albedo;
 		result.w = 1; // be safe
+		if (materials[tri.w].albedo_tex > 0) {
+			float4 c = tex2D<float4>(materials[tri.w].albedo_tex, 0.5f, 0.5f);
+			result = c;
+		}
 	}
 	framebuffer[ray_index] = result;
 }
