@@ -29,6 +29,7 @@ namespace wf {
 
 			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
 			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
+			__device__ __inline__ bool valid() { return t != FLT_MAX; }
 		};
 
 		struct __align__(16) simple_bvh_node /*: public node*/ {
@@ -202,16 +203,19 @@ namespace wf {
 			int w, h;
 			texture_buffer<float4> rays;
 			global_memory_buffer<tri_is> intersections;
+			global_memory_buffer<float4> framebuffer;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {}
 			raydata(int w, int h) : w(w), h(h),
 									rays("rays", 2*w*h),
-									intersections("intersections", w*h) {
+									intersections("intersections", w*h),
+									framebuffer("framebuffer", w*h)	{
 				  rc->call_at_resolution_change[this] = [this](int w, int h) {
 					  this->w = w;
 					  this->h = h;
 					  this->rays.resize(2*w*h);
 					  this->intersections.resize(w*h);
+					  this->framebuffer.resize(w*h);
 				  };
 			}
 			~raydata() {
@@ -219,11 +223,18 @@ namespace wf {
 			}
 		};
 
+		struct material {
+			float4 albedo;
+			float4 emissive;
+		};
+
 		struct scenedata {
 			texture_buffer<float4> vertex_pos;
 			texture_buffer<uint4> triangles;
+			global_memory_buffer<material> materials;
 			scenedata() : vertex_pos("vertex_pos", 0),
-						  triangles("triangles", 0) {
+						  triangles("triangles", 0),
+						  materials("materials", 0)	{
 			};
 			void upload(scene *scene);
 		};

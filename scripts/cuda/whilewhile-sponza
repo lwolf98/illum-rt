@@ -10,9 +10,9 @@ outfile out-cuda-while-while-sponza.png
 raytracer cuda while-while
 
 sppx 32
-resolution 10000 10000
+resolution 1920 1080
 
-load render-data/sponza/sponza.fixed.obj
+load render-data/sponza/sponza.fixed.cols.obj
 
 material select vase_round.001
 material emissive 760 600 200

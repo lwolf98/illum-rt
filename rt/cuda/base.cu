@@ -23,6 +23,7 @@ namespace wf {
 			link_tracer("while-while", "default");
 			// bvh mode?
 			register_rni_step("setup camrays",, batch_cam_ray_setup);
+			//register_rni_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
 			register_rni_step("store hitpoint albedo",, store_hitpoint_albedo);
 		}
 
@@ -42,6 +43,14 @@ namespace wf {
 			for (int i = 0; i < num_vertices; ++i)
 				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
 			vertex_pos.upload(tmp4);
+
+			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
+			std::vector<material> mtls(scene->materials.size());
+			for (int i = 0; i < scene->materials.size(); ++i) {
+				mtls[i].albedo = f4(scene->materials[i].albedo);
+				mtls[i].emissive = f4(scene->materials[i].emissive);
+			}
+			materials.upload(mtls);
 		}
 
 		void batch_rt::build(::scene *scene)

@@ -147,6 +147,28 @@ __global__ void setup_ray_incoherent(int2 res,
     }
 }
 
+__global__ void compute_hitpoint_albedo(int2 res,
+										wf::cuda::tri_is *intersections,
+										uint4 *triangles,
+										wf::cuda::material *materials,
+										float4 *framebuffer) {
+    int x = threadIdx.x + blockIdx.x*blockDim.x;
+    int y = threadIdx.y + blockIdx.y*blockDim.y;
+    int ray_index = y*res.x + x;
+    if (x >= res.x || y >= res.y)
+        return;
+
+	float4 result { 0,0,0,1 };
+	wf::cuda::tri_is hit = intersections[ray_index];
+	if (hit.valid()) {
+		uint4 tri = triangles[hit.ref];
+		result = materials[tri.w].albedo;
+		result.w = 1; // be safe
+	}
+	framebuffer[ray_index] = result;
+}
+
+
 // Tracers
 __launch_bounds__(DESIRED_THREADS_PER_BLOCK , DESIRED_BLOCKS_PER_MULTIPROCESSOR)
 __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,

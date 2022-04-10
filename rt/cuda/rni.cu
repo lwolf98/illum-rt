@@ -90,8 +90,8 @@ namespace wf {
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 
-		void store_hitpoint_albedo::run() {
-			time_this_block(store_hitpoint_albedo);
+		void store_hitpoint_albedo_cpu::run() {
+			time_this_block(store_hitpoint_albedo_cpu);
 			auto res = rc->resolution();
 
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
@@ -112,6 +112,31 @@ namespace wf {
 					rc->framebuffer.color(x,y) = vec4(radiance, 1);
 				}
 		}
+		
+		void store_hitpoint_albedo::run() {
+			time_this_block(store_hitpoint_albedo);
+			auto res = int2{rc->resolution().x, rc->resolution().y};
+			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
+
+			compute_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
+																							rt->rd->intersections.device_memory,
+																							rt->sd->triangles.device_memory,
+																							rt->sd->materials.device_memory,
+																							rt->rd->framebuffer.device_memory);
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+
+			rt->rd->framebuffer.download();
+			float4 *fb = rt->rd->framebuffer.host_data.data();
+
+			#pragma omp parallel for
+			for (int y = 0; y < res.y; ++y)
+				for (int x = 0; x < res.x; ++x) {
+					float4 c = fb[y*res.x+x];
+					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w);
+				}
+		}
+	
 	}
 }
 

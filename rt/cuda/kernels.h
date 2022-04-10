@@ -14,6 +14,13 @@ __global__ void setup_ray_incoherent(int2 resolution, float4 *rays,
 									 float r1, float r2,float r_max,
 									 curandStateMtgp32 *rand_state);
 
+__global__ void compute_hitpoint_albedo(int2 res,
+										wf::cuda::tri_is *intersections,
+										uint4 *triangles,
+										wf::cuda::material *materials,
+										float4 *framebuffer);
+
+
 __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,
 							 uint4 *triangles, uint32_t *index,
 							 wf::cuda::simple_bvh_node *bvh_nodes,
