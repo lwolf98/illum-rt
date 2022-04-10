@@ -68,7 +68,7 @@ namespace wf {
 			__host__ __device__ compact_bvh_node() {};
 		};
 
-		struct compact_bvh_node_builder{
+		struct compact_bvh_node_builder {
 			__host__ static std::vector<compact_bvh_node> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
 		};
 
@@ -85,8 +85,7 @@ namespace wf {
 			}
 		};
 
-		template<typename T> class global_memory_buffer : public buffer
-		{
+		template<typename T> class global_memory_buffer : public buffer {
 		public:
 			std::vector<T> host_data;
 			T *device_memory = nullptr;
@@ -98,8 +97,8 @@ namespace wf {
 
 			~global_memory_buffer() {
 				if (device_memory) {
-					CHECK_CUDA_ERROR(cudaFree(device_memory));
-					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+					CHECK_CUDA_ERROR(cudaFree(device_memory),name);
+					CHECK_CUDA_ERROR(cudaDeviceSynchronize(),name);
 				}
 				device_memory = nullptr;
 				size = 0;
@@ -108,15 +107,15 @@ namespace wf {
 			void resize(int size) {
 				if (this->size == size) return;
 				if (device_memory) {
-					CHECK_CUDA_ERROR(cudaFree(device_memory));
-					CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+					CHECK_CUDA_ERROR(cudaFree(device_memory), name);
+					CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
 					device_memory = nullptr;
 					this->size = 0;
 				}
 
 				T *new_device_memory = nullptr;
-				CHECK_CUDA_ERROR(cudaMalloc((void**) &new_device_memory, size*sizeof(T)));
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				CHECK_CUDA_ERROR(cudaMalloc((void**)&new_device_memory, size*sizeof(T)), name);
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
 				this->device_memory = new_device_memory;
 				this->size = size;
 			}
@@ -131,22 +130,20 @@ namespace wf {
 
 				std::copy(data, data + size, host_data.begin());
 
-				CHECK_CUDA_ERROR(cudaMemcpy(device_memory, host_data.data(), size*sizeof(T), cudaMemcpyHostToDevice));
-				CHECK_CUDA_ERROR(cudaGetLastError());
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				CHECK_CUDA_ERROR(cudaMemcpy(device_memory, host_data.data(), size*sizeof(T), cudaMemcpyHostToDevice), name);
+				CHECK_CUDA_ERROR(cudaGetLastError(), name);
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
 			}
 			void download() {
-				time_this_block(intersections_download);
-				if (host_data.size() == 0) {
+				time_this_block(download_membuffer);
+				if (host_data.size() != size)
 					host_data.resize(size);
-				}
-				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost));
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost), name);
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
 			}
 		};
 
-		template<typename T> class texture_buffer : public global_memory_buffer<T>
-		{
+		template<typename T> class texture_buffer : public global_memory_buffer<T> {
 		public:
 			cudaTextureObject_t tex = 0;
 
@@ -158,12 +155,12 @@ namespace wf {
 
 			~texture_buffer() {
 				if (tex != 0)
-					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
+					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex),this->name);
 			}
 
 			void update_texture() {
 				if (tex>0)
-					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex));
+					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex),this->name);
 				
 				cudaResourceDesc res_desc = {};
 				res_desc.resType = cudaResourceTypeLinear;
@@ -179,7 +176,7 @@ namespace wf {
 				tex_desc.readMode = cudaReadModeElementType;
 				tex_desc.normalizedCoords = 0;
 
-				CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr));
+				CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr),this->name);
 			}
 
 			void resize(int size) {

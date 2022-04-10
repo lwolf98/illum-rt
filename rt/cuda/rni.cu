@@ -72,8 +72,8 @@ namespace wf {
 														  rt->incoherence_r1, rt->incoherence_r2,
 														  r_max,
 														  rand_state.device_memory);
-				CHECK_CUDA_ERROR(cudaGetLastError());
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				CHECK_CUDA_ERROR(cudaGetLastError(), "");
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
 			else {
 				camera &cam = rc->scene.camera;
@@ -83,11 +83,11 @@ namespace wf {
 																						 float3{cam.pos.x, cam.pos.y, cam.pos.z},
 																						 float3{cam.dir.x, cam.dir.y, cam.dir.z},
 																						 rt->rd->rays.device_memory);
-				CHECK_CUDA_ERROR(cudaGetLastError());
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+				CHECK_CUDA_ERROR(cudaGetLastError(), "");
+				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
-			CHECK_CUDA_ERROR(cudaGetLastError());
-			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 
 		void store_hitpoint_albedo::run() {

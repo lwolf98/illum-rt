@@ -49,8 +49,8 @@ namespace wf {
 																						bvh_nodes.device_memory,
 																						rd->intersections.device_memory,
 																						anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 
 
@@ -67,8 +67,8 @@ namespace wf {
 																					  bvh_nodes.device_memory,      bvh_nodes.tex,
 																					  rd->intersections.device_memory,
 																					  anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -84,8 +84,8 @@ namespace wf {
 																							rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																							rd->intersections.device_memory,
 																							anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -103,8 +103,8 @@ namespace wf {
 																											rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																											rd->intersections.device_memory,
 																											anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -121,8 +121,8 @@ namespace wf {
 																									   rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																									   rd->intersections.device_memory,
 																									   anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -138,8 +138,8 @@ namespace wf {
 																			   rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																			   rd->intersections.device_memory,
 																			   anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -155,8 +155,8 @@ namespace wf {
 																								rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																								rd->intersections.device_memory,
 																								anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 		
 		
@@ -172,8 +172,8 @@ namespace wf {
 																					 rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
 																					 rd->intersections.device_memory,
 																					 anyhit);
-			CHECK_CUDA_ERROR(cudaGetLastError());
-  			CHECK_CUDA_ERROR(cudaDeviceSynchronize());
+			CHECK_CUDA_ERROR(cudaGetLastError(), "");
+  			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 
 	}
