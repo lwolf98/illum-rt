@@ -34,10 +34,10 @@ done
 #  args=$(echo "$args" | sed -e "s/12/20/g")
 # fi
 
-echo
-echo $args
-echo
-echo
+#echo
+#echo $args
+#echo
+#echo
 nvcc $args #2> /tmp/$USER/nvccwrapper-log
 ret=$?
 
