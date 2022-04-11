@@ -9,6 +9,7 @@ libcudaraytracing_a_SOURCES = cuda-helpers.cpp $(libcudaraytracing_a_CUDA_SOURCE
 
 noinst_HEADERS = base.h \
 			     cuda-helpers.h \
+				 cuda-operators.h \
 				 kernels.h \
 				 rni.h \
 				 tracers.h

@@ -169,7 +169,7 @@ namespace wf {
 				res_desc.res.linear.desc = cudaCreateChannelDesc<float4>();
 				cudaTextureDesc tex_desc = {};
 				memset(&tex_desc, 0, sizeof(tex_desc));
-				tex_desc.addressMode[0] = cudaAddressModeClamp;
+				tex_desc.addressMode[0] = cudaAddressModeClamp; // Wrap?
 				tex_desc.addressMode[1] = cudaAddressModeClamp;
 				tex_desc.addressMode[2] = cudaAddressModeClamp;
 				tex_desc.filterMode = cudaFilterModePoint;
@@ -267,10 +267,12 @@ namespace wf {
 
 		struct scenedata {
 			texture_buffer<float4> vertex_pos;
+			texture_buffer<float2> vertex_tc;
 			texture_buffer<uint4> triangles;
 			global_memory_buffer<material> materials;
 			std::vector<texture_image> tex_images;
 			scenedata() : vertex_pos("vertex_pos", 0),
+						  vertex_tc("vertex_tc", 0),
 						  triangles("triangles", 0),
 						  materials("materials", 0)	{
 			};

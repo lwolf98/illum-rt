@@ -17,6 +17,7 @@ __global__ void setup_ray_incoherent(int2 resolution, float4 *rays,
 __global__ void compute_hitpoint_albedo(int2 res,
 										wf::cuda::tri_is *intersections,
 										uint4 *triangles,
+										float2 *tex_coords,
 										wf::cuda::material *materials,
 										float4 *framebuffer);
 

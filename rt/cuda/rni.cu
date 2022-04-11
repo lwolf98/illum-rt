@@ -121,6 +121,7 @@ namespace wf {
 			compute_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
 																							rt->rd->intersections.device_memory,
 																							rt->sd->triangles.device_memory,
+																							rt->sd->vertex_tc.device_memory,
 																							rt->sd->materials.device_memory,
 																							rt->rd->framebuffer.device_memory);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");

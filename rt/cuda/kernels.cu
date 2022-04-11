@@ -1,4 +1,5 @@
 #include "kernels.h"
+#include "cuda-operators.h"
 // -----------------------------------------------------------------------------
 // Global constants
 #define STACK_SIZE 64 // Traversal Stack size for all methods
@@ -150,6 +151,7 @@ __global__ void setup_ray_incoherent(int2 res,
 __global__ void compute_hitpoint_albedo(int2 res,
 										wf::cuda::tri_is *intersections,
 										uint4 *triangles,
+										float2 *tex_coords,
 										wf::cuda::material *materials,
 										float4 *framebuffer) {
     int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -165,7 +167,10 @@ __global__ void compute_hitpoint_albedo(int2 res,
 		result = materials[tri.w].albedo;
 		result.w = 1; // be safe
 		if (materials[tri.w].albedo_tex > 0) {
-			float4 c = tex2D<float4>(materials[tri.w].albedo_tex, 0.5f, 0.5f);
+			float2 tc = (1.0f - hit.beta - hit.gamma) * tex_coords[tri.x] +
+			            hit.beta * tex_coords[tri.y] +
+			            hit.gamma * tex_coords[tri.z];
+			float4 c = tex2D<float4>(materials[tri.w].albedo_tex, tc.x, tc.y);
 			result = c;
 		}
 	}

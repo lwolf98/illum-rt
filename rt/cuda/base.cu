@@ -33,16 +33,21 @@ namespace wf {
 
 		void scenedata::upload(scene *scene) {
 			std::vector<uint4> scene_tris;
+			scene_tris.reserve(scene->triangles.size());
 			for (triangle t : scene->triangles)
 				scene_tris.push_back(uint4{t.a, t.b, t.c, t.material_id});
 			triangles.upload(scene_tris.size(), reinterpret_cast<uint4*>(scene_tris.data()));
 
 			int num_vertices = scene->vertices.size();
 			std::vector<float4> tmp4(num_vertices);
+			std::vector<float2> tmp2(num_vertices);
 
-			for (int i = 0; i < num_vertices; ++i)
+			for (int i = 0; i < num_vertices; ++i) {
 				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
+				tmp2[i] = float2{ scene->vertices[i].tc.x, scene->vertices[i].tc.y };
+			}
 			vertex_pos.upload(tmp4);
+			vertex_tc.upload(tmp2);
 
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
 			std::vector<material> mtls(scene->materials.size());
