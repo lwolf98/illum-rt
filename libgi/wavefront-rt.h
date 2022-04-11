@@ -11,6 +11,15 @@
 
 namespace wf {
 
+	struct step {
+		virtual void run() = 0;
+	};
+
+	class simple_algorithm : public wavefront_algorithm {
+	protected:
+		std::vector<step*> steps;
+	};
+
 	// partition in pure interface and templated version holding a reference to the data
 	struct batch_ray_tracer : public ray_tracer {
 		ray *rays = nullptr;
@@ -19,8 +28,25 @@ namespace wf {
 		virtual void compute_closest_hit() = 0;
 		virtual void compute_any_hit() = 0;
 	};
+
+	class find_closest_hits : public step {
+		batch_ray_tracer *rt;
+	public:
+		find_closest_hits(batch_ray_tracer *rt) : rt(rt) {}
+		void run() override {
+			rt->compute_closest_hit();
+		}
+	};
+	class find_any_hits : public step {
+		batch_ray_tracer *rt;
+	public:
+		find_any_hits(batch_ray_tracer *rt) : rt(rt) {}
+		void run() override {
+			rt->compute_any_hit();
+		}
+	};
 	
-	struct ray_and_intersection_processing {
+	struct ray_and_intersection_processing : public step {
 		virtual void use(batch_ray_tracer *rt) = 0;
 		virtual void run() = 0;
 	};

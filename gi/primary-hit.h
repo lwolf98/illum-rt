@@ -1,6 +1,7 @@
 #pragma once
 
 #include "libgi/algorithm.h"
+#include "libgi/wavefront-rt.h"
 #include "libgi/material.h"
 
 /* \brief Display the color (albedo) of the surface closest to the given ray.
@@ -24,6 +25,8 @@ public:
 
 
 
-class primary_hit_display_wf : public wavefront_algorithm {
+class primary_hit_display_wf : public wf::simple_algorithm {
+public:
+	primary_hit_display_wf();
 	void compute_samples() override;
 };

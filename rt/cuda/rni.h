@@ -21,12 +21,21 @@ namespace wf {
 			void run() override;
 		};
 
-		/*! \brief Compute shading and then download framebuffer to the host (i.e. the CPU)
+		/*! \brief Compute albedo (incl. textures) on the GPU
 		 *
 		 */
-		struct store_hitpoint_albedo : public ray_and_intersection_processing {
+		struct add_hitpoint_albedo_to_fb : public ray_and_intersection_processing {
+			bool first_sample;
 			void run() override;
 		};
+		
+		/*! \brief Download frame buffer data for further processing on the host
+		 *
+		 */
+		struct download_framebuffer : public ray_and_intersection_processing {
+			void run() override;
+		};
+
 
 	}
 }

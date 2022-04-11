@@ -113,8 +113,8 @@ namespace wf {
 				}
 		}
 		
-		void store_hitpoint_albedo::run() {
-			time_this_block(store_hitpoint_albedo);
+		void add_hitpoint_albedo_to_fb::run() {
+			time_this_block(add_hitpoint_albedo);
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
@@ -126,7 +126,12 @@ namespace wf {
 																							rt->rd->framebuffer.device_memory);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-
+		}
+	
+		void download_framebuffer::run() {
+			time_this_block(download_framebuffer);
+			auto res = int2{rc->resolution().x, rc->resolution().y};
+			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			rt->rd->framebuffer.download();
 			float4 *fb = rt->rd->framebuffer.host_data.data();
 
@@ -137,7 +142,7 @@ namespace wf {
 					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w);
 				}
 		}
-	
+		
 	}
 }
 
