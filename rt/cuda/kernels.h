@@ -6,20 +6,21 @@
 #include <curand_mtgp32_kernel.h>
 
 
-__global__ void setup_ray(glm::vec3 U, glm::vec3 V, float near_w, float near_h,
-						  int2 resolution, float3 cam_pos, float3 cam_dir,
-						  float4 *rays);
+__global__ void initialize_framebuffer_data(int2 resolution, float4 *framebuffer);
+__global__ void setup_rays(glm::vec3 U, glm::vec3 V, float near_w, float near_h,
+						   int2 resolution, float3 cam_pos, float3 cam_dir,
+						   float2 *random_numbers, float4 *rays);
 __global__ void setup_ray_incoherent(int2 resolution, float4 *rays,
 									 float3 sphere1, float3 sphere2,
 									 float r1, float r2,float r_max,
 									 curandStateMtgp32 *rand_state);
 
-__global__ void compute_hitpoint_albedo(int2 res,
-										wf::cuda::tri_is *intersections,
-										uint4 *triangles,
-										float2 *tex_coords,
-										wf::cuda::material *materials,
-										float4 *framebuffer);
+__global__ void add_hitpoint_albedo(int2 res,
+									wf::cuda::tri_is *intersections,
+									uint4 *triangles,
+									float2 *tex_coords,
+									wf::cuda::material *materials,
+									float4 *framebuffer);
 
 
 __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,

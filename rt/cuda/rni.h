@@ -2,13 +2,20 @@
 
 #include "base.h"
 
+#include <curand.h>
+
 namespace wf {
 	namespace cuda {
 
 		/*! \brief Set up camera rays using Shirley's formulas.
 		 *
 		 */
-		struct batch_cam_ray_setup : public ray_and_intersection_processing {
+		class batch_cam_ray_setup : public ray_and_intersection_processing {
+			curandGenerator_t gen;
+			float2 *random_numbers = nullptr;
+		public:
+			batch_cam_ray_setup();
+			~batch_cam_ray_setup();
 			void run() override;
 		};
 
@@ -29,6 +36,13 @@ namespace wf {
 			void run() override;
 		};
 		
+		/*! \brief Download frame buffer data for further processing on the host
+		 *
+		 */
+		struct initialize_framebuffer : public ray_and_intersection_processing {
+			void run() override;
+		};
+
 		/*! \brief Download frame buffer data for further processing on the host
 		 *
 		 */

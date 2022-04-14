@@ -13,9 +13,29 @@
 #include "kernels.h"
 #include "cuda-helpers.h"
 
+#define CURAND_CALL(x) do { if((x)!=CURAND_STATUS_SUCCESS) { printf("Error at %s:%d\n",__FILE__,__LINE__); exit(99); }} while(0)
+
 namespace wf {
 	namespace cuda {
 		// batch_cam_ray_setup::batch_cam_ray_setup() {}
+
+		batch_cam_ray_setup::batch_cam_ray_setup() {
+			CURAND_CALL(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT));
+			CURAND_CALL(curandSetPseudoRandomGeneratorSeed(gen, 2022));
+			rc->call_at_resolution_change[this] = [this](int w, int h) {
+				CHECK_CUDA_ERROR(cudaFree(random_numbers), "");
+				CHECK_CUDA_ERROR(cudaMalloc((void**)&random_numbers, w*h*sizeof(float2)), "");
+			};
+			int2 resolution{rc->resolution().x, rc->resolution().y};
+			if (resolution.x > 0 && resolution.y > 0)
+				CHECK_CUDA_ERROR(cudaMalloc((void**)&random_numbers, resolution.x*resolution.y*sizeof(float2)), "");
+		}
+		
+		batch_cam_ray_setup::~batch_cam_ray_setup() {
+			rc->call_at_resolution_change.erase(this);
+			CHECK_CUDA_ERROR(cudaFree(random_numbers), "");
+			CURAND_CALL(curandDestroyGenerator(gen));
+		}
 
 		void batch_cam_ray_setup::run() {
 			time_this_block(batch_cam_ray_setup);
@@ -76,13 +96,16 @@ namespace wf {
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
 			else {
+				CURAND_CALL(curandGenerateUniform(gen, (float*)random_numbers, resolution.x*resolution.y*2));
+
 				camera &cam = rc->scene.camera;
 				vec3 U = cross(cam.dir, cam.up);
 				vec3 V = cross(U, cam.dir);
-				setup_ray<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(U, V, cam.near_w, cam.near_h, resolution,
-																						 float3{cam.pos.x, cam.pos.y, cam.pos.z},
-																						 float3{cam.dir.x, cam.dir.y, cam.dir.z},
-																						 rt->rd->rays.device_memory);
+				setup_rays<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(U, V, cam.near_w, cam.near_h, resolution,
+																						  float3{cam.pos.x, cam.pos.y, cam.pos.z},
+																						  float3{cam.dir.x, cam.dir.y, cam.dir.z},
+																						  random_numbers,
+																						  rt->rd->rays.device_memory);
 				CHECK_CUDA_ERROR(cudaGetLastError(), "");
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
@@ -118,16 +141,24 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
-			compute_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
-																							rt->rd->intersections.device_memory,
-																							rt->sd->triangles.device_memory,
-																							rt->sd->vertex_tc.device_memory,
-																							rt->sd->materials.device_memory,
-																							rt->rd->framebuffer.device_memory);
+			add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
+																						rt->rd->intersections.device_memory,
+																						rt->sd->triangles.device_memory,
+																						rt->sd->vertex_tc.device_memory,
+																						rt->sd->materials.device_memory,
+																						rt->rd->framebuffer.device_memory);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 	
+		void initialize_framebuffer::run() {
+			time_this_block(download_framebuffer);
+			auto res = int2{rc->resolution().x, rc->resolution().y};
+			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
+
+			initialize_framebuffer_data<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, rt->rd->framebuffer.device_memory);
+		}
+			
 		void download_framebuffer::run() {
 			time_this_block(download_framebuffer);
 			auto res = int2{rc->resolution().x, rc->resolution().y};
@@ -139,7 +170,7 @@ namespace wf {
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					float4 c = fb[y*res.x+x];
-					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w);
+					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w) / c.w;
 				}
 		}
 		

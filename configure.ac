@@ -35,6 +35,7 @@ AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 have_cuda=yes
 AC_CHECK_LIB([cuda], [cuInit], [], [have_cuda=no])
 AC_CHECK_LIB([cudart], [cudaMalloc], [], [have_cuda=no])
+AC_CHECK_LIB([curand], [main], [], [have_cuda=no])
 AM_CONDITIONAL([have_cuda], [test x$have_cuda = xyes])
 AS_IF([test x$have_cuda = xyes],
 	  [AC_DEFINE([HAVE_CUDA], [1], [Do we have CUDA])],

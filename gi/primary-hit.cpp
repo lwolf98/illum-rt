@@ -71,7 +71,6 @@ primary_hit_display_wf::primary_hit_display_wf() {
 	steps.push_back(rc->platform->rni("setup camrays"));
 	steps.push_back(new wf::find_closest_hits(rc->scene.batch_rt));
 	steps.push_back(rc->platform->rni("add hitpoint albedo"));
-	steps.push_back(rc->platform->rni("download framebuffer"));
 }
 
 void primary_hit_display_wf::compute_samples() {
@@ -90,6 +89,9 @@ void primary_hit_display_wf::compute_samples() {
 
 	rc->platform->rni("store hitpoint albedo")->run();
 	*/
-	for (auto *step : steps)
-		step->run();
+	rc->platform->rni("initialize framebuffer")->run();
+	for (int i = 0; i < rc->sppx; ++i)
+		for (auto *step : steps)
+			step->run();
+	rc->platform->rni("download framebuffer")->run();
 }

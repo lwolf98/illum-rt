@@ -23,6 +23,7 @@ namespace wf {
 			link_tracer("while-while", "default");
 			link_tracer("while-while", "find closest hits");
 			// bvh mode?
+			register_rni_step("initialize framebuffer",, initialize_framebuffer);
 			register_rni_step("setup camrays",, batch_cam_ray_setup);
 			//register_rni_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
 			register_rni_step("add hitpoint albedo",, add_hitpoint_albedo_to_fb);

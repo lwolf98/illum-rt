@@ -29,12 +29,8 @@
 // Global variables
 __device__ int global_counter; // used in persistent methods
 // -----------------------------------------------------------------------------
-// Ray setup
-__global__ void setup_ray(glm::vec3 U, glm::vec3 V,
-						  float near_w, float near_h,
-						  int2 resolution,
-						  float3 cam_pos, float3 cam_dir,
-						  float4 *rays) {
+
+__global__ void initialize_framebuffer_data(int2 resolution, float4 *framebuffer) {
     int i, j, ray_index;
     i = threadIdx.x + blockIdx.x*blockDim.x;
     j = threadIdx.y + blockIdx.y*blockDim.y;
@@ -43,19 +39,34 @@ __global__ void setup_ray(glm::vec3 U, glm::vec3 V,
     if (i >= resolution.x || j >= resolution.y)
         return;
 
-    float2 offset{0,0};
-    float3 ray_o;
-    float3 ray_d;
+	framebuffer[ray_index] = { 0,0,0,0 };
+}
 
-    ray_o = cam_pos;
+// Ray setup
+__global__ void setup_rays(glm::vec3 U, glm::vec3 V,
+						   float near_w, float near_h,
+						   int2 resolution,
+						   float3 cam_pos, float3 cam_dir,
+						   float2 *random_numbers, float4 *rays) {
+    int i, j, ray_index;
+    i = threadIdx.x + blockIdx.x*blockDim.x;
+    j = threadIdx.y + blockIdx.y*blockDim.y;
+    ray_index = i + j*resolution.x;
 
-    float u = (-1.0f + 2.0f*(float(i)+0.5+offset.x)/float(resolution.x)) * near_w;
-    float v = (-1.0f + 2.0f*(float(j)+0.5+offset.y)/float(resolution.y)) * near_h;
+    if (i >= resolution.x || j >= resolution.y)
+        return;
 
-    ray_d.x = cam_dir.x + u*U.x + v*V.x;
-    ray_d.y = cam_dir.y + u*U.y + v*V.y;
-    ray_d.z = cam_dir.z + u*U.z + v*V.z;
 
+    float3 ray_o = cam_pos;
+
+	// offset \in [0,1]
+	float2 offset = random_numbers[ray_index];
+    float u = (-1.0f + 2.0f*(float(i)+offset.x)/float(resolution.x)) * near_w;
+    float v = (-1.0f + 2.0f*(float(j)+offset.y)/float(resolution.y)) * near_h;
+
+    float3 ray_d { cam_dir.x + u*U.x + v*V.x,
+		           cam_dir.y + u*U.y + v*V.y,
+				   cam_dir.z + u*U.z + v*V.z };
     normalize(ray_d);
 
     rays[ray_index*2].x = ray_o.x;
@@ -148,13 +159,13 @@ __global__ void setup_ray_incoherent(int2 res,
     }
 }
 
-__global__ void compute_hitpoint_albedo(int2 res,
-										wf::cuda::tri_is *intersections,
-										uint4 *triangles,
-										float2 *tex_coords,
-										wf::cuda::material *materials,
-										float4 *framebuffer) {
-    int x = threadIdx.x + blockIdx.x*blockDim.x;
+__global__ void add_hitpoint_albedo(int2 res,
+									wf::cuda::tri_is *intersections,
+									uint4 *triangles,
+									float2 *tex_coords,
+									wf::cuda::material *materials,
+									float4 *framebuffer) {
+	int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
     int ray_index = y*res.x + x;
     if (x >= res.x || y >= res.y)
@@ -164,17 +175,17 @@ __global__ void compute_hitpoint_albedo(int2 res,
 	wf::cuda::tri_is hit = intersections[ray_index];
 	if (hit.valid()) {
 		uint4 tri = triangles[hit.ref];
-		result = materials[tri.w].albedo;
-		result.w = 1; // be safe
 		if (materials[tri.w].albedo_tex > 0) {
-			float2 tc = (1.0f - hit.beta - hit.gamma) * tex_coords[tri.x] +
-			            hit.beta * tex_coords[tri.y] +
-			            hit.gamma * tex_coords[tri.z];
-			float4 c = tex2D<float4>(materials[tri.w].albedo_tex, tc.x, tc.y);
-			result = c;
+			float2 tc = (1.0f - hit.beta - hit.gamma) * tex_coords[tri.x]
+			            + hit.beta * tex_coords[tri.y] 
+						+ hit.gamma * tex_coords[tri.z];
+			result = tex2D<float4>(materials[tri.w].albedo_tex, tc.x, tc.y);
 		}
+		else
+			result = materials[tri.w].albedo;
+		result.w = 1; // be safe
 	}
-	framebuffer[ray_index] = result;
+	framebuffer[ray_index] = framebuffer[ray_index] + result;
 }
 
 
