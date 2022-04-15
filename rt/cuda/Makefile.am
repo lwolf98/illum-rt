@@ -14,6 +14,7 @@ noinst_HEADERS = base.h \
 				 rni.h \
 				 tracers.h
 
+AM_CPPFLAGS = -I$(top_srcdir)
 GENCODE_FLAGS  = -gencode arch=compute_86,code=sm_86
 NVCC_FLAGS = -Xptxas -v -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --resource-usage --generate-line-info --use_fast_math
 

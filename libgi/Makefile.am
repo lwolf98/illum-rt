@@ -1,5 +1,6 @@
 noinst_LIBRARIES = libgi.a
 
+AM_CPPFLAGS = -I$(top_srcdir)
 libgi_a_CXXFLAGS = $(WAND_CFLAGS)
 #libgi_a_LIBADD = $(WAND_LIBS)
 

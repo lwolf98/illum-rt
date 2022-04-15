@@ -1,7 +1,23 @@
 checked=""
+
+Is[0]="."
+N=1
+while [ "$1" == "-I" ] ; do
+	echo "[$1 $2]"
+	Is[$N]="$2"
+	N=$((N+1))
+	shift 2
+done
+
 function check() {
 	checked="$1 $checked"
-	direct=$(grep 'include(' $1 | sed -e 's/.*include(\([^)]*\)).*/\1/g');
+	input="$1"
+	for i in $(seq 0 $N) ; do
+		if [ -e "${Is[$i]}/$1" ] ; then
+			input="${Is[$i]}/$1"
+		fi
+	done
+	direct=$(grep 'include(' $input | sed -e 's/.*include(\([^)]*\)).*/\1/g');
 	for g in $direct ; do
 		echo -n " $g"
 	done

@@ -87,8 +87,8 @@ AC_CONFIG_FILES([Makefile
 #ifndef RTGI_SKIP_BVH
 AC_CONFIG_FILES([rt/bbvh-base/Makefile])
 #endif
-AM_COND_IF([have_embree], [AC_CONFIG_FILES([rt/embree/Makefile])])
-AM_COND_IF([have_gl], [AC_CONFIG_FILES([rt/gl/Makefile])])
-AM_COND_IF([have_cuda], [AC_CONFIG_FILES([rt/cuda/Makefile])])
+AC_CONFIG_FILES([rt/embree/Makefile])
+AC_CONFIG_FILES([rt/gl/Makefile])
+AC_CONFIG_FILES([rt/cuda/Makefile])
 
 AC_OUTPUT
