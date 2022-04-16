@@ -66,6 +66,37 @@ namespace wf {
 			for (int i = 0; i < N; ++i)
 				v2[i] = scene->vertices[i].tc;
 			vertex_tc.resize(v2);
+
+			vector<material> mtl(scene->materials.size());
+			for (int i = 0; i < scene->materials.size(); ++i) {
+				material &m = mtl[i];
+				m.emissive = scene->materials[i].emissive;
+				m.albedo = scene->materials[i].albedo;
+				m.albedo_tex = 0;
+				if (scene->materials[i].albedo_tex) {
+					m.has_tex = true;
+					GLuint tex;
+					glGenTextures(1, &tex);
+					glBindTexture(GL_TEXTURE_2D, tex);
+					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, scene->materials[i].albedo_tex->w, scene->materials[i].albedo_tex->h, 0, GL_RGB32F, GL_FLOAT, scene->materials[i].albedo_tex->texel);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glBindTexture(GL_TEXTURE_2D, 0);
+					m.albedo_tex = glGetTextureHandleARB(tex);
+					glMakeTextureHandleResidentARB(m.albedo_tex);
+					textures.push_back(tex);
+				}
+			}
+		}
+		
+		scenedata::~scenedata() {
+			materials.download();
+			for (auto &m : materials.org_data)
+				glMakeTextureHandleNonResidentARB(m.albedo_tex);
+			for (auto tex : textures)
+				glDeleteTextures(1, &tex);
 		}
 
 		platform::platform() : wf::platform("opengl") {
@@ -85,26 +116,5 @@ namespace wf {
 			register_rni_step("store hitpoint albedo",, store_hitpoint_albedo);
 		}
 		
-		std::string platform::standard_preamble = R"(
-			#version 450
-			layout (local_size_x = 32, local_size_y = 32) in;
-			layout (std430, binding = 0) buffer b_rays_o  { vec4 rays_o  []; };
-			layout (std430, binding = 1) buffer b_rays_d  { vec4 rays_d  []; };
-			layout (std430, binding = 2) buffer b_rays_id { vec4 rays_id []; };
-			layout (std430, binding = 3) buffer b_intersections { vec4 intersections[]; };
-			layout (std430, binding = 4) buffer b_vertex_pos  { vec4 vertex_pos []; };
-			layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
-			layout (std430, binding = 6) buffer b_vertex_tc   { vec4 vertex_tc  []; };
-			layout (std430, binding = 7) buffer b_triangles   { ivec4 triangles []; };
-			layout (std430, binding = 8) buffer b_radiance  { vec4 radiance[]; };
-			uniform int w;
-			uniform int h;
-			void run(uint x, uint y);
-			void main() {
-				if (gl_GlobalInvocationID.x < w || gl_GlobalInvocationID.y < h)
-					run(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-			}
-			)";
-
 	}
 }

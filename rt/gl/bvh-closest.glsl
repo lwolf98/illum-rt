@@ -31,9 +31,9 @@ bool intersect4(vec4 box_min, vec4 box_max, const vec4 ray_o, const vec4 ray_id,
 void run_simple(uint x, uint y) {
 	uint id = y * w + x;
 	vec4 closest = vec4(FLT_MAX, -1, -1, 0), is;
-	vec4 o = rays_o[id],
-	     d = rays_d[id],
-	     inv_d = rays_id[id];
+	vec4 o = rays[id],
+	     d = rays[w*h + id],
+	     inv_d = rays[2*w*h + id];
 	
 	#define STACKSIZE 24
 	uint stack[STACKSIZE];
@@ -82,9 +82,9 @@ void run_simple(uint x, uint y) {
 void run_reduce_stackuse(uint x, uint y) {
 	uint id = y * w + x;
 	vec4 closest = vec4(FLT_MAX, -1, -1, 0), is;
-	vec4 o = rays_o[id],
-	     d = rays_d[id],
-	     inv_d = rays_id[id];
+	vec4 o = rays[id],
+	     d = rays[w*h + id],
+	     inv_d = rays[2*w*h + id];
 	
 	#define STACKSIZE 24
 	uint stack[STACKSIZE];

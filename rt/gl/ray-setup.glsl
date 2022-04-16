@@ -10,7 +10,7 @@ void run(uint x, uint y) {
 	u = near_wh.x * u;	// \in (-near_w,near_w)
 	v = near_wh.y * v;
 	vec3 dir = normalize(d + U*u + V*v);
-	rays_o[id] = vec4(p, 1);
-	rays_d[id] = vec4(dir, 0);
-	rays_id[id] = vec4(vec3(1)/dir, 1);
+	rays[id] = vec4(p, 1);
+	rays[w*h+id] = vec4(dir, 0);
+	rays[2*w*h+id] = vec4(vec3(1)/dir, 1);
 }

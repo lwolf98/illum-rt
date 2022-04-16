@@ -123,25 +123,19 @@ namespace wf {
 		 */
 		struct raydata : public wf::raydata {
 			int w, h;
-			ssbo<vec4> rays_o;
-			ssbo<vec4> rays_d;
-			ssbo<vec4> rays_id;
+			ssbo<vec4> rays;
 			ssbo<vec4> intersections;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {
 			}
 			raydata(int w, int h)
 			: w(w), h(h),
-			  rays_o("rays_o", 0, w*h),
-			  rays_d("rays_d", 1, w*h),
-			  rays_id("rays_id", 2, w*h),
+			  rays("rays", 0, 3*w*h),
 			  intersections("intersections", 3, w*h) {
 				  rc->call_at_resolution_change[this] = [this](int w, int h) {
 					  this->w = w;
 					  this->h = h;
-					  rays_o.resize(w*h);
-					  rays_d.resize(w*h);
-					  rays_id.resize(w*h);
+					  rays.resize(w*h*3);
 					  intersections.resize(w*h);
 				  };
 			}
@@ -155,16 +149,22 @@ namespace wf {
 		struct scenedata {
 			struct material {
 				vec3 albedo, emissive;
+				GLuint64 albedo_tex;
+				GLint has_tex;
 			};
 			ssbo<vec4> vertex_pos, vertex_norm;
 			ssbo<vec2> vertex_tc;
 			ssbo<ivec4> triangles;
+			ssbo<material> materials;
+			std::vector<GLuint> textures;
 			scenedata()
 			: vertex_pos("vertex_pos", 4, 0),
 			  vertex_norm("vertex_norm", 5, 0),
 		 	  vertex_tc("vertex_tc", 6, 0),
-			  triangles("triangles", 7, 0) {
+			  triangles("triangles", 7, 0),
+			  materials("materials", 8, 0) {
 			}
+			~scenedata();
 			void upload(scene *scene);
 		};
 
@@ -208,7 +208,6 @@ namespace wf {
 		class platform : public wf::platform {
 		public:
 			platform();
-			static std::string standard_preamble;
 		};
 	}
 }

@@ -10,9 +10,7 @@ struct bvh_node {
 
 
 layout (local_size_x = BLOCK_W, local_size_y = BLOCK_H) in;
-layout (std430, binding = 0) buffer b_rays_o  { vec4 rays_o  []; };
-layout (std430, binding = 1) buffer b_rays_d  { vec4 rays_d  []; };
-layout (std430, binding = 2) buffer b_rays_id { vec4 rays_id []; };
+layout (std430, binding = 0) buffer b_rays        { vec4 rays  []; };
 layout (std430, binding = 3) buffer b_intersections { vec4 intersections[]; };
 layout (std430, binding = 4) buffer b_vertex_pos  { vec4 vertex_pos []; };
 layout (std430, binding = 5) buffer b_vertex_norm { vec4 vertex_norm[]; };
