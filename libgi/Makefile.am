@@ -12,8 +12,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					rt.cpp \
 					scene.cpp \
 					timer.cpp \
-					wavefront-rt.cpp \
-					wavefront-scalar.cpp
+					wavefront-rt.cpp
 
 
 #ifndef RTGI_SKIP_BRDF
@@ -37,8 +36,7 @@ noinst_HEADERS = 	algorithm.h \
 					scene.h \
 					timer.h \
 					util.h \
-					wavefront-rt.h \
-					wavefront-scalar.h
+					wavefront-rt.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

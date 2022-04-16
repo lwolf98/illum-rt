@@ -78,17 +78,12 @@ AC_CONFIG_FILES([Makefile
 				driver/Makefile
 				libgi/Makefile
 				rt/Makefile
-				rt/seq/Makefile
+				rt/cpu/Makefile
+				rt/gl/Makefile
+				rt/cuda/Makefile
 				gi/Makefile
 				scripts/Makefile
 				render-data/Makefile
 				])
-
-#ifndef RTGI_SKIP_BVH
-AC_CONFIG_FILES([rt/bbvh-base/Makefile])
-#endif
-AC_CONFIG_FILES([rt/embree/Makefile])
-AC_CONFIG_FILES([rt/gl/Makefile])
-AC_CONFIG_FILES([rt/cuda/Makefile])
 
 AC_OUTPUT

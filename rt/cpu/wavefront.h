@@ -1,6 +1,6 @@
 #pragma once
 
-#include "wavefront-rt.h"
+#include "libgi/wavefront-rt.h"
 
 namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
@@ -42,17 +42,25 @@ namespace wf {
 			virtual void run() = 0;
 		};
 
+		struct initialize_framebuffer : public batch_ray_and_intersection_processing_cpu {
+			void run() override;
+		};
+			
 		struct batch_cam_ray_setup_cpu : public batch_ray_and_intersection_processing_cpu {
 			void run() override;
 		};
 		
-		struct store_hitpoint_albedo : public batch_ray_and_intersection_processing_cpu {
+		struct add_hitpoint_albedo : public batch_ray_and_intersection_processing_cpu {
 			void run() override;
 		};
-
-		class scalar_cpu_batch_raytracing : public platform {
+		
+		struct download_framebuffer : public batch_ray_and_intersection_processing_cpu {
+			void run() override;
+		};
+	
+		class platform : public wf::platform {
 		public:
-			scalar_cpu_batch_raytracing();
+			platform();
 		};
 	}
 }

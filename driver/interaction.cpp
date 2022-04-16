@@ -15,11 +15,12 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 #include "libgi/wavefront-rt.h"
-#include "libgi/wavefront-scalar.h"
 
-#include "rt/seq/seq.h"
+#include "rt/cpu/wavefront.h"
+
+#include "rt/cpu/seq.h"
 #ifndef RTGI_SKIP_BVH
-#include "rt/bbvh-base/bvh.h"
+#include "rt/cpu/bvh.h"
 #endif
 #include "gi/primary-hit.h"
 #ifndef RTGI_SKIP_DIRECT_ILLUM
@@ -34,7 +35,7 @@
 #endif
 
 #ifdef HAVE_LIBEMBREE3
-#include "rt/embree/embree.h"
+#include "rt/cpu/embree.h"
 #endif
 
 #ifdef HAVE_CUDA
@@ -299,7 +300,7 @@ void repl(istream &infile, repl_update_checks &uc) {
 			in >> name;
 			check_in_complete("Syntax error, only a single platform name expected (no spaces, sorry)");
 			// this should be plugin-driven at some point
-			if (name == "scalar-cpu") rc->platform = new wf::cpu::scalar_cpu_batch_raytracing;
+			if (name == "cpu") rc->platform = new wf::cpu::platform;
 #ifdef HAVE_GL
 			else if (name == "opengl") rc->platform = new wf::gl::platform;
 #endif

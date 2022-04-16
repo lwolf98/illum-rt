@@ -432,7 +432,7 @@ uint32_t binary_bvh_tracer<tr_layout, esc_mode>::subdivide_sah(std::vector<prim>
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const ray &ray) {
-	time_this_block(closest_hit);
+	//time_this_block(closest_hit);
 #ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection closest, intersection;
 	uint32_t stack[25];
@@ -488,7 +488,7 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const 
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
-	time_this_block(any_hit);
+	//time_this_block(any_hit);
 #ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection intersection;
 	uint32_t stack[25];

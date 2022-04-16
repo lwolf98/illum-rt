@@ -8,8 +8,8 @@ up 0 1 0
 
 #raytracer opengl seq
 
-platform scalar-cpu
-platform opengl
+platform cpu
+#platform opengl
 
 sppx 32
 resolution 960 540

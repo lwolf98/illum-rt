@@ -5,7 +5,7 @@
 
 #include "libgi/scene.h"
 
-#include "rt/bbvh-base/bvh.h"
+#include "rt/cpu/bvh.h"
 
 namespace wf {
 	namespace gl {

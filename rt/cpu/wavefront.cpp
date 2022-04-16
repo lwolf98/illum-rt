@@ -1,6 +1,14 @@
-#include "wavefront-scalar.h"
+#include "wavefront.h"
+#include "libgi/timer.h"
 
-#include "rt/bbvh-base/bvh.h"
+#include "seq.h"
+#include "bvh.h"
+
+#include "config.h"
+
+#ifdef HAVE_LIBEMBREE3
+#include "embree.h"
+#endif
 
 namespace wf {
 	namespace cpu {
@@ -30,6 +38,7 @@ namespace wf {
 		// batch_rt_adapter
 
 		void batch_rt_adapter::compute_closest_hit() {
+			time_this_block(closest_hit);
 			glm::ivec2 res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -37,6 +46,7 @@ namespace wf {
 					rd.intersections[y*res.x+x] = underlying_rt->closest_hit(rd.rays[y*res.x+x]);
 		}
 		void batch_rt_adapter::compute_any_hit() {
+			time_this_block(any_hit);
 			glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -48,9 +58,19 @@ namespace wf {
 			underlying_rt->build(s);
 		}
 
-		// batch_cam_ray_setup_cpu
+		// RNI STEPS
+
+		void initialize_framebuffer::run() {
+			time_this_block(initialize_framebuffer);
+			auto res = rc->resolution();
+			#pragma omp parallel for
+			for (int y = 0; y < res.y; ++y)
+				for (int x = 0; x < res.x; ++x)
+					rc->framebuffer.color(x,y) = vec4(0,0,0,0);
+		}
 
 		void batch_cam_ray_setup_cpu::run() {
+			time_this_block(setup__camrays);
 			auto res = rc->resolution();
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			assert(rt != nullptr);
@@ -64,7 +84,8 @@ namespace wf {
 			
 		// store_hitpoint_albedo
 
-		void store_hitpoint_albedo::run() {
+		void add_hitpoint_albedo::run() {
+			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
 			float one_over_samples = 1.0f/rc->sppx;
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
@@ -81,20 +102,44 @@ namespace wf {
 						}
 					}
 					radiance *= one_over_samples;
-					rc->framebuffer.color(x,y) = vec4(radiance, 1);
+					rc->framebuffer.color(x,y) += vec4(radiance, 1);
 				}
+		}
+			
+		void download_framebuffer::run() {
+			time_this_block(download_framebuffer);
+			auto res = rc->resolution();
+			#pragma omp parallel for
+			for (int y = 0; y < res.y; ++y)
+				for (int x = 0; x < res.x; ++x)
+					rc->framebuffer.color(x,y) /= rc->framebuffer.color(x,y).w;
 		}
 
 		// THE PLATFORM
 
-		scalar_cpu_batch_raytracing::scalar_cpu_batch_raytracing() : platform("scalar-cpu") {
+		platform::platform() : wf::platform("cpu") {
 			cpu::raydata *rd = new cpu::raydata(rc->resolution());
 			raydata = rd;
 
-			register_batch_rt("default", rd, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
+			register_batch_rt("seq", rd, batch_rt_adapter(new seq_tri_is, rd));
+			register_batch_rt("bbvh-esc", rd, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
+			register_batch_rt("embree", rd, batch_rt_adapter(new embree_tracer, rd));
+
+#ifdef HAVE_LIBEMBREE3
+			link_tracer("embree", "default");
+#else
+#ifndef RTGI_SKIP_BVH
+			link_tracer("bbvh-esc", "default");
+#else
+			link_tracer("seq", "default");
+#endif
+#endif
+
 			// bvh mode?
+			register_rni_step("initialize framebuffer",, initialize_framebuffer);
 			register_rni_step("setup camrays",, batch_cam_ray_setup_cpu);
-			register_rni_step("store hitpoint albedo",, store_hitpoint_albedo);
+			register_rni_step("add hitpoint albedo",, add_hitpoint_albedo);
+			register_rni_step("download framebuffer",, download_framebuffer);
 		}
 
 	}

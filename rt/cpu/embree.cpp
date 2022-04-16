@@ -6,9 +6,10 @@ embree_tracer::embree_tracer() {
     //Error handling
     if (!em_device)
         std::cerr << "Cannot create embree device. Error code: " << rtcGetDeviceError(0) << "\n";
-    rtcSetDeviceErrorFunction(em_device, [](void* userPtr, enum RTCError error, const char* str){
-        std::cerr << "Embree error: Code " << error << ": " << str <<"\n";
-    }, nullptr);
+    rtcSetDeviceErrorFunction(em_device, [](void* userPtr, enum RTCError error, const char* str) {
+	                                     	std::cerr << "Embree error: Code " << error << ": " << str <<"\n";
+										 },
+										 nullptr);
 
     em_scene = rtcNewScene(em_device);
     rtcSetSceneBuildQuality(em_scene, RTC_BUILD_QUALITY_HIGH);
@@ -25,26 +26,20 @@ embree_tracer::~embree_tracer() {
 void embree_tracer::build(::scene *scene) {
     RTCGeometry geom = rtcNewGeometry(em_device, RTC_GEOMETRY_TYPE_TRIANGLE);
     //No need to create a new buffer, we just tell embree how our buffers look like
-    rtcSetSharedGeometryBuffer(
-        geom,
-        RTC_BUFFER_TYPE_INDEX,
-        0,
-        RTC_FORMAT_UINT3,
-        &(scene->triangles[0]),
-        0,
-        4*sizeof(uint32_t),
-        scene->triangles.size()
-    );
-    rtcSetSharedGeometryBuffer(
-        geom,
-        RTC_BUFFER_TYPE_VERTEX,
-        0,
-        RTC_FORMAT_FLOAT3,
-        &(scene->vertices[0]),
-        0,
-        8*sizeof(float),
-        scene->vertices.size()
-    );
+	rtcSetSharedGeometryBuffer(geom,
+							   RTC_BUFFER_TYPE_INDEX,
+							   0,
+							   RTC_FORMAT_UINT3,
+							   &(scene->triangles[0]),
+							   0,
+							   4*sizeof(uint32_t),
+							   scene->triangles.size());
+	rtcSetSharedGeometryBuffer(geom,
+							   RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3,
+							   &(scene->vertices[0]),
+							   0,
+							   8*sizeof(float),
+							   scene->vertices.size());
 
     rtcCommitGeometry(geom);
     rtcAttachGeometry(em_scene, geom);
