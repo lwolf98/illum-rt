@@ -146,7 +146,13 @@ bool gl_variant_available(::gl_mode gl_mode) {
 #ifndef HAVE_HEADLESSGL
 		return false;
 #else
-		return true;
+		int32_t fd = open(headless_render_device.c_str(), O_RDWR);
+		if (fd > 0) {
+			close(fd);
+			return true;
+		}
+		std::cerr << "Cannot access " << headless_render_device << ", your account might not be part of the render or video group." << std::endl;
+		return false;
 #endif
 	}
 	else if (gl_mode == gl_glfw_headless) {
