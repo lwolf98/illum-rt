@@ -12,6 +12,7 @@ up 0 1 0
 platform opengl
 
 sppx 32
+sppx 1
 resolution 960 540
 #resolution 480 270
 

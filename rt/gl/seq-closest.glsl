@@ -16,5 +16,8 @@ void run(uint x, uint y) {
 				closest.w = intBitsToFloat(i);
 			}
 	intersections[id] = closest;
+// 	ivec4 tri = triangles[0];
+// 	vec4 a = vertices[tri.y].pos;
+// 	intersections[id] = a;
 }
 

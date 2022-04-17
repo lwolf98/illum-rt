@@ -52,43 +52,42 @@ namespace wf {
 			triangles.resize(scene->triangles.size(), reinterpret_cast<ivec4*>(scene->triangles.data()));
 
 			int N = scene->vertices.size();
-			vector<vec4> v4(N);
+			vector<vertex> v(N);
 
-			for (int i = 0; i < N; ++i)
-				v4[i] = vec4(scene->vertices[i].pos, 1);
-			vertex_pos.resize(v4);
-
-			for (int i = 0; i < N; ++i)
-				v4[i] = vec4(scene->vertices[i].norm, 0);
-			vertex_norm.resize(v4);
-
-			vector<vec2> v2(N);
-			for (int i = 0; i < N; ++i)
-				v2[i] = scene->vertices[i].tc;
-			vertex_tc.resize(v2);
+			for (int i = 0; i < N; ++i) {
+				v[i].pos = vec4(scene->vertices[i].pos, 1);
+				v[i].norm = vec4(scene->vertices[i].norm, 0);
+				v[i].tc = scene->vertices[i].tc;
+			}
+			vertices.resize(v);
 
 			vector<material> mtl(scene->materials.size());
 			for (int i = 0; i < scene->materials.size(); ++i) {
 				material &m = mtl[i];
-				m.emissive = scene->materials[i].emissive;
-				m.albedo = scene->materials[i].albedo;
+				m.emissive = vec4(scene->materials[i].emissive, 1);
+				m.albedo = vec4(scene->materials[i].albedo, 1);
+				std::cout << "material " << i << " albedo: " << m.albedo << std::endl;
 				m.albedo_tex = 0;
 				if (scene->materials[i].albedo_tex) {
-					m.has_tex = true;
-					GLuint tex;
-					glGenTextures(1, &tex);
-					glBindTexture(GL_TEXTURE_2D, tex);
-					glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, scene->materials[i].albedo_tex->w, scene->materials[i].albedo_tex->h, 0, GL_RGB32F, GL_FLOAT, scene->materials[i].albedo_tex->texel);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-					glBindTexture(GL_TEXTURE_2D, 0);
-					m.albedo_tex = glGetTextureHandleARB(tex);
-					glMakeTextureHandleResidentARB(m.albedo_tex);
-					textures.push_back(tex);
+					if (GLEW_ARB_bindless_texture) {
+						m.has_tex = true;
+						GLuint tex;
+						glGenTextures(1, &tex);
+						glBindTexture(GL_TEXTURE_2D, tex);
+						glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, scene->materials[i].albedo_tex->w, scene->materials[i].albedo_tex->h, 0, GL_RGB, GL_FLOAT, scene->materials[i].albedo_tex->texel);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+						glBindTexture(GL_TEXTURE_2D, 0);
+						m.albedo_tex = glGetTextureHandleARB(tex);
+						glMakeTextureHandleResidentARB(m.albedo_tex);
+						textures.push_back(tex);
+					}
 				}
+				materials.resize(mtl);
 			}
+			glFinish();
 		}
 		
 		scenedata::~scenedata() {
@@ -112,8 +111,10 @@ namespace wf {
 			link_tracer("bbvh-1", "default");
 // 			link_tracer("seq", "default");
 			// bvh mode?
+			register_rni_step("initialize framebuffer",, initialize_framebuffer);
 			register_rni_step("setup camrays",, batch_cam_ray_setup);
-			register_rni_step("store hitpoint albedo",, store_hitpoint_albedo);
+			register_rni_step("add hitpoint albedo",, add_hitpoint_albedo);
+			register_rni_step("download framebuffer",, download_framebuffer);
 		}
 		
 	}

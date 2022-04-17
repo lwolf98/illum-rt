@@ -49,9 +49,9 @@ bool intersect(vec4 tri_a, vec4 tri_b, vec4 tri_c, vec4 ray_o, vec4 ray_d, vec2 
 
 bool intersect(int tri_id, vec4 ray_o, vec4 ray_d, vec2 t_range, out vec4 info) {
 	ivec4 tri = triangles[tri_id];
-	vec4 a = vertex_pos[tri.x];
-	vec4 b = vertex_pos[tri.y];
-	vec4 c = vertex_pos[tri.z];
+	vec4 a = vertices[tri.x].pos;
+	vec4 b = vertices[tri.y].pos;
+	vec4 c = vertices[tri.z].pos;
 	return intersect(a, b, c, ray_o, ray_d, t_range, info);
 }
 

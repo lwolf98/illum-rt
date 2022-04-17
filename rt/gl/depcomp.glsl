@@ -3,7 +3,7 @@ checked=""
 Is[0]="."
 N=1
 while [ "$1" == "-I" ] ; do
-	echo "[$1 $2]"
+	#echo "[$1 $2]"
 	Is[$N]="$2"
 	N=$((N+1))
 	shift 2
@@ -21,10 +21,11 @@ function check() {
 	for g in $direct ; do
 		echo -n " $g"
 	done
-	echo
+	echo 
 	for g in $direct ; do
 		echo "$checked" | grep $g > /dev/null
 		if [ "$?" == "1" ] ; then
+			echo -n "$(echo $g | sed -e 's/\.glsl/-glsl.cpp/'):"
 			check $g
 		fi
 	done

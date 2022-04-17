@@ -2,6 +2,8 @@
 
 #include "libgi/timer.h"
 
+#include "bindings.h"
+
 #include <iostream>
 #include <GL/glew.h>
 
@@ -46,7 +48,7 @@ namespace wf {
 		 *
 		 */
 
-		bvh::bvh() : nodes("nodes", 8, 0), indices("tri_index", 9, 0) {
+		bvh::bvh() : nodes("nodes", BIND_NODE, 0), indices("tri_index", BIND_TIDS, 0) {
 		}
 
 		void bvh::build(::scene *scene) {
@@ -71,6 +73,7 @@ namespace wf {
 			cout << n[0].box1min_l.w << " l---s " << n[0].box1max_r.w << endl;
 			nodes.resize(backend.nodes.size(), n);
 			indices.resize(backend.index.size(), backend.index.data());
+			glFinish();
 		}
 
 		void bvh::compute_closest_hit() {

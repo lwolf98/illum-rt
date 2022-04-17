@@ -12,6 +12,33 @@ namespace wf {
 	namespace gl {
 
 		extern compute_shader ray_setup_shader;
+		extern compute_shader clear_framebuffer_shader;
+		extern compute_shader add_hitpoint_albedo_shader;
+
+		void initialize_framebuffer::run() {
+			auto res = rc->resolution();
+			compute_shader &cs = clear_framebuffer_shader;
+			cs.bind();
+			cs.uniform("w", res.x).uniform("h", res.y);
+			cs.dispatch(res.x, res.y);
+			cs.unbind();
+		}
+		
+		void download_framebuffer::run() {
+			std::cout << "donw" << std::endl;
+			glFinish();
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+			auto res = rc->resolution();
+			rt->rd->framebuffer.download();
+			#pragma omp parallel for
+			for (int y = 0; y < res.y; ++y)
+				for (int x = 0; x < res.x; ++x) {
+					vec4 c = rt->rd->framebuffer.org_data[y*res.x+x];
+					rc->framebuffer.color(x,y) = c / c.w;
+					if (x == 0 && y == 0)
+						std::cout << __PRETTY_FUNCTION__ << ": " << c << std::endl;
+				}
+		}
 
 		void batch_cam_ray_setup::run() {
 			time_this_block(batch_cam_setup);
@@ -29,31 +56,20 @@ namespace wf {
 			cs.unbind();
 		}
 		
-		void store_hitpoint_albedo::run() {
-			time_this_block(download_hitpoints);
+		void add_hitpoint_albedo::run() {
+			glFinish();
+			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
+			compute_shader &cs = add_hitpoint_albedo_shader;
+			cs.bind();
+			cs.uniform("w", res.x).uniform("h", res.y);
+			cs.dispatch(res.x, res.y);
+			cs.unbind();
 
-			// this conversion is going to be a pain
-			rt->rd->intersections.download();
-			triangle_intersection *is = (triangle_intersection*)rt->rd->intersections.org_data.data();
+// 			int x;
+// 			glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &x);
+// 			cout << "MAX ::: " << x << endl;
 
-			int x;
-			glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &x);
-			cout << "MAX ::: " << x << endl;
-
-			#pragma omp parallel for
-			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x) {
-					vec3 radiance(0);
-					triangle_intersection &hit = is[y*res.x+x];
-					if (hit.valid()) {
-						diff_geom dg(hit, rc->scene);
-// 						radiance += dg.mat->albedo;
-						radiance += dg.albedo();
-					}
-					//radiance *= one_over_samples;
-					rc->framebuffer.color(x,y) = vec4(radiance, 1);
-				}
 		}
 	
 	}

@@ -6,6 +6,7 @@
 #include "libgi/wavefront-rt.h"
 
 #include "opengl.h"
+#include "bindings.h"
 
 #include <string>
 #include <iostream>
@@ -85,7 +86,7 @@ namespace wf {
 				this->size = size;
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
 				glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * size, nullptr, GL_STATIC_READ);
-				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint) index, id);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 			}
 			
@@ -125,18 +126,21 @@ namespace wf {
 			int w, h;
 			ssbo<vec4> rays;
 			ssbo<vec4> intersections;
+			ssbo<vec4> framebuffer;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {
 			}
 			raydata(int w, int h)
 			: w(w), h(h),
-			  rays("rays", 0, 3*w*h),
-			  intersections("intersections", 3, w*h) {
+			  rays("rays", BIND_RAYS, 3*w*h),
+			  intersections("intersections", BIND_ISEC, w*h),
+			  framebuffer("framebuffer", BIND_FBUF, w*h) {
 				  rc->call_at_resolution_change[this] = [this](int w, int h) {
 					  this->w = w;
 					  this->h = h;
 					  rays.resize(w*h*3);
 					  intersections.resize(w*h);
+					  framebuffer.resize(w*h);
 				  };
 			}
 		};
@@ -147,22 +151,24 @@ namespace wf {
 		 * 	At any changes to the scene, make sure to update this structure.
 		 */
 		struct scenedata {
+			struct vertex {
+				vec4 pos, norm;
+				vec2 tc;
+				vec2 dummy;
+			};
 			struct material {
-				vec3 albedo, emissive;
+				vec4 albedo, emissive;
 				GLuint64 albedo_tex;
 				GLint has_tex;
 			};
-			ssbo<vec4> vertex_pos, vertex_norm;
-			ssbo<vec2> vertex_tc;
+			ssbo<vertex> vertices;
 			ssbo<ivec4> triangles;
 			ssbo<material> materials;
 			std::vector<GLuint> textures;
 			scenedata()
-			: vertex_pos("vertex_pos", 4, 0),
-			  vertex_norm("vertex_norm", 5, 0),
-		 	  vertex_tc("vertex_tc", 6, 0),
-			  triangles("triangles", 7, 0),
-			  materials("materials", 8, 0) {
+			: vertices("vertices", BIND_VERT, 0),
+			  triangles("triangles", BIND_TRIS, 0),
+			  materials("materials", BIND_MTLS, 0) {
 			}
 			~scenedata();
 			void upload(scene *scene);
