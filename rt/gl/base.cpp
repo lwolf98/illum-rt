@@ -70,7 +70,7 @@ namespace wf {
 				m.albedo_tex = 0;
 				if (scene->materials[i].albedo_tex) {
 					if (GLEW_ARB_bindless_texture) {
-						m.has_tex = true;
+						m.has_tex = 1;
 						GLuint tex;
 						glGenTextures(1, &tex);
 						glBindTexture(GL_TEXTURE_2D, tex);
@@ -83,6 +83,11 @@ namespace wf {
 						m.albedo_tex = glGetTextureHandleARB(tex);
 						glMakeTextureHandleResidentARB(m.albedo_tex);
 						textures.push_back(tex);
+					}
+					else {
+						static bool have_warned_already = false;
+						if (!have_warned_already)
+							std::cerr << "You GPU or GL-version does not support ARB_bindless_texture, so textured materials will not work as expected" << std::endl;
 					}
 				}
 				materials.resize(mtl);
@@ -98,10 +103,18 @@ namespace wf {
 				glDeleteTextures(1, &tex);
 		}
 
-		platform::platform() : wf::platform("opengl") {
-			if (gl_variant_available(gl_truly_headless))
-				initialize_opengl_context(gl_truly_headless, 4, 4);
-			else
+		platform::platform(const std::vector<std::string> &args) : wf::platform("opengl") {
+			gl_mode requested_mode = gl_truly_headless;
+			for (auto arg : args)
+				if (arg == "gbm" || arg == "truly-headless")
+					requested_mode = gl_truly_headless;
+				else if (arg == "glfw" || arg == "with-X")
+					requested_mode = gl_glfw_headless;
+				else
+					std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
+			if (gl_variant_available(requested_mode))
+				initialize_opengl_context(requested_mode, 4, 4);
+			else if (requested_mode != gl_glfw_headless)
 				initialize_opengl_context(gl_glfw_headless, 4, 4);
 			
 			enable_gl_debug_output();

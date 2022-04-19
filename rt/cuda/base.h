@@ -316,7 +316,7 @@ namespace wf {
 		public:
 			int warp_size;
 			int multi_processor_count;
-			platform();
+			platform(const std::vector<std::string> &args);
 			~platform();
 		};
 

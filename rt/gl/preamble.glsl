@@ -1,4 +1,8 @@
-#version 450
+ifdef(`VERSION', 
+	`#version 'VERSION,
+	`#version 450')
+
+ifdef(`HAVE_TEX', `#extension GL_ARB_bindless_texture : require')
 
 include(bindings.h)
 ifdef(BLOCK_W, , `define(BLOCK_W, 32)')
@@ -19,8 +23,9 @@ struct vertex {
 
 struct material {
 	vec4 albedo, emissive;
-	//sampler2D albedo_tex;
-	uint dummy1, dummy2;
+	ifdef(`HAVE_TEX',
+		  `sampler2D albedo_tex;',
+		  `uint dummy1, dummy2;')
 	int has_tex;
 };
 
@@ -45,6 +50,8 @@ void main() {
 }
 
 float hit_t(in vec4 hit) { return hit.x; }
+float hit_beta(in vec4 hit) { return hit.y; }
+float hit_gamma(in vec4 hit) { return hit.z; }
 uint hit_ref(in vec4 hit) { return floatBitsToUint(hit.w); }
 bool valid_hit(vec4 hit) {
 	return hit.x != FLT_MAX;

@@ -10,7 +10,9 @@
 namespace wf {
 	namespace cuda {
 
-		platform::platform() : wf::platform("cuda") {
+		platform::platform(const std::vector<std::string> &args) : wf::platform("cuda") {
+			for (auto arg : args)
+				std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
 			register_batch_rt("simple",, simple_rt);
 			register_batch_rt("if-if",, ifif);
 			register_batch_rt("while-while",, whilewhile);

@@ -298,14 +298,17 @@ void repl(istream &infile, repl_update_checks &uc) {
 		else ifcmd("platform") {
 			string name;
 			in >> name;
-			check_in_complete("Syntax error, only a single platform name expected (no spaces, sorry)");
+			check_in("Syntax error, requires platform name");
+			vector<string> args;
+			string s;
+			while (in >> s) args.push_back(s);
 			// this should be plugin-driven at some point
-			if (name == "cpu") rc->platform = new wf::cpu::platform;
+			if (name == "cpu") rc->platform = new wf::cpu::platform(args);
 #ifdef HAVE_GL
-			else if (name == "opengl") rc->platform = new wf::gl::platform;
+			else if (name == "opengl") rc->platform = new wf::gl::platform(args);
 #endif
 #ifdef HAVE_CUDA
-			else if (name == "cuda") rc->platform = new wf::cuda::platform;
+			else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
 			else error("There is no platform called '" << name << "'");
 			scene.use(rc->platform->select("default"));

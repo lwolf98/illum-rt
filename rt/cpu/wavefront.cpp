@@ -117,7 +117,9 @@ namespace wf {
 
 		// THE PLATFORM
 
-		platform::platform() : wf::platform("cpu") {
+		platform::platform(const std::vector<std::string> &args) : wf::platform("cpu") {
+			for (auto arg : args)
+				std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
 			cpu::raydata *rd = new cpu::raydata(rc->resolution());
 			raydata = rd;
 

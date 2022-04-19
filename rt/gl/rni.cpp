@@ -14,6 +14,7 @@ namespace wf {
 		extern compute_shader ray_setup_shader;
 		extern compute_shader clear_framebuffer_shader;
 		extern compute_shader add_hitpoint_albedo_shader;
+		extern compute_shader add_hitpoint_albedo_plain_shader;
 
 		void initialize_framebuffer::run() {
 			auto res = rc->resolution();
@@ -56,15 +57,20 @@ namespace wf {
 			cs.unbind();
 		}
 		
+		add_hitpoint_albedo::add_hitpoint_albedo() {
+			with_textures = GLEW_ARB_bindless_texture;
+		}
 		void add_hitpoint_albedo::run() {
 			glFinish();
 			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
-			compute_shader &cs = add_hitpoint_albedo_shader;
-			cs.bind();
-			cs.uniform("w", res.x).uniform("h", res.y);
-			cs.dispatch(res.x, res.y);
-			cs.unbind();
+			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
+			if (with_textures)
+				cs = &add_hitpoint_albedo_shader;
+			cs->bind();
+			cs->uniform("w", res.x).uniform("h", res.y);
+			cs->dispatch(res.x, res.y);
+			cs->unbind();
 
 // 			int x;
 // 			glGetIntegerv(GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS, &x);

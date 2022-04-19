@@ -60,7 +60,7 @@ namespace wf {
 	
 		class platform : public wf::platform {
 		public:
-			platform();
+			platform(const std::vector<std::string> &args);
 		};
 	}
 }

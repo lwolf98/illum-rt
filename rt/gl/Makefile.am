@@ -7,7 +7,8 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  seq-any-glsl.cpp \
 				  bvh-closest-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
-				  add-hitpoint-albedo-glsl.cpp
+				  add-hitpoint-albedo-glsl.cpp \
+				  add-hitpoint-albedo-plain-glsl.cpp
 
 libglrt_a_SOURCES = debug.cpp \
 					find-hit.cpp \

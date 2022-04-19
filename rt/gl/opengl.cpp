@@ -136,6 +136,12 @@ void initialize_opengl_context(::gl_mode gl_mode, int major, int minor) {
 	else {
 		throw std::logic_error("Invalid OpenGL mode selected");
 	}
+
+	std::cout << "OpenGL context acquired:" << std::endl;
+    std::cerr << "- OpenGL version: " << glGetString(GL_VERSION) << ", " << glGetString(GL_RENDERER) << std::endl;
+    std::cerr << "- GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+    std::cerr << "- Vendor: " << glGetString(GL_VENDOR) << std::endl;
+    std::cerr << "- Renderer: " << glGetString(GL_RENDERER) << std::endl;
 }
 
 bool gl_variant_available(::gl_mode gl_mode) {
