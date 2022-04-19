@@ -2,11 +2,6 @@ at -516 300 0
 look 1 0 0
 up 0 1 0
 
-#raytracer bbvh indexed esc
-#bvh sm
-
-#raytracer opengl seq
-
 #platform cpu
 platform opengl
 
@@ -31,11 +26,6 @@ material roughness 0.01
 
 
 commit
-
-
-#algo primary
-#outfile /tmp/test.png
-#run
 
 #omp off
 algo primary-wf
