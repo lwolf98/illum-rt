@@ -86,12 +86,13 @@ namespace wf {
 				curandMakeMTGP32Constants(mtgp32dc_params_fast_11213, rng_params.device_memory);
 				curandMakeMTGP32KernelState(rand_state.device_memory, mtgp32dc_params_fast_11213, rng_params.device_memory, 200, 1234);
 
-				setup_ray_incoherent<<<blocks, threads>>>(resolution,
-														  rt->rd->rays.device_memory,
-														  sphere1, sphere2,
-														  rt->incoherence_r1, rt->incoherence_r2,
-														  r_max,
-														  rand_state.device_memory);
+				launch_setup_ray_incoherent(int2{blocks,threads},
+											resolution,
+											rt->rd->rays.device_memory,
+											sphere1, sphere2,
+											rt->incoherence_r1, rt->incoherence_r2,
+											r_max,
+											rand_state.device_memory);
 				CHECK_CUDA_ERROR(cudaGetLastError(), "");
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
@@ -101,11 +102,10 @@ namespace wf {
 				camera &cam = rc->scene.camera;
 				vec3 U = cross(cam.dir, cam.up);
 				vec3 V = cross(U, cam.dir);
-				setup_rays<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(U, V, cam.near_w, cam.near_h, resolution,
-																						  float3{cam.pos.x, cam.pos.y, cam.pos.z},
-																						  float3{cam.dir.x, cam.dir.y, cam.dir.z},
-																						  random_numbers,
-																						  rt->rd->rays.device_memory);
+				launch_setup_rays(U, V, cam.near_w, cam.near_h, resolution,
+								  float3{cam.pos.x, cam.pos.y, cam.pos.z},
+								  float3{cam.dir.x, cam.dir.y, cam.dir.z},
+								  random_numbers, rt->rd->rays.device_memory);
 				CHECK_CUDA_ERROR(cudaGetLastError(), "");
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 			}
@@ -141,12 +141,12 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
-			::add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
-																						  rt->rd->intersections.device_memory,
-																						  rt->sd->triangles.device_memory,
-																						  rt->sd->vertex_tc.device_memory,
-																						  rt->sd->materials.device_memory,
-																						  rt->rd->framebuffer.device_memory);
+			launch_add_hitpoint_albedo(res,
+									   rt->rd->intersections.device_memory,
+									   rt->sd->triangles.device_memory,
+									   rt->sd->vertex_tc.device_memory,
+									   rt->sd->materials.device_memory,
+									   rt->rd->framebuffer.device_memory);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
@@ -156,7 +156,7 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
-			initialize_framebuffer_data<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, rt->rd->framebuffer.device_memory);
+			launch_initialize_framebuffer_data(res, rt->rd->framebuffer.device_memory);
 		}
 			
 		void download_framebuffer::run() {

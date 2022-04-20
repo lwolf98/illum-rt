@@ -1,14 +1,12 @@
 SUFFIXES = .cu
 noinst_LIBRARIES = libcudaraytracing.a
-libcudaraytracing_a_CUDA_SOURCES = base.cu \
-							  kernels.cu \
-							  rni.cu \
-							  tracers.cu
+libcudaraytracing_a_CUDA_SOURCES = kernels.cu \
+								   trace-kernels.cu \
+								   tracers.cu
 
-libcudaraytracing_a_SOURCES = cuda-helpers.cpp $(libcudaraytracing_a_CUDA_SOURCES)
+libcudaraytracing_a_SOURCES = base.cpp cuda-helpers.cpp rni.cpp $(libcudaraytracing_a_CUDA_SOURCES)
 
-noinst_HEADERS = base.h \
-			     cuda-helpers.h \
+noinst_HEADERS = cuda-helpers.h \
 				 cuda-operators.h \
 				 kernels.h \
 				 rni.h \
