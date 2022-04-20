@@ -1,7 +1,7 @@
 #pragma once
 
 #include "libgi/wavefront-rt.h"
-#include "rt/bbvh-base/bvh.h"
+#include "rt/cpu/bvh.h"
 #include "libgi/timer.h"
 
 #include "cuda-helpers.h"

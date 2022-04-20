@@ -19,7 +19,7 @@ GENCODE_FLAGS  = -gencode arch=compute_86,code=sm_86
 NVCC_FLAGS = -Xptxas -v -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --resource-usage --generate-line-info --use_fast_math
 
 .cu.o:
-	$(top_srcdir)/nvcc-wrapper -std=c++17 $(NVCC_FLAGS) $(DEFAULT_INCLUDES) $(CPPFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Po -c -o $@ $< -v $(GENCODE_FLAGS)
+	$(top_srcdir)/nvcc-wrapper -std=c++17 $(NVCC_FLAGS) $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Po -c -o $@ $< -v $(GENCODE_FLAGS)
 
 cuda_deps = $(libcudaraytracing_a_CUDA_SOURCES:%.cu=$(DEPDIR)/%.Po)
 sinclude $(cuda_deps)
