@@ -24,9 +24,17 @@ public:
 #endif
 
 
+namespace wf {
+	
+	struct initialize_framebuffer : public ray_and_intersection_processing { static constexpr char id[] = "initialize framebuffer"; };
+	struct sample_camera_rays     : public ray_and_intersection_processing { static constexpr char id[] = "sample camera rays"; };
+	struct add_hitpoint_albedo    : public ray_and_intersection_processing { static constexpr char id[] = "add hitpoint albedo"; };
+	struct download_framebuffer   : public ray_and_intersection_processing { static constexpr char id[] = "download framebuffer"; };
 
-class primary_hit_display_wf : public wf::simple_algorithm {
-public:
-	primary_hit_display_wf();
-	void compute_samples() override;
-};
+	class primary_hit_display : public wf::simple_algorithm {
+	public:
+		primary_hit_display();
+		void compute_samples() override;
+	};
+
+}

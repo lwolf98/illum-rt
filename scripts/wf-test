@@ -4,7 +4,7 @@ look 1 0 0
 up 0 1 0
 
 #platform cpu
-platform opengl #glfw
+platform opengl glfw notex
 
 sppx 32
 sppx 1

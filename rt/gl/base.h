@@ -194,7 +194,7 @@ namespace wf {
 		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
 		 *
 		 */
-		struct ray_and_intersection_processing : public wf::ray_and_intersection_processing {
+		template<typename T> struct rni : public T {
 			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
 			                // might have to be moved to derived classes
 			void use(wf::batch_ray_tracer *that) override { rt = dynamic_cast<gl::batch_rt*>(that); }

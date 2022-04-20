@@ -67,31 +67,21 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 }
 #endif
 
-primary_hit_display_wf::primary_hit_display_wf() {
-	steps.push_back(rc->platform->rni("setup camrays"));
-	steps.push_back(new wf::find_closest_hits(rc->scene.batch_rt));
-	steps.push_back(rc->platform->rni("add hitpoint albedo"));
-}
+namespace wf {
 
-void primary_hit_display_wf::compute_samples() {
+	primary_hit_display::primary_hit_display() {
+		steps.push_back(rc->platform->rni(sample_camera_rays::id));
+		steps.push_back(new wf::find_closest_hits(rc->scene.batch_rt));
+		steps.push_back(rc->platform->rni(add_hitpoint_albedo::id));
+	}
 
-// 	#pragma omp parallel for
-// 	for (int y = 0; y < res.y; ++y)
-// 		for (int x = 0; x < res.x; ++x)
-// 			rays[y*w+x] = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-// 
-	// TODO cache and make sure platform change is managed gracefully
-	/*
-	rc->platform->rni("setup camrays")->run();
-	auto *batch_rt = rc->scene.batch_rt;
-	assert(batch_rt != nullptr);
-	batch_rt->compute_closest_hit();
+	void primary_hit_display::compute_samples() {
 
-	rc->platform->rni("store hitpoint albedo")->run();
-	*/
-	rc->platform->rni("initialize framebuffer")->run();
-	for (int i = 0; i < rc->sppx; ++i)
-		for (auto *step : steps)
-			step->run();
-	rc->platform->rni("download framebuffer")->run();
+		rc->platform->rni(initialize_framebuffer::id)->run();
+		for (int i = 0; i < rc->sppx; ++i)
+			for (auto *step : steps)
+				step->run();
+		rc->platform->rni(download_framebuffer::id)->run();
+	}
+
 }
