@@ -141,12 +141,12 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
-			add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
-																						rt->rd->intersections.device_memory,
-																						rt->sd->triangles.device_memory,
-																						rt->sd->vertex_tc.device_memory,
-																						rt->sd->materials.device_memory,
-																						rt->rd->framebuffer.device_memory);
+			::add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res,
+																						  rt->rd->intersections.device_memory,
+																						  rt->sd->triangles.device_memory,
+																						  rt->sd->vertex_tc.device_memory,
+																						  rt->sd->materials.device_memory,
+																						  rt->rd->framebuffer.device_memory);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}

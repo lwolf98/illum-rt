@@ -130,10 +130,10 @@ namespace wf {
 			link_tracer("bbvh-1", "default");
 // 			link_tracer("seq", "default");
 			// bvh mode?
-			register_rni_step(initialize_framebuffer::id,, initialize_framebuffer);
-			register_rni_step(batch_cam_ray_setup::id,,    batch_cam_ray_setup);
-			register_rni_step(add_hitpoint_albedo::id,,    add_hitpoint_albedo);
-			register_rni_step(download_framebuffer::id,,   download_framebuffer);
+			register_rni_step_by_id(, initialize_framebuffer);
+			register_rni_step_by_id(, batch_cam_ray_setup);
+			register_rni_step_by_id(, add_hitpoint_albedo);
+			register_rni_step_by_id(, download_framebuffer);
 		}
 		
 	}
