@@ -15,6 +15,7 @@ namespace wf {
 	namespace gl {
 
 		struct platform;
+		extern bool use_textures;
 
 		/*! \brief Take time of otherwise asynchronously running GL calls.
 		 *

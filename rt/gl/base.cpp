@@ -12,6 +12,7 @@ using std::vector;
 namespace wf {
 	namespace gl {
 
+		bool use_textures = true;
 
 		timer::timer() {
 		}
@@ -106,10 +107,9 @@ namespace wf {
 		platform::platform(const std::vector<std::string> &args) : wf::platform("opengl") {
 			gl_mode requested_mode = gl_truly_headless;
 			for (auto arg : args)
-				if (arg == "gbm" || arg == "truly-headless")
-					requested_mode = gl_truly_headless;
-				else if (arg == "glfw" || arg == "with-X")
-					requested_mode = gl_glfw_headless;
+				if (arg == "gbm" || arg == "truly-headless") requested_mode = gl_truly_headless;
+				else if (arg == "glfw" || arg == "with-X") requested_mode = gl_glfw_headless;
+				else if (arg == "notex") use_textures = false;
 				else
 					std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
 			if (gl_variant_available(requested_mode))
@@ -118,6 +118,12 @@ namespace wf {
 				initialize_opengl_context(gl_glfw_headless, 4, 4);
 			
 			enable_gl_debug_output();
+
+			if (use_textures)
+				if (!GLEW_ARB_bindless_texture) {
+					std::cerr << "You GPU or GL-version does not support ARB_bindless_texture, so textured materials will not work as expected" << std::endl;
+					use_textures = false;
+				}
 
 			register_batch_rt("seq",, seq_tri_is);
 			register_batch_rt("bbvh-1",, bvh);

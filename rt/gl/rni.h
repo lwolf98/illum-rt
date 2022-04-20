@@ -34,8 +34,6 @@ namespace wf {
 		 * 	Note: Only supports computing a single sample right now.
 		 */
 		struct add_hitpoint_albedo : public ray_and_intersection_processing {
-			bool with_textures;
-			add_hitpoint_albedo();
 			void run() override;
 		};
 

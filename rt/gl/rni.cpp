@@ -57,15 +57,12 @@ namespace wf {
 			cs.unbind();
 		}
 		
-		add_hitpoint_albedo::add_hitpoint_albedo() {
-			with_textures = GLEW_ARB_bindless_texture;
-		}
 		void add_hitpoint_albedo::run() {
 			glFinish();
 			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
 			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
-			if (with_textures)
+			if (use_textures)
 				cs = &add_hitpoint_albedo_shader;
 			cs->bind();
 			cs->uniform("w", res.x).uniform("h", res.y);
