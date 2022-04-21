@@ -10,6 +10,7 @@ namespace wf::gl {
 		BIND_TIDS = 5,
 		BIND_MTLS = 6,
 		BIND_FBUF = 7,
+		BIND_TEXD = 8,
 	};
 }
 #else
@@ -21,4 +22,5 @@ namespace wf::gl {
 #define BIND_TIDS 5
 #define BIND_MTLS 6
 #define BIND_FBUF 7
+#define BIND_TEXD 8
 #endif

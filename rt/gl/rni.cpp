@@ -14,6 +14,7 @@ namespace wf {
 		extern compute_shader ray_setup_shader;
 		extern compute_shader clear_framebuffer_shader;
 		extern compute_shader add_hitpoint_albedo_shader;
+		extern compute_shader add_hitpoint_albedo_hackytex_shader;
 		extern compute_shader add_hitpoint_albedo_plain_shader;
 
 		void initialize_framebuffer::run() {
@@ -26,7 +27,6 @@ namespace wf {
 		}
 		
 		void download_framebuffer::run() {
-			std::cout << "donw" << std::endl;
 			glFinish();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 			auto res = rc->resolution();
@@ -36,8 +36,6 @@ namespace wf {
 				for (int x = 0; x < res.x; ++x) {
 					vec4 c = rt->rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
-					if (x == 0 && y == 0)
-						std::cout << __PRETTY_FUNCTION__ << ": " << c << std::endl;
 				}
 		}
 
@@ -62,8 +60,10 @@ namespace wf {
 			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
 			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
-			if (use_textures)
+			if (texture_support_mode == PROPER_BINDLESS)
 				cs = &add_hitpoint_albedo_shader;
+			else if (texture_support_mode == HACKY)
+				cs = &add_hitpoint_albedo_hackytex_shader;
 			cs->bind();
 			cs->uniform("w", res.x).uniform("h", res.y);
 			cs->dispatch(res.x, res.y);

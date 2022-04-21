@@ -15,7 +15,9 @@ namespace wf {
 	namespace gl {
 
 		struct platform;
-		extern bool use_textures;
+
+		enum texture_support_mode_t { NO_TEX, PROPER_BINDLESS, HACKY };
+		extern texture_support_mode_t texture_support_mode;
 
 		/*! \brief Take time of otherwise asynchronously running GL calls.
 		 *
@@ -166,10 +168,12 @@ namespace wf {
 			ssbo<ivec4> triangles;
 			ssbo<material> materials;
 			std::vector<GLuint> textures;
+			ssbo<vec4> texture_data_hacky;
 			scenedata()
 			: vertices("vertices", BIND_VERT, 0),
 			  triangles("triangles", BIND_TRIS, 0),
-			  materials("materials", BIND_MTLS, 0) {
+			  materials("materials", BIND_MTLS, 0),
+			  texture_data_hacky("texture_data", BIND_TEXD, 0) {
 			}
 			~scenedata();
 			void upload(scene *scene);
@@ -212,9 +216,9 @@ namespace wf {
 		 * 	- Materials on the GPU
 		 *
 		 */
-		class platform : public wf::platform {
-		public:
-			platform(const std::vector<std::string> &args);
-		};
+// 		class platform : public wf::platform {
+// 		public:
+// 			platform(const std::vector<std::string> &args);
+// 		};
 	}
 }

@@ -31,11 +31,11 @@
 #endif
 
 #ifdef HAVE_GL
-#include "rt/gl/find-hit.h"
+#include "rt/gl/platform.h"
 #endif
 
 #ifdef HAVE_LIBEMBREE3
-#include "rt/cpu/embree.h"
+#include "rt/cpu/platform.h"
 #endif
 
 #ifdef HAVE_CUDA
@@ -224,6 +224,10 @@ void repl(istream &infile, repl_update_checks &uc) {
 // 			
 // 		}
 		else ifcmd("raytracer") {
+			if (rc->platform) {
+				rc->platform->interprete(command, in);
+				continue;
+			}
 			string name;
 			in >> name;
 			if (name == "seq") scene.use(new seq_tri_is);
@@ -249,19 +253,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 			}
 #endif
-#ifdef HAVE_GL
-			else if (name == "opengl") {
-				string variant;
-				in >> variant;
-				check_in("Syntax error, requires opengl ray tracer variant name");
-				if (variant == "seq")
-					scene.use(new wf::gl::seq_tri_is);
-#ifndef RTGI_SKIP_BVH
-#endif
-				else
-					error("There is no such opengl ray tracer variant");
-			}
-#endif
 #ifdef HAVE_CUDA
 			else if (name == "cuda") {
 				string variant;
@@ -285,11 +276,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 					scene.use(rc->platform->select("dynamic-while-while"));
 				else
 					error("There is no such cuda ray tracer variant");
-			}
-#endif
-#ifdef HAVE_LIBEMBREE3
-			else if (name == "embree") {
-				scene.use(new embree_tracer);
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");

@@ -1,4 +1,5 @@
 #include "wavefront.h"
+#include "platform.h"
 #include "libgi/timer.h"
 
 #include "seq.h"
@@ -9,6 +10,10 @@
 #ifdef HAVE_LIBEMBREE3
 #include "embree.h"
 #endif
+
+#include <iostream>
+
+#define check_in(x) { if (in.bad() || in.fail()) std::cerr << "error in command: " << (x) << std::endl; }
 
 namespace wf {
 	namespace cpu {
@@ -138,10 +143,20 @@ namespace wf {
 #endif
 
 			// bvh mode?
-			register_rni_step("initialize framebuffer",, initialize_framebuffer);
-			register_rni_step("setup camrays",, batch_cam_ray_setup_cpu);
-			register_rni_step("add hitpoint albedo",, add_hitpoint_albedo);
-			register_rni_step("download framebuffer",, download_framebuffer);
+			register_rni_step_by_id(, initialize_framebuffer);
+			register_rni_step_by_id(, batch_cam_ray_setup_cpu);
+			register_rni_step_by_id(, add_hitpoint_albedo);
+			register_rni_step_by_id(, download_framebuffer);
+		}
+	
+		bool platform::interprete(const std::string &command, std::istringstream &in) { 
+			if (command == "raytracer") {
+				std::string variant;
+				in >> variant;
+				check_in("Syntax error, requires opengl ray tracer variant name");
+				rc->scene.use(select(variant));
+			}
+			return false;
 		}
 
 	}
