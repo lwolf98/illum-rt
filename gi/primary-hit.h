@@ -32,9 +32,12 @@ namespace wf {
 	struct download_framebuffer   : public ray_and_intersection_processing { static constexpr char id[] = "download framebuffer"; };
 
 	class primary_hit_display : public wf::simple_algorithm {
+		step *clear, *download;
 	public:
 		primary_hit_display();
+		void prepare_frame() override;
 		void compute_samples() override;
+		void finalize_frame() override;
 	};
 
 }

@@ -70,18 +70,25 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 namespace wf {
 
 	primary_hit_display::primary_hit_display() {
+		clear = rc->platform->rni(initialize_framebuffer::id);
+		download = rc->platform->rni(download_framebuffer::id);
 		steps.push_back(rc->platform->rni(sample_camera_rays::id));
 		steps.push_back(new wf::find_closest_hits(rc->scene.batch_rt));
 		steps.push_back(rc->platform->rni(add_hitpoint_albedo::id));
 	}
 
+	void primary_hit_display::prepare_frame() {
+		clear->run();
+	}
+	void primary_hit_display::finalize_frame() {
+		download->run();
+	}
+
 	void primary_hit_display::compute_samples() {
 
-		rc->platform->rni(initialize_framebuffer::id)->run();
 		for (int i = 0; i < rc->sppx; ++i)
 			for (auto *step : steps)
 				step->run();
-		rc->platform->rni(download_framebuffer::id)->run();
 	}
 
 }
