@@ -80,6 +80,7 @@ namespace wf {
 
 		batch_ray_tracer* select(const std::string &name);
 		ray_and_intersection_processing* rni(const std::string &name);
+		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	};
 
 	extern std::vector<platform*> platforms;

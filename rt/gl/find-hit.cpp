@@ -57,7 +57,6 @@ namespace wf {
 			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> backend;
 			backend.build(scene);
 
-			cout << "nodes = " << backend.nodes.size() << endl;
 			// sadly, we have to re-arrange the data to have properly aligned glsl values
 			glsl_bvh_node *n = new glsl_bvh_node[backend.nodes.size()];
 			bbvh_node *org = backend.nodes.data();
@@ -69,8 +68,6 @@ namespace wf {
 				n[i].box2min_o = vec4(node.box_r.min, node.inner()?0:node.tri_offset());
 				n[i].box2max_c = vec4(node.box_r.max, node.inner()?0:node.tri_count());
 			}
-			cout << backend.nodes[0].link_l << " links " << backend.nodes[0].link_r << endl;
-			cout << n[0].box1min_l.w << " l---s " << n[0].box1max_r.w << endl;
 			nodes.resize(backend.nodes.size(), n);
 			indices.resize(backend.index.size(), backend.index.data());
 			glFinish();

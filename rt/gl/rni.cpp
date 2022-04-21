@@ -27,7 +27,6 @@ namespace wf {
 		}
 		
 		void download_framebuffer::run() {
-			std::cout << "donw" << std::endl;
 			glFinish();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 			auto res = rc->resolution();
@@ -37,8 +36,6 @@ namespace wf {
 				for (int x = 0; x < res.x; ++x) {
 					vec4 c = rt->rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
-					if (x == 0 && y == 0)
-						std::cout << __PRETTY_FUNCTION__ << ": " << c << std::endl;
 				}
 		}
 

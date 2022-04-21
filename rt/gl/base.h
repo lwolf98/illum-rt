@@ -216,9 +216,9 @@ namespace wf {
 		 * 	- Materials on the GPU
 		 *
 		 */
-		class platform : public wf::platform {
-		public:
-			platform(const std::vector<std::string> &args);
-		};
+// 		class platform : public wf::platform {
+// 		public:
+// 			platform(const std::vector<std::string> &args);
+// 		};
 	}
 }
