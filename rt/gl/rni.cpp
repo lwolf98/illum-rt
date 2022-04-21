@@ -14,6 +14,7 @@ namespace wf {
 		extern compute_shader ray_setup_shader;
 		extern compute_shader clear_framebuffer_shader;
 		extern compute_shader add_hitpoint_albedo_shader;
+		extern compute_shader add_hitpoint_albedo_hackytex_shader;
 		extern compute_shader add_hitpoint_albedo_plain_shader;
 
 		void initialize_framebuffer::run() {
@@ -62,8 +63,10 @@ namespace wf {
 			time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
 			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
-			if (use_textures)
+			if (texture_support_mode == PROPER_BINDLESS)
 				cs = &add_hitpoint_albedo_shader;
+			else if (texture_support_mode == HACKY)
+				cs = &add_hitpoint_albedo_hackytex_shader;
 			cs->bind();
 			cs->uniform("w", res.x).uniform("h", res.y);
 			cs->dispatch(res.x, res.y);

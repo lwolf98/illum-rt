@@ -8,6 +8,7 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  bvh-closest-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
 				  add-hitpoint-albedo-glsl.cpp \
+				  add-hitpoint-albedo-hackytex-glsl.cpp \
 				  add-hitpoint-albedo-plain-glsl.cpp
 
 libglrt_a_SOURCES = debug.cpp \

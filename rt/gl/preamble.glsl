@@ -3,6 +3,7 @@ ifdef(`VERSION',
 	`#version 450')
 
 ifdef(`HAVE_TEX', `#extension GL_ARB_bindless_texture : require')
+ifdef(`HAVE_TEX', `#extension GL_NV_gpu_shader5 : require') // AMD requires dynamically uniform access for arrays of samplers, which we cannot guarantee, so only allow this for NV
 
 include(bindings.h)
 ifdef(BLOCK_W, , `define(BLOCK_W, 32)')
@@ -25,7 +26,7 @@ struct material {
 	vec4 albedo, emissive;
 	ifdef(`HAVE_TEX',
 		  `sampler2D albedo_tex;',
-		  `uint dummy1, dummy2;')
+		  `uint texhack_id, dummy;') /* partitioning the uint64 this way is as unportable as code can get */
 	int has_tex;
 };
 
@@ -38,6 +39,7 @@ layout (std430, binding = BIND_NODE) buffer b_nodes       { bvh_node nodes []; }
 layout (std430, binding = BIND_TIDS) buffer b_tri_ids     { uint tri_index []; };
 layout (std430, binding = BIND_MTLS) buffer b_materials   { material materials []; };
 layout (std430, binding = BIND_FBUF) buffer b_frambuffer  { vec4 framebuffer []; };
+layout (std430, binding = BIND_TEXD) buffer b_texhack_data{ vec4 texhack_data []; };
 
 uniform int w;
 uniform int h;
