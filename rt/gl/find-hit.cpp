@@ -19,7 +19,6 @@ namespace wf {
 
 		
 		void seq_tri_is::compute_closest_hit() {
-			time_this_block_gpu(seq_tri_is_closest_hit);
 			auto res = rc->resolution();
 			extern compute_shader seq_closest_shader;
 			seq_closest_shader.bind();
@@ -31,7 +30,6 @@ namespace wf {
 		}
 		
 		void seq_tri_is::compute_any_hit() {
-			time_this_block_gpu(seq_tri_is_any_hit);
 			auto res = rc->resolution();
 			extern compute_shader seq_any_shader;
 			seq_any_shader.bind();
@@ -77,7 +75,6 @@ namespace wf {
 			glFinish();
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			
-			time_this_block_gpu(bvh_closest_hit);
 			auto res = rc->resolution();
 			extern compute_shader bvh_closest_shader;
 			bvh_closest_shader.bind();

@@ -33,6 +33,8 @@ namespace wf {
 			//register_rni_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
 			register_rni_step_by_id(, add_hitpoint_albedo_to_fb);
 			register_rni_step_by_id(, download_framebuffer);
+
+			timer = new wf::cuda::timer;
 		}
 
 		platform::~platform() {
@@ -57,7 +59,38 @@ namespace wf {
 			}
 			return false;
 		}
+		
+		void timer::start(const std::string &name) {
+			cudaEvent_t start, stop;
+			if (events.find(name) == events.end()) {
+				cudaEventCreate(&start);
+				cudaEventCreate(&stop);
+				events[name] = { start, stop };
+			}
+			else
+				start = events[name].first;
+			cudaEventRecord(start);
+		}
 
+		void timer::stop(const std::string &name) {
+			cudaEvent_t stop = events[name].second;
+			cudaEventRecord(stop);
+		}
+
+		void timer::synchronize() {
+			for (auto [name,ev] : events) {
+				auto [start,stop] = ev;
+				float milliseconds = 0;
+				cudaEventElapsedTime(&milliseconds, start, stop);
+
+				// funnel to stats_timer
+				stats_timer.timers[0].times[name] += milliseconds * 1000 * 1000;
+				stats_timer.timers[0].counts[name]++;
+			}
+			events.clear();
+		}
+		
+	
 		void scenedata::upload(scene *scene) {
 			vector<uint4> scene_tris;
 			scene_tris.reserve(scene->triangles.size());

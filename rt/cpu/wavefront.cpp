@@ -147,6 +147,8 @@ namespace wf {
 			register_rni_step_by_id(, batch_cam_ray_setup_cpu);
 			register_rni_step_by_id(, add_hitpoint_albedo);
 			register_rni_step_by_id(, download_framebuffer);
+
+			timer = new wf::cpu::timer;
 		}
 	
 		bool platform::interprete(const std::string &command, std::istringstream &in) { 

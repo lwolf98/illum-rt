@@ -47,6 +47,8 @@ namespace wf::gl {
 		register_rni_step_by_id(, batch_cam_ray_setup);
 		register_rni_step_by_id(, add_hitpoint_albedo);
 		register_rni_step_by_id(, download_framebuffer);
+
+		timer = new wf::gl::timer;
 	}
 
 

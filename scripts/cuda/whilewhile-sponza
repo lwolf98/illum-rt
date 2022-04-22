@@ -7,7 +7,7 @@ default-brdf layered-gtr2
 
 platform cuda
 outfile out-cuda-while-while-sponza.png
-raytracer cuda while-while
+raytracer while-while
 
 sppx 32
 resolution 1920 1080

@@ -20,6 +20,15 @@
 
 namespace wf {
 	namespace cuda {
+		
+		//! \brief Take time of asynchronously running CUDA calls.
+		struct timer : public wf::timer {
+			std::map<std::string, std::pair<cudaEvent_t,cudaEvent_t>> events;
+			void start(const std::string &name) override;
+			void stop(const std::string &name) override;
+			void synchronize() override;
+		};
+
 
 		struct __align__(16) tri_is {
 			float t;
@@ -302,11 +311,9 @@ namespace wf {
 			void build(::scene *scene) override;
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {
-				time_this_block(closest_hit);
 				compute_hit(false);
 			}
 			void compute_any_hit() override {
-				time_this_block(any_hit);
 				compute_hit(true);
 			}
 			virtual void compute_hit(bool anyhit) = 0;
@@ -322,7 +329,6 @@ namespace wf {
 				rt = dynamic_cast<cuda::batch_rt*>(that); 
 			}
 		};
-
 
 	}
 }

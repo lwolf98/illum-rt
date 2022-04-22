@@ -9,7 +9,7 @@ up 0 1 0
 platform cuda
 
 sppx 32
-sppx 1
+#sppx 1
 resolution 960 540
 #resolution 480 270
 

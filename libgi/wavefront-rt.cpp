@@ -7,7 +7,8 @@ namespace wf {
 			tracers.erase(tracers.find(x));
 		for (auto x : rni_links)
 			rnis.erase(rnis.find(x));
-		delete raydata;
+// 		delete raydata;
+		delete timer;
 	}
 		
 	void platform::link_tracer(const std::string &existing, const std::string &linkname) {

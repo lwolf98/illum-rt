@@ -8,6 +8,13 @@ namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
 	namespace cpu {
 
+		struct timer : public wf::timer {
+			cpu_timer sub;
+			void start(const std::string &name) override { sub.start(name); }
+			void stop(const std::string &name) override { sub.stop(name); }
+			void synchronize() override {}
+		};
+
 		struct raydata : public wf::raydata {
 			int w, h;
 			ray *rays = nullptr;

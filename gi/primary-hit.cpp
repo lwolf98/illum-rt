@@ -82,6 +82,7 @@ namespace wf {
 	}
 	void primary_hit_display::finalize_frame() {
 		download->run();
+		rc->platform->timer->synchronize();
 	}
 
 	void primary_hit_display::compute_samples() {

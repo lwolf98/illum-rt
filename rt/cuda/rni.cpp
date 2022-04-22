@@ -38,7 +38,7 @@ namespace wf {
 		}
 
 		void batch_cam_ray_setup::run() {
-			time_this_block(batch_cam_ray_setup);
+			time_this_wf_step;
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			assert(rt != nullptr);
 
@@ -135,7 +135,7 @@ namespace wf {
 		}
 		
 		void add_hitpoint_albedo_to_fb::run() {
-			time_this_block(add_hitpoint_albedo);
+			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
@@ -150,7 +150,7 @@ namespace wf {
 		}
 	
 		void initialize_framebuffer::run() {
-			time_this_block(download_framebuffer);
+			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
@@ -158,7 +158,7 @@ namespace wf {
 		}
 			
 		void download_framebuffer::run() {
-			time_this_block(download_framebuffer);
+			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			rt->rd->framebuffer.download();

@@ -8,22 +8,12 @@
 #include <omp.h>
 #include <mutex>
 
-/*  \brief Wall-timer.
- *
- *  Note: We often use this timer in very small sections and the results might thus be skewed to some degree. Take the
- *  resulting measurements with a grain of salt.
- *
- *  To time a block, use \ref time_thid_block
- *
- */
 struct timer {
-	typedef std::chrono::time_point<std::chrono::steady_clock> timepoint;
     virtual ~timer() {}
 
-    virtual void start(const std::string &name);
-    virtual void stop(const std::string &name);
-
-    void clear();
+    virtual void start(const std::string &name) = 0;;
+    virtual void stop(const std::string &name) = 0;;
+    virtual void clear();
     void merge(const timer& t);
 
     inline uint64_t ns(const std::string& name) const { return times.at(name); }
@@ -47,9 +37,28 @@ struct timer {
 
     void print(const std::string& timer_name = "");
 
-    std::map<std::string, timepoint> starts;
     std::map<std::string, uint64_t> times;
     std::map<std::string, uint64_t> counts;
+};
+
+
+/*  \brief Wall-timer.
+ *
+ *  Note: We often use this timer in very small sections and the results might thus be skewed to some degree. Take the
+ *  resulting measurements with a grain of salt.
+ *
+ *  To time a block, use \ref time_thid_block
+ *
+ */
+struct cpu_timer : public timer {
+	typedef std::chrono::time_point<std::chrono::steady_clock> timepoint;
+    virtual ~cpu_timer() {}
+
+    void clear() override;
+    void start(const std::string &name) override;
+    void stop(const std::string &name) override;
+
+    std::map<std::string, timepoint> starts;
 };
 
 struct omp_timer {
@@ -66,13 +75,13 @@ struct omp_timer {
     }
 
     void print(const std::string &timer_name = "") {
-        timer total;
+        cpu_timer total;
         for (auto &t : timers)
             total.merge(t);
         total.print(timer_name);
     }
 
-    std::vector<timer> timers;
+    std::vector<cpu_timer> timers;
 };
 
 extern omp_timer stats_timer;
