@@ -16,7 +16,7 @@
 #include "libgi/context.h"
 #include "libgi/wavefront-rt.h"
 
-#include "rt/cpu/wavefront.h"
+#include "rt/cpu/platform.h"
 
 #include "rt/cpu/seq.h"
 #ifndef RTGI_SKIP_BVH
@@ -32,10 +32,6 @@
 
 #ifdef HAVE_GL
 #include "rt/gl/platform.h"
-#endif
-
-#ifdef HAVE_LIBEMBREE3
-#include "rt/cpu/platform.h"
 #endif
 
 #ifdef HAVE_CUDA
