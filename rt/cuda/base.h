@@ -312,14 +312,6 @@ namespace wf {
 			virtual void compute_hit(bool anyhit) = 0;
 		};
 
-		class platform : public wf::platform {
-		public:
-			int warp_size;
-			int multi_processor_count;
-			platform(const std::vector<std::string> &args);
-			~platform();
-		};
-
 		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
 		 *
 		 */

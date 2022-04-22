@@ -56,6 +56,7 @@ namespace wf::gl {
 			in >> variant;
 			check_in("Syntax error, requires opengl ray tracer variant name");
 			rc->scene.use(select(variant));
+			return true;
 		}
 		return false;
 	}

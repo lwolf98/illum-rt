@@ -35,7 +35,7 @@
 #endif
 
 #ifdef HAVE_CUDA
-#include "rt/cuda/tracers.h"
+#include "rt/cuda/platform.h"
 #endif
 
 #include "libgi/timer.h"
@@ -247,31 +247,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 				else
 					error("There is no such bbvh variant");
 				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
-			}
-#endif
-#ifdef HAVE_CUDA
-			else if (name == "cuda") {
-				string variant;
-				in >> variant;
-				check_in("Syntax error, requires cuda ray tracer variant name");
-				if (variant == "simple")
-					scene.use(rc->platform->select("simple"));
-				else if (variant == "if-if")
-					scene.use(rc->platform->select("if-if"));
-				else if (variant == "while-while")
-					scene.use(rc->platform->select("while-while"));
-				else if (variant == "persistent-if-if")
-					scene.use(rc->platform->select("persistent-if-if"));
-				else if (variant == "persistent-while-while")
-					scene.use(rc->platform->select("persistent-while-while"));
-				else if (variant == "speculative-while-while")
-					scene.use(rc->platform->select("speculative-while-while"));
-				else if (variant == "persistent-speculative-while-while")
-					scene.use(rc->platform->select("persistent-speculative-while-while"));
-				else if (variant == "dynamic-while-while")
-					scene.use(rc->platform->select("dynamic-while-while"));
-				else
-					error("There is no such cuda ray tracer variant");
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");

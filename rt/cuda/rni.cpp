@@ -93,8 +93,8 @@ namespace wf {
 											rt->incoherence_r1, rt->incoherence_r2,
 											r_max,
 											rand_state.device_memory);
-				CHECK_CUDA_ERROR(cudaGetLastError(), "");
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+				warn_on_cuda_error("");
+				potentially_sync_cuda("");
 			}
 			else {
 				CURAND_CALL(curandGenerateUniform(gen, (float*)random_numbers, resolution.x*resolution.y*2));
@@ -106,11 +106,9 @@ namespace wf {
 								  float3{cam.pos.x, cam.pos.y, cam.pos.z},
 								  float3{cam.dir.x, cam.dir.y, cam.dir.z},
 								  random_numbers, rt->rd->rays.device_memory);
-				CHECK_CUDA_ERROR(cudaGetLastError(), "");
-				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+				warn_on_cuda_error("");
+				potentially_sync_cuda("");
 			}
-			CHECK_CUDA_ERROR(cudaGetLastError(), "");
-			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		}
 
 		void store_hitpoint_albedo_cpu::run() {
@@ -147,8 +145,8 @@ namespace wf {
 									   rt->sd->vertex_tc.device_memory,
 									   rt->sd->materials.device_memory,
 									   rt->rd->framebuffer.device_memory);
-			CHECK_CUDA_ERROR(cudaGetLastError(), "");
-			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+			warn_on_cuda_error("");
+			potentially_sync_cuda("");
 		}
 	
 		void initialize_framebuffer::run() {

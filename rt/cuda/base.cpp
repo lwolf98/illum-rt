@@ -1,18 +1,21 @@
 #include "base.h"
+#include "platform.h"
 #include "rni.h"
 #include "tracers.h"
 
 #include <iostream>
 
-#define error(x) { std::cerr << "command (" << command << "): " << x << std::endl;  return true; }
+#define error(x) { cerr << "command (" << command << "): " << x << endl;  return true; }
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
+
+using namespace std;
 
 namespace wf {
 	namespace cuda {
 
 		platform::platform(const std::vector<std::string> &args) : wf::platform("cuda") {
 			for (auto arg : args)
-				std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
+				cerr << "Platform opengl does not support the argument " << arg << endl;
 			register_batch_rt("simple",, simple_rt);
 			register_batch_rt("if-if",, ifif);
 			register_batch_rt("while-while",, whilewhile);
@@ -35,17 +38,36 @@ namespace wf {
 		platform::~platform() {
 			cudaDeviceReset();
 		}
+	
+		bool platform::interprete(const std::string &command, std::istringstream &in) { 
+			if (command == "raytracer") {
+				string variant;
+				in >> variant;
+				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
+				if      (variant == "simple")                             rc->scene.use(select("simple"));
+				else if (variant == "if-if")                              rc->scene.use(select("if-if"));
+				else if (variant == "while-while")                        rc->scene.use(select("while-while"));
+				else if (variant == "persistent-if-if")                   rc->scene.use(select("persistent-if-if"));
+				else if (variant == "persistent-while-while")             rc->scene.use(select("persistent-while-while"));
+				else if (variant == "speculative-while-while")            rc->scene.use(select("speculative-while-while"));
+				else if (variant == "persistent-speculative-while-while") rc->scene.use(select("persistent-speculative-while-while"));
+				else if (variant == "dynamic-while-while")                rc->scene.use(select("dynamic-while-while"));
+				else error("There is no such cuda ray tracer variant");
+				return true;
+			}
+			return false;
+		}
 
 		void scenedata::upload(scene *scene) {
-			std::vector<uint4> scene_tris;
+			vector<uint4> scene_tris;
 			scene_tris.reserve(scene->triangles.size());
 			for (triangle t : scene->triangles)
 				scene_tris.push_back(uint4{t.a, t.b, t.c, t.material_id});
 			triangles.upload(scene_tris.size(), reinterpret_cast<uint4*>(scene_tris.data()));
 
 			int num_vertices = scene->vertices.size();
-			std::vector<float4> tmp4(num_vertices);
-			std::vector<float2> tmp2(num_vertices);
+			vector<float4> tmp4(num_vertices);
+			vector<float2> tmp2(num_vertices);
 
 			for (int i = 0; i < num_vertices; ++i) {
 				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
@@ -55,7 +77,7 @@ namespace wf {
 			vertex_tc.upload(tmp2);
 
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
-			std::vector<material> mtls(scene->materials.size());
+			vector<material> mtls(scene->materials.size());
 			for (int i = 0; i < scene->materials.size(); ++i) {
 				mtls[i].albedo = f4(scene->materials[i].albedo);
 				mtls[i].emissive = f4(scene->materials[i].emissive);
@@ -83,7 +105,7 @@ namespace wf {
 			bvh_rt.build(scene);
 
 			// bvh_index.upload(bvh_rt.index);
-			std::vector<uint1> new_index_list;
+			vector<uint1> new_index_list;
 			for (auto index : bvh_rt.index) {
 				uint1 new_index;
 				new_index.x = index;
@@ -96,7 +118,7 @@ namespace wf {
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			assert(rt != nullptr);
 			sd->upload(scene);
-			std::cout << "upload done" << std::endl;
+			cout << "upload done" << endl;
 		}
 
 		bool batch_rt::interprete(const std::string &command, std::istringstream &in) {
@@ -115,10 +137,10 @@ namespace wf {
 				return true;
 			}
 			else if (command == "bvh") {
-				std::string sub;
+				string sub;
 				in >> sub;
 				if (sub == "type") {
-					std::string in1;
+					string in1;
 					in >> in1;
 					check_in_complete("Syntax error, \"bvh type\" requires exactly one string value");
 					bvh_type = in1;
@@ -138,7 +160,7 @@ namespace wf {
 		}
 
 		__host__ std::vector<compact_bvh_node> compact_bvh_node_builder::build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes) {
-			std::vector<wf::cuda::compact_bvh_node> nodes_new;
+			vector<wf::cuda::compact_bvh_node> nodes_new;
 			for (const auto& n : nodes) {
 				wf::cuda::compact_bvh_node node;
 				node.data1 = make_float4(n.box_l.min.x, n.box_l.max.x, n.box_l.min.y, n.box_l.max.y);
