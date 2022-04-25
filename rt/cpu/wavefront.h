@@ -9,9 +9,8 @@ namespace wf {
 	namespace cpu {
 
 		struct timer : public wf::timer {
-			cpu_timer sub;
-			void start(const std::string &name) override { sub.start(name); }
-			void stop(const std::string &name) override { sub.stop(name); }
+			void start(const std::string &name) override { stats_timer.start(name); }
+			void stop(const std::string &name) override { stats_timer.stop(name); }
 			void synchronize() override {}
 		};
 

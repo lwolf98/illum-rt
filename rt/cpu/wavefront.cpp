@@ -43,7 +43,6 @@ namespace wf {
 		// batch_rt_adapter
 
 		void batch_rt_adapter::compute_closest_hit() {
-			time_this_block(closest_hit);
 			glm::ivec2 res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -51,7 +50,6 @@ namespace wf {
 					rd.intersections[y*res.x+x] = underlying_rt->closest_hit(rd.rays[y*res.x+x]);
 		}
 		void batch_rt_adapter::compute_any_hit() {
-			time_this_block(any_hit);
 			glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -66,7 +64,7 @@ namespace wf {
 		// RNI STEPS
 
 		void initialize_framebuffer::run() {
-			time_this_block(initialize_framebuffer);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -75,7 +73,7 @@ namespace wf {
 		}
 
 		void batch_cam_ray_setup_cpu::run() {
-			time_this_block(setup__camrays);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 			assert(rt != nullptr);
@@ -90,7 +88,7 @@ namespace wf {
 		// store_hitpoint_albedo
 
 		void add_hitpoint_albedo::run() {
-			time_this_block(add_hitpoint_albedo);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			float one_over_samples = 1.0f/rc->sppx;
 			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
@@ -112,7 +110,7 @@ namespace wf {
 		}
 			
 		void download_framebuffer::run() {
-			time_this_block(download_framebuffer);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
