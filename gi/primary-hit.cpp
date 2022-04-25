@@ -57,7 +57,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 			if (!rc->scene.single_rt->any_hit(shadow_ray))
 				radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
 #else
-			// todo: implement phong lighting
+			// todo: implement local illumination via the BRDF
 			radiance = dg.albedo();
 #endif
 		}
@@ -67,6 +67,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 }
 #endif
 
+#ifndef RTGI_SKIP_WF
 namespace wf {
 
 	primary_hit_display::primary_hit_display() {
@@ -95,3 +96,4 @@ namespace wf {
 	}
 
 }
+#endif

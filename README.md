@@ -2,15 +2,13 @@
 
 ## Stand der Dinge
 
-Für den Moment ist das ganze Framework als prototypisch anzusehen.
-Das Ziel der aktuellen Entwicklung ist dass im WS'20 der geplante Stoff des Wahlfachs anhand des Codes nachvollzogen werden kann.
-
-Eine bessere Aufteilung und schnellere Ray Tracer sind sekundär :)
+Der Code wird stabiler, aber nach wie vor sind nicht alle Aspekte perfekt durchdacht und die Aufteilung des Codes (insb. entkopplung durch Plugins) weder sehr gut, noch final.
 
 ## Verwendung des Repos
 
-Wenn Sie den Code direkt aus dem Repository verwenden sind Sie so zu sagen im Maintainer-Mode, d.h. Sie müssen die nötigen Autotools installiert haben (automake, autoconf, pkg-config).
-Zur Vorlesung werde ich wahrscheinlich Tarballs austeilen in denen Sie nur `configure` ausführen müssen.
+Wenn Sie den Code direkt aus dem Repository verwenden sind Sie so zu sagen im Maintainer-Mode, d.h. Sie müssen die nötigen Autotools installiert haben (automake, autoconf, pkg-config). Eventuell auch Shader-Compiler für den Vulkan-Code.
+
+Zur Vorlesung werden Tarballs ausgeteilt in denen Sie nur `configure` ausführen müssen.
 
 Wenn Sie das Repo verwenden müssen Sie das Buildsystem erzeugen und konfigurieren, bevor Sie initial den Code übersetzten können:
 ```
@@ -18,7 +16,8 @@ $ autoreconf -if
 $ ./configure
 ```
 
-sudo apt install
+Lesen Sie den Output von `configure` bitte sehr genau um zu sehen ob alle Libs die Sie brauchem auf Ihrem System auch gefunden werden.
+
 ## Abhängigkeiten
 
 Folgende Pakete sind nötig (Liste für Debianderivate wie z.B. Ubuntu/Mint, weitere nehme ich gerne auf, schicken Sie mir einfach die nötigen Daten!).
@@ -33,6 +32,9 @@ Für das Buildsystem wenn Sie das Repo direkt verwenden:
 sudo apt install autoconf automake autoconf-archive
 ```
 
+Für Vulkan, OpenGL und Cuda sind weitere Libs/Toolkits nötig, falls Embree verwendet werden soll muss die Lib auch verfügbar sein.
+Im Gralab findet sich das alles in /usr/gralab, siehe dazu auch `man gralab`
+Welche Libs genau benötig werden kann man ganz gut in `configure.ac` nachlesen.
 
 ## Configure & Make
 
@@ -78,8 +80,25 @@ Inspiriert von https://nvie.com/posts/a-successful-git-branching-model/
 Ein unangenehmes Thema, da aber der Plan ist, dass in das Repo Code aus Projekt- und Examensarbeiten integriert wird würde ich mich sehr freuen wenn Sie Code schreiben der dem Muster des vorhandenen Codes folgt.
 Im Zweifel, oder wenn meine Stilbeschreibung unterspezifiziert ist, schauen Sie sich um und orientieren Sie sich an dem, was Sie sehen.
 
-Es wird ein Separates Dokument geben das den Stil beschreibt und auch darauf eingeht wie und wann Sie ohne große Konsequenz davon abweichen können.
 Hier geht es nicht darum Ihnen meine Sicht der Welt aufzudrücken, sondern nachfolgenden Studis eine konsistente Codebasis zur Verfügung zu stellen. Erfahrungsgemäß macht das die Einarbeitung etwas einfacher.
+
+Hier eine erste Sammlung
+- Alle Namen sind in Kleinbuchstaben und mit Unterstrichen
+- Keine Präfixe oder Suffixe (z.B. `m_member`, `member_`, `imy_interface`)
+- Das gilt auch für get/set, C++ Standard ist eher `int param() const /*getter*/; void param(int) /*setter*/;`
+- Wenn ein Member eh getter und setter hat, dann kann es auch public sein
+- Ifs und Schleifen sollten nur dann {}-Klammern haben, wenn es nötig ist
+- { auf der Zeile des Ifs oder der Schleife
+- } allein in einer Zeile (nicht `} else {`)
+- Formatierung gilt auch für Klassen und Funktionen außer es wird wirklich unübersichtlich
+- Konstruktor-Initialisierer in der Signatur-Zeile oder direkt darunter, in dem Fall `:` eingerückt und die `,` am Ende der Zeile (siehe vorhandene Beispiele)
+- Keine unnötigen Kommentare (`// destructor`)
+- Bitte keine standard "Continuation Lines", sondern semantisch einrücken, also alle Funktionsargumente ab der Zeile nach der entsprechenden öffnenden Klammer, ebenso bei Operator-Ketten, sinnvoll umbrechen und beim ersten Operator auf der vorigen Zeile anfangen.
+- Wichtige Bitte: den Code nicht automatisch formatieren lassen, da geht immer etwas verloren, insb. z.B. korrekte Einrückung für "Alignment" (also: Tabs für Nesting, Spaces für Ausrichtung z.B. von Continuation Lines, dann sieht die ganze Sache mit anderen Tab-Settings auch noch ok aus).
+
+Das ist bestimmt nicht vollständig und im Zweifel gilt natürlich immer "hauptsache lesbar und klar", aber ich würde darum bitten, dass Sie versuchen sich daran zu orientieren :)
+
+Eine weitere Bitte falls Sie keinen ausgeprägten C++ Hintergrund haben: Schauen Sie sich ein Tutorial für Newcomer von Ihrer "Heimatsprache" an, so dass Sie Code schreiben der "üblich" aussieht.
 
 ## BVH Export
 

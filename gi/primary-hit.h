@@ -23,7 +23,7 @@ public:
 };
 #endif
 
-
+#ifndef RTGI_SKIP_WF
 namespace wf {
 	
 	struct initialize_framebuffer : public ray_and_intersection_processing { static constexpr char id[] = "initialize framebuffer"; };
@@ -41,3 +41,4 @@ namespace wf {
 	};
 
 }
+#endif
