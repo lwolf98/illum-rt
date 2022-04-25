@@ -61,6 +61,7 @@ void compute_shader::compile() {
 		shader = program = 0;
 		throw std::logic_error("Failed to validate shader '" + name + "'\n" + message);
 	}
+	glFinish();
 	cout << "done" << endl;
 }
 

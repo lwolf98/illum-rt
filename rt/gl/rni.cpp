@@ -18,7 +18,11 @@ namespace wf {
 		extern compute_shader add_hitpoint_albedo_hackytex_shader;
 		extern compute_shader add_hitpoint_albedo_plain_shader;
 
+		initialize_framebuffer::initialize_framebuffer() {
+			clear_framebuffer_shader.bind();
+		}
 		void initialize_framebuffer::run() {
+			time_this_wf_step;
 			auto res = rc->resolution();
 			compute_shader &cs = clear_framebuffer_shader;
 			cs.bind();
@@ -30,6 +34,7 @@ namespace wf {
 		void download_framebuffer::run() {
 // 			glFinish();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			rt->rd->framebuffer.download();
 			#pragma omp parallel for
@@ -46,6 +51,7 @@ namespace wf {
 			};
 			if (rc->resolution().x > 0 && rc->resolution().y > 0)
 				init_pcg_data(rc->resolution().x, rc->resolution().y);
+			ray_setup_shader.bind();
 		}
 		
 		batch_cam_ray_setup::~batch_cam_ray_setup() {
@@ -66,7 +72,7 @@ namespace wf {
 		}
 
 		void batch_cam_ray_setup::run() {
-			time_this_block(batch_cam_setup);
+			time_this_wf_step;
 			auto res = rc->resolution();
 			camera &cam = rc->scene.camera;
 			vec3 U = cross(cam.dir, cam.up);
@@ -80,16 +86,20 @@ namespace wf {
 			cs.dispatch(res.x, res.y);
 			cs.unbind();
 		}
-		
-		void add_hitpoint_albedo::run() {
-// 			glFinish();
-			//time_this_block(add_hitpoint_albedo);
-			auto res = rc->resolution();
-			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
+
+		add_hitpoint_albedo::add_hitpoint_albedo() {
+			cs = &add_hitpoint_albedo_plain_shader;
 			if (texture_support_mode == PROPER_BINDLESS)
 				cs = &add_hitpoint_albedo_shader;
 			else if (texture_support_mode == HACKY)
 				cs = &add_hitpoint_albedo_hackytex_shader;
+			cs->bind();
+		}	
+		void add_hitpoint_albedo::run() {
+			time_this_wf_step;
+// 			glFinish();
+			//time_this_block(add_hitpoint_albedo);
+			auto res = rc->resolution();
 			cs->bind();
 			cs->uniform("w", res.x).uniform("h", res.y);
 			cs->dispatch(res.x, res.y);

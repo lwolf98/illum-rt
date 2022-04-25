@@ -33,7 +33,6 @@ namespace wf {
 		void timer::stop(const std::string &name) {
 			auto [q0,q1] = queries[name];
 			glQueryCounter(q1, GL_TIMESTAMP);
-			
 		}
 
 		void timer::synchronize() {

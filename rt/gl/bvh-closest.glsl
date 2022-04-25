@@ -136,6 +136,6 @@ void run_reduce_stackuse(uint x, uint y) {
 }
 
 void run(uint x, uint y) {
-// 	run_simple(x, y);
-	run_reduce_stackuse(x, y);
+ 	run_simple(x, y);
+//	run_reduce_stackuse(x, y);
 }

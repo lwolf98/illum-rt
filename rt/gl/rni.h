@@ -12,6 +12,7 @@ namespace wf {
 		 *
 		 */
 		struct initialize_framebuffer : public rni<wf::initialize_framebuffer> {
+			initialize_framebuffer();
 			void run() override;
 		};
 			
@@ -40,7 +41,10 @@ namespace wf {
 		 * 	Note: Shading should become a separate step to run on the GPU at some point.
 		 * 	Note: Only supports computing a single sample right now.
 		 */
-		struct add_hitpoint_albedo : public rni<wf::add_hitpoint_albedo> {
+		class add_hitpoint_albedo : public rni<wf::add_hitpoint_albedo> {
+			compute_shader *cs;
+		public:
+			add_hitpoint_albedo();
 			void run() override;
 		};
 

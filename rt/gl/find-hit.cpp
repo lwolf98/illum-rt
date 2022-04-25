@@ -16,11 +16,17 @@ namespace wf {
 		 *  sequential triangle intersector
 		 *
 		 */
+		
+		extern compute_shader seq_any_shader;
+		extern compute_shader seq_closest_shader;
 
+		seq_tri_is::seq_tri_is() {
+			seq_closest_shader.bind();
+			seq_any_shader.bind();
+		}
 		
 		void seq_tri_is::compute_closest_hit() {
 			auto res = rc->resolution();
-			extern compute_shader seq_closest_shader;
 			seq_closest_shader.bind();
 			seq_closest_shader.uniform("w", res.x).uniform("h", res.y);
 			seq_closest_shader.uniform("N", rc->scene.triangles.size());
@@ -31,7 +37,6 @@ namespace wf {
 		
 		void seq_tri_is::compute_any_hit() {
 			auto res = rc->resolution();
-			extern compute_shader seq_any_shader;
 			seq_any_shader.bind();
 			seq_any_shader.uniform("w", res.x).uniform("h", res.y);
 			seq_any_shader.uniform("N", rc->scene.triangles.size());
@@ -45,8 +50,12 @@ namespace wf {
 		 * bvh adaptor for rt/bbvh-base
 		 *
 		 */
+			
+		extern compute_shader bvh_closest_shader;
 
 		bvh::bvh() : nodes("nodes", BIND_NODE, 0), indices("tri_index", BIND_TIDS, 0) {
+			bvh_closest_shader.bind();
+			// TODO anyhit
 		}
 
 		void bvh::build(::scene *scene) {
@@ -76,7 +85,6 @@ namespace wf {
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			
 			auto res = rc->resolution();
-			extern compute_shader bvh_closest_shader;
 			bvh_closest_shader.bind();
 			bvh_closest_shader.uniform("w", res.x).uniform("h", res.y);
 			bvh_closest_shader.uniform("N", rc->scene.triangles.size());
@@ -86,6 +94,7 @@ namespace wf {
 		}
 
 		void bvh::compute_any_hit() {
+			// TODO
 		}
 	}
 }

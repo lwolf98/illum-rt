@@ -87,9 +87,11 @@ namespace wf {
 
 	void primary_hit_display::compute_samples() {
 
-		for (int i = 0; i < rc->sppx; ++i)
+		for (int i = 0; i < rc->sppx; ++i) {
 			for (auto *step : steps)
 				step->run();
+			rc->platform->timer->synchronize();
+		}
 	}
 
 }
