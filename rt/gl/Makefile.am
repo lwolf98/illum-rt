@@ -17,6 +17,7 @@ libglrt_a_SOURCES = debug.cpp \
 					rni.cpp \
 					opengl.cpp \
 					platform.cpp \
+					shader.cpp \
 					$(glsl_GENSOURCES)
 
 noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h

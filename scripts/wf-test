@@ -3,10 +3,10 @@ at -13 -12 0
 look 1 0 0
 up 0 1 0
 
-#platform cpu
+platform cpu
 #raytracer embree
 #platform opengl glfw
-platform cuda
+#platform cuda
 
 sppx 32
 #sppx 1

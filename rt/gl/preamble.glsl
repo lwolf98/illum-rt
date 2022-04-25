@@ -5,6 +5,9 @@ ifdef(`VERSION',
 ifdef(`HAVE_TEX', `#extension GL_ARB_bindless_texture : require')
 ifdef(`HAVE_TEX', `#extension GL_NV_gpu_shader5 : require') // AMD requires dynamically uniform access for arrays of samplers, which we cannot guarantee, so only allow this for NV
 
+// for pcg random number generator
+#extension GL_ARB_gpu_shader_int64 : require
+
 include(bindings.h)
 ifdef(BLOCK_W, , `define(BLOCK_W, 32)')
 ifdef(BLOCK_H, , `define(BLOCK_H, 32)')
@@ -40,6 +43,7 @@ layout (std430, binding = BIND_TIDS) buffer b_tri_ids     { uint tri_index []; }
 layout (std430, binding = BIND_MTLS) buffer b_materials   { material materials []; };
 layout (std430, binding = BIND_FBUF) buffer b_frambuffer  { vec4 framebuffer []; };
 layout (std430, binding = BIND_TEXD) buffer b_texhack_data{ vec4 texhack_data []; };
+layout (std430, binding = BIND_RRNG) buffer b_pcg_rng     { uint64_t pcg_data []; };
 
 uniform int w;
 uniform int h;

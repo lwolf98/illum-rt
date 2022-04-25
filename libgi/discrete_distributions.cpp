@@ -122,7 +122,7 @@ void distribution_2d::debug_out(const std::string &p, int n) const {
 	image<rgb_pixel> out(w, h);
 	buffer<int> counts(w, h);
 	counts.clear(0);
-	rng rng;
+	rng_std_mt rng;
 	int max = 0;
 	for (int i = 0; i < n; ++i) {
 		auto [sample,pdf] = this->sample(rng.uniform_float2());

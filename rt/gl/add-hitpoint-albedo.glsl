@@ -20,5 +20,5 @@ void run(uint x, uint y) {
 			result = m.albedo;
 	}
 	result.w = 1; // be safe
-	framebuffer[id] = result;
+	framebuffer[id] += result;
 }

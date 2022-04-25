@@ -11,6 +11,7 @@ namespace wf::gl {
 		BIND_MTLS = 6,
 		BIND_FBUF = 7,
 		BIND_TEXD = 8,
+		BIND_RRNG = 9,
 	};
 }
 #else
@@ -23,4 +24,5 @@ namespace wf::gl {
 #define BIND_MTLS 6
 #define BIND_FBUF 7
 #define BIND_TEXD 8
+#define BIND_RRNG 9
 #endif

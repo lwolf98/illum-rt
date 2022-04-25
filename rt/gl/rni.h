@@ -25,7 +25,12 @@ namespace wf {
 		/*! \brief Set up camera rays using Shirley's formulas.
 		 *
 		 */
-		struct batch_cam_ray_setup : public rni<wf::sample_camera_rays> {
+		class batch_cam_ray_setup : public rni<wf::sample_camera_rays> {
+			ssbo<uint64_t> pcg_data;
+			void init_pcg_data(int w, int h);
+		public:
+			batch_cam_ray_setup();
+			~batch_cam_ray_setup();
 			void run() override;
 		};
 		

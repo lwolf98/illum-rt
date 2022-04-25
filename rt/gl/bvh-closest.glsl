@@ -83,7 +83,7 @@ void run_reduce_stackuse(uint x, uint y) {
 	vec4 o = rays[id],
 	     d = rays[w*h + id],
 	     inv_d = rays[2*w*h + id];
-	
+
 	#define STACKSIZE 24
 	uint stack[STACKSIZE];
 	int sp = -1;

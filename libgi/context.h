@@ -17,7 +17,7 @@ namespace wf {
  *
  */
 struct render_context {
-	::rng rng;
+	::rng_std_mt rng;
 	::scene scene;
 	::framebuffer framebuffer;
 	gi_algorithm *algo = nullptr;

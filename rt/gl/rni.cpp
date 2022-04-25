@@ -1,6 +1,7 @@
 #include "rni.h"
 
 #include "libgi/timer.h"
+#include "libgi/random.h"
 
 #include <iostream>
 using namespace std;
@@ -27,7 +28,7 @@ namespace wf {
 		}
 		
 		void download_framebuffer::run() {
-			glFinish();
+// 			glFinish();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 			auto res = rc->resolution();
 			rt->rd->framebuffer.download();
@@ -37,6 +38,31 @@ namespace wf {
 					vec4 c = rt->rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
 				}
+		}
+
+		batch_cam_ray_setup::batch_cam_ray_setup() : pcg_data("ray gen rng", BIND_RRNG, 0) {
+			rc->call_at_resolution_change[this] = [this](int w, int h) {
+				init_pcg_data(w, h);
+			};
+			if (rc->resolution().x > 0 && rc->resolution().y > 0)
+				init_pcg_data(rc->resolution().x, rc->resolution().y);
+		}
+		
+		batch_cam_ray_setup::~batch_cam_ray_setup() {
+			rc->call_at_resolution_change.erase(this);
+		}
+		
+		void batch_cam_ray_setup::init_pcg_data(int w, int h) {
+			vector<uint64_t> data(w*h*2);
+			#pragma omp parallel for
+			for (int y = 0; y < h; ++y)
+				for (int x = 0; x < w; ++x) {
+					rng_pcg init(y*w+x);
+					auto [s,i] = init.config();
+					data[2*(y*w+x)+0] = s;
+					data[2*(y*w+x)+1] = i;
+				}
+			pcg_data.resize(data);
 		}
 
 		void batch_cam_ray_setup::run() {
@@ -56,8 +82,8 @@ namespace wf {
 		}
 		
 		void add_hitpoint_albedo::run() {
-			glFinish();
-			time_this_block(add_hitpoint_albedo);
+// 			glFinish();
+			//time_this_block(add_hitpoint_albedo);
 			auto res = rc->resolution();
 			compute_shader *cs = &add_hitpoint_albedo_plain_shader;
 			if (texture_support_mode == PROPER_BINDLESS)
