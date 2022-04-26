@@ -38,6 +38,10 @@
 #include "rt/cuda/platform.h"
 #endif
 
+#ifdef HAVE_LIBEMBREE3
+#include "rt/cpu/embree.h"
+#endif
+
 #include "libgi/timer.h"
 
 #include "libgi/global-context.h"
@@ -236,6 +240,9 @@ void repl(istream &infile, repl_update_checks &uc) {
 				else
 					error("There is no such bbvh variant");
 			}
+#endif
+#ifdef HAVE_LIBEMBREE3
+			else if (name == "embree") scene.use(new embree_tracer);
 #endif
 			else error("There is no ray tracer called '" << name << "'");
 			uc.tracer_touched_at = uc.cmdid;

@@ -1,6 +1,11 @@
 #include "bvh.h"
 
+#include "config.h"
 #include <algorithm>
+
+#ifdef HAVE_LIBEMBREE3
+#include "rt/cpu/embree.h"
+#endif
 
 #ifdef ESC_DEBUG
 #include <iostream>
@@ -66,6 +71,18 @@ struct bvh_ctor_sah : public bvh_ctor<tr_layout, scene_traits> { // final, remov
 	bvh_ctor_sah(scene_traits traits, int max_triangles_per_node, int number_of_planes) : bvh_ctor<tr_layout,scene_traits>(traits, max_triangles_per_node), number_of_planes(number_of_planes) {}
 	uint32_t subdivide(::bvh &bvh, std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) final override;
 };
+
+
+#ifdef HAVE_LIBEMBREE3
+template<bbvh_triangle_layout tr_layout, typename scene_traits>
+struct bvh_ctor_embree : public bvh_ctor<tr_layout, scene_traits> {
+	using base = bvh_ctor<tr_layout, scene_traits>;
+	using prim = typename base::prim;
+	using base::traits;
+	using base::bvh_ctor;
+	uint32_t subdivide(::bvh &bvh, std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end) final override;
+};
+#endif
 
 
 // 
@@ -482,5 +499,70 @@ uint32_t bvh_ctor_sah<tr_layout, scene_traits>::subdivide(::bvh &bvh, std::vecto
 #endif
 }
 
+#ifdef HAVE_LIBEMBREE3
+template<bbvh_triangle_layout tr_layout, typename scene_traits>
+uint32_t bvh_ctor_embree<tr_layout, scene_traits>::subdivide(::bvh &bvh,
+															 std::vector<prim> &prims,
+															 std::vector<uint32_t> &index,
+															 uint32_t start,
+															 uint32_t end) {
+	embree_tracer em;
+	RTCBVH em_bvh = rtcNewBVH(em.em_device);
 
+	//Setup the primitives and callback data
+	std::vector<RTCBuildPrimitive> build_primitives;
+	build_primitives.reserve(prims.size() * 2); //Extra space to allow best quality bvh creation
+	build_primitives.resize(prims.size());
+	bvh_callback_data cb_data;
+	cb_data.bvh_nodes.reserve(build_primitives.size() * 2);
+	pthread_rwlock_init(&cb_data.lock, 0);
 
+	//Initialize the primitives
+	for(int i = 0; i < prims.size(); i++)
+	{
+		build_primitives[i].geomID  = 0;
+		build_primitives[i].primID  = prims[i].tri_index;
+		build_primitives[i].lower_x = prims[i].min.x;
+		build_primitives[i].lower_y = prims[i].min.y;
+		build_primitives[i].lower_z = prims[i].min.z;
+		build_primitives[i].upper_x = prims[i].max.x;
+		build_primitives[i].upper_y = prims[i].max.y;
+		build_primitives[i].upper_z = prims[i].max.z;
+	}
+
+	//Configuration
+	RTCBuildArguments arguments = rtcDefaultBuildArguments();
+	arguments.byteSize = sizeof(arguments);
+	arguments.buildFlags = RTC_BUILD_FLAG_NONE;
+	arguments.buildQuality = RTC_BUILD_QUALITY_HIGH;
+	arguments.maxBranchingFactor = 2;
+	arguments.maxDepth = 1024;
+	arguments.sahBlockSize = 1;
+	arguments.minLeafSize = 1;
+	arguments.maxLeafSize = 1;
+	arguments.traversalCost = 1.0f;
+	arguments.intersectionCost = 1.0f;
+	arguments.bvh = em_bvh;
+	arguments.primitives = build_primitives.data();
+	arguments.primitiveCount = build_primitives.size();
+	arguments.primitiveArrayCapacity = build_primitives.capacity();
+	arguments.createNode = embvh_create_node;
+	arguments.setNodeChildren = embvh_set_node_children;
+	arguments.setNodeBounds = embvh_set_node_bounds;
+	arguments.createLeaf = embvh_create_leaf;
+	arguments.splitPrimitive = embvh_split_primitive;
+	arguments.buildProgress = nullptr;
+	arguments.userPtr = static_cast<void*>(&cb_data);
+
+	// Ugh, but I did not find a better solution to return the index over void*
+	// Maybe better to first build the bvh as a "linked tree" and
+	// then convert it to a vector afterwards so we can avoid this
+	assert(sizeof(void*) == 8);
+	bvh.root = reinterpret_cast<uint64_t>(rtcBuildBVH(&arguments));
+	bvh.nodes = cb_data.bvh_nodes;
+	rtcReleaseBVH(em_bvh);
+	for(int i = 0; i < index.size(); i++)
+		index[i] = i;
+	return bvh.root;
+}
+#endif
