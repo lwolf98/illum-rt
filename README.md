@@ -83,7 +83,7 @@ Im Zweifel, oder wenn meine Stilbeschreibung unterspezifiziert ist, schauen Sie 
 Hier geht es nicht darum Ihnen meine Sicht der Welt aufzudrücken, sondern nachfolgenden Studis eine konsistente Codebasis zur Verfügung zu stellen. Erfahrungsgemäß macht das die Einarbeitung etwas einfacher.
 
 Hier eine erste Sammlung
-- Alle Namen sind in Kleinbuchstaben und mit Unterstrichen
+- Alle Namen (außer globale Konstanten) sind in Kleinbuchstaben und mit Unterstrichen
 - Keine Präfixe oder Suffixe (z.B. `m_member`, `member_`, `imy_interface`)
 - Das gilt auch für get/set, C++ Standard ist eher `int param() const /*getter*/; void param(int) /*setter*/;`
 - Wenn ein Member eh getter und setter hat, dann kann es auch public sein
@@ -93,7 +93,14 @@ Hier eine erste Sammlung
 - Formatierung gilt auch für Klassen und Funktionen außer es wird wirklich unübersichtlich
 - Konstruktor-Initialisierer in der Signatur-Zeile oder direkt darunter, in dem Fall `:` eingerückt und die `,` am Ende der Zeile (siehe vorhandene Beispiele)
 - Keine unnötigen Kommentare (`// destructor`)
-- Bitte keine standard "Continuation Lines", sondern semantisch einrücken, also alle Funktionsargumente ab der Zeile nach der entsprechenden öffnenden Klammer, ebenso bei Operator-Ketten, sinnvoll umbrechen und beim ersten Operator auf der vorigen Zeile anfangen.
+- Bitte keine standard "Continuation Lines", sondern semantisch einrücken, also alle Funktionsargumente ab der Zeile nach der entsprechenden öffnenden Klammer, ebenso bei Operator-Ketten, sinnvoll umbrechen und beim ersten Operator auf der vorigen Zeile anfangen. Also:
+```
+    foobar(an_argument, another_argument_with_a_long_name,
+           [] (int x) { 
+               return x;
+           },
+           more_ars);
+```
 - Wichtige Bitte: den Code nicht automatisch formatieren lassen, da geht immer etwas verloren, insb. z.B. korrekte Einrückung für "Alignment" (also: Tabs für Nesting, Spaces für Ausrichtung z.B. von Continuation Lines, dann sieht die ganze Sache mit anderen Tab-Settings auch noch ok aus).
 
 Das ist bestimmt nicht vollständig und im Zweifel gilt natürlich immer "hauptsache lesbar und klar", aber ich würde darum bitten, dass Sie versuchen sich daran zu orientieren :)
