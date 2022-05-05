@@ -63,7 +63,7 @@ namespace wf {
 
 		batch_ray_tracer* select(const std::string &name);
 		wf::step* step(const std::string &name);
-		virtual void commit_scene(scene *scene) { throw "not implemented"; }
+		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	};
 
