@@ -1,5 +1,7 @@
 #include "rni.h"
 
+#include "platform.h"
+
 #include "libgi/timer.h"
 #include "libgi/random.h"
 
@@ -36,11 +38,11 @@ namespace wf {
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 			time_this_wf_step;
 			auto res = rc->resolution();
-			rt->rd->framebuffer.download();
+			pf->rt->rd->framebuffer.download();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
-					vec4 c = rt->rd->framebuffer.org_data[y*res.x+x];
+					vec4 c = pf->rt->rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
 				}
 		}
@@ -85,6 +87,12 @@ namespace wf {
 			cs.uniform("near_wh", cam.near_w, cam.near_h);
 			cs.dispatch(res.x, res.y);
 			cs.unbind();
+		}
+
+		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		}
+
+		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
 		}
 
 		add_hitpoint_albedo::add_hitpoint_albedo() {

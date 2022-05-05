@@ -19,6 +19,7 @@ AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (shoul
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
 have_gl=yes
+AC_ARG_ENABLE([opengl], [AS_HELP_STRING([--disable-opengl], [Do not use OpenGL, even if present])], [have_gl=$enableval], [have_gl=yes])
 AC_CHECK_LIB([OpenGL], [main], [], [have_gl=no])
 AC_CHECK_LIB([GLEW], [main], [], [have_gl=no])
 have_gl_with_glfw=$have_gl

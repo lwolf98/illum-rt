@@ -168,13 +168,14 @@ struct scene {
 		return sample_texture(is, triangles[is.ref], tex);
 	}
 
+#ifndef RTGI_SKIP_WF
+	//! This is only used for individual_ray_tracers
+#endif
+	individual_ray_tracer *rt = nullptr;
+	
 	//! The scene takes ownership of the RT, deletes it upon destruction and when taking ownership of a new RT.
 	void release_rt();
-	void use(ray_tracer *new_rt);
-
-	ray_tracer *rt = nullptr;
-	individual_ray_tracer *single_rt = nullptr;
-	wf::batch_ray_tracer *batch_rt = nullptr;
+	void use(individual_ray_tracer *new_rt);
 };
 
 // std::vector<triangle> scene_triangles();

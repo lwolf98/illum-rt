@@ -70,20 +70,6 @@ const char *prompt = "rtgi > ";
 void run(gi_algorithm *algo);
 void rt_bench();
 
-static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_checks &uc, const std::string &command) {
-#ifndef RTGI_SKIP_WF
-	if (scene.single_rt && dynamic_cast<wavefront_algorithm*>(algo)) {
-		error_no_continue("Wavefront algorithm used with invidividually tracing RT does not work. Use the appropriate 'platform'.");
-		return false;
-	}
-	else if (scene.batch_rt && dynamic_cast<recursive_algorithm*>(algo)) {
-		error_no_continue("Cannot drive a recursive algorithm by a batch ray tracer");
-		return false;
-	}
-#endif
-	return true;
-}
-
 void repl(istream &infile, repl_update_checks &uc) {
 	bool cam_has_pos = false,
 		 cam_has_dir = false,
@@ -212,7 +198,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 				delete algo;
 				algo = a;
 			}
-			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 		}
 		else ifcmd("outfile") {
 			string name;
@@ -250,7 +235,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 					error("This combination is technically problematic")
 				else
 					error("There is no such bbvh variant");
-				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");
@@ -272,19 +256,25 @@ void repl(istream &infile, repl_update_checks &uc) {
 			else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
 			else error("There is no platform called '" << name << "'");
-			scene.use(rc->platform->select("default"));
 			uc.tracer_touched_at = uc.cmdid;
 		}
 		else ifcmd("commit") {
 			if (scene.vertices.empty())
 				error("There is no scene data to work with");
-			if (!scene.rt)
-				error("There is no ray traversal scheme to commit the scene data to");
-			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
-#ifndef RTGI_SKIP_DIRECT_ILLUM
-			scene.compute_light_distribution();
+#ifndef RTGI_SKIP_WF
+			if (rc->platform)
+				rc->platform->commit_scene(&scene);
+			else {
 #endif
-			scene.rt->build(&scene);
+				if (!scene.rt)
+					error("There is no ray traversal scheme to commit the scene data to");
+#ifndef RTGI_SKIP_DIRECT_ILLUM
+				scene.compute_light_distribution();
+#endif
+				scene.rt->build(&scene);
+#ifndef RTGI_SKIP_WF
+			}
+#endif
 			uc.accel_touched_at = uc.cmdid;
 		}
 		else ifcmd("sppx") {

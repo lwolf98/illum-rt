@@ -148,8 +148,6 @@ namespace wf {
 
 			bvh_nodes.upload(compact_bvh_node_builder::build(bvh_rt.nodes));
 
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			sd->upload(scene);
 			cout << "upload done" << endl;
 		}

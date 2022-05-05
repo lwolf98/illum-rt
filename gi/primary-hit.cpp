@@ -19,7 +19,7 @@ gi_algorithm::sample_result primary_hit_display::sample_pixel(uint32_t x, uint32
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-		triangle_intersection closest = rc->scene.single_rt->closest_hit(view_ray);
+		triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc->scene);
 			radiance = dg.albedo();
@@ -39,7 +39,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 	for (int sample = 0; sample < samples; ++sample) {
 		vec3 radiance(0);
 		ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-		triangle_intersection closest = rc->scene.single_rt->closest_hit(view_ray);
+		triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 		if (closest.valid()) {
 			diff_geom dg(closest, rc->scene);
 			brdf *brdf = dg.mat->brdf;
@@ -54,7 +54,7 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 
 			ray shadow_ray(dg.x, w_i);
 			shadow_ray.length_exclusive(d);
-			if (!rc->scene.single_rt->any_hit(shadow_ray))
+			if (!rc->scene.rt->any_hit(shadow_ray))
 				radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
 #else
 			// todo: implement local illumination via the BRDF
@@ -71,11 +71,11 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 namespace wf {
 
 	primary_hit_display::primary_hit_display() {
-		clear = rc->platform->rni(initialize_framebuffer::id);
-		download = rc->platform->rni(download_framebuffer::id);
-		steps.push_back(rc->platform->rni(sample_camera_rays::id));
-		steps.push_back(new wf::find_closest_hits(rc->scene.batch_rt));
-		steps.push_back(rc->platform->rni(add_hitpoint_albedo::id));
+		clear = rc->platform->step(initialize_framebuffer::id);
+		download = rc->platform->step(download_framebuffer::id);
+		steps.push_back(rc->platform->step(sample_camera_rays::id));
+		steps.push_back(rc->platform->step(find_closest_hits::id));
+		steps.push_back(rc->platform->step(add_hitpoint_albedo::id));
 	}
 
 	void primary_hit_display::prepare_frame() {

@@ -32,29 +32,24 @@ namespace wf {
 		virtual void run() = 0;
 	};
 	
-	struct ray_and_intersection_processing : public step {
-		virtual void use(batch_ray_tracer *rt) = 0;
-		virtual void run() = 0;
-	};
-
 	struct raydata {
 		virtual ~raydata() {}
 	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
-	#define register_rni_step(N,C,X) rnis[N] = [C]() -> wf::ray_and_intersection_processing* { return new X; }
-	#define register_rni_step_by_id(C,X) rnis[X::id] = [C]() -> wf::ray_and_intersection_processing* { return new X; }
+	#define register_wf_step(N,C,X) steps[N] = [C]() -> wf::step* { return new X; }
+	#define register_wf_step_by_id(C,X) steps[X::id] = [C]() -> wf::step* { return new X; }
 	class platform {
 	protected:
 		std::string name;
 		std::map<std::string, std::function<batch_ray_tracer*()>> tracers;
-		std::map<std::string, std::function<ray_and_intersection_processing*()>> rnis;
+		std::map<std::string, std::function<wf::step*()>> steps;
 
 		std::set<std::string> tracer_links;
-		std::set<std::string> rni_links;
+		std::set<std::string> step_links;
 
 		std::map<std::string, batch_ray_tracer*> generated_tracers;
-		std::map<std::string, ray_and_intersection_processing*> generated_rnis;
+		std::map<std::string, wf::step*> generated_steps;
 
 		void link_tracer(const std::string &existing, const std::string &linkname);
 
@@ -67,7 +62,8 @@ namespace wf {
 		wf::timer *timer = nullptr;
 
 		batch_ray_tracer* select(const std::string &name);
-		ray_and_intersection_processing* rni(const std::string &name);
+		wf::step* step(const std::string &name);
+		virtual void commit_scene(scene *scene) { throw "not implemented"; }
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	};
 
@@ -88,9 +84,10 @@ namespace wf {
 	};
 
 	class find_closest_hits : public step {
+	protected:
 		batch_ray_tracer *rt;
-		static constexpr char id[] = "find closest hit";
 	public:
+		static constexpr char id[] = "find closest hit";
 		find_closest_hits(batch_ray_tracer *rt) : rt(rt) {}
 		void run() override {
 			time_this_wf_step;
@@ -98,9 +95,10 @@ namespace wf {
 		}
 	};
 	class find_any_hits : public step {
+	protected:
 		batch_ray_tracer *rt;
-		static constexpr char id[] = "find any hit";
 	public:
+		static constexpr char id[] = "find any hit";
 		find_any_hits(batch_ray_tracer *rt) : rt(rt) {}
 		void run() override {
 			time_this_wf_step;

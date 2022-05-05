@@ -7,6 +7,9 @@
 namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
 	namespace cpu {
+	
+		class platform;
+		typedef ::scene scene;
 
 		struct timer : public wf::timer {
 			void start(const std::string &name) override { stats_timer.start(name); }
@@ -41,34 +44,31 @@ namespace wf {
 			}
 			void compute_closest_hit() override;
 			void compute_any_hit() override;
-			void build(::scene *s) override;
+			void build(cpu::scene *s) override;
 		};
 
-		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
-		 *
-		 */
-		template<typename T> struct rni : public T {
-			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
-			                // might have to be moved to derived classes
-			void use(wf::batch_ray_tracer *that) override { 
-				rt = dynamic_cast<cpu::batch_rt*>(that); 
-			}
-		};
-
-		struct initialize_framebuffer : public rni<wf::initialize_framebuffer> {
+		struct initialize_framebuffer : public wf::initialize_framebuffer {
 			void run() override;
 		};
 			
-		struct batch_cam_ray_setup_cpu : public rni<wf::sample_camera_rays> {
+		struct batch_cam_ray_setup_cpu : public wf::sample_camera_rays {
 			void run() override;
 		};
 		
-		struct add_hitpoint_albedo : public rni<wf::add_hitpoint_albedo> {
+		struct add_hitpoint_albedo : public wf::add_hitpoint_albedo {
 			void run() override;
 		};
 		
-		struct download_framebuffer : public rni<wf::download_framebuffer> {
+		struct download_framebuffer : public wf::download_framebuffer {
 			void run() override;
+		};
+	
+		struct find_closest_hits : public wf::find_closest_hits {
+			find_closest_hits();
+		};
+
+		struct find_any_hits : public wf::find_any_hits {
+			find_any_hits();
 		};
 	
 	}

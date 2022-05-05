@@ -2,6 +2,8 @@
 
 #include "libgi/wavefront-rt.h"
 
+#include "base.h"
+
 namespace wf::gl {
 	/*! \brief OpenGL Platform for Ray Tracing
 	 * 	
@@ -14,6 +16,12 @@ namespace wf::gl {
 	class platform : public wf::platform {
 	public:
 		platform(const std::vector<std::string> &args);
+		~platform();
+		void commit_scene(::scene *scene);
 		bool interprete(const std::string &command, std::istringstream &in) override;
+		
+		batch_rt *rt = nullptr;
 	};
+	
+	extern platform *pf;
 }

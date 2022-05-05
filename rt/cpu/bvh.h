@@ -9,6 +9,13 @@
 
 // #define COUNT_HITS
 
+#ifndef RTGI_SKIP_WF
+/*! Here we are inconsistent and use the ::scene instead of wf::cpu::scene
+ *  because this is code that is also run for the individual ray tracer.
+ *
+ *  TODO: will this cause problems?
+ */
+#endif
 struct naive_bvh : public individual_ray_tracer {
 	struct node {
 		aabb box;

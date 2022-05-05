@@ -14,6 +14,9 @@ using namespace std;
 namespace wf::gl {
 	
 	platform::platform(const std::vector<std::string> &args) : wf::platform("opengl") {
+		if (pf) std::logic_error("The " + name + " platform is already set up");
+		pf = this;
+
 		gl_mode requested_mode = gl_truly_headless;
 		for (auto arg : args)
 			if (arg == "gbm" || arg == "truly-headless") requested_mode = gl_truly_headless;
@@ -43,23 +46,38 @@ namespace wf::gl {
 		link_tracer("bbvh-1", "default");
 		// 			link_tracer("seq", "default");
 		// bvh mode?
-		register_rni_step_by_id(, initialize_framebuffer);
-		register_rni_step_by_id(, batch_cam_ray_setup);
-		register_rni_step_by_id(, add_hitpoint_albedo);
-		register_rni_step_by_id(, download_framebuffer);
+		register_wf_step_by_id(, initialize_framebuffer);
+		register_wf_step_by_id(, batch_cam_ray_setup);
+		register_wf_step_by_id(, add_hitpoint_albedo);
+		register_wf_step_by_id(, download_framebuffer);
+		register_wf_step_by_id(, find_closest_hits);
+		register_wf_step_by_id(, find_any_hits);
 
 		timer = new wf::gl::timer;
 	}
 
+	platform::~platform() {
+		pf = nullptr;
+	}
+		
+	void platform::commit_scene(::scene *scene) {
+		if (!rt)
+			rt = dynamic_cast<batch_rt*>(select("default"));
+		scene->compute_light_distribution(); // TODO extract as step
+		rt->build(scene);
+	}
 
 	bool platform::interprete(const std::string &command, std::istringstream &in) { 
 		if (command == "raytracer") {
 			string variant;
 			in >> variant;
 			check_in("Syntax error, requires opengl ray tracer variant name");
-			rc->scene.use(select(variant));
+			//TODO rc->scene.use(select(variant));
+			throw "fixme";
 			return true;
 		}
 		return false;
 	}
+
+	platform *pf = nullptr;
 }
