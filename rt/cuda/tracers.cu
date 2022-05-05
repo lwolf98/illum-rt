@@ -1,5 +1,7 @@
 #include "tracers.h"
 
+#include "platform.h"
+
 #include "libgi/timer.h"
 
 #include <iostream>
@@ -30,17 +32,12 @@ namespace wf {
 			bvh_index.upload(bvh_rt.index);
 			bvh_nodes.upload(nodes);
 
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			sd->upload(scene);
 			std::cout << "upload done" << std::endl;
 		}
 
 		void simple_rt::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::simple_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			int2 resolution{rc->resolution().x, rc->resolution().y};
-
 			simple_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																						rd->rays.device_memory,
 																						sd->vertex_pos.device_memory,
@@ -55,10 +52,7 @@ namespace wf {
 
 
 		void ifif::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::ifif*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			int2 resolution{rc->resolution().x, rc->resolution().y};
-
 			ifif_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																					  rd->rays.device_memory,       rd->rays.tex,
 																					  sd->vertex_pos.device_memory, sd->vertex_pos.tex,
@@ -73,15 +67,13 @@ namespace wf {
 		
 		
 		void whilewhile::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::whilewhile*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 			whilewhile_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																							rd->rays.device_memory,       rd->rays.tex,
 																							sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																							sd->triangles.device_memory,  sd->triangles.tex,
-																							rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																							rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																							pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																							pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																							rd->intersections.device_memory,
 																							anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
@@ -90,17 +82,14 @@ namespace wf {
 		
 		
 		void dynamicwhilewhile::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::dynamicwhilewhile*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
-
 			// dynamicwhilewhile_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(
 			// dynamicwhilewhile-Kernel uses 48 Registers instead of 40, so run one less warp than usual for best occupation
 			dynamicwhilewhile_trace<<<DESIRED_BLOCKS_COUNT, dim3(WARPSIZE, DESIRED_WARPS_PER_BLOCK-1, 1)>>>(rc->resolution().x * rc->resolution().y,
 																											rd->rays.device_memory,       rd->rays.tex,
 																											sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																											sd->triangles.device_memory,  sd->triangles.tex,
-																											rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																											rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																											pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																											pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																											rd->intersections.device_memory,
 																											anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
@@ -109,16 +98,13 @@ namespace wf {
 		
 		
 		void speculativewhilewhile::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::speculativewhilewhile*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			int2 resolution{rc->resolution().x, rc->resolution().y};
-
 			speculativewhilewhile_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																									   rd->rays.device_memory,       rd->rays.tex,
 																									   sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																									   sd->triangles.device_memory,  sd->triangles.tex,
-																									   rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																									   rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																									   pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																									   pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																									   rd->intersections.device_memory,
 																									   anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
@@ -127,15 +113,12 @@ namespace wf {
 		
 		
 		void persistentifif::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::persistentifif*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
-
 			persistentifif_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x*rc->resolution().y,
 																			   rd->rays.device_memory,       rd->rays.tex,
 																			   sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																			   sd->triangles.device_memory,  sd->triangles.tex,
-																			   rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																			   rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																			   pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																			   pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																			   rd->intersections.device_memory,
 																			   anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
@@ -144,15 +127,12 @@ namespace wf {
 		
 		
 		void persistentspeculativewhilewhile::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::persistentspeculativewhilewhile*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
-
 			persistentspeculativewhilewhile_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x * rc->resolution().y,
 																								rd->rays.device_memory,       rd->rays.tex,
 																								sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																								sd->triangles.device_memory,  sd->triangles.tex,
-																								rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																								rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																								pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																								pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																								rd->intersections.device_memory,
 																								anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");
@@ -161,15 +141,12 @@ namespace wf {
 		
 		
 		void persistentwhilewhile::compute_hit(bool anyhit) {
-			auto *rt = dynamic_cast<wf::cuda::persistentwhilewhile*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
-
 			persistentwhilewhile_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x*rc->resolution().y,
 																					 rd->rays.device_memory,       rd->rays.tex,
 																					 sd->vertex_pos.device_memory, sd->vertex_pos.tex,
 																					 sd->triangles.device_memory,  sd->triangles.tex,
-																					 rt->bvh_index.device_memory,  rt->bvh_index.tex,
-																					 rt->bvh_nodes.device_memory,  rt->bvh_nodes.tex,
+																					 pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
+																					 pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																					 rd->intersections.device_memory,
 																					 anyhit);
 			CHECK_CUDA_ERROR(cudaGetLastError(), "");

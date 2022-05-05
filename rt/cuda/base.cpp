@@ -14,8 +14,11 @@ namespace wf {
 	namespace cuda {
 
 		platform::platform(const std::vector<std::string> &args) : wf::platform("cuda") {
+			if (pf) std::logic_error("The " + name + " platform is already set up");
+			pf = this;
+
 			for (auto arg : args)
-				cerr << "Platform opengl does not support the argument " << arg << endl;
+				cerr << "Platform cuda does not support the argument " << arg << endl;
 			register_batch_rt("simple",, simple_rt);
 			register_batch_rt("if-if",, ifif);
 			register_batch_rt("while-while",, whilewhile);
@@ -28,38 +31,50 @@ namespace wf {
 			link_tracer("while-while", "default");
 			link_tracer("while-while", "find closest hits");
 			// bvh mode?
-			register_rni_step_by_id(, initialize_framebuffer);
-			register_rni_step_by_id(, batch_cam_ray_setup);
-			//register_rni_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
-			register_rni_step_by_id(, add_hitpoint_albedo_to_fb);
-			register_rni_step_by_id(, download_framebuffer);
+			register_wf_step_by_id(, initialize_framebuffer);
+			register_wf_step_by_id(, batch_cam_ray_setup);
+			//register_wf_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
+			register_wf_step_by_id(, add_hitpoint_albedo_to_fb);
+			register_wf_step_by_id(, download_framebuffer);
+			register_wf_step_by_id(, find_closest_hits);
+			register_wf_step_by_id(, find_any_hits);
 
 			timer = new wf::cuda::timer;
 		}
 
 		platform::~platform() {
 			cudaDeviceReset();
+			pf = nullptr;
 		}
 	
+		void platform::commit_scene(::scene *scene) {
+			if (!rt)
+				rt = dynamic_cast<batch_rt*>(select("default"));
+			scene->compute_light_distribution(); // TODO extract as step
+			rt->build(scene);
+		}
+
 		bool platform::interprete(const std::string &command, std::istringstream &in) { 
 			if (command == "raytracer") {
 				string variant;
 				in >> variant;
 				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
-				if      (variant == "simple")                             rc->scene.use(select("simple"));
-				else if (variant == "if-if")                              rc->scene.use(select("if-if"));
-				else if (variant == "while-while")                        rc->scene.use(select("while-while"));
-				else if (variant == "persistent-if-if")                   rc->scene.use(select("persistent-if-if"));
-				else if (variant == "persistent-while-while")             rc->scene.use(select("persistent-while-while"));
-				else if (variant == "speculative-while-while")            rc->scene.use(select("speculative-while-while"));
-				else if (variant == "persistent-speculative-while-while") rc->scene.use(select("persistent-speculative-while-while"));
-				else if (variant == "dynamic-while-while")                rc->scene.use(select("dynamic-while-while"));
+				if      (variant == "simple")                             rt = dynamic_cast<batch_rt*>(select("simple"));
+				else if (variant == "if-if")                              rt = dynamic_cast<batch_rt*>(select("if-if"));
+				else if (variant == "while-while")                        rt = dynamic_cast<batch_rt*>(select("while-while"));
+				else if (variant == "persistent-if-if")                   rt = dynamic_cast<batch_rt*>(select("persistent-if-if"));
+				else if (variant == "persistent-while-while")             rt = dynamic_cast<batch_rt*>(select("persistent-while-while"));
+				else if (variant == "speculative-while-while")            rt = dynamic_cast<batch_rt*>(select("speculative-while-while"));
+				else if (variant == "persistent-speculative-while-while") rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while"));
+				else if (variant == "dynamic-while-while")                rt = dynamic_cast<batch_rt*>(select("dynamic-while-while"));
 				else error("There is no such cuda ray tracer variant");
 				return true;
 			}
 			return false;
 		}
 		
+		platform *pf = nullptr;
+
 		void timer::start(const std::string &name) {
 			cudaEvent_t start, stop;
 			if (events.find(name) == events.end()) {

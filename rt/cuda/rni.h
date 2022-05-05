@@ -12,7 +12,7 @@ namespace wf {
 		/*! \brief Set up camera rays using Shirley's formulas.
 		 *
 		 */
-		class batch_cam_ray_setup : public rni<wf::sample_camera_rays> {
+		class batch_cam_ray_setup : public wf::sample_camera_rays {
 			curandGenerator_t gen;
 			float2 *random_numbers = nullptr;
 		public:
@@ -28,14 +28,14 @@ namespace wf {
 		 *
 		 * 	Note: This should be obsolete...
 		 */
-		struct store_hitpoint_albedo_cpu : public rni<wf::ray_and_intersection_processing> {
+		struct store_hitpoint_albedo_cpu : public wf::step {
 			void run() override;
 		};
 
 		/*! \brief Compute albedo (incl. textures) on the GPU
 		 *
 		 */
-		struct add_hitpoint_albedo_to_fb : public rni<wf::add_hitpoint_albedo> {
+		struct add_hitpoint_albedo_to_fb : public wf::add_hitpoint_albedo {
 			bool first_sample;
 			void run() override;
 		};
@@ -43,17 +43,24 @@ namespace wf {
 		/*! \brief Download frame buffer data for further processing on the host
 		 *
 		 */
-		struct initialize_framebuffer : public rni<wf::initialize_framebuffer> {
+		struct initialize_framebuffer : public wf::initialize_framebuffer {
 			void run() override;
 		};
 
 		/*! \brief Download frame buffer data for further processing on the host
 		 *
 		 */
-		struct download_framebuffer : public rni<wf::download_framebuffer> {
+		struct download_framebuffer : public wf::download_framebuffer {
 			void run() override;
 		};
 
-
+		struct find_closest_hits : public wf::find_closest_hits {
+			find_closest_hits();
+		};
+			
+		struct find_any_hits : public wf::find_any_hits {
+			find_any_hits();
+		};
+	
 	}
 }

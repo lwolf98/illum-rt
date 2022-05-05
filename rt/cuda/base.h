@@ -7,7 +7,6 @@
 #include "cuda-helpers.h"
 
 #include <cuda_runtime_api.h>
-
 #define MULTIPROCESSOR_COUNT               82	// fixed (device dependent, 82 for RTX3090)
 #define WARPSIZE                           32	// fixed (architecture-dependent)
 #define MAX_WARPS_PER_MULTIPROCESSOR       48	// fixed (architecture-dependent)
@@ -317,17 +316,6 @@ namespace wf {
 				compute_hit(true);
 			}
 			virtual void compute_hit(bool anyhit) = 0;
-		};
-
-		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
-		 *
-		 */
-		template<typename T> struct rni : public T {
-			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
-			                // might have to be moved to derived classes
-			void use(wf::batch_ray_tracer *that) override { 
-				rt = dynamic_cast<cuda::batch_rt*>(that); 
-			}
 		};
 
 	}

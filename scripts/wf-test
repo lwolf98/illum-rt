@@ -5,8 +5,8 @@ up 0 1 0
 
 #platform cpu
 #raytracer embree
-platform opengl glfw
-#platform cuda
+#platform opengl glfw
+platform cuda
 
 sppx 4
 #sppx 1
