@@ -71,7 +71,29 @@ namespace wf {
 
 	class simple_algorithm : public wavefront_algorithm {
 	protected:
-		std::vector<step*> steps;
+		std::vector<step*> data_reset_steps;
+		std::vector<step*> frame_preparation_steps;
+		std::vector<step*> sampling_steps;
+		std::vector<step*> frame_finalization_steps;
+	public:
+		void prepare_data() override {
+			for (auto *s : data_reset_steps) s->run();
+		}
+		void prepare_frame() override {
+			wavefront_algorithm::prepare_frame();
+			for (auto *s : frame_preparation_steps) s->run();
+		}
+		void compute_samples() override {
+			for (int i = 0; i < rc->sppx; ++i) {
+				for (auto *step : sampling_steps)
+					step->run();
+				rc->platform->timer->synchronize();
+			}
+		}
+		void finalize_frame() override {
+			for (auto *s : frame_finalization_steps) s->run();
+			rc->platform->timer->synchronize();
+		}
 	};
 
 	// partition in pure interface and templated version holding a reference to the data

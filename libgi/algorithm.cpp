@@ -98,10 +98,12 @@ void recursive_algorithm::compute_samples() {
 }
 
 void recursive_algorithm::prepare_frame() {
+	gi_algorithm::prepare_frame();
 	assert(rc->scene.rt != nullptr);
 }
 
 void wavefront_algorithm::prepare_frame() {
+	gi_algorithm::prepare_frame();
 }
 
 

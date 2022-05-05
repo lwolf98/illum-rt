@@ -261,6 +261,8 @@ void repl(istream &infile, repl_update_checks &uc) {
 		else ifcmd("commit") {
 			if (scene.vertices.empty())
 				error("There is no scene data to work with");
+			if (algo)
+				algo->data_reset_required = true;
 #ifndef RTGI_SKIP_WF
 			if (rc->platform)
 				rc->platform->commit_scene(&scene);
