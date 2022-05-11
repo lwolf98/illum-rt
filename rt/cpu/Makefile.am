@@ -7,7 +7,7 @@ noinst_HEADERS = seq.h wavefront.h platform.h
 
 #ifndef RTGI_SKIP_BVH
 libcputracing_a_SOURCES += bvh.cpp bvh2.cpp
-noinst_HEADERS += bvh.h
+noinst_HEADERS += bvh.h bvh-ctor.h
 
 if have_embree
 libcputracing_a_SOURCES += embree.cpp

@@ -93,7 +93,6 @@ class ray_tracer {
 protected:
 	::scene *scene;
 public:
-	virtual void build(::scene *) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual ~ray_tracer() {}
 };
@@ -102,6 +101,7 @@ class individual_ray_tracer : public ray_tracer {
 protected:
 	::scene *scene;
 public:
+	virtual void build(::scene *) = 0;
 	virtual triangle_intersection closest_hit(const ray &) = 0;
 	virtual bool any_hit(const ray &) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

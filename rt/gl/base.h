@@ -175,13 +175,9 @@ namespace wf {
 		 *
 		 */
 		struct batch_rt : public batch_ray_tracer {
-			gl::scenedata *sd = nullptr;
 			gl::raydata *rd = nullptr;
-			void build(::scene *scene) {
+			virtual void build(scenedata *scene) {
 				rd = new raydata(rc->resolution());
-				// make this a simple c'tor?
-				sd = new scenedata;
-				sd->upload(scene);
 			}
 		};
 

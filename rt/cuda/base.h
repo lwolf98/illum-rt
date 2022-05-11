@@ -78,7 +78,7 @@ namespace wf {
 		};
 
 		struct compact_bvh_node_builder {
-			__host__ static std::vector<compact_bvh_node> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
+			static std::vector<compact_bvh_node> build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes);
 		};
 
 		struct buffer {
@@ -149,6 +149,9 @@ namespace wf {
 					host_data.resize(size);
 				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost), name);
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
+			}
+			void free_host_data() {
+				std::vector<T>{}.swap(host_data);
 			}
 		};
 
@@ -287,9 +290,22 @@ namespace wf {
 			void upload(scene *scene);
 		};
 
+		struct cpu_bvh_builder_cuda_scene_traits {
+			scenedata *s;
+			typedef uint4 tri_t;
+			int  triangles() { return s->triangles.host_data.size(); }
+			tri_t triangle(int index) { return s->triangles.host_data[index]; }
+			int triangle_a(int index) { return s->triangles.host_data[index].x; }
+			int triangle_b(int index) { return s->triangles.host_data[index].y; }
+			int triangle_c(int index) { return s->triangles.host_data[index].z; }
+			glm::vec3 vertex_pos(int index) { float4 v = s->vertex_pos.host_data[index]; return glm::vec3(v.x,v.y,v.z); }
+			void replace_triangles(std::vector<tri_t> &&new_tris) {
+				s->triangles.host_data = new_tris;
+			}
+		};
+
 		struct batch_rt : public batch_ray_tracer {
 			raydata *rd = nullptr;
-			scenedata *sd = nullptr;
 
 			bool use_incoherence = false;
 			float incoherence_r1 = 0;
@@ -299,15 +315,14 @@ namespace wf {
 			std::string bvh_type = "sah";
 
 			texture_buffer<wf::cuda::compact_bvh_node> bvh_nodes;
-			texture_buffer<uint1> bvh_index;
+			texture_buffer<uint> bvh_index;
 
 			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {
 			}
 			~batch_rt() {
 				delete rd;
-				delete sd;
 			}
-			void build(::scene *scene) override;
+			virtual void build(scenedata *scene);
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {
 				compute_hit(false);

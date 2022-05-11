@@ -5,6 +5,7 @@
 namespace wf::cuda {
 
 	class batch_rt;
+	class scenedata;
 
 	class platform : public wf::platform {
 	public:
@@ -16,6 +17,7 @@ namespace wf::cuda {
 		void commit_scene(::scene *scene) override;
 		bool interprete(const std::string &command, std::istringstream &in) override;
 
+		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;
 	};
 

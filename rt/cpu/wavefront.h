@@ -31,6 +31,7 @@ namespace wf {
 			raydata &rd;
 			batch_rt(raydata *rd) : rd(*rd) {
 			}
+			virtual void build(cpu::scene *s) = 0;
 		};
 
 		class batch_rt_adapter : public batch_rt {
@@ -44,7 +45,7 @@ namespace wf {
 			}
 			void compute_closest_hit() override;
 			void compute_any_hit() override;
-			void build(cpu::scene *s) override;
+			virtual void build(cpu::scene *s);
 		};
 
 		struct initialize_framebuffer : public wf::initialize_framebuffer {

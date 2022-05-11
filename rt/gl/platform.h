@@ -20,6 +20,7 @@ namespace wf::gl {
 		void commit_scene(::scene *scene);
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
+		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;
 	};
 	
