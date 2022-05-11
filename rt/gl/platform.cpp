@@ -61,10 +61,14 @@ namespace wf::gl {
 	}
 		
 	void platform::commit_scene(::scene *scene) {
+		delete pf->sd;
+		pf->sd = new scenedata;
+		
+		pf->sd->upload(scene);
 		if (!rt)
 			rt = dynamic_cast<batch_rt*>(select("default"));
 		scene->compute_light_distribution(); // TODO extract as step
-		rt->build(scene);
+		rt->build(pf->sd);
 	}
 
 	bool platform::interprete(const std::string &command, std::istringstream &in) { 

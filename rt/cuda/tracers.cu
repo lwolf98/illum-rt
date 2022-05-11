@@ -12,10 +12,10 @@
 namespace wf {
 	namespace cuda {
 
-		void simple_rt::build(::scene *scene) {
+		void simple_rt::build(scenedata *scene) {
 			rd = new raydata(rc->resolution());
-			sd = new scenedata;
 
+			/* TODO
 			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> bvh_rt;
 			if (bvh_type == "sah") bvh_rt.binary_split_type = bvh_rt.sah;
 			else if (bvh_type == "sm") bvh_rt.binary_split_type = bvh_rt.sm;
@@ -24,15 +24,16 @@ namespace wf {
 			bvh_rt.build(scene);
 
 			std::vector<wf::cuda::simple_bvh_node> nodes;
-			for (const auto &n : bvh_rt.nodes) {
+			for (const auto &n : bvh_rt.bvh.nodes) {
 				wf::cuda::simple_bvh_node node(n);
 				nodes.push_back(node);
 			}
-			assert(nodes.size() == bvh_rt.nodes.size());
-			bvh_index.upload(bvh_rt.index);
+			assert(nodes.size() == bvh_rt.bvh.nodes.size());
+			bvh_index.upload(bvh_rt.bvh.index);
 			bvh_nodes.upload(nodes);
 
 			sd->upload(scene);
+			*/
 			std::cout << "upload done" << std::endl;
 		}
 
@@ -40,8 +41,8 @@ namespace wf {
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 			simple_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																						rd->rays.device_memory,
-																						sd->vertex_pos.device_memory,
-																						sd->triangles.device_memory,
+																						pf->sd->vertex_pos.device_memory,
+																						pf->sd->triangles.device_memory,
 																						bvh_index.device_memory,
 																						bvh_nodes.device_memory,
 																						rd->intersections.device_memory,
@@ -55,8 +56,8 @@ namespace wf {
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 			ifif_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																					  rd->rays.device_memory,       rd->rays.tex,
-																					  sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																					  sd->triangles.device_memory,  sd->triangles.tex,
+																					  pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																					  pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																					  bvh_index.device_memory,      bvh_index.tex,
 																					  bvh_nodes.device_memory,      bvh_nodes.tex,
 																					  rd->intersections.device_memory,
@@ -70,8 +71,8 @@ namespace wf {
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 			whilewhile_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																							rd->rays.device_memory,       rd->rays.tex,
-																							sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																							sd->triangles.device_memory,  sd->triangles.tex,
+																							pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																							pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																							pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																							pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																							rd->intersections.device_memory,
@@ -86,8 +87,8 @@ namespace wf {
 			// dynamicwhilewhile-Kernel uses 48 Registers instead of 40, so run one less warp than usual for best occupation
 			dynamicwhilewhile_trace<<<DESIRED_BLOCKS_COUNT, dim3(WARPSIZE, DESIRED_WARPS_PER_BLOCK-1, 1)>>>(rc->resolution().x * rc->resolution().y,
 																											rd->rays.device_memory,       rd->rays.tex,
-																											sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																											sd->triangles.device_memory,  sd->triangles.tex,
+																											pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																											pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																											pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																											pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																											rd->intersections.device_memory,
@@ -101,8 +102,8 @@ namespace wf {
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 			speculativewhilewhile_trace<<<NUM_BLOCKS_FOR_RESOLUTION(resolution), DESIRED_BLOCK_SIZE>>>(resolution,
 																									   rd->rays.device_memory,       rd->rays.tex,
-																									   sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																									   sd->triangles.device_memory,  sd->triangles.tex,
+																									   pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																									   pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																									   pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																									   pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																									   rd->intersections.device_memory,
@@ -115,8 +116,8 @@ namespace wf {
 		void persistentifif::compute_hit(bool anyhit) {
 			persistentifif_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x*rc->resolution().y,
 																			   rd->rays.device_memory,       rd->rays.tex,
-																			   sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																			   sd->triangles.device_memory,  sd->triangles.tex,
+																			   pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																			   pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																			   pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																			   pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																			   rd->intersections.device_memory,
@@ -129,8 +130,8 @@ namespace wf {
 		void persistentspeculativewhilewhile::compute_hit(bool anyhit) {
 			persistentspeculativewhilewhile_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x * rc->resolution().y,
 																								rd->rays.device_memory,       rd->rays.tex,
-																								sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																								sd->triangles.device_memory,  sd->triangles.tex,
+																								pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																								pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																								pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																								pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																								rd->intersections.device_memory,
@@ -143,8 +144,8 @@ namespace wf {
 		void persistentwhilewhile::compute_hit(bool anyhit) {
 			persistentwhilewhile_trace<<<DESIRED_BLOCKS_COUNT, DESIRED_BLOCK_SIZE>>>(rc->resolution().x*rc->resolution().y,
 																					 rd->rays.device_memory,       rd->rays.tex,
-																					 sd->vertex_pos.device_memory, sd->vertex_pos.tex,
-																					 sd->triangles.device_memory,  sd->triangles.tex,
+																					 pf->sd->vertex_pos.device_memory, pf->sd->vertex_pos.tex,
+																					 pf->sd->triangles.device_memory,  pf->sd->triangles.tex,
 																					 pf->rt->bvh_index.device_memory,  pf->rt->bvh_index.tex,
 																					 pf->rt->bvh_nodes.device_memory,  pf->rt->bvh_nodes.tex,
 																					 rd->intersections.device_memory,

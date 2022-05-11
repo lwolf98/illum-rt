@@ -7,8 +7,6 @@ define(link_r, int($1.box1max_r.w))
 define(tri_offset, int($1.box2min_o.w))
 define(tri_count,  int($1.box2max_c.w))
 
-uniform int N; // HACK
-
 bool intersect4(vec4 box_min, vec4 box_max, const vec4 ray_o, const vec4 ray_id, vec2 range, out float is) {
 	vec3 t1_tmp = ((box_min - ray_o) * ray_id).xyz;
 	vec3 t2_tmp = ((box_max - ray_o) * ray_id).xyz;

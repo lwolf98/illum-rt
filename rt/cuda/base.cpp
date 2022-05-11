@@ -3,6 +3,8 @@
 #include "rni.h"
 #include "tracers.h"
 
+#include "rt/cpu/bvh-ctor.h"
+
 #include <iostream>
 
 #define error(x) { cerr << "command (" << command << "): " << x << endl;  return true; }
@@ -48,10 +50,14 @@ namespace wf {
 		}
 	
 		void platform::commit_scene(::scene *scene) {
+			delete pf->sd;
+			pf->sd = new scenedata;
+			pf->sd->upload(scene);
+
 			if (!rt)
 				rt = dynamic_cast<batch_rt*>(select("default"));
 			scene->compute_light_distribution(); // TODO extract as step
-			rt->build(scene);
+			rt->build(pf->sd);
 		}
 
 		bool platform::interprete(const std::string &command, std::istringstream &in) { 
@@ -140,31 +146,26 @@ namespace wf {
 			materials.upload(mtls);
 		}
 
-		void batch_rt::build(::scene *scene)
+		void batch_rt::build(scenedata *scene)
 		{
 			rd = new raydata(rc->resolution());
-			sd = new scenedata;
 
-			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> bvh_rt;
-			if (bvh_type == "sah")     bvh_rt.binary_split_type = bvh_rt.sah;
-			else if (bvh_type == "sm") bvh_rt.binary_split_type = bvh_rt.sm;
-			else if (bvh_type == "om") bvh_rt.binary_split_type = bvh_rt.om;
-			bvh_rt.max_triangles_per_node = bvh_max_tris_per_node;
-			bvh_rt.build(scene);
+			scene->triangles.download();
+			scene->vertex_pos.download();
+			cpu_bvh_builder_cuda_scene_traits st { scene };
 
-			// bvh_index.upload(bvh_rt.index);
-			vector<uint1> new_index_list;
-			for (auto index : bvh_rt.index) {
-				uint1 new_index;
-				new_index.x = index;
-				new_index_list.push_back(new_index);
-			}
-			bvh_index.upload(new_index_list);
+			bvh_ctor<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits> *ctor = nullptr;
+			if (bvh_type == "sah")     ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node, 16);
+			else if (bvh_type == "sm") ctor = new bvh_ctor_sm <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+			else if (bvh_type == "om") ctor = new bvh_ctor_om <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+			::bvh bvh = ctor->build(true);
 
-			bvh_nodes.upload(compact_bvh_node_builder::build(bvh_rt.nodes));
+			scene->triangles.upload(scene->triangles.host_data);
+			bvh_index.upload(bvh.index);
+			bvh_nodes.upload(compact_bvh_node_builder::build(bvh.nodes));
 
-			sd->upload(scene);
-			cout << "upload done" << endl;
+			scene->triangles.free_host_data();
+			bvh_index.free_host_data();
 		}
 
 		bool batch_rt::interprete(const std::string &command, std::istringstream &in) {
@@ -205,7 +206,7 @@ namespace wf {
 			return false;
 		}
 
-		__host__ std::vector<compact_bvh_node> compact_bvh_node_builder::build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes) {
+		std::vector<compact_bvh_node> compact_bvh_node_builder::build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes) {
 			vector<wf::cuda::compact_bvh_node> nodes_new;
 			for (const auto& n : nodes) {
 				wf::cuda::compact_bvh_node node;

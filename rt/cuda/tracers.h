@@ -8,7 +8,7 @@ namespace wf {
 		
 		struct simple_rt : public batch_rt {
 			simple_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {};
-			void build(::scene *scene) override;
+			void build(scenedata *scene) override;
 			void compute_hit(bool anyhit = false);
 
 			global_memory_buffer<wf::cuda::simple_bvh_node> bvh_nodes;

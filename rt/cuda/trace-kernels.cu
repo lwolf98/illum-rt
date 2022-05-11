@@ -28,7 +28,7 @@
 // -----------------------------------------------------------------------------
 
 
-#define TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float tmin, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint1 *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, bool anyhit
+#define TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float tmin, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, bool anyhit
 __forceinline__ __device__ void ifif_traversal(TRAVERSAL_PARAMETERS);
 __forceinline__ __device__ void whilewhile_traversal(TRAVERSAL_PARAMETERS);
 __forceinline__ __device__ void speculativewhilewhile_traversal(TRAVERSAL_PARAMETERS);
@@ -484,8 +484,8 @@ __global__ void dynamicwhilewhile_trace(TRACE_PARAMETERS2) {
                 const int tri_addr2 = tri_addr1 + (-cnodes.y);
 
                 while (tri_addr1 < tri_addr2) { // "while node contains untested primitives"
-                    uint1 tri_index = FETCH_INDEX(index, tri_addr1 , uint1);
-                    uint4 tri = FETCH_TRI(triangles, tri_index.x, uint4);
+                    uint  tri_index = FETCH_INDEX(index, tri_addr1, uint);
+                    uint4 tri = FETCH_TRI(triangles, tri_index, uint4);
 
                     float4 _v1 = FETCH_VERTEX(vertex_pos, tri.x, float4);
                     float4 _v2 = FETCH_VERTEX(vertex_pos, tri.y, float4);
@@ -502,7 +502,7 @@ __global__ void dynamicwhilewhile_trace(TRACE_PARAMETERS2) {
                                             intersection.t, intersection.beta, intersection.gamma)) {
                         if (intersection.t < closest.t) {
                             closest = intersection;
-                            closest.ref = tri_index.x;
+                            closest.ref = tri_index;
                             if (anyhit) next_node = SENTINEL; // terminate ray
                         }
                     }
@@ -599,8 +599,8 @@ __forceinline__ __device__ void ifif_traversal(TRAVERSAL_PARAMETERS) {
         }
 
         if (tri_addr1 < tri_addr2) {   // "if node contains untested primitives"
-            uint1 tri_index = FETCH_INDEX(index, tri_addr1 , uint1);
-            uint4 tri = FETCH_TRI(triangles, tri_index.x, uint4);
+            uint  tri_index = FETCH_INDEX(index, tri_addr1, uint);
+            uint4 tri = FETCH_TRI(triangles, tri_index, uint4);
 
             float4 _v1 = FETCH_VERTEX(vertex_pos, tri.x, float4);
             float4 _v2 = FETCH_VERTEX(vertex_pos, tri.y, float4);
@@ -617,7 +617,7 @@ __forceinline__ __device__ void ifif_traversal(TRAVERSAL_PARAMETERS) {
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 if (intersection.t < hit.t) {
                     hit = intersection;
-                    hit.ref = tri_index.x;
+                    hit.ref = tri_index;
                     if (anyhit) return;
                 }
             }
@@ -692,8 +692,8 @@ __forceinline__ __device__ void whilewhile_traversal(TRAVERSAL_PARAMETERS) {
 
 
         while (tri_addr1 < tri_addr2) { // "while node contains untested primitives"
-            uint1 tri_index = FETCH_INDEX(index, tri_addr1 , uint1);
-            uint4 tri = FETCH_TRI(triangles, tri_index.x, uint4);
+            uint  tri_index = FETCH_INDEX(index, tri_addr1, uint);
+            uint4 tri = FETCH_TRI(triangles, tri_index, uint4);
 
             float4 _v1 = FETCH_VERTEX(vertex_pos, tri.x, float4);
             float4 _v2 = FETCH_VERTEX(vertex_pos, tri.y, float4);
@@ -710,7 +710,7 @@ __forceinline__ __device__ void whilewhile_traversal(TRAVERSAL_PARAMETERS) {
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 if (intersection.t < hit.t) {
                     hit = intersection;
-                    hit.ref = tri_index.x;
+                    hit.ref = tri_index;
                     if (anyhit) return;
                 }
             }
@@ -790,8 +790,8 @@ __forceinline__ __device__ void speculativewhilewhile_traversal(TRAVERSAL_PARAME
             const int tri_addr2 = tri_addr1 + (-cnodes.y);
 
             while (tri_addr1 < tri_addr2) { // "while node contains untested primitives"
-                const uint1 tri_index = FETCH_INDEX(index, tri_addr1 , uint1);
-                const uint4 tri = FETCH_TRI(triangles, tri_index.x, uint4);
+                const uint  tri_index = FETCH_INDEX(index, tri_addr1, uint);
+                const uint4 tri = FETCH_TRI(triangles, tri_index, uint4);
 
                 const float4 _v1 = FETCH_VERTEX(vertex_pos, tri.x, float4);
                 const float4 _v2 = FETCH_VERTEX(vertex_pos, tri.y, float4);
@@ -808,7 +808,7 @@ __forceinline__ __device__ void speculativewhilewhile_traversal(TRAVERSAL_PARAME
                                         intersection.t, intersection.beta, intersection.gamma)) {
                     if (intersection.t < hit.t) {
                         hit = intersection;
-                        hit.ref = tri_index.x;
+                        hit.ref = tri_index;
                         if (anyhit) next_node = SENTINEL; // terminate ray
                     }
                 }

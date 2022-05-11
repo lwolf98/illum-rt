@@ -139,9 +139,9 @@ namespace wf {
 
 			launch_add_hitpoint_albedo(res,
 									   pf->rt->rd->intersections.device_memory,
-									   pf->rt->sd->triangles.device_memory,
-									   pf->rt->sd->vertex_tc.device_memory,
-									   pf->rt->sd->materials.device_memory,
+									   pf->sd->triangles.device_memory,
+									   pf->sd->vertex_tc.device_memory,
+									   pf->sd->materials.device_memory,
 									   pf->rt->rd->framebuffer.device_memory);
 			warn_on_cuda_error("");
 			potentially_sync_cuda("");
