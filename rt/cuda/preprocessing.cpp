@@ -38,5 +38,11 @@ namespace wf::cuda {
 		k::rotate_scene(rot, pf->sd->vertex_pos.device_memory, pf->sd->org->vertex_pos.device_memory, nullptr, pf->sd->n_vertices);
 	}
 
+	void drop_scene_view::run() {
+		assert(pf->sd->org);
+		scenedata *view = pf->sd;
+		pf->sd = view->org;
+		delete view;
+	}
 }
 

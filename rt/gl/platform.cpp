@@ -4,6 +4,7 @@
 #include "find-hit.h"
 #include "opengl.h"
 #include "rni.h"
+#include "preprocessing.h"
 
 #include <iostream>
 
@@ -33,7 +34,7 @@ namespace wf::gl {
 
 		if (texture_support_mode == PROPER_BINDLESS)
 			if (!GLEW_ARB_bindless_texture) {
-				cerr << "You GPU or GL-version does not support ARB_bindless_texture, so textured materials will not work as expected" << endl;
+				cerr << "Your GPU or GL-version does not support ARB_bindless_texture, so textured materials will not work as expected" << endl;
 				texture_support_mode = NO_TEX;
 			}
 			else if (!GLEW_NV_gpu_shader5) {
@@ -52,6 +53,7 @@ namespace wf::gl {
 		register_wf_step_by_id(, download_framebuffer);
 		register_wf_step_by_id(, find_closest_hits);
 		register_wf_step_by_id(, find_any_hits);
+		register_wf_step_by_id(, build_accel_struct);
 
 		timer = new wf::gl::timer;
 	}
@@ -68,7 +70,9 @@ namespace wf::gl {
 		if (!rt)
 			rt = dynamic_cast<batch_rt*>(select("default"));
 		scene->compute_light_distribution(); // TODO extract as step
-		rt->build(pf->sd);
+
+		for (auto step : scene_steps)
+			step->run();
 	}
 
 	bool platform::interprete(const std::string &command, std::istringstream &in) { 

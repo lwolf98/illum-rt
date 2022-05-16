@@ -42,6 +42,7 @@ namespace wf {
 			register_wf_step_by_id(, rotate_scene);
 			register_wf_step_by_id(, rotate_scene_keep_org);
 			register_wf_step_by_id(, build_accel_struct);
+			register_wf_step_by_id(, drop_scene_view);
 
 			timer = new wf::cuda::timer;
 		}
@@ -52,7 +53,11 @@ namespace wf {
 		}
 	
 		void platform::commit_scene(::scene *scene) {
-			delete pf->sd;
+			while (pf->sd) {
+				auto *scene_or_view = pf->sd;
+				pf->sd = pf->sd->org;
+				delete scene_or_view;
+			}
 			pf->sd = new scenedata;
 			pf->sd->upload(scene);
 
