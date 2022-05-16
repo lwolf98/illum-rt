@@ -469,6 +469,21 @@ void repl(istream &infile, repl_update_checks &uc) {
 			}
 		}
 #endif
+#ifndef RTGI_SKIP_WF
+		else ifcmd("add-scene-step") {
+			string name;
+			while (isspace(in.peek())) in.get();
+			getline(in, name);
+			check_in_complete("Syntax error: step parameters are not supported, yet");
+			if (rc->platform)
+				if (auto *s = rc->platform->step(name))
+					rc->platform->append_setup_step(s);
+				else
+					error("Platform " << rc->platform->name << " does not support step " << name)
+			else
+				error("No platform selected, steps are available only in wavefront mode")
+		}
+#endif
 		else ifcmd("omp") {
 			string sub;
 			in >> sub;

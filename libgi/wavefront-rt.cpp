@@ -32,6 +32,9 @@ namespace wf {
 		if (auto it = generated_steps.find(name); it != generated_steps.end())
 			return it->second;
 
+		if (steps.count(name) == 0)
+			return nullptr;
+
 		wf::step *s = steps[name]();
 // 		r->use(selected_tracer);
 		generated_steps[name] = s;

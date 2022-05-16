@@ -1,7 +1,5 @@
 #include "base.h"
 #include "platform.h"
-#include "rni.h"
-#include "tracers.h"
 
 #include "rt/cpu/bvh-ctor.h"
 
@@ -14,72 +12,6 @@ using namespace std;
 
 namespace wf {
 	namespace cuda {
-
-		platform::platform(const std::vector<std::string> &args) : wf::platform("cuda") {
-			if (pf) std::logic_error("The " + name + " platform is already set up");
-			pf = this;
-
-			for (auto arg : args)
-				cerr << "Platform cuda does not support the argument " << arg << endl;
-			register_batch_rt("simple",, simple_rt);
-			register_batch_rt("if-if",, ifif);
-			register_batch_rt("while-while",, whilewhile);
-			register_batch_rt("persistent-if-if",, persistentifif);
-			register_batch_rt("persistent-while-while",, persistentwhilewhile);
-			register_batch_rt("speculative-while-while",, speculativewhilewhile);
-			register_batch_rt("persistent-speculative-while-while",, persistentspeculativewhilewhile);
-			register_batch_rt("dynamic-while-while",, dynamicwhilewhile);
-
-			link_tracer("while-while", "default");
-			link_tracer("while-while", "find closest hits");
-			// bvh mode?
-			register_wf_step_by_id(, initialize_framebuffer);
-			register_wf_step_by_id(, batch_cam_ray_setup);
-			//register_wf_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
-			register_wf_step_by_id(, add_hitpoint_albedo_to_fb);
-			register_wf_step_by_id(, download_framebuffer);
-			register_wf_step_by_id(, find_closest_hits);
-			register_wf_step_by_id(, find_any_hits);
-
-			timer = new wf::cuda::timer;
-		}
-
-		platform::~platform() {
-			cudaDeviceReset();
-			pf = nullptr;
-		}
-	
-		void platform::commit_scene(::scene *scene) {
-			delete pf->sd;
-			pf->sd = new scenedata;
-			pf->sd->upload(scene);
-
-			if (!rt)
-				rt = dynamic_cast<batch_rt*>(select("default"));
-			scene->compute_light_distribution(); // TODO extract as step
-			rt->build(pf->sd);
-		}
-
-		bool platform::interprete(const std::string &command, std::istringstream &in) { 
-			if (command == "raytracer") {
-				string variant;
-				in >> variant;
-				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
-				if      (variant == "simple")                             rt = dynamic_cast<batch_rt*>(select("simple"));
-				else if (variant == "if-if")                              rt = dynamic_cast<batch_rt*>(select("if-if"));
-				else if (variant == "while-while")                        rt = dynamic_cast<batch_rt*>(select("while-while"));
-				else if (variant == "persistent-if-if")                   rt = dynamic_cast<batch_rt*>(select("persistent-if-if"));
-				else if (variant == "persistent-while-while")             rt = dynamic_cast<batch_rt*>(select("persistent-while-while"));
-				else if (variant == "speculative-while-while")            rt = dynamic_cast<batch_rt*>(select("speculative-while-while"));
-				else if (variant == "persistent-speculative-while-while") rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while"));
-				else if (variant == "dynamic-while-while")                rt = dynamic_cast<batch_rt*>(select("dynamic-while-while"));
-				else error("There is no such cuda ray tracer variant");
-				return true;
-			}
-			return false;
-		}
-		
-		platform *pf = nullptr;
 
 		void timer::start(const std::string &name) {
 			cudaEvent_t start, stop;
@@ -119,11 +51,12 @@ namespace wf {
 				scene_tris.push_back(uint4{t.a, t.b, t.c, t.material_id});
 			triangles.upload(scene_tris.size(), reinterpret_cast<uint4*>(scene_tris.data()));
 
-			int num_vertices = scene->vertices.size();
-			vector<float4> tmp4(num_vertices);
-			vector<float2> tmp2(num_vertices);
+			n_vertices = scene->vertices.size();
+			n_triangles = scene->triangles.size();
+			vector<float4> tmp4(n_vertices);
+			vector<float2> tmp2(n_vertices);
 
-			for (int i = 0; i < num_vertices; ++i) {
+			for (int i = 0; i < n_vertices; ++i) {
 				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
 				tmp2[i] = float2{ scene->vertices[i].tc.x, scene->vertices[i].tc.y };
 			}
@@ -160,7 +93,11 @@ namespace wf {
 			else if (bvh_type == "om") ctor = new bvh_ctor_om <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
 			::bvh bvh = ctor->build(true);
 
-			scene->triangles.upload(scene->triangles.host_data);
+			// HACK: due to "scene views" the current scenedata* might not own the vertex data
+			scenedata *org_scene = scene;
+			while (org_scene->org) org_scene = org_scene->org;
+			org_scene->triangles.upload(scene->triangles.host_data);
+
 			bvh_index.upload(bvh.index);
 			bvh_nodes.upload(compact_bvh_node_builder::build(bvh.nodes));
 

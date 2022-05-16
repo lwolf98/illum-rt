@@ -41,7 +41,6 @@ namespace wf {
 	#define register_wf_step_by_id(C,X) steps[X::id] = [C]() -> wf::step* { return new X; }
 	class platform {
 	protected:
-		std::string name;
 		std::map<std::string, std::function<batch_ray_tracer*()>> tracers;
 		std::map<std::string, std::function<wf::step*()>> steps;
 
@@ -53,7 +52,10 @@ namespace wf {
 
 		void link_tracer(const std::string &existing, const std::string &linkname);
 
+		std::vector<wf::step*> scene_steps;
+
 	public:
+		std::string name;
 		platform(const std::string &name) : name(name) {}
 		virtual ~platform();
 
@@ -65,6 +67,10 @@ namespace wf {
 		wf::step* step(const std::string &name);
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
+		
+		void append_setup_step(wf::step *s) {
+			scene_steps.push_back(s);
+		}
 	};
 
 	extern std::vector<platform*> platforms;
@@ -126,6 +132,9 @@ namespace wf {
 			time_this_wf_step;
 			rt->compute_any_hit();
 		}
+	};
+	struct build_accel_struct : public step {
+		static constexpr char id[] = "build accel struct";
 	};
 	
 }

@@ -94,18 +94,47 @@ namespace wf {
 			}
 		};
 
+		enum buffer_copy_mode_shallow { shallow_non_owning_copy };
+		enum buffer_copy_mode_duplicate { mem_duplicating_copy_only }; // does not copy contents, but allocates new storage
+
 		template<typename T> class global_memory_buffer : public buffer {
+		protected:
+			// those are protected/deleted to ensure buffers are explicitly duplicated or explicitly aliased
+			global_memory_buffer(const global_memory_buffer &) = default;
+			global_memory_buffer& operator=(const global_memory_buffer &) = delete;
 		public:
 			std::vector<T> host_data;
 			T *device_memory = nullptr;
+			bool owns_mem = true;
 
 			global_memory_buffer(std::string name, unsigned size)
 			: buffer(name, 0) {
 				if (size > 0) resize(size);
 			}
 
+			global_memory_buffer(global_memory_buffer &org, buffer_copy_mode_shallow)
+			: global_memory_buffer(org) {
+				owns_mem = false;
+			}
+
+			global_memory_buffer(const global_memory_buffer &org, buffer_copy_mode_duplicate)
+			: global_memory_buffer(org.name, org.size) {
+			}
+
+			global_memory_buffer(global_memory_buffer &&tmp) : buffer(std::move(tmp)), device_memory(tmp.device_memory), owns_mem(tmp.owns_mem), host_data(std::move(tmp.host_data)) {
+				tmp.device_memory = nullptr;
+			}
+			global_memory_buffer& operator=(global_memory_buffer &&tmp) {
+				name = std::move(tmp.name);
+				size = tmp.size;
+				device_memory = tmp.device_memory; tmp.device_memory = nullptr;
+				owns_mem = tmp.owns_mem;
+				host_data = std::move(tmp.host_data);
+				return *this;
+			}
+
 			~global_memory_buffer() {
-				if (device_memory) {
+				if (device_memory && owns_mem) {
 					CHECK_CUDA_ERROR(cudaFree(device_memory),name);
 					CHECK_CUDA_ERROR(cudaDeviceSynchronize(),name);
 				}
@@ -114,6 +143,7 @@ namespace wf {
 			}
 
 			void resize(int size) {
+				assert(owns_mem);
 				if (this->size == size) return;
 				if (device_memory) {
 					CHECK_CUDA_ERROR(cudaFree(device_memory), name);
@@ -147,6 +177,7 @@ namespace wf {
 				time_this_block(download_membuffer);
 				if (host_data.size() != size)
 					host_data.resize(size);
+
 				CHECK_CUDA_ERROR(cudaMemcpy(host_data.data(), device_memory, size*sizeof(T), cudaMemcpyDeviceToHost), name);
 				CHECK_CUDA_ERROR(cudaDeviceSynchronize(), name);
 			}
@@ -155,7 +186,11 @@ namespace wf {
 			}
 		};
 
-		template<typename T> struct texture_buffer : public global_memory_buffer<T> {
+		template<typename T> class texture_buffer : public global_memory_buffer<T> {
+		protected:
+			texture_buffer(const texture_buffer &) = default;
+			texture_buffer& operator=(const texture_buffer &) = delete;
+		public:
 			cudaTextureObject_t tex = 0;
 
 			texture_buffer(std::string name, unsigned size)
@@ -163,13 +198,31 @@ namespace wf {
 				if (size > 0)
 					update_texture();
 			}
+			
+			texture_buffer(texture_buffer &org, buffer_copy_mode_shallow) : texture_buffer(org) {
+				this->owns_mem = false;
+			}
+			
+			texture_buffer(const texture_buffer &org, buffer_copy_mode_duplicate) : texture_buffer(org.name, org.size) {
+			}
+
+			texture_buffer(texture_buffer &&tmp) : global_memory_buffer<T>(tmp), tex(tmp.tex) {
+				tmp.tex = 0;
+			}
+
+			texture_buffer& operator=(texture_buffer &&tmp) {
+				global_memory_buffer<T>::operator=(std::move(tmp));
+				tex = tmp.tex; tmp.tex = 0;
+				return *this;
+			}
 
 			~texture_buffer() {
-				if (tex != 0)
+				if (tex != 0 && !this->owns_mem)
 					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex),this->name);
 			}
 
 			void update_texture() {
+				assert(this->owns_mem);
 				if (tex>0)
 					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex),this->name);
 				
@@ -244,6 +297,7 @@ namespace wf {
 
 				 CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr), name);
 			}
+			// TODO cleanup missing
 		};
 
 		struct raydata : public wf::raydata {
@@ -277,6 +331,7 @@ namespace wf {
 		};
 
 		struct scenedata {
+			int n_vertices = 0, n_triangles = 0;
 			texture_buffer<float4> vertex_pos;
 			texture_buffer<float2> vertex_tc;
 			texture_buffer<uint4> triangles;
@@ -287,7 +342,18 @@ namespace wf {
 						  triangles("triangles", 0),
 						  materials("materials", 0)	{
 			};
+			scenedata(const scenedata &) = delete;
+			scenedata(scenedata *org, buffer_copy_mode_shallow m) : vertex_pos(org->vertex_pos, m),
+			                                                        vertex_tc(org->vertex_tc, m),
+																	triangles(org->triangles, m),
+																	materials(org->materials, m),
+																	// tex_images not copied
+																	n_vertices(org->n_vertices),
+																	n_triangles(org->n_triangles) {
+				this->org = org;
+			}
 			void upload(scene *scene);
+			scenedata *org = nullptr;
 		};
 
 		struct cpu_bvh_builder_cuda_scene_traits {

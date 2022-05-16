@@ -6,8 +6,8 @@ up 0 1 0
 #platform cpu
 #raytracer bbvh-esc
 #raytracer embree
-platform opengl #glfw
-#platform cuda
+#platform opengl #glfw
+platform cuda
 
 sppx 4
 #sppx 1
@@ -62,6 +62,9 @@ material emissive 1.9 18.3 2.15
         
 #material select staklo_zuto
 #material emissive 37.5 32.2 0.3
+
+add-scene-step rotate scene keeping original data
+add-scene-step build accel struct
 
 commit
 
