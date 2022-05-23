@@ -5,6 +5,7 @@
 #include "rt/cpu/bvh-ctor.h"
 
 #include "bindings.h"
+#include "platform.h"
 
 #include <iostream>
 #include <GL/glew.h>
@@ -31,7 +32,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_closest_shader.bind();
 			seq_closest_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_closest_shader.uniform("N", rc->scene.triangles.size());
+			seq_closest_shader.uniform("N", pf->sd->triangles.size);
 			seq_closest_shader.dispatch(res.x, res.y);
 			seq_closest_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -41,7 +42,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_any_shader.bind();
 			seq_any_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_any_shader.uniform("N", rc->scene.triangles.size());
+			seq_any_shader.uniform("N", pf->sd->triangles.size);
 			seq_any_shader.dispatch(res.x, res.y);
 			seq_any_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -77,9 +78,6 @@ namespace wf {
 		void bvh::build(scenedata *scene) {
 			batch_rt::build(scene);
 
-// 			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> backend;
-// 			backend.build(scene);
-			
 			cpu_bvh_builder_opengl_scene_traits st { scene };
 			bvh_ctor<bbvh_triangle_layout::indexed, cpu_bvh_builder_opengl_scene_traits> *ctor = nullptr;
 			ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_opengl_scene_traits>(st, 4, 16);

@@ -12,6 +12,8 @@ namespace wf::gl {
 	 * 	for a very simple use case see ../cpu/, and consider this wavefront implementation a (at least comparatively)
 	 * 	approachable implementation of a more complex use case.
 	 *
+	 *  Does not support scene views. Implementing them can be done similarly to wf::cuda::global_memory_buffer and
+	 *  wf::cuda::scenedata.
 	 */
 	class platform : public wf::platform {
 	public:

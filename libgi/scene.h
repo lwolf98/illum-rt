@@ -115,6 +115,7 @@ struct skylight : public light {
 
 #endif
 
+
 /*  \brief The scene culminates all the geometric information that we use.
  *
  *  This naturally includes the surface geometry to be displayed, but also light sources and cameras.

@@ -1,5 +1,6 @@
 #include "wavefront.h"
 #include "platform.h"
+#include "preprocessing.h"
 #include "libgi/timer.h"
 
 #include "seq.h"
@@ -78,7 +79,7 @@ namespace wf {
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
-					ray view_ray = cam_ray(pf->scene->camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
+					ray view_ray = cam_ray(pf->sd->camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 					pf->rt->rd.rays[y*res.x+x] = view_ray;
 				}
 		}
@@ -96,7 +97,7 @@ namespace wf {
 					for (int sample = 0; sample < rc->sppx; ++sample) {
 						triangle_intersection closest = pf->rt->rd.intersections[y*res.x+x];
 						if (closest.valid()) {
-							diff_geom dg(closest, *pf->scene);
+							diff_geom dg(closest, *pf->sd);
 							radiance += dg.albedo();
 						}
 					}
@@ -152,6 +153,7 @@ namespace wf {
 			register_wf_step_by_id(, download_framebuffer);
 			register_wf_step_by_id(, find_closest_hits);
 			register_wf_step_by_id(, find_any_hits);
+			register_wf_step_by_id(, build_accel_struct);
 
 			timer = new wf::cpu::timer;
 		}
@@ -163,9 +165,10 @@ namespace wf {
 		void platform::commit_scene(cpu::scene *scene) {
 			if (!rt)
 				rt = dynamic_cast<batch_rt*>(select("default"));
-			this->scene = scene;
+			sd = scene;
 			scene->compute_light_distribution(); // TODO extract as step
-			rt->build(scene);
+			for (auto step : scene_steps)
+				step->run();
 		}
 	
 		bool platform::interprete(const std::string &command, std::istringstream &in) { 
