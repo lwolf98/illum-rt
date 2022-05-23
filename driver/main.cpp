@@ -47,23 +47,6 @@ void run(gi_algorithm *algo) {
 	rc->framebuffer.png().write(cmdline.outfile);
 }
 
-void rt_bench() {
-	//create Buffer for rays and intersections with the size of the camera resolution
-	buffer<triangle_intersection> triangle_intersections(rc->scene.camera.w, rc->scene.camera.h);
-	buffer<ray> rays(rc->scene.camera.w, rc->scene.camera.h);
-	
-	//init Buffer with Camera rays
-	rays.for_each([&](unsigned x, unsigned y) {
-		rays(x, y) = cam_ray(rc->scene.camera, x, y);
-	});
-	
-	//calculate closest triangle intersection for each ray
-	raii_timer bench_timer("rt_bench", stats_timer);
-	rays.for_each([&](unsigned x, unsigned y) {
-		triangle_intersections(x, y) = rc->scene.single_rt->closest_hit(rays(x, y));
-	});
-}
-
 int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);

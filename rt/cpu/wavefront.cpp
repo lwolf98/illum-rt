@@ -1,5 +1,6 @@
 #include "wavefront.h"
 #include "platform.h"
+#include "preprocessing.h"
 #include "libgi/timer.h"
 
 #include "seq.h"
@@ -57,7 +58,7 @@ namespace wf {
 					rd.intersections[y*res.x+x] = underlying_rt->any_hit(rd.rays[y*res.x+x]);
 		}
 
-		void batch_rt_adapter::build(::scene *s) {
+		void batch_rt_adapter::build(cpu::scene *s) {
 			underlying_rt->build(s);
 		}
 
@@ -75,13 +76,11 @@ namespace wf {
 		void batch_cam_ray_setup_cpu::run() {
 			time_this_wf_step;
 			auto res = rc->resolution();
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
-					ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-					rt->rd.rays[y*res.x+x] = view_ray;
+					ray view_ray = cam_ray(pf->sd->camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
+					pf->rt->rd.rays[y*res.x+x] = view_ray;
 				}
 		}
 			
@@ -91,16 +90,14 @@ namespace wf {
 			time_this_wf_step;
 			auto res = rc->resolution();
 			float one_over_samples = 1.0f/rc->sppx;
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					vec3 radiance(0);
 					for (int sample = 0; sample < rc->sppx; ++sample) {
-						triangle_intersection closest = rt->rd.intersections[y*res.x+x];
+						triangle_intersection closest = pf->rt->rd.intersections[y*res.x+x];
 						if (closest.valid()) {
-							diff_geom dg(closest, rc->scene);
+							diff_geom dg(closest, *pf->sd);
 							radiance += dg.albedo();
 						}
 					}
@@ -118,9 +115,18 @@ namespace wf {
 					rc->framebuffer.color(x,y) /= rc->framebuffer.color(x,y).w;
 		}
 
+		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		}
+
+		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
+		}
+
 		// THE PLATFORM
 
 		platform::platform(const std::vector<std::string> &args) : wf::platform("cpu") {
+			if (pf) std::logic_error("The " + name + " platform is already set up");
+			pf = this;
+
 			for (auto arg : args)
 				std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
 			cpu::raydata *rd = new cpu::raydata(rc->resolution());
@@ -141,12 +147,28 @@ namespace wf {
 #endif
 
 			// bvh mode?
-			register_rni_step_by_id(, initialize_framebuffer);
-			register_rni_step_by_id(, batch_cam_ray_setup_cpu);
-			register_rni_step_by_id(, add_hitpoint_albedo);
-			register_rni_step_by_id(, download_framebuffer);
+			register_wf_step_by_id(, initialize_framebuffer);
+			register_wf_step_by_id(, batch_cam_ray_setup_cpu);
+			register_wf_step_by_id(, add_hitpoint_albedo);
+			register_wf_step_by_id(, download_framebuffer);
+			register_wf_step_by_id(, find_closest_hits);
+			register_wf_step_by_id(, find_any_hits);
+			register_wf_step_by_id(, build_accel_struct);
 
 			timer = new wf::cpu::timer;
+		}
+		
+		platform::~platform() {
+			pf = nullptr;
+		}
+
+		void platform::commit_scene(cpu::scene *scene) {
+			if (!rt)
+				rt = dynamic_cast<batch_rt*>(select("default"));
+			sd = scene;
+			scene->compute_light_distribution(); // TODO extract as step
+			for (auto step : scene_steps)
+				step->run();
 		}
 	
 		bool platform::interprete(const std::string &command, std::istringstream &in) { 
@@ -154,11 +176,12 @@ namespace wf {
 				std::string variant;
 				in >> variant;
 				check_in("Syntax error, requires opengl ray tracer variant name");
-				rc->scene.use(select(variant));
+				rt = dynamic_cast<batch_rt*>(select(variant));
 				return true;
 			}
 			return false;
 		}
 
+		platform *pf = nullptr;
 	}
 }

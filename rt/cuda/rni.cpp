@@ -1,5 +1,7 @@
 #include "rni.h"
 
+#include "platform.h"
+
 #include "libgi/timer.h"
 
 #include <curand_kernel.h>
@@ -39,12 +41,10 @@ namespace wf {
 
 		void batch_cam_ray_setup::run() {
 			time_this_wf_step;
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
 
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 
-			if (rt->use_incoherence) {
+			if (pf->rt->use_incoherence) {
 				// find max/min scene extent (scene size)
 				float3 scene_max = {-FLT_MAX, -FLT_MAX, -FLT_MAX};
 				float3 scene_min = {FLT_MAX, FLT_MAX, FLT_MAX};
@@ -88,9 +88,9 @@ namespace wf {
 
 				launch_setup_ray_incoherent(int2{blocks,threads},
 											resolution,
-											rt->rd->rays.device_memory,
+											pf->rt->rd->rays.device_memory,
 											sphere1, sphere2,
-											rt->incoherence_r1, rt->incoherence_r2,
+											pf->rt->incoherence_r1, pf->rt->incoherence_r2,
 											r_max,
 											rand_state.device_memory);
 				warn_on_cuda_error("");
@@ -105,7 +105,7 @@ namespace wf {
 				launch_setup_rays(U, V, cam.near_w, cam.near_h, resolution,
 								  float3{cam.pos.x, cam.pos.y, cam.pos.z},
 								  float3{cam.dir.x, cam.dir.y, cam.dir.z},
-								  random_numbers, rt->rd->rays.device_memory);
+								  random_numbers, pf->rt->rd->rays.device_memory);
 				warn_on_cuda_error("");
 				potentially_sync_cuda("");
 			}
@@ -115,9 +115,8 @@ namespace wf {
 			time_this_block(store_hitpoint_albedo_cpu);
 			auto res = rc->resolution();
 
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			rt->rd->intersections.download();
-			::triangle_intersection *is = (::triangle_intersection*)rt->rd->intersections.host_data.data();
+			pf->rt->rd->intersections.download();
+			::triangle_intersection *is = (::triangle_intersection*)pf->rt->rd->intersections.host_data.data();
 
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -137,14 +136,13 @@ namespace wf {
 		void add_hitpoint_albedo_to_fb::run() {
 			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
 			launch_add_hitpoint_albedo(res,
-									   rt->rd->intersections.device_memory,
-									   rt->sd->triangles.device_memory,
-									   rt->sd->vertex_tc.device_memory,
-									   rt->sd->materials.device_memory,
-									   rt->rd->framebuffer.device_memory);
+									   pf->rt->rd->intersections.device_memory,
+									   pf->sd->triangles.device_memory,
+									   pf->sd->vertex_tc.device_memory,
+									   pf->sd->materials.device_memory,
+									   pf->rt->rd->framebuffer.device_memory);
 			warn_on_cuda_error("");
 			potentially_sync_cuda("");
 		}
@@ -152,17 +150,15 @@ namespace wf {
 		void initialize_framebuffer::run() {
 			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
 
-			launch_initialize_framebuffer_data(res, rt->rd->framebuffer.device_memory);
+			launch_initialize_framebuffer_data(res, pf->rt->rd->framebuffer.device_memory);
 		}
 			
 		void download_framebuffer::run() {
 			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			rt->rd->framebuffer.download();
-			float4 *fb = rt->rd->framebuffer.host_data.data();
+			pf->rt->rd->framebuffer.download();
+			float4 *fb = pf->rt->rd->framebuffer.host_data.data();
 
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -171,6 +167,13 @@ namespace wf {
 					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w) / c.w;
 				}
 		}
+		
+		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		}
+
+		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
+		}
+
 		
 	}
 }

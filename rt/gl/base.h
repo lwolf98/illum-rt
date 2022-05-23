@@ -175,41 +175,11 @@ namespace wf {
 		 *
 		 */
 		struct batch_rt : public batch_ray_tracer {
-			gl::scenedata *sd = nullptr;
 			gl::raydata *rd = nullptr;
-			void build(::scene *scene) {
+			virtual void build(scenedata *scene) {
 				rd = new raydata(rc->resolution());
-				// make this a simple c'tor?
-				sd = new scenedata;
-				sd->upload(scene);
 			}
 		};
 
-		
-		/*! \brief Computation nodes for managing Rays and Intersections, aka computing Bounces
-		 *
-		 */
-		template<typename T> struct rni : public T {
-			batch_rt *rt;	// most common base class possible to have the proper ray and scene layout
-			                // might have to be moved to derived classes
-			void use(wf::batch_ray_tracer *that) override { rt = dynamic_cast<gl::batch_rt*>(that); }
-		};
-
-
-		/*! \brief OpenGL Platform for Ray Tracing
-		 * 	
-		 * 	A non-optimized GL implementation of RTGI's interface, primarily as proof of concept and documentation for
-		 * 	more advanced GPU (or CPU/SIMD) driven implementations.
-		 *
-		 * 	Open issues:
-		 * 	- Headless GL
-		 * 	- Structs for triangle intersections
-		 * 	- Materials on the GPU
-		 *
-		 */
-// 		class platform : public wf::platform {
-// 		public:
-// 			platform(const std::vector<std::string> &args);
-// 		};
 	}
 }

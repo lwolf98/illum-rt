@@ -1,7 +1,7 @@
 #include "base.h"
 #include "platform.h"
-#include "rni.h"
-#include "tracers.h"
+
+#include "rt/cpu/bvh-ctor.h"
 
 #include <iostream>
 
@@ -13,53 +13,6 @@ using namespace std;
 namespace wf {
 	namespace cuda {
 
-		platform::platform(const std::vector<std::string> &args) : wf::platform("cuda") {
-			for (auto arg : args)
-				cerr << "Platform opengl does not support the argument " << arg << endl;
-			register_batch_rt("simple",, simple_rt);
-			register_batch_rt("if-if",, ifif);
-			register_batch_rt("while-while",, whilewhile);
-			register_batch_rt("persistent-if-if",, persistentifif);
-			register_batch_rt("persistent-while-while",, persistentwhilewhile);
-			register_batch_rt("speculative-while-while",, speculativewhilewhile);
-			register_batch_rt("persistent-speculative-while-while",, persistentspeculativewhilewhile);
-			register_batch_rt("dynamic-while-while",, dynamicwhilewhile);
-
-			link_tracer("while-while", "default");
-			link_tracer("while-while", "find closest hits");
-			// bvh mode?
-			register_rni_step_by_id(, initialize_framebuffer);
-			register_rni_step_by_id(, batch_cam_ray_setup);
-			//register_rni_step("store hitpoint albedo",, store_hitpoint_albedo_cpu);
-			register_rni_step_by_id(, add_hitpoint_albedo_to_fb);
-			register_rni_step_by_id(, download_framebuffer);
-
-			timer = new wf::cuda::timer;
-		}
-
-		platform::~platform() {
-			cudaDeviceReset();
-		}
-	
-		bool platform::interprete(const std::string &command, std::istringstream &in) { 
-			if (command == "raytracer") {
-				string variant;
-				in >> variant;
-				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
-				if      (variant == "simple")                             rc->scene.use(select("simple"));
-				else if (variant == "if-if")                              rc->scene.use(select("if-if"));
-				else if (variant == "while-while")                        rc->scene.use(select("while-while"));
-				else if (variant == "persistent-if-if")                   rc->scene.use(select("persistent-if-if"));
-				else if (variant == "persistent-while-while")             rc->scene.use(select("persistent-while-while"));
-				else if (variant == "speculative-while-while")            rc->scene.use(select("speculative-while-while"));
-				else if (variant == "persistent-speculative-while-while") rc->scene.use(select("persistent-speculative-while-while"));
-				else if (variant == "dynamic-while-while")                rc->scene.use(select("dynamic-while-while"));
-				else error("There is no such cuda ray tracer variant");
-				return true;
-			}
-			return false;
-		}
-		
 		void timer::start(const std::string &name) {
 			cudaEvent_t start, stop;
 			if (events.find(name) == events.end()) {
@@ -98,11 +51,12 @@ namespace wf {
 				scene_tris.push_back(uint4{t.a, t.b, t.c, t.material_id});
 			triangles.upload(scene_tris.size(), reinterpret_cast<uint4*>(scene_tris.data()));
 
-			int num_vertices = scene->vertices.size();
-			vector<float4> tmp4(num_vertices);
-			vector<float2> tmp2(num_vertices);
+			n_vertices = scene->vertices.size();
+			n_triangles = scene->triangles.size();
+			vector<float4> tmp4(n_vertices);
+			vector<float2> tmp2(n_vertices);
 
-			for (int i = 0; i < num_vertices; ++i) {
+			for (int i = 0; i < n_vertices; ++i) {
 				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
 				tmp2[i] = float2{ scene->vertices[i].tc.x, scene->vertices[i].tc.y };
 			}
@@ -125,33 +79,30 @@ namespace wf {
 			materials.upload(mtls);
 		}
 
-		void batch_rt::build(::scene *scene)
+		void batch_rt::build(scenedata *scene)
 		{
 			rd = new raydata(rc->resolution());
-			sd = new scenedata;
 
-			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> bvh_rt;
-			if (bvh_type == "sah")     bvh_rt.binary_split_type = bvh_rt.sah;
-			else if (bvh_type == "sm") bvh_rt.binary_split_type = bvh_rt.sm;
-			else if (bvh_type == "om") bvh_rt.binary_split_type = bvh_rt.om;
-			bvh_rt.max_triangles_per_node = bvh_max_tris_per_node;
-			bvh_rt.build(scene);
+			scene->triangles.download();
+			scene->vertex_pos.download();
+			cpu_bvh_builder_cuda_scene_traits st { scene };
 
-			// bvh_index.upload(bvh_rt.index);
-			vector<uint1> new_index_list;
-			for (auto index : bvh_rt.index) {
-				uint1 new_index;
-				new_index.x = index;
-				new_index_list.push_back(new_index);
-			}
-			bvh_index.upload(new_index_list);
+			bvh_ctor<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits> *ctor = nullptr;
+			if (bvh_type == "sah")     ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node, 16);
+			else if (bvh_type == "sm") ctor = new bvh_ctor_sm <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+			else if (bvh_type == "om") ctor = new bvh_ctor_om <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+			::bvh bvh = ctor->build(true);
 
-			bvh_nodes.upload(compact_bvh_node_builder::build(bvh_rt.nodes));
+			// HACK: due to "scene views" the current scenedata* might not own the vertex data
+			scenedata *org_scene = scene;
+			while (org_scene->org) org_scene = org_scene->org;
+			org_scene->triangles.upload(scene->triangles.host_data);
 
-			auto *rt = dynamic_cast<batch_rt*>(rc->scene.batch_rt);
-			assert(rt != nullptr);
-			sd->upload(scene);
-			cout << "upload done" << endl;
+			bvh_index.upload(bvh.index);
+			bvh_nodes.upload(compact_bvh_node_builder::build(bvh.nodes));
+
+			scene->triangles.free_host_data();
+			bvh_index.free_host_data();
 		}
 
 		bool batch_rt::interprete(const std::string &command, std::istringstream &in) {
@@ -192,7 +143,7 @@ namespace wf {
 			return false;
 		}
 
-		__host__ std::vector<compact_bvh_node> compact_bvh_node_builder::build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes) {
+		std::vector<compact_bvh_node> compact_bvh_node_builder::build(std::vector<binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>::node> nodes) {
 			vector<wf::cuda::compact_bvh_node> nodes_new;
 			for (const auto& n : nodes) {
 				wf::cuda::compact_bvh_node node;

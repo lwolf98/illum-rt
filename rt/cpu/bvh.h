@@ -9,6 +9,13 @@
 
 // #define COUNT_HITS
 
+#ifndef RTGI_SKIP_WF
+/*! Here we are inconsistent and use the ::scene instead of wf::cpu::scene
+ *  because this is code that is also run for the individual ray tracer.
+ *
+ *  TODO: will this cause problems?
+ */
+#endif
 struct naive_bvh : public individual_ray_tracer {
 	struct node {
 		aabb box;
@@ -42,34 +49,31 @@ struct bbvh_node {
 };
 static_assert(sizeof(bbvh_node) == 2*2*3*4+2*4);
 
+struct bvh {
+	typedef bbvh_node node;
+	uint32_t root;
+	std::vector<node> nodes;
+	std::vector<uint32_t> index;  // can be empty if we don't use indexing
+};
 
 enum class bbvh_triangle_layout { flat, indexed };
 enum class bbvh_esc_mode { off, on };
+
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
 struct binary_bvh_tracer : public individual_ray_tracer {
 	typedef bbvh_node node;
-	struct prim : public aabb {
-		prim() : aabb() {}
-		prim(const aabb &box, uint32_t tri_index) : aabb(box), tri_index(tri_index) {}
-		vec3 center() const { return (min+max)*0.5f; }
-		uint32_t tri_index;
-	};
 
 	template<bool cond, typename T>
     using variant = typename std::enable_if<cond, T>::type;
 
-	std::vector<node> nodes;
-	std::vector<uint32_t> index;  // can be empty if we don't use indexing
-	
+	::bvh bvh;
 	enum binary_split_type {sm, om, sah};
 	binary_split_type binary_split_type = om;
-	
-	int max_triangles_per_node = 1;
 
+	// config options
+	int max_triangles_per_node = 1;
 	int number_of_planes = 1;
-	uint32_t root;
 	bool should_export = false;
-	uint32_t max_depth;
 	
 	binary_bvh_tracer();
 	void build(::scene *scene) override;
@@ -78,21 +82,8 @@ struct binary_bvh_tracer : public individual_ray_tracer {
 	bool interprete(const std::string &command, std::istringstream &in) override;
 
 private:
-	void early_split_clipping(std::vector<prim> &prims, std::vector<uint32_t> &index);
-	uint32_t subdivide_om(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
-	uint32_t subdivide_sm(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
-	uint32_t subdivide_sah(std::vector<prim> &prims, std::vector<uint32_t> &index, uint32_t start, uint32_t end);
 	void print_node_stats();
-	void export_bvh(uint32_t node, uint32_t *id, uint32_t depth, std::string *filename);
-
-	// Finalize BVH by (potentiall) replacing the scene triangles and (in any case) making a flat list
-	template<bbvh_triangle_layout LO=tr_layout>
-	variant<LO==bbvh_triangle_layout::flat,void>
-		commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index);
-
-	template<bbvh_triangle_layout LO=tr_layout> 
-	variant<LO!=bbvh_triangle_layout::flat,void>
-		commit_shuffled_triangles(std::vector<prim> &prims, std::vector<uint32_t> &index);
+	void export_bvh(uint32_t node, uint32_t *id, uint32_t depth, const std::string &filename, int max_depth);
 
 	// Get triangle index (if an index is used)
 	template<bbvh_triangle_layout LO=tr_layout> 
@@ -104,7 +95,7 @@ private:
 	template<bbvh_triangle_layout LO=tr_layout> 
 	variant<LO!=bbvh_triangle_layout::flat, int>
 		triangle_index(int i) {
-			return index[i];
+			return bvh.index[i];
 		}
 };
 

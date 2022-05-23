@@ -27,7 +27,7 @@ namespace wf {
 			ssbo<glsl_bvh_node> nodes;
 			ssbo<uint32_t> indices;
 			bvh();
-			void build(::scene *scene) override;
+			void build(scenedata *scene) override;
 			void compute_closest_hit() override;
 			void compute_any_hit() override;
 // 			void build(::scene *scene) override {}

@@ -5,8 +5,8 @@ namespace wf {
 		// remove the links (aka duplicate pointers)
 		for (auto x : tracer_links)
 			tracers.erase(tracers.find(x));
-		for (auto x : rni_links)
-			rnis.erase(rnis.find(x));
+		for (auto x : step_links)
+			steps.erase(steps.find(x));
 // 		delete raydata;
 		delete timer;
 	}
@@ -25,19 +25,20 @@ namespace wf {
 			selected_tracer = tracers[name]();
 			generated_tracers[name] = selected_tracer;
 		}
-		for (auto [_,r] : generated_rnis)
-			r->use(selected_tracer);
 		return selected_tracer;
 	}
 
-	ray_and_intersection_processing* platform::rni(const std::string &name) {
-		if (auto it = generated_rnis.find(name); it != generated_rnis.end())
+	wf::step* platform::step(const std::string &name) {
+		if (auto it = generated_steps.find(name); it != generated_steps.end())
 			return it->second;
 
-		ray_and_intersection_processing *r = rnis[name]();
-		r->use(selected_tracer);
-		generated_rnis[name] = r;
-		return r;
+		if (steps.count(name) == 0)
+			return nullptr;
+
+		wf::step *s = steps[name]();
+// 		r->use(selected_tracer);
+		generated_steps[name] = s;
+		return s;
 	}
 
 	std::vector<platform*> platforms;

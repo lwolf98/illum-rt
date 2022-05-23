@@ -98,17 +98,13 @@ void recursive_algorithm::compute_samples() {
 }
 
 void recursive_algorithm::prepare_frame() {
-	assert(rc->scene.single_rt != nullptr);
+	gi_algorithm::prepare_frame();
+	assert(rc->scene.rt != nullptr);
 }
-
-
-
-/*  Implementaiton for "one bounce at a time" traversal
- *
- *
- */
 
 void wavefront_algorithm::prepare_frame() {
-	assert(rc->scene.batch_rt != nullptr);
+	gi_algorithm::prepare_frame();
 }
+
+
 

@@ -40,9 +40,15 @@ protected:
 
 public:
 	typedef std::vector<pair<vec3, vec2>> sample_result;
+	
+	bool data_reset_required = true;
 
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
-	virtual void prepare_frame() {}
+	virtual void prepare_data() {}
+	virtual void prepare_frame() {
+		if (data_reset_required)
+			data_reset_required = false, prepare_data();
+	}
 	virtual void finalize_frame() {}
 	virtual void compute_samples() = 0;
 	virtual ~gi_algorithm(){}

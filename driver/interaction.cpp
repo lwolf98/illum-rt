@@ -70,20 +70,6 @@ const char *prompt = "rtgi > ";
 void run(gi_algorithm *algo);
 void rt_bench();
 
-static bool align_rt_and_algo(scene &scene, gi_algorithm *algo, repl_update_checks &uc, const std::string &command) {
-#ifndef RTGI_SKIP_WF
-	if (scene.single_rt && dynamic_cast<wavefront_algorithm*>(algo)) {
-		error_no_continue("Wavefront algorithm used with invidividually tracing RT does not work. Use the appropriate 'platform'.");
-		return false;
-	}
-	else if (scene.batch_rt && dynamic_cast<recursive_algorithm*>(algo)) {
-		error_no_continue("Cannot drive a recursive algorithm by a batch ray tracer");
-		return false;
-	}
-#endif
-	return true;
-}
-
 void repl(istream &infile, repl_update_checks &uc) {
 	bool cam_has_pos = false,
 		 cam_has_dir = false,
@@ -212,7 +198,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 				delete algo;
 				algo = a;
 			}
-			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 		}
 		else ifcmd("outfile") {
 			string name;
@@ -250,7 +235,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 					error("This combination is technically problematic")
 				else
 					error("There is no such bbvh variant");
-				if (!align_rt_and_algo(scene, algo, uc, command)) continue;
 			}
 #endif
 			else error("There is no ray tracer called '" << name << "'");
@@ -272,19 +256,27 @@ void repl(istream &infile, repl_update_checks &uc) {
 			else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
 			else error("There is no platform called '" << name << "'");
-			scene.use(rc->platform->select("default"));
 			uc.tracer_touched_at = uc.cmdid;
 		}
 		else ifcmd("commit") {
 			if (scene.vertices.empty())
 				error("There is no scene data to work with");
-			if (!scene.rt)
-				error("There is no ray traversal scheme to commit the scene data to");
-			if (!align_rt_and_algo(scene, algo, uc, command)) continue;
-#ifndef RTGI_SKIP_DIRECT_ILLUM
-			scene.compute_light_distribution();
+			if (algo)
+				algo->data_reset_required = true;
+#ifndef RTGI_SKIP_WF
+			if (rc->platform)
+				rc->platform->commit_scene(&scene);
+			else {
 #endif
-			scene.rt->build(&scene);
+				if (!scene.rt)
+					error("There is no ray traversal scheme to commit the scene data to");
+#ifndef RTGI_SKIP_DIRECT_ILLUM
+				scene.compute_light_distribution();
+#endif
+				scene.rt->build(&scene);
+#ifndef RTGI_SKIP_WF
+			}
+#endif
 			uc.accel_touched_at = uc.cmdid;
 		}
 		else ifcmd("sppx") {
@@ -301,19 +293,6 @@ void repl(istream &infile, repl_update_checks &uc) {
 			if (uc.accel_touched_at < uc.scene_touched_at)
 				error("The current acceleration structure is out-dated");
 			run(algo);
-		}
-		else ifcmd("rt_bench") {
-#ifndef WITH_STATS		
-			if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0)
-				error("We have to have a scene loaded, a ray tracer set, an acceleration structure built prior to running");
-			if (uc.accel_touched_at < uc.tracer_touched_at)
-				error("The current tracer does (might?) not have an up-to-date acceleration structure");
-			if (uc.accel_touched_at < uc.scene_touched_at)
-				error("The current acceleration structure is out-dated");
-			rt_bench(rc);
-#else
-			cerr << "ERROR: cannot run rt-bench when WITH_STATS is defined" << endl;
-#endif
 		}
 		else ifcmd("mesh") {
 			string name, cmd;
@@ -488,6 +467,21 @@ void repl(istream &infile, repl_update_checks &uc) {
 				scene.sky->distribution->debug_out(file, samples);
 				cout << "Done." << endl;
 			}
+		}
+#endif
+#ifndef RTGI_SKIP_WF
+		else ifcmd("add-scene-step") {
+			string name;
+			while (isspace(in.peek())) in.get();
+			getline(in, name);
+			check_in_complete("Syntax error: step parameters are not supported, yet");
+			if (rc->platform)
+				if (auto *s = rc->platform->step(name))
+					rc->platform->append_setup_step(s);
+				else
+					error("Platform " << rc->platform->name << " does not support step " << name)
+			else
+				error("No platform selected, steps are available only in wavefront mode")
 		}
 #endif
 		else ifcmd("omp") {

@@ -13,8 +13,8 @@ __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,
 							 wf::cuda::tri_is *intersections,
 							 bool anyhit = false);
 
-#define TRACE_PARAMETERS1 const int2 resolution, float4 *rays, cudaTextureObject_t rays_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, uint1 *index, cudaTextureObject_t index_tex, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, wf::cuda::tri_is *intersections, bool anyhit
-#define TRACE_PARAMETERS2 const int num_rays,    float4 *rays, cudaTextureObject_t rays_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, uint1 *index, cudaTextureObject_t index_tex, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, wf::cuda::tri_is *intersections, bool anyhit
+#define TRACE_PARAMETERS1 const int2 resolution, float4 *rays, cudaTextureObject_t rays_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, uint *index, cudaTextureObject_t index_tex, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, wf::cuda::tri_is *intersections, bool anyhit
+#define TRACE_PARAMETERS2 const int num_rays,    float4 *rays, cudaTextureObject_t rays_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, uint *index, cudaTextureObject_t index_tex, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, wf::cuda::tri_is *intersections, bool anyhit
 __global__ void ifif_trace(TRACE_PARAMETERS1);
 __global__ void whilewhile_trace(TRACE_PARAMETERS1);
 __global__ void speculativewhilewhile_trace(TRACE_PARAMETERS1);

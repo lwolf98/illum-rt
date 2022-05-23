@@ -26,18 +26,14 @@ public:
 #ifndef RTGI_SKIP_WF
 namespace wf {
 	
-	struct initialize_framebuffer : public ray_and_intersection_processing { static constexpr char id[] = "initialize framebuffer"; };
-	struct sample_camera_rays     : public ray_and_intersection_processing { static constexpr char id[] = "sample camera rays"; };
-	struct add_hitpoint_albedo    : public ray_and_intersection_processing { static constexpr char id[] = "add hitpoint albedo"; };
-	struct download_framebuffer   : public ray_and_intersection_processing { static constexpr char id[] = "download framebuffer"; };
+	struct initialize_framebuffer : public step { static constexpr char id[] = "initialize framebuffer"; };
+	struct sample_camera_rays     : public step { static constexpr char id[] = "sample camera rays"; };
+	struct add_hitpoint_albedo    : public step { static constexpr char id[] = "add hitpoint albedo"; };
+	struct download_framebuffer   : public step { static constexpr char id[] = "download framebuffer"; };
 
 	class primary_hit_display : public wf::simple_algorithm {
-		step *clear, *download;
 	public:
 		primary_hit_display();
-		void prepare_frame() override;
-		void compute_samples() override;
-		void finalize_frame() override;
 	};
 
 }

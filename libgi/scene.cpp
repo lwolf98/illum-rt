@@ -265,16 +265,12 @@ vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri,
 
 void scene::release_rt() {
 	rt = nullptr;
-	single_rt = nullptr;
-	batch_rt = nullptr;
 }
 
-void scene::use(ray_tracer *new_rt) {
-	if(!rc->platform)
-		delete rt;
+void scene::use(individual_ray_tracer *new_rt) {
+	assert(rc->platform == nullptr);
+	delete rt;
 	rt = new_rt;
-	single_rt = dynamic_cast<individual_ray_tracer*>(rt);
-	batch_rt = dynamic_cast<wf::batch_ray_tracer*>(rt);
 }
 
 

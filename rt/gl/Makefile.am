@@ -17,10 +17,11 @@ libglrt_a_SOURCES = debug.cpp \
 					rni.cpp \
 					opengl.cpp \
 					platform.cpp \
+					preprocessing.cpp \
 					shader.cpp \
 					$(glsl_GENSOURCES)
 
-noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h
+noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h preprocessing.h
 BUILT_SOURCES = glsl.deps $(glsl_GENSOURCES)
 CLEANFILES = glsl.deps $(glsl_GENSOURCES)
 glsl_SRC = $(glsl_GENSOURCES:%-glsl.cpp=%.glsl)
