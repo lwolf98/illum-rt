@@ -141,6 +141,14 @@ namespace wf {
 				device_memory = nullptr;
 				size = 0;
 			}
+			
+			explicit operator CUdeviceptr() {
+				return (CUdeviceptr) device_memory;
+			}
+
+			int size_in_bytes() const {
+				return size * sizeof(T);
+			}
 
 			void resize(int size) {
 				assert(owns_mem);

@@ -17,6 +17,8 @@ AC_CHECK_HEADER([glm/glm.hpp], [], [AC_MSG_ERROR([You need to install glm. On De
 AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On Debian-style distros this is libpng++-dev])])
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
+# libdl is needed by OptiX
+AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
 
 have_gl=yes
 AC_ARG_ENABLE([opengl], [AS_HELP_STRING([--disable-opengl], [Do not use OpenGL, even if present])], [have_gl=$enableval], [have_gl=yes])
@@ -45,6 +47,13 @@ AS_IF([test x$have_cuda = xyes],
 have_embree=yes
 AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
 AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
+
+have_optix=yes
+AC_CHECK_HEADER([optix.h], [], [have_optix=no])
+AM_CONDITIONAL([have_optix], [test x$have_optix = xyes])
+AS_IF([test x$have_optix = xyes],
+	  [AC_DEFINE([HAVE_OPTIX], [1], [Do we have OptiX])],
+	  [AC_MSG_WARN([Compiling without OptiX support])])
 
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])

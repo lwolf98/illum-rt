@@ -4,7 +4,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#define CHECK_CUDA_ERROR(f,str) {cudaError_t err = (f); if (err) {wf::cuda::check_cuda_error(err, __FILE__, __LINE__, __PRETTY_FUNCTION__, std::string(#f)+": "+str); }}
+#define CHECK_CUDA_ERROR(f,str) {cudaError_t err = (f); if (err) {wf::cuda::check_cuda_error(err, __FILE__, __LINE__, __PRETTY_FUNCTION__, #f ": " #str); }}
 
 static constexpr bool force_cuda_sync = true;
 
@@ -13,6 +13,6 @@ static constexpr bool force_cuda_sync = true;
 
 namespace wf {
     namespace cuda {
-        void check_cuda_error(cudaError_t err, const char* const file, int const line, char const* const func, const std::string &f);
+        void check_cuda_error(cudaError_t err, const std::string &file, const int line, const std::string &func, const std::string &f);
     }
 }
