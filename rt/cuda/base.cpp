@@ -1,3 +1,4 @@
+#include "config.h"
 #include "base.h"
 #include "platform.h"
 

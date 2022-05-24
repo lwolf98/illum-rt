@@ -1,0 +1,21 @@
+omp on
+at -516 300 0
+look 1 0 0
+up 0 1 0
+
+platform cuda
+raytracer optix
+algo primary-wf
+
+add-scene-step build accel struct
+
+outfile optix1.png
+
+sppx 1024
+resolution 1920 1080
+load render-data/sponza/sponza.fixed.obj
+
+commit
+
+
+run

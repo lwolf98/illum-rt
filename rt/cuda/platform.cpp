@@ -1,3 +1,4 @@
+#include "config.h"
 #include "platform.h"
 #include "base.h"
 
@@ -6,6 +7,11 @@
 #include "preprocessing.h"
 
 #include <iostream>
+
+#ifdef HAVE_OPTIX
+#include "optix-tracer.h"
+#endif
+
 using namespace std;
 
 #define error(x) { cerr << "command (" << command << "): " << x << endl;  return true; }
@@ -18,6 +24,10 @@ namespace wf {
 			if (pf) std::logic_error("The " + name + " platform is already set up");
 			pf = this;
 
+			// This forces an initialization of the cuda context
+			CHECK_CUDA_ERROR(cudaSetDevice(0), "");
+			CHECK_CUDA_ERROR(cudaFree(0), "");
+
 			for (auto arg : args)
 				cerr << "Platform cuda does not support the argument " << arg << endl;
 			register_batch_rt("simple",, simple_rt);
@@ -28,7 +38,9 @@ namespace wf {
 			register_batch_rt("speculative-while-while",, speculativewhilewhile);
 			register_batch_rt("persistent-speculative-while-while",, persistentspeculativewhilewhile);
 			register_batch_rt("dynamic-while-while",, dynamicwhilewhile);
-
+#ifdef HAVE_OPTIX
+			register_batch_rt("optix",, optix_tracer);
+#endif
 			link_tracer("while-while", "default");
 			link_tracer("while-while", "find closest hits");
 			// bvh mode?
@@ -82,6 +94,9 @@ namespace wf {
 				else if (variant == "speculative-while-while")            rt = dynamic_cast<batch_rt*>(select("speculative-while-while"));
 				else if (variant == "persistent-speculative-while-while") rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while"));
 				else if (variant == "dynamic-while-while")                rt = dynamic_cast<batch_rt*>(select("dynamic-while-while"));
+#ifdef HAVE_OPTIX
+				else if (variant == "optix")                              rt = dynamic_cast<batch_rt*>(select("optix"));
+#endif
 				else error("There is no such cuda ray tracer variant");
 				return true;
 			}
