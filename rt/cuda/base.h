@@ -225,7 +225,7 @@ namespace wf {
 			}
 
 			~texture_buffer() {
-				if (tex != 0 && !this->owns_mem)
+				if (tex != 0 && this->owns_mem)
 					CHECK_CUDA_ERROR(cudaDestroyTextureObject(tex),this->name);
 			}
 
