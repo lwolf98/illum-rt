@@ -89,10 +89,15 @@ namespace wf {
 			cpu_bvh_builder_cuda_scene_traits st { scene };
 
 			bvh_ctor<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits> *ctor = nullptr;
+			bool enable_esc = true;
 			if (bvh_type == "sah")     ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node, 16);
 			else if (bvh_type == "sm") ctor = new bvh_ctor_sm <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
 			else if (bvh_type == "om") ctor = new bvh_ctor_om <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
-			::bvh bvh = ctor->build(true);
+			else if (bvh_type == "embree") {
+				ctor = new bvh_ctor_embree <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+				enable_esc = false;
+			}
+			::bvh bvh = ctor->build(enable_esc);
 
 			// HACK: due to "scene views" the current scenedata* might not own the vertex data
 			scenedata *org_scene = scene;
@@ -129,8 +134,8 @@ namespace wf {
 					in >> in1;
 					check_in_complete("Syntax error, \"bvh type\" requires exactly one string value");
 					bvh_type = in1;
-					if (in1 != "sah" && in1 != "sm" && in1 != "om")
-						error("Parameter error, \"bvh type\" must be one of \"sm\", \"om\", \"sah\"");
+					if (in1 != "sah" && in1 != "sm" && in1 != "om" && in1 != "embree")
+						error("Parameter error, \"bvh type\" must be one of \"sm\", \"om\", \"sah\", \"embree\"");
 					return true;
 				}
 				else if (sub == "max_tris") {
