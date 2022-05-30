@@ -27,7 +27,7 @@ namespace wf::cpu {
 		
 		batch_rt *rt = nullptr;
 		cpu::scene *sd = nullptr;
-		wf::raydata *raydata = nullptr; // usually, we have the ray data with the tracers, the CPU code is inocnsistent in that way. should be fixed some time.
+		cpu::raydata *raydata = nullptr; // usually, we have the ray data with the tracers, the CPU code is inocnsistent in that way. should be fixed some time.
 	};
 
 	extern platform *pf;

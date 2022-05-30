@@ -136,5 +136,10 @@ namespace wf {
 	struct build_accel_struct : public step {
 		static constexpr char id[] = "build accel struct";
 	};
-	
+	struct compute_light_distribution : public step {
+		static constexpr char id[] = "compute light distribution";
+	};
+	struct sample_uniform_light_directions : public step {
+		static constexpr char id[] = "sample uniform light directions";
+	};
 }
