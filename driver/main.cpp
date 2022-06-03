@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstdio>
 #include <omp.h>
+#include <thread>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -51,20 +52,12 @@ int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);
 
-	repl_update_checks uc;
-	if (cmdline.script != "") {
-		ifstream script(cmdline.script);
-		if(script.fail()){
-			cerr << "Script file not found" << endl;
-			return -1;
-		}
-		repl(script, uc);
-	}
-	if (cmdline.interact)
-		repl(cin, uc);
+	thread repls(run_repls);
+	process_command_queue();
 
 	stats_timer.print();
 
+	repls.join();
 	delete rc->algo;
 	return 0;
 }
