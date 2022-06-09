@@ -39,7 +39,6 @@ namespace wf::cuda {
             CUcontext cuda_context;
     
             OptixDeviceContext optix_context;
-            OptixDeviceContextOptions optix_context_options;
 
             OptixPipeline optix_pipeline;
             OptixPipelineCompileOptions optix_pipeline_compile_options;
@@ -64,5 +63,7 @@ namespace wf::cuda {
             // optixLaunch gets called and are accessible within the kernels
             optix_launch_params host_launch_params;
             global_memory_buffer<optix_launch_params> device_launch_params;
+
+            bool verbose;
     };
 }
