@@ -36,6 +36,7 @@ AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 	  [AC_MSG_WARN([Compiling without OpenGL support])])
 
 have_cuda=yes
+AC_ARG_ENABLE([cuda], [AS_HELP_STRING([--disable-cuda], [Do not use Cuda, even if present])], [have_cuda=$enableval], [have_cuda=yes])
 AC_CHECK_LIB([cuda], [cuInit], [], [have_cuda=no])
 AC_CHECK_LIB([cudart], [cudaMalloc], [], [have_cuda=no])
 AC_CHECK_LIB([curand], [main], [], [have_cuda=no])

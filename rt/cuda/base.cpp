@@ -91,10 +91,12 @@ namespace wf {
 			if (bvh_type == "sah")     ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node, 16);
 			else if (bvh_type == "sm") ctor = new bvh_ctor_sm <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
 			else if (bvh_type == "om") ctor = new bvh_ctor_om <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
+			#ifdef HAVE_LIBEMBREE3
 			else if (bvh_type == "embree") {
 				ctor = new bvh_ctor_embree <bbvh_triangle_layout::indexed, cpu_bvh_builder_cuda_scene_traits>(st, bvh_max_tris_per_node);
 				enable_esc = false;
 			}
+			#endif
 			::bvh bvh = ctor->build(enable_esc);
 
 			// HACK: due to "scene views" the current scenedata* might not own the vertex data
