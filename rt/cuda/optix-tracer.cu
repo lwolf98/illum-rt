@@ -78,6 +78,9 @@ constexpr const unsigned int MAX_DIRECT_CALLABLE_CALL_DEPTH = 0;
 namespace wf::cuda {
     optix_tracer::optix_tracer() : cuda_context(CURRENT_CUDA_CONTEXT),
                                    sbt{},
+                                   verbose(false),
+                                   optix_pipeline_link_options{},
+                                   optix_pipeline_compile_options{},
                                    optix_context(nullptr),
                                    raygen_records_buffer("raygen records buffer", 1),
                                    miss_records_buffer("miss records buffer", 1),
@@ -115,7 +118,7 @@ namespace wf::cuda {
     }
 
     void optix_tracer::compute_hit(bool anyhit) {    
-        if(anyhit)
+        if (anyhit)
             host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT; 
         else 
             host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
@@ -154,7 +157,7 @@ namespace wf::cuda {
         CUdeviceptr vertices = static_cast<CUdeviceptr>(scene->vertex_pos);
         CUdeviceptr triangles = static_cast<CUdeviceptr>(scene->triangles);
 
-        OptixBuildInput build_input;
+        OptixBuildInput build_input{};
         OptixBuildInputTriangleArray &triangle_array = build_input.triangleArray;
         
         build_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
@@ -263,15 +266,15 @@ namespace wf::cuda {
  
         CUresult status = cuCtxGetCurrent(&cuda_context);
         
-        if(status != CUDA_SUCCESS) {
+        if (status != CUDA_SUCCESS) {
             std::cerr << "Error querying current CUDA context. Error code is " << status  << std::endl;
             
-            if(cuGetErrorName(status, &error_name) == CUDA_SUCCESS)   
+            if (cuGetErrorName(status, &error_name) == CUDA_SUCCESS)   
                 std::cerr << "CUDA error: " << error_name << std::endl;
             else
                 std::cerr << "CUDA error: Cannot retrieve error name" << std::endl;
             
-            if(cuGetErrorString(status, &error_string) == CUDA_SUCCESS)
+            if (cuGetErrorString(status, &error_string) == CUDA_SUCCESS)
                 std::cerr << "CUDA error: " << error_string << std::endl;
             else
                 std::cerr << "CUDA error: Cannot retrieve error string" << std::endl;
@@ -316,7 +319,7 @@ namespace wf::cuda {
                                                    &size_of_log,
                                                    &optix_module), "");
 
-        if(size_of_log > 1)
+        if (size_of_log > 1 && verbose)
             std::cout << log << std::endl;
     };
 
@@ -332,7 +335,7 @@ namespace wf::cuda {
                                                   &size_of_log,
                                                   &program_group), "");
         
-        if(size_of_log > 1)
+        if (size_of_log > 1 && verbose)
             std::cout << log << std::endl;
     }
 
@@ -360,12 +363,12 @@ namespace wf::cuda {
                                               &size_of_log,
                                               &optix_pipeline), "");
 
-        if(size_of_log > 1)
+        if (size_of_log > 1 && verbose)
             std::cout << log << std::endl;
 
         OptixStackSizes accumulated_stack_sizes{};
 
-        for(auto &program_group: program_groups)
+        for (auto &program_group: program_groups)
             CHECK_OPTIX_ERROR(optixUtilAccumulateStackSizes(program_group, &accumulated_stack_sizes), "");
         
         unsigned int direct_callable_stack_size_from_traversal;

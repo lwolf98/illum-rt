@@ -5,6 +5,7 @@ up 0 1 0
 
 platform cuda
 raytracer optix
+algo primary-wf
 
 add-scene-step build accel struct
 
@@ -15,8 +16,6 @@ resolution 1920 1080
 load render-data/sponza/sponza.fixed.obj
 
 commit
-
-algo primary-wf
 
 
 run
