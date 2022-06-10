@@ -71,11 +71,26 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 namespace wf {
 
 	primary_hit_display::primary_hit_display() {
-		frame_preparation_steps.push_back(rc->platform->step(initialize_framebuffer::id));
-		frame_finalization_steps.push_back(rc->platform->step(download_framebuffer::id));
-		sampling_steps.push_back(rc->platform->step(sample_camera_rays::id));
-		sampling_steps.push_back(rc->platform->step(find_closest_hits::id));
-		sampling_steps.push_back(rc->platform->step(add_hitpoint_albedo::id));
+		auto *init_fb = rc->platform->step_as<initialize_framebuffer>(initialize_framebuffer::id);
+		auto *download_fb = rc->platform->step_as<download_framebuffer>(download_framebuffer::id);
+		frame_preparation_steps.push_back(init_fb);
+		frame_finalization_steps.push_back(download_fb);
+
+		auto *sample_cam = rc->platform->step_as<sample_camera_rays>(sample_camera_rays::id);
+		auto *find_hit   = rc->platform->step_as<find_closest_hits>(find_closest_hits::id);
+		auto *add_albedo = rc->platform->step_as<add_hitpoint_albedo>(add_hitpoint_albedo::id);
+		sampling_steps.push_back(sample_cam);
+		sampling_steps.push_back(find_hit);
+		sampling_steps.push_back(add_albedo);
+
+		rd = rc->platform->allocate_raydata();
+
+		init_fb->use(rd);
+		download_fb->use(rd);
+
+		sample_cam->use(rd);
+		find_hit->use(rd);
+		add_albedo->use(rd);
 	}
 
 }

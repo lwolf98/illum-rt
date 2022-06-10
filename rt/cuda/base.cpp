@@ -82,8 +82,6 @@ namespace wf {
 
 		void batch_rt::build(scenedata *scene)
 		{
-			rd = new raydata(rc->resolution());
-
 			scene->triangles.download();
 			scene->vertex_pos.download();
 			cpu_bvh_builder_cuda_scene_traits st { scene };

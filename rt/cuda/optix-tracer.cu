@@ -120,6 +120,8 @@ namespace wf::cuda {
         else 
             host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
         
+		std::cout << "Using rays " << rd->name << std::endl;
+        host_launch_params.rays = rd->rays.device_memory;
         host_launch_params.triangle_intersections = rd->intersections.device_memory;
         device_launch_params.upload(1, &host_launch_params);
         
@@ -248,7 +250,6 @@ namespace wf::cuda {
         host_launch_params.optix_traversable_handle = build_acceleration_structure(scenedata);
         host_launch_params.frame_buffer_dimensions.x = rc->resolution().x;
         host_launch_params.frame_buffer_dimensions.y = rc->resolution().y;
-        host_launch_params.rays = rd->rays.device_memory;
     }
 
     void optix_tracer::init_optix() {

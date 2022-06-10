@@ -14,10 +14,6 @@ namespace wf::cpu {
 		void run() override;
 	};
 
-	struct sample_uniform_light_directions : public wf::sample_uniform_light_directions {
-		void run() override;
-	};
-
 	/*! requires scene bounds
 	 */
 	struct compute_light_distribution : public wf::compute_light_distribution {

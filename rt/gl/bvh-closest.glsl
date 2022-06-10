@@ -7,6 +7,9 @@ define(link_r, int($1.box1max_r.w))
 define(tri_offset, int($1.box2min_o.w))
 define(tri_count,  int($1.box2max_c.w))
 
+uniform layout(rgba32f,binding=0) image2D rays;
+uniform layout(rgba32f,binding=1) image2D intersections;
+
 bool intersect4(vec4 box_min, vec4 box_max, const vec4 ray_o, const vec4 ray_id, vec2 range, out float is) {
 	vec3 t1_tmp = ((box_min - ray_o) * ray_id).xyz;
 	vec3 t2_tmp = ((box_max - ray_o) * ray_id).xyz;
@@ -25,11 +28,10 @@ bool intersect4(vec4 box_min, vec4 box_max, const vec4 ray_o, const vec4 ray_id,
 
 
 void run_simple(uint x, uint y) {
-	uint id = y * w + x;
 	vec4 closest = vec4(FLT_MAX, -1, -1, 0), is;
-	vec4 o = rays[id],
-	     d = rays[w*h + id],
-	     inv_d = rays[2*w*h + id];
+	vec4 o = imageLoad(rays, ivec2(x, y));
+	vec4 d = imageLoad(rays, ivec2(x, h+y));
+	vec4 inv_d = imageLoad(rays, ivec2(x, 2*h+y));
 	
 	#define STACKSIZE 24
 	uint stack[STACKSIZE];
@@ -72,15 +74,14 @@ void run_simple(uint x, uint y) {
 			}
 		}
 	}
-	intersections[id] = closest;
+	imageStore(intersections, ivec2(x, y), closest);
 }
 
 void run_reduce_stackuse(uint x, uint y) {
-	uint id = y * w + x;
 	vec4 closest = vec4(FLT_MAX, -1, -1, 0), is;
-	vec4 o = rays[id],
-	     d = rays[w*h + id],
-	     inv_d = rays[2*w*h + id];
+	vec4 o = imageLoad(rays, ivec2(x, y));
+	vec4 d = imageLoad(rays, ivec2(x, h+y));
+	vec4 inv_d = imageLoad(rays, ivec2(x, 2*h+y));
 
 	#define STACKSIZE 24
 	uint stack[STACKSIZE];
@@ -130,7 +131,7 @@ void run_reduce_stackuse(uint x, uint y) {
 				break;
 		}
 	}
-	intersections[id] = closest;
+	imageStore(intersections, ivec2(x, y), closest);
 }
 
 void run(uint x, uint y) {

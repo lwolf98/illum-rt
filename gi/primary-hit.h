@@ -24,17 +24,12 @@ public:
 #endif
 
 #ifndef RTGI_SKIP_WF
+#include "primary-steps.h"
 namespace wf {
-	
-	struct initialize_framebuffer : public step { static constexpr char id[] = "initialize framebuffer"; };
-	struct sample_camera_rays     : public step { static constexpr char id[] = "sample camera rays"; };
-	struct add_hitpoint_albedo    : public step { static constexpr char id[] = "add hitpoint albedo"; };
-	struct download_framebuffer   : public step { static constexpr char id[] = "download framebuffer"; };
-
 	class primary_hit_display : public wf::simple_algorithm {
+		raydata *rd = nullptr;
 	public:
 		primary_hit_display();
 	};
-
 }
 #endif

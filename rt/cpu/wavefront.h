@@ -28,17 +28,16 @@ namespace wf {
 		};
 
 		struct batch_rt : public batch_ray_tracer {
-			raydata &rd;
-			batch_rt(raydata *rd) : rd(*rd) {
-			}
+			raydata *rd = nullptr;
 			virtual void build(cpu::scene *s) = 0;
+			void use(wf::raydata *rays) override { rd = dynamic_cast<raydata*>(rays); }
 		};
 
 		class batch_rt_adapter : public batch_rt {
 		protected:
 			individual_ray_tracer *underlying_rt = nullptr;
 		public:
-			batch_rt_adapter(individual_ray_tracer *underlying_rt, raydata *rd) : batch_rt(rd), underlying_rt(underlying_rt) {
+			batch_rt_adapter(individual_ray_tracer *underlying_rt) : underlying_rt(underlying_rt) {
 			}
 			~batch_rt_adapter() {
 				delete underlying_rt;
@@ -48,27 +47,27 @@ namespace wf {
 			virtual void build(cpu::scene *s);
 		};
 
-		struct initialize_framebuffer : public wf::initialize_framebuffer {
+		struct initialize_framebuffer : public wf::wire::initialize_framebuffer<raydata> {
 			void run() override;
 		};
 			
-		struct batch_cam_ray_setup_cpu : public wf::sample_camera_rays {
+		struct batch_cam_ray_setup_cpu : public wf::wire::sample_camera_rays<raydata> {
 			void run() override;
 		};
 		
-		struct add_hitpoint_albedo : public wf::add_hitpoint_albedo {
+		struct add_hitpoint_albedo : public wf::wire::add_hitpoint_albedo<raydata> {
 			void run() override;
 		};
 		
-		struct download_framebuffer : public wf::download_framebuffer {
+		struct download_framebuffer : public wf::wire::download_framebuffer<raydata> {
 			void run() override;
 		};
 	
-		struct find_closest_hits : public wf::find_closest_hits {
+		struct find_closest_hits : public wf::wire::find_closest_hits<raydata> {
 			find_closest_hits();
 		};
 
-		struct find_any_hits : public wf::find_any_hits {
+		struct find_any_hits : public wf::wire::find_any_hits<raydata> {
 			find_any_hits();
 		};
 	

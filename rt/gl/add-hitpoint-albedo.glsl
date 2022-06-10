@@ -2,9 +2,11 @@ define(VERSION, 460)
 define(HAVE_TEX, 1)
 include(preamble.glsl)
 
+uniform layout(rgba32f,binding=1) image2D intersections;
+uniform layout(rgba32f,binding=2) image2D framebuffer;
+
 void run(uint x, uint y) {
-	uint id = y * w + x;
-	vec4 hit = intersections[id];
+	vec4 hit = imageLoad(intersections, ivec2(x, y));
 	vec4 result = vec4(0);
 	if (valid_hit(hit)) {
 		ivec4 tri = triangles[hit_ref(hit)];
@@ -20,5 +22,6 @@ void run(uint x, uint y) {
 			result = m.albedo;
 	}
 	result.w = 1; // be safe
-	framebuffer[id] += result;
+	vec4 before = imageLoad(framebuffer, ivec2(x, y));
+	imageStore(framebuffer, ivec2(x, y), before + result);
 }

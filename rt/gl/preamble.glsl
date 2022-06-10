@@ -34,14 +34,11 @@ struct material {
 };
 
 layout (local_size_x = BLOCK_W, local_size_y = BLOCK_H) in;
-layout (std430, binding = BIND_RAYS) buffer b_rays        { vec4 rays  []; };
-layout (std430, binding = BIND_ISEC) buffer b_intersections { vec4 intersections[]; };
 layout (std430, binding = BIND_VERT) buffer b_vertex      { vertex vertices []; };
 layout (std430, binding = BIND_TRIS) buffer b_triangles   { ivec4 triangles []; };
 layout (std430, binding = BIND_NODE) buffer b_nodes       { bvh_node nodes []; };
 layout (std430, binding = BIND_TIDS) buffer b_tri_ids     { uint tri_index []; };
 layout (std430, binding = BIND_MTLS) buffer b_materials   { material materials []; };
-layout (std430, binding = BIND_FBUF) buffer b_frambuffer  { vec4 framebuffer []; };
 layout (std430, binding = BIND_TEXD) buffer b_texhack_data{ vec4 texhack_data []; };
 layout (std430, binding = BIND_RRNG) buffer b_pcg_rng     { uint64_t pcg_data []; };
 

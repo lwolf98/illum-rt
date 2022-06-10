@@ -13,8 +13,6 @@ namespace wf {
 	namespace cuda {
 
 		void simple_rt::build(scenedata *scene) {
-			rd = new raydata(rc->resolution());
-
 			/* TODO
 			binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on> bvh_rt;
 			if (bvh_type == "sah") bvh_rt.binary_split_type = bvh_rt.sah;

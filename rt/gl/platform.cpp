@@ -86,6 +86,10 @@ namespace wf::gl {
 		}
 		return false;
 	}
+		
+	raydata* platform::allocate_raydata() {
+	    return new raydata(rc->resolution());
+	}
 
 	platform *pf = nullptr;
 }
