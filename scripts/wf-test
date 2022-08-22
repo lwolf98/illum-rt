@@ -3,15 +3,17 @@ at -13 -12 0
 look 1 0 0
 up 0 1 0
 
-platform cpu
+#platform cpu
 #raytracer bbvh-esc
-raytracer embree
+#raytracer embree
 #platform opengl glfw
-#platform cuda
+platform cuda
+raytracer optix
 
 sppx 4
 #sppx 1
-resolution 960 540
+# resolution 960 540 desaster with GL
+resolution 960 544
 #resolution 480 270
 
 default-brdf layered-gtr2

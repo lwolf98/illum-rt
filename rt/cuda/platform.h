@@ -1,11 +1,8 @@
 #pragma once
 
-#include "libgi/wavefront-rt.h"
+#include "base.h"
 
 namespace wf::cuda {
-
-	class batch_rt;
-	class scenedata;
 
 	class platform : public wf::platform {
 	public:
@@ -16,6 +13,8 @@ namespace wf::cuda {
 		~platform();
 		void commit_scene(::scene *scene) override;
 		bool interprete(const std::string &command, std::istringstream &in) override;
+		
+		raydata* allocate_raydata() override;
 
 		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;

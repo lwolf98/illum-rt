@@ -59,12 +59,14 @@ namespace wf {
 		platform(const std::string &name) : name(name) {}
 		virtual ~platform();
 
-// 		wf::raydata *raydata = nullptr;
 		batch_ray_tracer *selected_tracer = nullptr;
 		wf::timer *timer = nullptr;
 
 		batch_ray_tracer* select(const std::string &name);
 		wf::step* step(const std::string &name);
+		template<typename T> T* step_as(const std::string &name) { return dynamic_cast<T*>(step(name)); }
+		virtual wf::raydata* allocate_raydata() = 0;
+
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 		
@@ -104,12 +106,11 @@ namespace wf {
 
 	// partition in pure interface and templated version holding a reference to the data
 	struct batch_ray_tracer : public ray_tracer {
-		ray *rays = nullptr;
-		triangle_intersection *intersections = nullptr;
-
 		virtual void compute_closest_hit() = 0;
 		virtual void compute_any_hit() = 0;
+		virtual void use(raydata *) = 0;
 	};
+
 
 	class find_closest_hits : public step {
 	protected:
@@ -117,6 +118,7 @@ namespace wf {
 	public:
 		static constexpr char id[] = "find closest hit";
 		find_closest_hits(batch_ray_tracer *rt) : rt(rt) {}
+		virtual void use(raydata*) = 0;
 		void run() override {
 			time_this_wf_step;
 			rt->compute_closest_hit();
@@ -128,6 +130,7 @@ namespace wf {
 	public:
 		static constexpr char id[] = "find any hit";
 		find_any_hits(batch_ray_tracer *rt) : rt(rt) {}
+		virtual void use(raydata*) = 0;
 		void run() override {
 			time_this_wf_step;
 			rt->compute_any_hit();
@@ -136,5 +139,17 @@ namespace wf {
 	struct build_accel_struct : public step {
 		static constexpr char id[] = "build accel struct";
 	};
-	
+	struct compute_light_distribution : public step {
+		static constexpr char id[] = "compute light distribution";
+	};
+
+	struct path_rays {
+		raydata *data = nullptr;
+	};
+	struct shadow_rays {
+		raydata *data = nullptr;
+	};
+	struct sample_uniform_light_directions : public step {
+		static constexpr char id[] = "sample uniform light directions";
+	};
 }

@@ -74,6 +74,10 @@ fi
 AC_SUBST([WAND_CFLAGS])
 AC_SUBST([WAND_LIBS])
 
+
+AC_CHECK_PROG([CM_CHECK], [cm], [yes], [no])
+AM_CONDITIONAL([have_cmera], [test "x$CM_CHECK" == "xyes"])
+
 ## g++-8 filesystem troubles
 ## earlier versions are not supported
 AC_MSG_CHECKING([whether g++ needs libstdc++fs])

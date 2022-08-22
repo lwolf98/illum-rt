@@ -12,7 +12,7 @@ namespace wf {
 		/*! \brief Set up camera rays using Shirley's formulas.
 		 *
 		 */
-		class batch_cam_ray_setup : public wf::sample_camera_rays {
+		class batch_cam_ray_setup : public wf::wire::sample_camera_rays<raydata> {
 			curandGenerator_t gen;
 			float2 *random_numbers = nullptr;
 		public:
@@ -35,7 +35,7 @@ namespace wf {
 		/*! \brief Compute albedo (incl. textures) on the GPU
 		 *
 		 */
-		struct add_hitpoint_albedo_to_fb : public wf::add_hitpoint_albedo {
+		struct add_hitpoint_albedo_to_fb : public wf::wire::add_hitpoint_albedo<raydata> {
 			bool first_sample;
 			void run() override;
 		};
@@ -43,22 +43,22 @@ namespace wf {
 		/*! \brief Download frame buffer data for further processing on the host
 		 *
 		 */
-		struct initialize_framebuffer : public wf::initialize_framebuffer {
+		struct initialize_framebuffer : public wf::wire::initialize_framebuffer<raydata> {
 			void run() override;
 		};
 
 		/*! \brief Download frame buffer data for further processing on the host
 		 *
 		 */
-		struct download_framebuffer : public wf::download_framebuffer {
+		struct download_framebuffer : public wf::wire::download_framebuffer<raydata> {
 			void run() override;
 		};
 
-		struct find_closest_hits : public wf::find_closest_hits {
+		struct find_closest_hits : public wf::wire::find_closest_hits<raydata> {
 			find_closest_hits();
 		};
 			
-		struct find_any_hits : public wf::find_any_hits {
+		struct find_any_hits : public wf::wire::find_any_hits<raydata> {
 			find_any_hits();
 		};
 	

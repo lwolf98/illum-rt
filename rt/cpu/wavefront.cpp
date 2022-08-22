@@ -1,6 +1,7 @@
 #include "wavefront.h"
 #include "platform.h"
 #include "preprocessing.h"
+#include "bounce.h"
 #include "libgi/timer.h"
 
 #include "seq.h"
@@ -48,14 +49,14 @@ namespace wf {
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x)  // ray data missing
-					rd.intersections[y*res.x+x] = underlying_rt->closest_hit(rd.rays[y*res.x+x]);
+					rd->intersections[y*res.x+x] = underlying_rt->closest_hit(rd->rays[y*res.x+x]);
 		}
 		void batch_rt_adapter::compute_any_hit() {
 			glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x)
-					rd.intersections[y*res.x+x] = underlying_rt->any_hit(rd.rays[y*res.x+x]);
+					rd->intersections[y*res.x+x] = underlying_rt->any_hit(rd->rays[y*res.x+x]);
 		}
 
 		void batch_rt_adapter::build(cpu::scene *s) {
@@ -80,7 +81,7 @@ namespace wf {
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					ray view_ray = cam_ray(pf->sd->camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-					pf->rt->rd.rays[y*res.x+x] = view_ray;
+					rd->rays[y*res.x+x] = view_ray;
 				}
 		}
 			
@@ -95,7 +96,7 @@ namespace wf {
 				for (int x = 0; x < res.x; ++x) {
 					vec3 radiance(0);
 					for (int sample = 0; sample < rc->sppx; ++sample) {
-						triangle_intersection closest = pf->rt->rd.intersections[y*res.x+x];
+						triangle_intersection closest = sample_rays->intersections[y*res.x+x];
 						if (closest.valid()) {
 							diff_geom dg(closest, *pf->sd);
 							radiance += dg.albedo();
@@ -115,10 +116,10 @@ namespace wf {
 					rc->framebuffer.color(x,y) /= rc->framebuffer.color(x,y).w;
 		}
 
-		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		find_closest_hits::find_closest_hits() : wf::wire::find_closest_hits<raydata>(pf->rt) {
 		}
 
-		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
+		find_any_hits::find_any_hits() : wf::wire::find_any_hits<raydata>(pf->rt) {
 		}
 
 		// THE PLATFORM
@@ -129,14 +130,14 @@ namespace wf {
 
 			for (auto arg : args)
 				std::cerr << "Platform opengl does not support the argument " << arg << std::endl;
-			cpu::raydata *rd = new cpu::raydata(rc->resolution());
-			raydata = rd;
+// 			cpu::raydata *rd = new cpu::raydata(rc->resolution());
+// 			raydata = rd;
 
-			register_batch_rt("seq", rd, batch_rt_adapter(new seq_tri_is, rd));
-			register_batch_rt("bbvh-esc", rd, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>, rd));
+			register_batch_rt("seq",, batch_rt_adapter(new seq_tri_is));
+			register_batch_rt("bbvh-esc",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>));
 
 #ifdef HAVE_LIBEMBREE3
-			register_batch_rt("embree", rd, batch_rt_adapter(new embree_tracer, rd));
+			register_batch_rt("embree",, batch_rt_adapter(new embree_tracer));
 			link_tracer("embree", "default");
 #else
 #ifndef RTGI_SKIP_BVH
@@ -154,6 +155,7 @@ namespace wf {
 			register_wf_step_by_id(, find_closest_hits);
 			register_wf_step_by_id(, find_any_hits);
 			register_wf_step_by_id(, build_accel_struct);
+			register_wf_step_by_id(, sample_uniform_light_directions);
 
 			timer = new wf::cpu::timer;
 		}
@@ -180,6 +182,10 @@ namespace wf {
 				return true;
 			}
 			return false;
+		}
+
+		raydata* platform::allocate_raydata() {
+			return new raydata(rc->resolution());
 		}
 
 		platform *pf = nullptr;

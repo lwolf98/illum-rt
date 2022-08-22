@@ -10,6 +10,8 @@
 
 #include <string>
 #include <iostream>
+#include <type_traits>
+#include <stdexcept>
 
 namespace wf {
 	namespace gl {
@@ -60,10 +62,13 @@ namespace wf {
 		 *
 		 * 	The upload(onto the grpu)/download(from the gpu to ram) logic might be subject to change as this
 		 * 	implementation can be wasteful in terms of host ram.
+		 *
+		 * 	Buffers are bound to pre-determined indices, but in some cases the buffer backing a specific index
+		 * 	(e.g. ray data) may change (e.g. shadow vs path rays). To make sure the proper buffer is bound,
+		 * 	call `bind()'.
 		 */
-		template<typename T> class ssbo : public buffer
+		template<typename T> struct ssbo : public buffer
 		{
-		public:
 			std::vector<T> org_data;
 
 			ssbo(std::string name, GLuint index, unsigned size)
@@ -80,6 +85,12 @@ namespace wf {
 				this->size = size;
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
 				glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * size, nullptr, GL_STATIC_READ);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+			}
+
+			void bind() {
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
 				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
 				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 			}
@@ -106,11 +117,87 @@ namespace wf {
 			}
 		};
 
+		template<typename T> struct data_texture {
+			GLuint id = 0;
+			int w = 0, h = 0;
+			std::string name;
+			GLenum internal_format;
+			std::vector<T> org_data;
+
+			data_texture(const std::string &name, int w, int h, GLenum internal_format) : name(name), internal_format(internal_format) {
+				glGenTextures(1, &id);
+				resize(w, h);
+			}
+			~data_texture() {
+				glDeleteTextures(1, &id);
+			}
+			data_texture(const data_texture&) = delete;
+			data_texture* operator=(const data_texture&) = delete;
+			std::pair<GLenum,GLenum> ft_via_T() {
+				GLenum fmt, type;
+				if      (std::is_same<T,vec4>::value) fmt = GL_RGBA, type = GL_FLOAT;
+				else if (std::is_same<T,vec3>::value) fmt = GL_RGB,  type = GL_FLOAT;
+				else throw std::logic_error(std::string("incomplete list of tex formats in ") + __PRETTY_FUNCTION__);
+				return {fmt, type};
+			}
+			void resize(int new_w, int new_h) {
+				auto [fmt,type] = ft_via_T();
+				glBindTexture(GL_TEXTURE_2D, id);
+				glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w=new_w, h=new_h, 0, fmt, type, nullptr);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glBindTexture(GL_TEXTURE_2D, 0);
+				org_data.clear();
+			}
+			void bind(int unit) {
+				glActiveTexture(GL_TEXTURE0+unit);
+				glBindTexture(GL_TEXTURE_2D, id);
+			}
+			void unbind(int unit) {
+				glActiveTexture(GL_TEXTURE0+unit);
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+			void bind_as_image(int unit, bool read, bool write) {
+				GLenum access;
+				if (read && write) access = GL_READ_WRITE;
+				else if (read)     access = GL_READ_ONLY;
+				else if (write)    access = GL_WRITE_ONLY;
+				assert(read || write);
+				glBindImageTexture(unit, id, 0, GL_FALSE, 0, access, internal_format);
+			}
+			void unbind_as_image(int unit) {
+				glBindImageTexture(unit, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA8);
+			}
+			void download() {
+				if (org_data.size() != w*h)
+					org_data.resize(w*h);
+				auto [fmt,type] = ft_via_T();
+				glBindTexture(GL_TEXTURE_2D, id);
+				glGetTexImage(GL_TEXTURE_2D, 0, fmt, type, org_data.data());
+				glBindTexture(GL_TEXTURE_2D, 0);
+			}
+		};
+		// RAII wrapper
+		template<typename T> struct bind_texture_as_image {
+			T &tex;
+			int unit;
+			bind_texture_as_image(T &tex, int unit, bool read, bool write) : tex(tex), unit(unit) {
+				tex.bind_as_image(unit, read, write);
+			}
+			~bind_texture_as_image() {
+				tex.unbind_as_image(unit);
+			}
+		};
+
+
 		
 		/*! \brief Ray data, including intersection points
 		 *
 		 *  The indices given for the Shader Storage Buffer Objects (ssbo) correspond to the binding locations in the
 		 *  shaders (\see compute_shader).
+		 *  To make sure that a given raydata instance is bound to those indices, call `bind'.
 		 *  
 		 *  Note: If we add different ray layouts this might be called raydata_soa and raydata be the name of the
 		 *  platform-specific base class referenced in \ref gl::platform. Invidividual ray tracers would then hold the
@@ -118,23 +205,23 @@ namespace wf {
 		 */
 		struct raydata : public wf::raydata {
 			int w, h;
-			ssbo<vec4> rays;
-			ssbo<vec4> intersections;
-			ssbo<vec4> framebuffer;
+			data_texture<vec4> rays;
+			data_texture<vec4> intersections;
+			data_texture<vec4> framebuffer;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {
 			}
 			raydata(int w, int h)
 			: w(w), h(h),
-			  rays("rays", BIND_RAYS, 3*w*h),
-			  intersections("intersections", BIND_ISEC, w*h),
-			  framebuffer("framebuffer", BIND_FBUF, w*h) {
+			  rays("rays", w, h*3, GL_RGBA32F),
+			  intersections("intersections", w, h, GL_RGBA32F),
+			  framebuffer("framebuffer", w, h, GL_RGBA32F) {
 				  rc->call_at_resolution_change[this] = [this](int w, int h) {
 					  this->w = w;
 					  this->h = h;
-					  rays.resize(w*h*3);
-					  intersections.resize(w*h);
-					  framebuffer.resize(w*h);
+					  rays.resize(w,h*3);
+					  intersections.resize(w,h);
+					  framebuffer.resize(w,h);
 				  };
 			}
 		};
@@ -178,6 +265,9 @@ namespace wf {
 			gl::raydata *rd = nullptr;
 			virtual void build(scenedata *scene) {
 				rd = new raydata(rc->resolution());
+			}
+			void use(wf::raydata *rays) override { 
+			    rd = dynamic_cast<raydata*>(rays);
 			}
 		};
 

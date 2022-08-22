@@ -14,4 +14,10 @@ namespace wf::cpu {
 		void run() override;
 	};
 
+	/*! requires scene bounds
+	 */
+	struct compute_light_distribution : public wf::compute_light_distribution {
+		void run() override;
+	};
+
 }

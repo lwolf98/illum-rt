@@ -3,6 +3,8 @@ include(preamble.glsl)
 uniform vec3 p, d, U, V;
 uniform vec2 near_wh;
 
+uniform layout(rgba32f,binding=0) image2D rays;
+
 // Taken from PBRTv3 rng.h, see libgi/random.h
 #define PCG32_MULT 0x5851f42d4c957f2dUL
 #define FloatOneMinusEpsilon 0.99999994
@@ -35,7 +37,10 @@ void run(uint x, uint y) {
 	u = near_wh.x * u;	// \in (-near_w,near_w)
 	v = near_wh.y * v;
 	vec3 dir = normalize(d + U*u + V*v);
-	rays[id] = vec4(p, 1);
-	rays[w*h+id] = vec4(dir, 0);
-	rays[2*w*h+id] = vec4(vec3(1)/dir, 1);
+	imageStore(rays, ivec2(x, y), vec4(p, 1));
+	imageStore(rays, ivec2(x, h+y), vec4(dir, 1));
+	imageStore(rays, ivec2(x, 2*h+y), vec4(vec3(1)/dir, 1));
+//	rays[id] = vec4(p, 1);
+//	rays[w*h+id] = vec4(dir, 0);
+//	rays[2*w*h+id] = vec4(vec3(1)/dir, 1);
 }

@@ -26,6 +26,7 @@ namespace wf {
 		void initialize_framebuffer::run() {
 			time_this_wf_step;
 			auto res = rc->resolution();
+			bind_texture_as_image bind_f(rd->framebuffer, 2, false, true);
 			compute_shader &cs = clear_framebuffer_shader;
 			cs.bind();
 			cs.uniform("w", res.x).uniform("h", res.y);
@@ -80,6 +81,7 @@ namespace wf {
 			vec3 U = cross(cam.dir, cam.up);
 			vec3 V = cross(U, cam.dir);
 			
+			bind_texture_as_image bind_r(rd->rays, 0, false, true);
 			compute_shader &cs = ray_setup_shader;
 			cs.bind();
 			cs.uniform("w", res.x).uniform("h", res.y);
@@ -89,10 +91,10 @@ namespace wf {
 			cs.unbind();
 		}
 
-		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		find_closest_hits::find_closest_hits() : wf::wire::find_closest_hits<raydata>(pf->rt) {
 		}
 
-		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
+		find_any_hits::find_any_hits() : wf::wire::find_any_hits<raydata>(pf->rt) {
 		}
 
 		add_hitpoint_albedo::add_hitpoint_albedo() {
@@ -107,6 +109,8 @@ namespace wf {
 			time_this_wf_step;
 // 			glFinish();
 			//time_this_block(add_hitpoint_albedo);
+			bind_texture_as_image bind_i(sample_rays->intersections, 1, true, false);
+			bind_texture_as_image bind_f(sample_rays->framebuffer, 2, true, true);
 			auto res = rc->resolution();
 			cs->bind();
 			cs->uniform("w", res.x).uniform("h", res.y);

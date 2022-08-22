@@ -29,6 +29,8 @@ namespace wf {
 		}
 		
 		void seq_tri_is::compute_closest_hit() {
+			bind_texture_as_image bind_r(rd->rays, 0, true, false);
+			bind_texture_as_image bind_i(rd->intersections, 1, false, true);
 			auto res = rc->resolution();
 			seq_closest_shader.bind();
 			seq_closest_shader.uniform("w", res.x).uniform("h", res.y);
@@ -39,6 +41,8 @@ namespace wf {
 		}
 		
 		void seq_tri_is::compute_any_hit() {
+			bind_texture_as_image bind_r(rd->rays, 0, true, false);
+			bind_texture_as_image bind_i(rd->intersections, 1, false, true);
 			auto res = rc->resolution();
 			seq_any_shader.bind();
 			seq_any_shader.uniform("w", res.x).uniform("h", res.y);
@@ -103,6 +107,8 @@ namespace wf {
 			glFinish();
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			
+			bind_texture_as_image bind_r(rd->rays, 0, true, false);
+			bind_texture_as_image bind_i(rd->intersections, 1, false, true);
 			auto res = rc->resolution();
 			bvh_closest_shader.bind();
 			bvh_closest_shader.uniform("w", res.x).uniform("h", res.y);

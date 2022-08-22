@@ -309,6 +309,7 @@ namespace wf {
 		};
 
 		struct raydata : public wf::raydata {
+			std::string name;
 			int w, h;
 			texture_buffer<float4> rays;
 			global_memory_buffer<tri_is> intersections;
@@ -380,9 +381,8 @@ namespace wf {
 
 		struct batch_rt : public batch_ray_tracer {
 			raydata *rd = nullptr;
-
 			bool use_incoherence = false;
-			float incoherence_r1 = 0;
+			float incoherence_r1 = 0; // TODO
 			float incoherence_r2 = 0;
 
 			int bvh_max_tris_per_node = 4;
@@ -393,10 +393,11 @@ namespace wf {
 
 			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {
 			}
-			~batch_rt() {
-				delete rd;
-			}
 			virtual void build(scenedata *scene);
+			void use(wf::raydata *rays) override { 
+			    rd = dynamic_cast<raydata*>(rays);
+				rd->name = "oh yeah";
+			}
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {
 				compute_hit(false);

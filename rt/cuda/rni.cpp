@@ -88,7 +88,7 @@ namespace wf {
 
 				launch_setup_ray_incoherent(int2{blocks,threads},
 											resolution,
-											pf->rt->rd->rays.device_memory,
+											rd->rays.device_memory,
 											sphere1, sphere2,
 											pf->rt->incoherence_r1, pf->rt->incoherence_r2,
 											r_max,
@@ -105,7 +105,7 @@ namespace wf {
 				launch_setup_rays(U, V, cam.near_w, cam.near_h, resolution,
 								  float3{cam.pos.x, cam.pos.y, cam.pos.z},
 								  float3{cam.dir.x, cam.dir.y, cam.dir.z},
-								  random_numbers, pf->rt->rd->rays.device_memory);
+								  random_numbers, rd->rays.device_memory);
 				warn_on_cuda_error("");
 				potentially_sync_cuda("");
 			}
@@ -115,6 +115,7 @@ namespace wf {
 			time_this_block(store_hitpoint_albedo_cpu);
 			auto res = rc->resolution();
 
+			// this is probably the correct rd, but make sure
 			pf->rt->rd->intersections.download();
 			::triangle_intersection *is = (::triangle_intersection*)pf->rt->rd->intersections.host_data.data();
 
@@ -138,11 +139,11 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 
 			launch_add_hitpoint_albedo(res,
-									   pf->rt->rd->intersections.device_memory,
+									   sample_rays->intersections.device_memory,
 									   pf->sd->triangles.device_memory,
 									   pf->sd->vertex_tc.device_memory,
 									   pf->sd->materials.device_memory,
-									   pf->rt->rd->framebuffer.device_memory);
+									   sample_rays->framebuffer.device_memory);
 			warn_on_cuda_error("");
 			potentially_sync_cuda("");
 		}
@@ -151,14 +152,14 @@ namespace wf {
 			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 
-			launch_initialize_framebuffer_data(res, pf->rt->rd->framebuffer.device_memory);
+			launch_initialize_framebuffer_data(res, rd->framebuffer.device_memory);
 		}
 			
 		void download_framebuffer::run() {
 			time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
-			pf->rt->rd->framebuffer.download();
-			float4 *fb = pf->rt->rd->framebuffer.host_data.data();
+			rd->framebuffer.download();
+			float4 *fb = rd->framebuffer.host_data.data();
 
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
@@ -168,10 +169,10 @@ namespace wf {
 				}
 		}
 		
-		find_closest_hits::find_closest_hits() : wf::find_closest_hits(pf->rt) {
+		find_closest_hits::find_closest_hits() : wf::wire::find_closest_hits<raydata>(pf->rt) {
 		}
 
-		find_any_hits::find_any_hits() : wf::find_any_hits(pf->rt) {
+		find_any_hits::find_any_hits() : wf::wire::find_any_hits<raydata>(pf->rt) {
 		}
 
 		

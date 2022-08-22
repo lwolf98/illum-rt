@@ -2,8 +2,8 @@ noinst_LIBRARIES = libcputracing.a
 
 AM_CPPFLAGS = -I$(top_srcdir)
 
-libcputracing_a_SOURCES = preprocessing.cpp seq.cpp wavefront.cpp
-noinst_HEADERS = platform.h preprocessing.h seq.h wavefront.h
+libcputracing_a_SOURCES = bounce.cpp preprocessing.cpp seq.cpp wavefront.cpp
+noinst_HEADERS = bounce.h platform.h preprocessing.h seq.h wavefront.h
 
 #ifndef RTGI_SKIP_BVH
 libcputracing_a_SOURCES += bvh.cpp bvh2.cpp
