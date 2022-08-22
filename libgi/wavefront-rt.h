@@ -65,6 +65,7 @@ namespace wf {
 		batch_ray_tracer* select(const std::string &name);
 		wf::step* step(const std::string &name);
 		template<typename T> T* step_as(const std::string &name) { return dynamic_cast<T*>(step(name)); }
+		template<typename T> T* step() { return dynamic_cast<T*>(step(T::id)); }
 		virtual wf::raydata* allocate_raydata() = 0;
 
 		virtual void commit_scene(scene *scene) = 0;

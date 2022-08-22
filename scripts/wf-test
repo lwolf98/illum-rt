@@ -6,9 +6,9 @@ up 0 1 0
 #platform cpu
 #raytracer bbvh-esc
 #raytracer embree
-#platform opengl glfw
-platform cuda
-raytracer optix
+platform opengl glfw
+#platform cuda
+#raytracer optix
 
 sppx 4
 #sppx 1
