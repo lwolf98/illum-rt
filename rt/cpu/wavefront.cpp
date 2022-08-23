@@ -90,19 +90,15 @@ namespace wf {
 		void add_hitpoint_albedo::run() {
 			time_this_wf_step;
 			auto res = rc->resolution();
-			float one_over_samples = 1.0f/rc->sppx;
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					vec3 radiance(0);
-					for (int sample = 0; sample < rc->sppx; ++sample) {
-						triangle_intersection closest = sample_rays->intersections[y*res.x+x];
-						if (closest.valid()) {
-							diff_geom dg(closest, *pf->sd);
-							radiance += dg.albedo();
-						}
+					triangle_intersection closest = sample_rays->intersections[y*res.x+x];
+					if (closest.valid()) {
+						diff_geom dg(closest, *pf->sd);
+						radiance += dg.albedo();
 					}
-					radiance *= one_over_samples;
 					rc->framebuffer.color(x,y) += vec4(radiance, 1);
 				}
 		}
