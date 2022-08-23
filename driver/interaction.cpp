@@ -599,6 +599,7 @@ void eval(const std::string &line) {
 	}
 	else if (command == "") ;
 	else if (command[0] == '#') ;
+	else if (command.substr(0,2) == "//") ;
 	else if (rc->algo && rc->algo->interprete(command, in)) ;
 	else if (scene.rt && scene.rt->interprete(command, in)) ;
 	else {
