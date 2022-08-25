@@ -6,6 +6,7 @@
 namespace wf::cuda {
     class ray;  
     class tri_is; 
+    class material;
 
     struct optix_launch_params {
         int2 frame_buffer_dimensions;
@@ -13,5 +14,8 @@ namespace wf::cuda {
         unsigned int ray_flags;
         float4 *rays;
         tri_is *triangle_intersections;
+        material *materials;
+        float2 *tex_coords;
+        uint4 *triangles;
     };
 }

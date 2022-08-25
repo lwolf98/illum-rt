@@ -17,7 +17,7 @@
 namespace wf::cuda {
     class optix_tracer: public wf::cuda::batch_rt {
         public:
-            optix_tracer();
+            optix_tracer(bool alpha_aware);
 
             void build(scenedata *scene) override;
             void compute_hit(bool anyhit) override;
@@ -30,6 +30,11 @@ namespace wf::cuda {
             void create_module();
             void create_pipeline();
             void build_sbt();
+
+            /* If set to true the tracer will check wether the alpha value of the texture-coordinate which was hit (if there is any)
+             * is above a certain threshold. If it's not the ray will be recast starting at the hit-coordinate. 
+             */
+            bool alpha_aware;
 
             OptixTraversableHandle build_acceleration_structure(wf::cuda::scenedata *scene);
 

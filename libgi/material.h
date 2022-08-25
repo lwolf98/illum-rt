@@ -6,7 +6,7 @@
 #include <string>
 #include <tuple>
 
-
+template <typename T>
 struct texture2d;
     
 inline float roughness_from_exponent(float exponent) {
@@ -81,9 +81,9 @@ brdf *new_brdf(const std::string name, scene &scene);
 
 struct material {
 	std::string name;
-	vec3 albedo = vec3(0);
+	vec3 albedo = vec4(0);
 	vec3 emissive = vec3(0);
-	texture2d *albedo_tex = nullptr;
+	texture2d<vec4> *albedo_tex = nullptr;
 	float ior = 1.3f, roughness = 0.1f;
 	struct brdf *brdf = nullptr;
 };
