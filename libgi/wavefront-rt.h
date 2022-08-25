@@ -35,6 +35,10 @@ namespace wf {
 	struct raydata {
 		virtual ~raydata() {}
 	};
+
+	template<typename T> struct per_sample_data {
+		virtual ~per_sample_data() {}
+	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
 	#define register_batch_rt_with_args(N,C,X, ...) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X(__VA_ARGS__); }
@@ -86,6 +90,7 @@ namespace wf {
 		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
 		
 		virtual wf::raydata* allocate_raydata() = 0;
+		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0; // sadly, this cannot be templated...
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

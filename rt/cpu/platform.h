@@ -8,6 +8,17 @@ class scene;
 
 namespace wf::cpu {
 
+	template<typename T> struct per_sample_data : public wf::per_sample_data<T> {
+		float *data = nullptr;
+		per_sample_data(glm::ivec2 dim) : data(new T[dim.x * dim.y]) {
+			rc->call_at_resolution_change[this] = [this](int w, int h) {
+				delete [] data;
+				data = new T[w * h];
+			};
+		}
+		~per_sample_data() { delete [] data; }
+	};
+
 	/*! The CPU platform.
 	 *
 	 *  Todo:
@@ -26,10 +37,10 @@ namespace wf::cpu {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
+		per_sample_data<float>* allocate_float_per_sample();
 		
 		batch_rt *rt = nullptr;
 		cpu::scene *sd = nullptr;
-// 		cpu::raydata *raydata = nullptr; // usually, we have the ray data with the tracers, the CPU code is inocnsistent in that way. should be fixed some time.
 	};
 
 	extern platform *pf;
