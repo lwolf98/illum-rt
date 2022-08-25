@@ -277,34 +277,51 @@ namespace wf {
 			int w, h;
 			int pitch;
 
-			texture_image(const texture2d &base)
+			texture_image(const texture2d<vec3> &base)
 			: name(base.name + "-on-cuda"), w(base.w), h(base.h) {
 				float4 *src = new float4[w*h];
 				#pragma omp parallel for
 				for (int y = 0; y < h; ++y)
 					for (int x = 0; x < w; ++x)
 						src[y*w+x] = float4{ base.texel[y*w+x].x, base.texel[y*w+x].y, base.texel[y*w+x].z, 0 };
-				auto chan_desc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
-				CHECK_CUDA_ERROR(cudaMallocArray(&underlying, &chan_desc, w, h), name);
-				int spitch = w * sizeof(float4);
-				CHECK_CUDA_ERROR(cudaMemcpy2DToArray(underlying, 0, 0, src, spitch, w*sizeof(float4), h, cudaMemcpyHostToDevice), name);
+				
+				create_cuda_resource(src);
 				delete [] src;
-
-				 cudaResourceDesc res_desc;
-				 memset(&res_desc, 0, sizeof(res_desc));
-				 res_desc.resType = cudaResourceTypeArray;
-				 res_desc.res.array.array = underlying;
-
-				 cudaTextureDesc tex_desc;
-				 memset(&tex_desc, 0, sizeof(tex_desc));
-				 tex_desc.addressMode[0] = cudaAddressModeWrap;
-				 tex_desc.addressMode[1] = cudaAddressModeWrap;
-				 tex_desc.filterMode = cudaFilterModeLinear;
-				 tex_desc.readMode = cudaReadModeElementType;
-				 tex_desc.normalizedCoords = 1;
-
-				 CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr), name);
 			}
+
+			texture_image(const texture2d<vec4> &base)
+			: name(base.name + "-on-cuda"), w(base.w), h(base.h) {
+				float4 *src = new float4[w*h];
+				#pragma omp parallel for
+				for (int y = 0; y < h; ++y)
+					for (int x = 0; x < w; ++x)
+						src[y*w+x] = float4{ base.texel[y*w+x].x, base.texel[y*w+x].y, base.texel[y*w+x].z, base.texel[y*w+x].w };
+				
+				create_cuda_resource(src);
+				delete [] src;
+			}
+
+			private:
+				void create_cuda_resource(const float4 *src) {
+					auto chan_desc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
+					CHECK_CUDA_ERROR(cudaMallocArray(&underlying, &chan_desc, w, h), name);
+					int spitch = w * sizeof(float4);
+					CHECK_CUDA_ERROR(cudaMemcpy2DToArray(underlying, 0, 0, src, spitch, w*sizeof(float4), h, cudaMemcpyHostToDevice), name);
+					cudaResourceDesc res_desc;
+					memset(&res_desc, 0, sizeof(res_desc));
+					res_desc.resType = cudaResourceTypeArray;
+					res_desc.res.array.array = underlying;
+
+					cudaTextureDesc tex_desc;
+					memset(&tex_desc, 0, sizeof(tex_desc));
+					tex_desc.addressMode[0] = cudaAddressModeWrap;
+					tex_desc.addressMode[1] = cudaAddressModeWrap;
+					tex_desc.filterMode = cudaFilterModeLinear;
+					tex_desc.readMode = cudaReadModeElementType;
+					tex_desc.normalizedCoords = 1;
+
+					CHECK_CUDA_ERROR(cudaCreateTextureObject(&tex, &res_desc, &tex_desc, nullptr), name);
+				}
 			// TODO cleanup missing
 		};
 

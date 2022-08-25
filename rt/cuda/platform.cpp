@@ -31,15 +31,25 @@ namespace wf {
 			for (auto arg : args)
 				cerr << "Platform cuda does not support the argument " << arg << endl;
 			register_batch_rt("simple",, simple_rt);
+			register_batch_rt("simple-alpha",, simple_rt_alpha);
 			register_batch_rt("if-if",, ifif);
+			register_batch_rt("if-if-alpha",, ifif_alpha);
 			register_batch_rt("while-while",, whilewhile);
+			register_batch_rt("while-while-alpha",, whilewhile_alpha);
 			register_batch_rt("persistent-if-if",, persistentifif);
+			register_batch_rt("persistent-if-if-alpha",, persistentifif_alpha);
 			register_batch_rt("persistent-while-while",, persistentwhilewhile);
+			register_batch_rt("persistent-while-while-alpha",, persistentwhilewhile_alpha);
 			register_batch_rt("speculative-while-while",, speculativewhilewhile);
+			register_batch_rt("speculative-while-while-alpha",, speculativewhilewhile_alpha);
 			register_batch_rt("persistent-speculative-while-while",, persistentspeculativewhilewhile);
+			register_batch_rt("persistent-speculative-while-while-alpha",, persistentspeculativewhilewhile_alpha);
 			register_batch_rt("dynamic-while-while",, dynamicwhilewhile);
+			register_batch_rt("dynamic-while-while-alpha",, dynamicwhilewhile_alpha);
+			
 #ifdef HAVE_OPTIX
-			register_batch_rt("optix",, optix_tracer);
+			register_batch_rt_with_args("optix",, optix_tracer, false);
+			register_batch_rt_with_args("optix-alpha",,optix_tracer, true);
 #endif
 			link_tracer("while-while", "default");
 			link_tracer("while-while", "find closest hits");
@@ -86,16 +96,25 @@ namespace wf {
 				string variant;
 				in >> variant;
 				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
-				if      (variant == "simple")                             rt = dynamic_cast<batch_rt*>(select("simple"));
-				else if (variant == "if-if")                              rt = dynamic_cast<batch_rt*>(select("if-if"));
-				else if (variant == "while-while")                        rt = dynamic_cast<batch_rt*>(select("while-while"));
-				else if (variant == "persistent-if-if")                   rt = dynamic_cast<batch_rt*>(select("persistent-if-if"));
-				else if (variant == "persistent-while-while")             rt = dynamic_cast<batch_rt*>(select("persistent-while-while"));
-				else if (variant == "speculative-while-while")            rt = dynamic_cast<batch_rt*>(select("speculative-while-while"));
-				else if (variant == "persistent-speculative-while-while") rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while"));
-				else if (variant == "dynamic-while-while")                rt = dynamic_cast<batch_rt*>(select("dynamic-while-while"));
+				if      (variant == "simple")                                   rt = dynamic_cast<batch_rt*>(select("simple"));
+				if      (variant == "simple-alpha")                                   rt = dynamic_cast<batch_rt*>(select("simple-alpha"));
+				else if (variant == "if-if")                                    rt = dynamic_cast<batch_rt*>(select("if-if"));
+				else if (variant == "if-if-alpha")                              rt = dynamic_cast<batch_rt*>(select("if-if-alpha"));
+				else if (variant == "while-while")                              rt = dynamic_cast<batch_rt*>(select("while-while"));
+				else if (variant == "while-while-alpha")                        rt = dynamic_cast<batch_rt*>(select("while-while-alpha"));
+				else if (variant == "persistent-if-if")                         rt = dynamic_cast<batch_rt*>(select("persistent-if-if"));
+				else if (variant == "persistent-if-if-alpha")                   rt = dynamic_cast<batch_rt*>(select("persistent-if-if-alpha"));
+				else if (variant == "persistent-while-while")                   rt = dynamic_cast<batch_rt*>(select("persistent-while-while"));
+				else if (variant == "persistent-while-while-alpha")             rt = dynamic_cast<batch_rt*>(select("persistent-while-while-alpha"));
+				else if (variant == "speculative-while-while")                  rt = dynamic_cast<batch_rt*>(select("speculative-while-while"));
+				else if (variant == "speculative-while-while-alpha")            rt = dynamic_cast<batch_rt*>(select("speculative-while-while-alpha"));
+				else if (variant == "persistent-speculative-while-while")       rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while"));
+				else if (variant == "persistent-speculative-while-while-alpha") rt = dynamic_cast<batch_rt*>(select("persistent-speculative-while-while-alpha"));
+				else if (variant == "dynamic-while-while")                      rt = dynamic_cast<batch_rt*>(select("dynamic-while-while"));
+				else if (variant == "dynamic-while-while-alpha")                rt = dynamic_cast<batch_rt*>(select("dynamic-while-while-alpha"));
 #ifdef HAVE_OPTIX
-				else if (variant == "optix")                              rt = dynamic_cast<batch_rt*>(select("optix"));
+				else if (variant == "optix")                                    rt = dynamic_cast<batch_rt*>(select("optix"));
+				else if (variant == "optix-alpha")                              rt = dynamic_cast<batch_rt*>(select("optix-alpha"));
 #endif
 				else error("There is no such cuda ray tracer variant");
 				return true;

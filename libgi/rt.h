@@ -78,6 +78,7 @@ struct diff_geom {
 	diff_geom(const triangle_intersection &is, const scene &scene);
 
 	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
+	float opacity() const; // evaluates the surface opacity (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);

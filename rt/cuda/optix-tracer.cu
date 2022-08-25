@@ -42,8 +42,8 @@
 constexpr const char *RAYGEN_ENTRY_FUNCTION_NAME = "__raygen__render_frame";
 constexpr const char *MISS_ENTRY_FUNCTION_NAME = "__miss__radiance";
 constexpr const char *CLOSESTHIT_ENTRY_FUNCTION_NAME = "__closesthit__radiance";
+constexpr const char *ANYHIT_ALPHA_ENTRY_FUNCTION_NAME = "__anyhit__radiance_alpha";
 constexpr const char *ANYHIT_ENTRY_FUNCTION_NAME = "__anyhit__radiance";
-
 constexpr const char *LAUNCH_PARAMS_VARIABLE_NAME = "launch_params";
 
 
@@ -55,6 +55,8 @@ constexpr const char *LAUNCH_PARAMS_VARIABLE_NAME = "launch_params";
 constexpr const unsigned int MAX_TRAVERSABLE_GRAPH_DEPTH = 1;
 
 /* How many nested optixTrace calls do we have within our kernels?
+ * 
+ * Normal case: (MAX_TRACE_CALL_DEPTH - used when alpha_aware == false)
  * We only call optixTrace within the raygen program.
  * Note: The raygen program does not generate our rays even though the name suggests it.
  */
@@ -76,17 +78,18 @@ constexpr const unsigned int MAX_DIRECT_CALLABLE_CALL_DEPTH = 0;
 
 
 namespace wf::cuda {
-    optix_tracer::optix_tracer() : cuda_context(CURRENT_CUDA_CONTEXT),
-                                   sbt{},
-                                   verbose(false),
-                                   optix_pipeline_link_options{},
-                                   optix_pipeline_compile_options{},
-                                   optix_context(nullptr),
-                                   raygen_records_buffer("raygen records buffer", 1),
-                                   miss_records_buffer("miss records buffer", 1),
-                                   hitgroup_records_buffer("hitgroup records buffer", 1),
-                                   device_launch_params("optix launch params", 1),
-                                   accel_struct_buffer("accell struct buffer", 0) {
+    optix_tracer::optix_tracer(bool alpha_aware) : alpha_aware(alpha_aware),
+                                                   cuda_context(CURRENT_CUDA_CONTEXT),
+                                                   sbt{},
+                                                   verbose(false),
+                                                   optix_pipeline_link_options{},
+                                                   optix_pipeline_compile_options{},
+                                                   optix_context(nullptr),
+                                                   raygen_records_buffer("raygen records buffer", 1),
+                                                   miss_records_buffer("miss records buffer", 1),
+                                                   hitgroup_records_buffer("hitgroup records buffer", 1),
+                                                   device_launch_params("optix launch params", 1),
+                                                   accel_struct_buffer("accell struct buffer", 0) {
         init_optix();
         create_context();
         create_module();
@@ -110,7 +113,7 @@ namespace wf::cuda {
         hitgroup_program_desc.hitgroup.moduleCH = optix_module;
         hitgroup_program_desc.hitgroup.moduleAH = optix_module;
         hitgroup_program_desc.hitgroup.entryFunctionNameCH = CLOSESTHIT_ENTRY_FUNCTION_NAME;
-        hitgroup_program_desc.hitgroup.entryFunctionNameAH = ANYHIT_ENTRY_FUNCTION_NAME;
+        hitgroup_program_desc.hitgroup.entryFunctionNameAH = alpha_aware ? ANYHIT_ALPHA_ENTRY_FUNCTION_NAME : ANYHIT_ENTRY_FUNCTION_NAME;
         create_program(hitgroup_program, program_group_options, hitgroup_program_desc);
 
         create_pipeline();
@@ -121,9 +124,8 @@ namespace wf::cuda {
         if (anyhit)
             host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT; 
         else 
-            host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
+            host_launch_params.ray_flags = alpha_aware ? OptixRayFlags::OPTIX_RAY_FLAG_NONE : OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
         
-		std::cout << "Using rays " << rd->name << std::endl;
         host_launch_params.rays = rd->rays.device_memory;
         host_launch_params.triangle_intersections = rd->intersections.device_memory;
         device_launch_params.upload(1, &host_launch_params);
@@ -253,6 +255,10 @@ namespace wf::cuda {
         host_launch_params.optix_traversable_handle = build_acceleration_structure(scenedata);
         host_launch_params.frame_buffer_dimensions.x = rc->resolution().x;
         host_launch_params.frame_buffer_dimensions.y = rc->resolution().y;
+
+        host_launch_params.materials = scene_data->materials.device_memory;
+        host_launch_params.tex_coords = scene_data->vertex_tc.device_memory;
+        host_launch_params.triangles = scene_data->triangles.device_memory;
     }
 
     void optix_tracer::init_optix() {

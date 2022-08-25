@@ -15,6 +15,7 @@
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 using namespace glm;
 
+
 struct scene_access_traits {
 	scene *s;
 	typedef ::triangle tri_t;
@@ -33,12 +34,12 @@ struct scene_access_traits {
 //    a more realistic binary bvh
 //
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-binary_bvh_tracer<tr_layout, esc_mode>::binary_bvh_tracer() {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::binary_bvh_tracer() {
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-void binary_bvh_tracer<tr_layout, esc_mode>::build(::scene *scene) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+void binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::build(::scene *scene) {
 	time_this_block(build_bvh);
 	this->scene = scene;
 	std::cout << "Building BVH..." << std::endl;
@@ -63,8 +64,8 @@ void binary_bvh_tracer<tr_layout, esc_mode>::build(::scene *scene) {
 	std::cout << "Done after " << duration << "ms" << std::endl;
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const ray &ray) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+triangle_intersection binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::closest_hit(const ray &ray) {
 	//time_this_block(closest_hit);
 #ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection closest, intersection;
@@ -100,11 +101,23 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const 
 		else {
 			for (int i = 0; i < node.tri_count(); ++i) {
 				int tri_idx = triangle_index(node.tri_offset()+i);
-				if (intersect(scene->triangles[tri_idx], scene->vertices.data(), ray, intersection))
-					if (intersection.t < closest.t) {
-						closest = intersection;
-						closest.ref = tri_idx;
+				if (intersect(scene->triangles[tri_idx], scene->vertices.data(), ray, intersection)) {
+					if constexpr(alpha_aware) {
+						intersection.ref = tri_idx;
+						diff_geom dg(intersection, *scene);
+						if (dg.opacity() > ALPHA_THRESHOLD)
+							if (intersection.t < closest.t) {
+								closest = intersection;
+								closest.ref = tri_idx;
+							}
+					} 
+					else {
+						if (intersection.t < closest.t) {
+								closest = intersection;
+								closest.ref = tri_idx;
+							}
 					}
+				}
 			}
 		}
 	}
@@ -119,8 +132,8 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode>::closest_hit(const 
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+bool binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::any_hit(const ray &ray) {
 	//time_this_block(any_hit);
 #ifndef RTGI_SKIP_BVH2_TRAV_IMPL
 	triangle_intersection intersection;
@@ -151,7 +164,15 @@ bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
 			for (int i = 0; i < node.tri_count(); ++i) {
 				int tri_idx = triangle_index(node.tri_offset()+i);
 				if (intersect(scene->triangles[tri_idx], scene->vertices.data(), ray, intersection))
-					return true;
+					if constexpr(alpha_aware) {
+						intersection.ref = tri_idx;
+						diff_geom dg(intersection, *scene);
+						if (dg.opacity() > ALPHA_THRESHOLD)
+							return true;
+					}
+					else {
+						return true;
+					}
 			}
 		}
 	}
@@ -163,8 +184,8 @@ bool binary_bvh_tracer<tr_layout, esc_mode>::any_hit(const ray &ray) {
 #endif
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-bool binary_bvh_tracer<tr_layout, esc_mode>::interprete(const std::string &command, std::istringstream &in) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+bool binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::interprete(const std::string &command, std::istringstream &in) {
 	std::string value;
 	if (command == "bvh") {
 		in >> value;
@@ -217,8 +238,8 @@ bool binary_bvh_tracer<tr_layout, esc_mode>::interprete(const std::string &comma
 	return false;
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-void binary_bvh_tracer<tr_layout, esc_mode>::export_bvh(uint32_t node_id, uint32_t *id, uint32_t depth, const std::string &filename, int max_depth) {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+void binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::export_bvh(uint32_t node_id, uint32_t *id, uint32_t depth, const std::string &filename, int max_depth) {
 	using namespace std;
 	auto export_aabb = [&](const aabb box, const uint32_t vert[]) {
 		ofstream out(filename, ios::app);
@@ -259,8 +280,8 @@ void binary_bvh_tracer<tr_layout, esc_mode>::export_bvh(uint32_t node_id, uint32
 	}
 }
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
-void binary_bvh_tracer<tr_layout, esc_mode>::print_node_stats() {
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
+void binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::print_node_stats() {
 	std::vector<int> leaf_nodes;
 	uint32_t total_triangles = 0;
 	uint32_t number_of_leafs = 0;
@@ -296,4 +317,4 @@ void binary_bvh_tracer<tr_layout, esc_mode>::print_node_stats() {
 template class binary_bvh_tracer<bbvh_triangle_layout::flat,    bbvh_esc_mode::off>;
 template class binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>;
 template class binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>;
-
+template class binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on, true>;

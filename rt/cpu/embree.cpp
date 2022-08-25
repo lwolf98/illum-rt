@@ -1,6 +1,7 @@
 #include "embree.h"
 
-embree_tracer::embree_tracer() {
+template <bool alpha_aware>
+embree_tracer<alpha_aware>::embree_tracer() {
 	em_device = rtcNewDevice(0);
 
 	//Error handling
@@ -16,7 +17,8 @@ embree_tracer::embree_tracer() {
 	rtcSetSceneBuildQuality(em_scene, RTC_BUILD_QUALITY_HIGH);
 }
 
-embree_tracer::~embree_tracer() {
+template <bool alpha_aware>
+embree_tracer<alpha_aware>::~embree_tracer() {
 	rtcReleaseScene(em_scene);
 	rtcReleaseDevice(em_device);
 }
@@ -24,7 +26,9 @@ embree_tracer::~embree_tracer() {
 //This expects everything in the szene to be one merged triangle mesh
 //Other geometry types (NURBS etc) are supported by embree,
 //but we would need to set additional buffers here depending on the geometry type
-void embree_tracer::build(::scene *scene) {
+template <bool alpha_aware>
+void embree_tracer<alpha_aware>::build(::scene *scene) {
+	this->scene = scene;
 	RTCGeometry geom = rtcNewGeometry(em_device, RTC_GEOMETRY_TYPE_TRIANGLE);
 	//No need to create a new buffer, we just tell embree how our buffers look like
 	rtcSetSharedGeometryBuffer(geom,
@@ -67,7 +71,8 @@ RTCRay ray_convert_to_embree(const ray &ray) {
 	return em_ray;
 }
 
-bool embree_tracer::any_hit(const ray &ray) {
+template <bool alpha_aware>
+bool embree_tracer<alpha_aware>::any_hit(const ray &ray) {
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
 	RTCRay em_ray = ray_convert_to_embree(ray);
@@ -77,27 +82,63 @@ bool embree_tracer::any_hit(const ray &ray) {
 	return std::isinf(em_ray.tfar) && (em_ray.tfar) < 0;
 }
 
-triangle_intersection embree_tracer::closest_hit(const ray &ray) {
+template <bool alpha_aware>
+triangle_intersection embree_tracer<alpha_aware>::closest_hit(const ray &ray) {
 	RTCIntersectContext context;
 	rtcInitIntersectContext(&context);
 
 	RTCRayHit ray_hit;
 	ray_hit.ray = ray_convert_to_embree(ray);
 	ray_hit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
-	rtcIntersect1(em_scene, &context, &ray_hit);
+	if constexpr(alpha_aware) {
+		while (true) {
+			rtcIntersect1(em_scene, &context, &ray_hit);
 
-	//Again just a 1-1 conversion from the embree returned struct to ours
-	triangle_intersection closest;
-	if(ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
-		closest.t = ray_hit.ray.tfar;
-	else
-		closest.t = FLT_MAX;
-	//u and v correspond to beta and gamma, just different names
-	closest.beta = ray_hit.hit.u;
-	closest.gamma = ray_hit.hit.v;
-	closest.ref = ray_hit.hit.primID;
+			//Again just a 1-1 conversion from the embree returned struct to ours
+			triangle_intersection closest;
+			if (ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID) {
+				closest.t = ray_hit.ray.tfar;
+				//u and v correspond to beta and gamma, just different names
+				closest.beta = ray_hit.hit.u;
+				closest.gamma = ray_hit.hit.v;
+				closest.ref = ray_hit.hit.primID;
+				diff_geom dg(closest, *scene);
+				
+				if (dg.opacity() < ALPHA_THRESHOLD) {
+					const float eps = 0.001f;
+					ray_hit.ray.tnear = ray_hit.ray.tfar + eps;
+					ray_hit.ray.tfar = ray.t_max;
+					ray_hit.hit.geomID = RTC_INVALID_GEOMETRY_ID;
+					continue;
+				}
+				return closest;
+			}
+			else {
+				closest.t = FLT_MAX;
+				//u and v correspond to beta and gamma, just different names
+				closest.beta = ray_hit.hit.u;
+				closest.gamma = ray_hit.hit.v;
+				closest.ref = ray_hit.hit.primID;
+				return closest;
+			}
+		}
+	}
+	else {	
+		rtcIntersect1(em_scene, &context, &ray_hit);
 
-	return closest;
+		//Again just a 1-1 conversion from the embree returned struct to ours
+		triangle_intersection closest;
+		if(ray_hit.hit.geomID != RTC_INVALID_GEOMETRY_ID)
+			closest.t = ray_hit.ray.tfar;
+		else
+			closest.t = FLT_MAX;
+		//u and v correspond to beta and gamma, just different names
+		closest.beta = ray_hit.hit.u;
+		closest.gamma = ray_hit.hit.v;
+		closest.ref = ray_hit.hit.primID;
+
+		return closest;
+	}
 }
 
 //BVH Generation Callbacks
@@ -201,3 +242,6 @@ void embvh_split_primitive(const struct RTCBuildPrimitive *primitive,
 		break;
 	}
 }
+
+template struct embree_tracer<>;
+template struct embree_tracer<true>;

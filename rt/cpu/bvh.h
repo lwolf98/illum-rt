@@ -7,6 +7,7 @@
 #include <float.h>
 #include <glm/glm.hpp>
 
+constexpr const float ALPHA_THRESHOLD = 0.5f;
 // #define COUNT_HITS
 
 #ifndef RTGI_SKIP_WF
@@ -59,7 +60,7 @@ struct bvh {
 enum class bbvh_triangle_layout { flat, indexed };
 enum class bbvh_esc_mode { off, on };
 
-template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode>
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware = false>
 struct binary_bvh_tracer : public individual_ray_tracer {
 	typedef bbvh_node node;
 

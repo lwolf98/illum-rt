@@ -131,9 +131,11 @@ namespace wf {
 
 			register_batch_rt("seq",, batch_rt_adapter(new seq_tri_is));
 			register_batch_rt("bbvh-esc",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>));
+			register_batch_rt("bbvh-esc-alpha",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on, true>));
 
 #ifdef HAVE_LIBEMBREE3
 			register_batch_rt("embree",, batch_rt_adapter(new embree_tracer));
+			register_batch_rt("embree-alpha",, batch_rt_adapter(new embree_tracer<true>));
 			link_tracer("embree", "default");
 #else
 #ifndef RTGI_SKIP_BVH

@@ -438,7 +438,7 @@ void eval(const std::string &line) {
 			if (cmd == "drop")
 				selected_mat->albedo_tex = nullptr;
 			else {
-				texture2d *tex = load_image3f(cmd);
+				texture2d<vec4> *tex = load_image4f(cmd);
 				if (tex)
 					selected_mat->albedo_tex = tex;
 			}

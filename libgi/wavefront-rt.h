@@ -37,6 +37,7 @@ namespace wf {
 	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
+	#define register_batch_rt_with_args(N,C,X, ...) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X(__VA_ARGS__); }
 	#define register_wf_step(N,C,X) steps[N] = [C]() -> wf::step* { return new X; }
 	#define register_wf_step_by_id(C,X) steps[X::id] = [C]() -> wf::step* { return new X; }
 	/*! Interface to a hardware or software platform that allows running ray tracing algorithms in wavefront style.
