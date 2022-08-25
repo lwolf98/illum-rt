@@ -15,6 +15,9 @@
  *  TODO: will this cause problems?
  */
 #endif
+
+
+template <bool alpha_aware = false>
 struct embree_tracer : public individual_ray_tracer {
 public:
 	embree_tracer();

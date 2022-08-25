@@ -92,11 +92,11 @@ namespace wf {
 					else if (texture_support_mode == HACKY) {
 						m.has_tex = 1;
 						m.albedo_tex = tex_data_hacky.size();
-						texture2d *src = scene->materials[i].albedo_tex;
+						texture2d<vec4> *src = scene->materials[i].albedo_tex;
 						tex_data_hacky.push_back(vec4(src->w, src->h, 0, 0));
 						for (int y = 0; y < src->h; ++y)
 							for (int x = 0; x < src->w; ++x)
-								tex_data_hacky.push_back(vec4(src->value(x, y),1));
+								tex_data_hacky.push_back(src->value(x, y));
 					}
 				}
 				materials.resize(mtl);
