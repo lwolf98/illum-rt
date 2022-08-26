@@ -54,15 +54,18 @@ namespace wf {
 
 			n_vertices = scene->vertices.size();
 			n_triangles = scene->triangles.size();
-			vector<float4> tmp4(n_vertices);
-			vector<float2> tmp2(n_vertices);
+			vector<float4> tmp_p(n_vertices);
+			vector<float4> tmp_n(n_vertices);
+			vector<float2> tmp_t(n_vertices);
 
 			for (int i = 0; i < n_vertices; ++i) {
-				tmp4[i] = float4{ scene->vertices[i].pos.x, scene->vertices[i].pos.y, scene->vertices[i].pos.z, 0 };
-				tmp2[i] = float2{ scene->vertices[i].tc.x, scene->vertices[i].tc.y };
+				tmp_p[i] = float4{ scene->vertices[i].pos.x,  scene->vertices[i].pos.y,  scene->vertices[i].pos.z,  1 };
+				tmp_n[i] = float4{ scene->vertices[i].norm.x, scene->vertices[i].norm.y, scene->vertices[i].norm.z, 0 };
+				tmp_t[i] = float2{ scene->vertices[i].tc.x, scene->vertices[i].tc.y };
 			}
-			vertex_pos.upload(tmp4);
-			vertex_tc.upload(tmp2);
+			vertex_pos.upload(tmp_p);
+			vertex_norm.upload(tmp_n);
+			vertex_tc.upload(tmp_t);
 
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
 			vector<material> mtls(scene->materials.size());

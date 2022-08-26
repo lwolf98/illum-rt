@@ -359,17 +359,20 @@ namespace wf {
 		struct scenedata {
 			int n_vertices = 0, n_triangles = 0;
 			texture_buffer<float4> vertex_pos;
+			texture_buffer<float4> vertex_norm;
 			texture_buffer<float2> vertex_tc;
 			texture_buffer<uint4> triangles;
 			global_memory_buffer<material> materials;
 			std::vector<texture_image> tex_images;
 			scenedata() : vertex_pos("vertex_pos", 0),
+						  vertex_norm("vertex_norm", 0),
 						  vertex_tc("vertex_tc", 0),
 						  triangles("triangles", 0),
 						  materials("materials", 0)	{
 			};
 			scenedata(const scenedata &) = delete;
 			scenedata(scenedata *org, buffer_copy_mode_shallow m) : vertex_pos(org->vertex_pos, m),
+			                                                        vertex_norm(org->vertex_norm, m),
 			                                                        vertex_tc(org->vertex_tc, m),
 																	triangles(org->triangles, m),
 																	materials(org->materials, m),
