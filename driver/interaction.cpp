@@ -259,6 +259,7 @@ void eval(const std::string &line) {
 		if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_SKIP_WF
 		else if (name == "primary-wf")  a = new wf::primary_hit_display;
+		else if (name == "direct-wf")  a = new wf::direct_light;
 #endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 		else if (name == "local")  a = new local_illumination;

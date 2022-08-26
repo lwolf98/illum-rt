@@ -10,9 +10,11 @@
 
 namespace wf::cpu {
 
-	struct sample_uniform_light_directions : public wf::sample_uniform_light_directions {
-		raydata *sample_rays = nullptr,
-		        *shadow_rays = nullptr;
+	struct sample_uniform_dir : public wf::wire::sample_uniform_dir<raydata, per_sample_data<float>> {
+		void run() override;
+	};
+
+	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>> {
 		void run() override;
 	};
 

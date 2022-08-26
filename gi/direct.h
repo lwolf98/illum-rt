@@ -2,6 +2,7 @@
 
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
+#include "libgi/wavefront-rt.h"
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 class direct_light : public recursive_algorithm {
@@ -33,3 +34,17 @@ public:
 };
 #endif
 #endif
+
+#ifndef RTGI_SKIP_WF
+#include "direct-steps.h"
+namespace wf {
+	class direct_light : public wf::simple_algorithm {
+		raydata *camrays = nullptr,
+				*shadowrays = nullptr;
+		per_sample_data<float> *pdf = nullptr;
+	public:
+		direct_light();
+	};
+}
+#endif
+

@@ -1,20 +1,15 @@
-at -10 -10 0
-at -13 -12 0
-look 1 0 0
 up 0 1 0
+at 2 -14 0
+look -1 0 0
 
-#platform cpu
-#raytracer bbvh-esc
-#raytracer embree
-platform opengl glfw
-#platform cuda
-#raytracer optix
-
-sppx 4
-#sppx 1
-# resolution 960 540 desaster with GL
 resolution 960 544
-#resolution 480 270
+sppx 32
+
+// simple rt version
+raytracer embree
+
+# resolution 960 540 desaster with GL
+# resolution 480 270
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik.obj
@@ -65,15 +60,29 @@ material emissive 1.9 18.3 2.15
 #material select staklo_zuto
 #material emissive 37.5 32.2 0.3
 
-#add-scene-step rotate scene keeping original data
-add-scene-step build accel struct
 
 commit
 
-at 2 -14 0
-look -1 0 0
+echo  - - - - Running non-WF version - - - - 
+algo direct
+is uniform
+outfile /tmp/test-nonwf.png
+run
 
-#omp off
-algo primary-wf
-outfile /tmp/test2.png
+echo  - - - - Running WF version - - - - 
+// wf version
+platform cpu
+#raytracer bbvh-esc
+raytracer embree
+#platform opengl glfw
+#platform cuda
+#raytracer optix
+
+#add-scene-step rotate scene keeping original data
+add-scene-step build accel struct
+commit
+
+//#omp off
+algo direct-wf
+outfile /tmp/test-wf.png
 run
