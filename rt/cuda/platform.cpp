@@ -100,7 +100,7 @@ namespace wf {
 				in >> variant;
 				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
 				if      (variant == "simple")                                   rt = dynamic_cast<batch_rt*>(select("simple"));
-				if      (variant == "simple-alpha")                                   rt = dynamic_cast<batch_rt*>(select("simple-alpha"));
+				else if (variant == "simple-alpha")                             rt = dynamic_cast<batch_rt*>(select("simple-alpha"));
 				else if (variant == "if-if")                                    rt = dynamic_cast<batch_rt*>(select("if-if"));
 				else if (variant == "if-if-alpha")                              rt = dynamic_cast<batch_rt*>(select("if-if-alpha"));
 				else if (variant == "while-while")                              rt = dynamic_cast<batch_rt*>(select("while-while"));
