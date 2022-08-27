@@ -343,6 +343,7 @@ void eval(const std::string &line) {
 #ifdef HAVE_CUDA
 		else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
+		else if (name == "none") { delete rc->platform; rc->platform = nullptr; }
 		else error("There is no platform called '" << name << "'");
 		uc.tracer_touched_at = uc.cmdid;
 	}
