@@ -3,19 +3,25 @@
 #include <glm/glm.hpp>
 #include <cmath>
 
+#ifdef __CUDACC__
+#define heterogeneous __host__ __device__
+#else
+#define heterogeneous
+#endif
+
 /*
  *  vector math things
  *
  */
 
 //! compute clamped (to zero) dot product
-inline float cdot(const vec3 &a, const vec3 &b) {
+template<typename T> heterogeneous inline float cdot(const T &a, const T &b) {
 	float x = a.x*b.x + a.y*b.y + a.z*b.z;
 	return x < 0.0f ? 0.0f : x;
 }
 
 //! compute absolute-value of dot product
-inline float absdot(const vec3 &a, const vec3 &b) {
+template<typename T> heterogeneous inline float absdot(const T &a, const T &b) {
 	float x = a.x*b.x + a.y*b.y + a.z*b.z;
 	return x < 0.0f ? -x : x;
 }
@@ -39,13 +45,17 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
  *  starting here, many things will probably originate from niho's code
  */
 
+heterogeneous inline float clamp(float f, float min, float max) {
+	return f < min ? min : (f > max ? max : f);
+}
+
 #ifndef RTGI_SKIP_LAYERED_BRDF
-inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_material) {
+heterogeneous inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_material) {
 #ifndef RTGI_SKIP_LAYERED_BRDF_IMPL
     // check if entering or leaving material
     const float ei = cos_wi < 0.0f ? ior_material : ior_medium;
     const float et = cos_wi < 0.0f ? ior_medium : ior_material;
-    cos_wi = glm::clamp(glm::abs(cos_wi), 0.0f, 1.0f);
+    cos_wi = clamp(fabsf(cos_wi), 0.0f, 1.0f);
     // snell's law
     const float sin_t = (ei / et) * sqrtf(1.0f - cos_wi * cos_wi);
     // handle TIR
@@ -72,26 +82,26 @@ inline float fresnel_dielectric(float cos_wi, float ior_medium, float ior_materi
  * trigonometric helper functions
  *
  */
-inline float cos_theta(float cos_t) {
+heterogeneous inline float cos_theta(float cos_t) {
     return cos_t;
 }
-inline float cos2_theta(float cos_t) {
+heterogeneous inline float cos2_theta(float cos_t) {
     return cos_t*cos_t;
 }
-inline float abs_cos_theta(float cos_t) {
+heterogeneous inline float abs_cos_theta(float cos_t) {
     return cos_t < 0.0f ? -cos_t : cos_t;
 }
-inline float sin2_theta(float cos_t) {
+heterogeneous inline float sin2_theta(float cos_t) {
 	float res = 1.0f - cos_t*cos_t;
     return res < 0.0f ? 0.0f : res;
 }
-inline float sin_theta(float cos_t) {
+heterogeneous inline float sin_theta(float cos_t) {
     return sqrtf(sin2_theta(cos_t));
 }
-inline float tan_theta(float cos_t) {
+heterogeneous inline float tan_theta(float cos_t) {
     return sin_theta(cos_t) / cos_theta(cos_t);
 }
-inline float tan2_theta(float cos_t) {
+heterogeneous inline float tan2_theta(float cos_t) {
     return sin2_theta(cos_t) / cos2_theta(cos_t);
 }
 inline float cos_theta(const glm::vec3& N, const glm::vec3& w) {
@@ -124,8 +134,8 @@ inline float tan2_theta(const glm::vec3& N, const glm::vec3& w) {
  *  spherical geometry helpers
  */
 
-inline bool same_hemisphere(const vec3 &N, const vec3 &v) {
-    return glm::dot(N, v) > 0;
+template<typename T> heterogeneous inline bool same_hemisphere(const T &N, const T &v) {
+    return dot(N, v) > 0;
 }
 
 inline vec2 to_spherical(const vec3 &w) {
@@ -143,12 +153,18 @@ inline vec3 to_cartesian(const vec2 &w) {
 /*! align vector v with given axis (e.g. to transform a tangent space sample along a world normal)
  *  \attention parameter-order inverted with regards to niho's code
  */
-inline vec3 align(const vec3& v, const vec3& axis) {
+template<typename T> heterogeneous inline T align(const T& v, const T& axis) {
     const float s = copysign(1.f, axis.z);
-    const vec3 w = vec3(v.x, v.y, v.z * s);
-    const vec3 h = vec3(axis.x, axis.y, axis.z + s);
+    const T w = T{v.x, v.y, v.z * s};
+    const T h = T{axis.x, axis.y, axis.z + s};
     const float k = dot(w, h) / (1.f + (axis.z < 0 ? -axis.z : axis.z));
     return k * h - w;
+}
+
+//! todo this might be incomplete when using geom/shading normals
+template<typename T> heterogeneous inline void flip_normals_to_ray(T &normal, const T &ray_dir) {
+	if (same_hemisphere(ray_dir, normal))
+		normal *= -1;
 }
 
 inline void flip_normals_to_ray(diff_geom &dg, const ray &ray) {
@@ -159,3 +175,8 @@ inline void flip_normals_to_ray(diff_geom &dg, const ray &ray) {
 		dg.ns *= -1;
 	}
 }
+
+template<typename T> heterogeneous inline T bary_interpol(const T &a, const T &b, const T &c, float beta, float gamma) {
+	return (1-beta-gamma)*a + beta*b + gamma*c;
+}
+

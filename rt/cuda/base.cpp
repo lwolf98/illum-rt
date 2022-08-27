@@ -79,6 +79,8 @@ namespace wf {
 				}
 				else
 					mtls[i].albedo_tex = 0;
+				mtls[i].ior = scene->materials[i].ior;
+				mtls[i].roughness = scene->materials[i].roughness;
 			}
 			materials.upload(mtls);
 		}

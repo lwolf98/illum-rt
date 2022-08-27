@@ -354,6 +354,7 @@ namespace wf {
 			float4 albedo;
 			float4 emissive;
 			cudaTextureObject_t albedo_tex;
+			float ior, roughness;
 		};
 
 		struct scenedata {

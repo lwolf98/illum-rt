@@ -5,6 +5,7 @@
 #include "rni.h"
 #include "tracers.h"
 #include "preprocessing.h"
+#include "bounce.h"
 
 #include <iostream>
 
@@ -65,6 +66,8 @@ namespace wf {
 			register_wf_step_by_id(, rotate_scene_keep_org);
 			register_wf_step_by_id(, build_accel_struct);
 			register_wf_step_by_id(, drop_scene_view);
+			register_wf_step_by_id(, sample_uniform_dir);
+			register_wf_step_by_id(, integrate_light_sample);
 
 			timer = new wf::cuda::timer;
 		}

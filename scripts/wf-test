@@ -4,6 +4,7 @@ look -1 0 0
 
 resolution 960 544
 sppx 32
+#sppx 500
 
 // simple rt version
 raytracer embree
@@ -72,17 +73,25 @@ run
 echo  - - - - Running WF version - - - - 
 // wf version
 platform cpu
-#raytracer bbvh-esc
 raytracer embree
-#platform opengl glfw
-#platform cuda
+
+add-scene-step build accel struct
+commit
+
+algo direct-wf
+outfile /tmp/test-wf.png
+run
+
+
+echo  - - - - Running WF GPU version - - - - 
+platform cuda
+raytracer while-while
 #raytracer optix
 
 #add-scene-step rotate scene keeping original data
 add-scene-step build accel struct
 commit
 
-//#omp off
 algo direct-wf
-outfile /tmp/test-wf.png
+outfile /tmp/test-wf-gpu.png
 run
