@@ -159,6 +159,7 @@ struct repl_update_checks {
 			 scene_touched_at = 0,
 			 tracer_touched_at = 0,
 			 accel_touched_at = 0;
+	bool valid_platform = true; // even true for "no platform", but false when a platform was requested but is not available.
 };
 static repl_update_checks uc;
 static vector<string> command_history;
@@ -335,6 +336,7 @@ void eval(const std::string &line) {
 		vector<string> args;
 		string s;
 		while (in >> s) args.push_back(s);
+		uc.valid_platform = true;
 		// this should be plugin-driven at some point
 		if (name == "cpu") rc->platform = new wf::cpu::platform(args);
 #ifdef HAVE_GL
@@ -344,10 +346,17 @@ void eval(const std::string &line) {
 		else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
 		else if (name == "none") { delete rc->platform; rc->platform = nullptr; }
-		else error("There is no platform called '" << name << "'");
+		else {
+			delete rc->platform;
+			rc->platform = nullptr;
+			uc.valid_platform = false;
+			error("There is no platform called '" << name << "'");
+		}
 		uc.tracer_touched_at = uc.cmdid;
 	}
 	else ifcmd("commit") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
 		if (scene.vertices.empty())
 			error("There is no scene data to work with");
 		if (rc->algo)
@@ -375,6 +384,8 @@ void eval(const std::string &line) {
 		rc->sppx = sppx;
 	}
 	else ifcmd("run") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
 		if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || rc->algo == nullptr)
 			error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
 		if (uc.accel_touched_at < uc.tracer_touched_at)
