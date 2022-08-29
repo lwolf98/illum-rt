@@ -182,21 +182,22 @@ echo - - - - Running WF OpenGL version - - - -
 #run
 
 echo - - - - Running WF Cuda version - - - - 
-#platform cuda
-#raytracer while-while
-#add-scene-step build accel struct
-#commit
-#algo direct-wf
-#is cosine
-#outfile /tmp/wfall-direct-cos-4-cuda.png
-#run
+platform cuda
+raytracer while-while
+add-scene-step build accel struct
+commit
+algo direct-wf
+is cosine
+outfile /tmp/wfall-direct-cos-4-cuda.png
+run
 
 echo - - - - Running WF Cuda/RTX version - - - - 
-#raytracer while-while
-#add-scene-step build accel struct
-#commit
-#algo direct-wf
-#is cosine
-#outfile /tmp/wfall-direct-cos-5-cudartx.png
-#run
-#
+raytracer while-while
+add-scene-step build accel struct
+commit
+algo direct-wf
+is cosine
+outfile /tmp/wfall-direct-cos-5-cudartx.png
+run
+
+# vim: set syntax=sh :

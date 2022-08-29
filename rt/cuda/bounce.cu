@@ -1,6 +1,7 @@
 #include "bounce.h"
 
 #include "libgi/util.h"
+#include "libgi/sampling.h"
 
 #include "cuda-operators.h"
 
@@ -15,6 +16,10 @@ namespace wf::cuda {
 		float3 c = f3(vert_norm[tri.z]);
 		return bary_interpol(a, b, c, hit.beta, hit.gamma);
 	}
+
+	// 
+	// Uniform Sampling
+	// 
 
 	namespace k {
 		static __device__ bool not_black(float4 c) {
@@ -40,13 +45,7 @@ namespace wf::cuda {
 					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
 				else {
 					float2 xi = random[ray_index];
-					float z = xi.x;
-					float phi = 2*pi*xi.y;
-					// z is cos(theta), sin(theta) = sqrt(1-cos(theta)^2)
-					float sin_theta = sqrtf(1.0f - z*z);
-					float3 sampled_dir = float3{sin_theta * cosf(phi),
-												sin_theta * sinf(phi),
-												z};
+					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
 					float3 ng = hit_ng(hit, tri, vert_norm);
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ng, cam_dir);
@@ -78,6 +77,66 @@ namespace wf::cuda {
 												 pdf->data.device_memory,
 												 rng.random_numbers);
 	}
+
+	// 
+	// Cos Sampling
+	// 
+
+	namespace k {
+		static __global__ void sample_cos_dir(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
+											  uint4 *triangles, float4 *vert_norm, material *materials,
+											  float *pdf, float2 *random) {
+			int x = threadIdx.x + blockIdx.x*blockDim.x;
+			int y = threadIdx.y + blockIdx.y*blockDim.y;
+			int ray_index = y*res.x + x;
+			if (x >= res.x || y >= res.y)
+				return;
+	
+			tri_is hit = hits[ray_index];
+			float3 w_i { 0,0,0 };
+			float3 org { 0,0,0 };
+			float tmax = -FLT_MAX;
+			if (hit.valid()) {
+				uint4 tri = triangles[hit.ref];
+				material m = materials[tri.w];
+				if (not_black(m.emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
+				else {
+					float2 xi = random[ray_index];
+					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
+					float3 ng = hit_ng(hit, tri, vert_norm);
+					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+					flip_normals_to_ray(ng, cam_dir);
+					w_i = align(sampled_dir, ng);
+					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
+					tmax = FLT_MAX;
+				}
+			}
+			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
+			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
+			pdf[ray_index] = one_over_pi;
+		}
+	}
+
+	void sample_cos_weighted_dir::run() {
+		rng.compute();
+
+		int2 res = frame_res();
+		k::sample_cos_dir<<<launch_config>>>(res,
+											 camdata->rays.device_memory,
+											 camdata->intersections.device_memory,
+											 bouncedata->rays.device_memory,
+											 camdata->framebuffer.device_memory,
+											 pf->sd->triangles.device_memory,
+											 pf->sd->vertex_norm.device_memory,
+											 pf->sd->materials.device_memory,
+											 pdf->data.device_memory,
+											 rng.random_numbers);
+	}
+
+	// 
+	// Integration
+	// 
 
 	namespace k {
 

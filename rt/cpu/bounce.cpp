@@ -28,13 +28,7 @@ namespace wf::cpu {
 					}
 					else {
 						vec2 xi = rc->rng.uniform_float2();
-						float z = xi.x;
-						float phi = 2*pi*xi.y;
-						// z is cos(theta), sin(theta) = sqrt(1-cos(theta)^2)
-						float sin_theta = sqrtf(1.0f - z*z);
-						vec3 sampled_dir = vec3(sin_theta * cosf(phi),
-												sin_theta * sinf(phi),
-												z);
+						vec3 sampled_dir = uniform_sample_hemisphere(xi);
 						vec3 w_i = align(sampled_dir, hit.ng);
 						shadow_ray = ray(hit.x, w_i);
 					}
