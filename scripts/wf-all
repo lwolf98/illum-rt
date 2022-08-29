@@ -75,7 +75,7 @@ platform cpu
 raytracer embree
 add-scene-step build accel struct
 commit
-algo primary
+algo primary-wf
 outfile /tmp/wfall-primary-2-cpu.png
 run
 
@@ -83,7 +83,7 @@ echo - - - - Running WF OpenGL version - - - -
 platform opengl glfw
 add-scene-step build accel struct
 commit
-algo primary
+algo primary-wf
 outfile /tmp/wfall-primary-3-opengl.png
 run
 
@@ -92,7 +92,7 @@ platform cuda
 raytracer while-while
 add-scene-step build accel struct
 commit
-algo primary
+algo primary-wf
 outfile /tmp/wfall-primary-4-cuda.png
 run
 
@@ -100,7 +100,7 @@ echo - - - - Running WF Cuda/RTX version - - - -
 raytracer while-while
 add-scene-step build accel struct
 commit
-algo primary
+algo primary-wf
 outfile /tmp/wfall-primary-5-cudartx.png
 run
 
@@ -119,7 +119,7 @@ platform cpu
 raytracer embree
 add-scene-step build accel struct
 commit
-algo direct
+algo direct-wf
 is uniform
 outfile /tmp/wfall-direct-uni-2-cpu.png
 run
@@ -128,7 +128,7 @@ echo - - - - Running WF OpenGL version - - - -
 #platform opengl glfw
 #add-scene-step build accel struct
 #commit
-#algo direct
+#algo direct-wf
 #is uniform
 #outfile /tmp/wfall-direct-uni-3-opengl.png
 #run
@@ -138,7 +138,7 @@ platform cuda
 raytracer while-while
 add-scene-step build accel struct
 commit
-algo direct
+algo direct-wf
 is uniform
 outfile /tmp/wfall-direct-uni-4-cuda.png
 run
@@ -147,8 +147,56 @@ echo - - - - Running WF Cuda/RTX version - - - -
 raytracer while-while
 add-scene-step build accel struct
 commit
-algo direct
+algo direct-wf
 is uniform
 outfile /tmp/wfall-direct-uni-5-cudartx.png
 run
 
+
+echo ======= DIRECT LIGHT / Cos-Distributed =======
+echo - - - - Running non-WF version - - - - 
+platform none
+commit
+algo direct
+is cosine
+outfile /tmp/wfall-direct-cos-1-nonwf.png
+run
+
+echo - - - - Running WF CPU version - - - - 
+platform cpu
+raytracer embree
+add-scene-step build accel struct
+commit
+algo direct-wf
+is cosine
+outfile /tmp/wfall-direct-cos-2-cpu.png
+run
+
+echo - - - - Running WF OpenGL version - - - - 
+#platform opengl glfw
+#add-scene-step build accel struct
+#commit
+#algo direct-wf
+#is cosine
+#outfile /tmp/wfall-direct-cos-3-opengl.png
+#run
+
+echo - - - - Running WF Cuda version - - - - 
+#platform cuda
+#raytracer while-while
+#add-scene-step build accel struct
+#commit
+#algo direct-wf
+#is cosine
+#outfile /tmp/wfall-direct-cos-4-cuda.png
+#run
+
+echo - - - - Running WF Cuda/RTX version - - - - 
+#raytracer while-while
+#add-scene-step build accel struct
+#commit
+#algo direct-wf
+#is cosine
+#outfile /tmp/wfall-direct-cos-5-cudartx.png
+#run
+#
