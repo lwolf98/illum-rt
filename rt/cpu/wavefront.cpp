@@ -155,6 +155,7 @@ namespace wf {
 			register_wf_step_by_id(, find_any_hits);
 			register_wf_step_by_id(, build_accel_struct);
 			register_wf_step_by_id(, sample_uniform_dir);
+			register_wf_step_by_id(, sample_cos_weighted_dir);
 			register_wf_step_by_id(, integrate_light_sample);
 
 			timer = new wf::cpu::timer;

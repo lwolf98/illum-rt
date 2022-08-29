@@ -6,7 +6,9 @@
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 class direct_light : public recursive_algorithm {
+public:
 	enum sampling_mode { sample_uniform, sample_cosine, sample_light, sample_brdf };
+private:
 	enum sampling_mode sampling_mode = sample_light;
 
 protected:
@@ -42,8 +44,11 @@ namespace wf {
 		raydata *camrays = nullptr,
 				*shadowrays = nullptr;
 		per_sample_data<float> *pdf = nullptr;
+		enum ::direct_light::sampling_mode sampling_mode = ::direct_light::sample_uniform;
+		void regenerate_steps();
 	public:
 		direct_light();
+		bool interprete(const std::string &command, std::istringstream &in) override;
 	};
 }
 #endif

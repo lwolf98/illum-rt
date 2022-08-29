@@ -297,19 +297,6 @@ namespace wf {
 		frame_preparation_steps.push_back(init_fb);
 		frame_finalization_steps.push_back(download_fb);
 		
-		auto *sample_cam = rc->platform->step<sample_camera_rays>("primary hits");
-		auto *find_hit   = rc->platform->step<find_closest_hits>();
-		auto *sample_uniform = rc->platform->step<sample_uniform_dir>();
-		auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
-		auto *integrate = rc->platform->step<integrate_light_sample>();
-		auto *add_albedo = rc->platform->step<add_hitpoint_albedo>();
-		
-		sampling_steps.push_back(sample_cam);
-		sampling_steps.push_back(find_hit);
-		sampling_steps.push_back(sample_uniform);
-		sampling_steps.push_back(find_light);
-		sampling_steps.push_back(integrate);
-		
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
@@ -317,12 +304,52 @@ namespace wf {
 		init_fb->use(camrays);
 		download_fb->use(camrays);
 		
+		regenerate_steps();
+	}
+	void direct_light::regenerate_steps() {
+		sampling_steps.clear();
+		
+		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
+		auto *find_hit     = rc->platform->step<find_closest_hits>();
+		auto *find_light   = rc->platform->step<find_closest_hits>("secondary hits");
+		auto *integrate    = rc->platform->step<integrate_light_sample>();
+		step *sample_light = nullptr;
+		if (sampling_mode == ::direct_light::sample_uniform) {
+			auto *sample = rc->platform->step<sample_uniform_dir>();
+			sample->use(camrays, shadowrays, pdf);
+			sample_light = sample;
+		}
+		else if (sampling_mode == ::direct_light::sample_cosine) {
+			auto *sample = rc->platform->step<sample_cos_weighted_dir>();
+			sample->use(camrays, shadowrays, pdf);
+			sample_light = sample;
+		}
+		else throw runtime_error("unsupported importance sampling method for wf/direct");
+
 		sample_cam->use(camrays);
 		find_hit->use(camrays);
-		sample_uniform->use(camrays, shadowrays, pdf);
 		find_light->use(shadowrays);
 		integrate->use(camrays, shadowrays, pdf);
-		add_albedo->use(camrays);
+		
+		sampling_steps.push_back(sample_cam);
+		sampling_steps.push_back(find_hit);
+		sampling_steps.push_back(sample_light);
+		sampling_steps.push_back(find_light);
+		sampling_steps.push_back(integrate);
+	}
+	bool direct_light::interprete(const std::string &command, std::istringstream &in) {
+		string value;
+		if (command == "is") {
+			in >> value;
+			if (value == "uniform") sampling_mode = ::direct_light::sample_uniform;
+			else if (value == "cosine") sampling_mode = ::direct_light::sample_cosine;
+			else if (value == "light") sampling_mode = ::direct_light::sample_light;
+			else if (value == "brdf") sampling_mode = ::direct_light::sample_brdf;
+			else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
+			regenerate_steps();
+			return true;
+		}
+		return false;
 	}
 }
 #endif
