@@ -5,6 +5,17 @@
 #include "base.h"
 
 namespace wf::gl {
+	template<typename T> struct per_sample_data : public wf::per_sample_data<T> {
+		data_texture<T> data;
+		per_sample_data(glm::ivec2 dim) : data("float buffer", dim.x, dim.y, GL_R32F) {
+			rc->call_at_resolution_change[this] = [this](int w, int h) {
+				data.resize(w, h);
+			};
+		}
+		~per_sample_data() {}
+	};
+
+	
 	/*! \brief OpenGL Platform for Ray Tracing
 	 * 	
 	 * 	A non-optimized GL implementation of RTGI's interface, primarily as proof of concept and documentation for
@@ -23,6 +34,7 @@ namespace wf::gl {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
+		per_sample_data<float>* allocate_float_per_sample() override;
 		
 		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;

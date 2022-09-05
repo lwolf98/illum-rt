@@ -52,10 +52,12 @@ __global__ void setup_rays(glm::vec3 U, glm::vec3 V,
     rays[ray_index*2].x = ray_o.x;
     rays[ray_index*2].y = ray_o.y;
     rays[ray_index*2].z = ray_o.z;
+    rays[ray_index*2].w = 0;
 
     rays[ray_index*2+1].x = ray_d.x;
     rays[ray_index*2+1].y = ray_d.y;
     rays[ray_index*2+1].z = ray_d.z;
+    rays[ray_index*2+1].w = FLT_MAX;
 }
 
 void launch_setup_rays(glm::vec3 U, glm::vec3 V,
@@ -144,10 +146,12 @@ __global__ void setup_ray_incoherent(int2 res,
         rays[ray_index*2].x = ray_o.x;
         rays[ray_index*2].y = ray_o.y;
         rays[ray_index*2].z = ray_o.z;
+        rays[ray_index*2].w = 0;
 
         rays[ray_index*2+1].x = ray_d.x;
         rays[ray_index*2+1].y = ray_d.y;
         rays[ray_index*2+1].z = ray_d.z;
+        rays[ray_index*2+1].w = FLT_MAX;
     }
 }
 

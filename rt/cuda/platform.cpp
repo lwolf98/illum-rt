@@ -5,6 +5,7 @@
 #include "rni.h"
 #include "tracers.h"
 #include "preprocessing.h"
+#include "bounce.h"
 
 #include <iostream>
 
@@ -65,6 +66,9 @@ namespace wf {
 			register_wf_step_by_id(, rotate_scene_keep_org);
 			register_wf_step_by_id(, build_accel_struct);
 			register_wf_step_by_id(, drop_scene_view);
+			register_wf_step_by_id(, sample_uniform_dir);
+			register_wf_step_by_id(, sample_cos_weighted_dir);
+			register_wf_step_by_id(, integrate_light_sample);
 
 			timer = new wf::cuda::timer;
 		}
@@ -97,7 +101,7 @@ namespace wf {
 				in >> variant;
 				check_in_complete("Syntax error, requires (for now, only) cuda ray tracer variant name");
 				if      (variant == "simple")                                   rt = dynamic_cast<batch_rt*>(select("simple"));
-				if      (variant == "simple-alpha")                                   rt = dynamic_cast<batch_rt*>(select("simple-alpha"));
+				else if (variant == "simple-alpha")                             rt = dynamic_cast<batch_rt*>(select("simple-alpha"));
 				else if (variant == "if-if")                                    rt = dynamic_cast<batch_rt*>(select("if-if"));
 				else if (variant == "if-if-alpha")                              rt = dynamic_cast<batch_rt*>(select("if-if-alpha"));
 				else if (variant == "while-while")                              rt = dynamic_cast<batch_rt*>(select("while-while"));
@@ -124,6 +128,10 @@ namespace wf {
 	
 		raydata* platform::allocate_raydata() {
 			return new raydata(rc->resolution());
+		}
+		
+		per_sample_data<float>* platform::allocate_float_per_sample() {
+			return new per_sample_data<float>(rc->resolution());
 		}
 
 		platform *pf = nullptr;

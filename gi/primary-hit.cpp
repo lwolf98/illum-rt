@@ -71,14 +71,14 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 namespace wf {
 
 	primary_hit_display::primary_hit_display() {
-		auto *init_fb = rc->platform->step_as<initialize_framebuffer>(initialize_framebuffer::id);
-		auto *download_fb = rc->platform->step_as<download_framebuffer>(download_framebuffer::id);
+		auto *init_fb = rc->platform->step<initialize_framebuffer>();
+		auto *download_fb = rc->platform->step<download_framebuffer>();
 		frame_preparation_steps.push_back(init_fb);
 		frame_finalization_steps.push_back(download_fb);
 
-		auto *sample_cam = rc->platform->step_as<sample_camera_rays>(sample_camera_rays::id);
-		auto *find_hit   = rc->platform->step_as<find_closest_hits>(find_closest_hits::id);
-		auto *add_albedo = rc->platform->step_as<add_hitpoint_albedo>(add_hitpoint_albedo::id);
+		auto *sample_cam = rc->platform->step<sample_camera_rays>();
+		auto *find_hit   = rc->platform->step<find_closest_hits>();
+		auto *add_albedo = rc->platform->step<add_hitpoint_albedo>();
 		sampling_steps.push_back(sample_cam);
 		sampling_steps.push_back(find_hit);
 		sampling_steps.push_back(add_albedo);

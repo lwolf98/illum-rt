@@ -35,11 +35,23 @@ namespace wf {
 	struct raydata {
 		virtual ~raydata() {}
 	};
+
+	template<typename T> struct per_sample_data {
+		virtual ~per_sample_data() {}
+	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
 	#define register_batch_rt_with_args(N,C,X, ...) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X(__VA_ARGS__); }
 	#define register_wf_step(N,C,X) steps[N] = [C]() -> wf::step* { return new X; }
 	#define register_wf_step_by_id(C,X) steps[X::id] = [C]() -> wf::step* { return new X; }
+	/*! Interface to a hardware or software platform that allows running ray tracing algorithms in wavefront style.
+	 *
+	 *  The wavefront computations are represented by \ref step and algorithms can create (via \ref platform::step)
+	 *  and wire those steps to implement different algorithms.
+	 *
+	 *  Since we want to allow users to change platforms and algorithms during an RTGI session, created steps
+	 *  and tracers (which are commonly used wrapped in steps) are cached to avoid unneccesarry re-allocation etc.
+	 */
 	class platform {
 	protected:
 		std::map<std::string, std::function<batch_ray_tracer*()>> tracers;
@@ -64,9 +76,21 @@ namespace wf {
 		wf::timer *timer = nullptr;
 
 		batch_ray_tracer* select(const std::string &name);
-		wf::step* step(const std::string &name);
-		template<typename T> T* step_as(const std::string &name) { return dynamic_cast<T*>(step(name)); }
+		wf::step* step(const std::string &id, std::string name = "");
+
+		/*! Use this only for steps that do not follow the id-tag convetion (see \ref platform::step<T>).
+		 */
+		template<typename T> T* step_as(const std::string &id, const std::string &name) { return dynamic_cast<T*>(step(id, name)); }
+		
+		/*! When selecting a step, the generated objects are cached and re-used on the name, not the id.
+		 *  Therefore, it is possible to generate multiple different instances of a given step-type
+		 *  while not having to re-create steps of the same name.
+		 *  This is expected to be efficient when switching platforms/algorithms but has not been thoroughly evaluated, yet.
+		 */
+		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
+		
 		virtual wf::raydata* allocate_raydata() = 0;
+		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0; // sadly, this cannot be templated...
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
@@ -149,8 +173,5 @@ namespace wf {
 	};
 	struct shadow_rays {
 		raydata *data = nullptr;
-	};
-	struct sample_uniform_light_directions : public step {
-		static constexpr char id[] = "sample uniform light directions";
 	};
 }

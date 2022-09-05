@@ -28,14 +28,15 @@ namespace wf {
 		return selected_tracer;
 	}
 
-	wf::step* platform::step(const std::string &name) {
+	wf::step* platform::step(const std::string &id, std::string name) {
+		if (name == "") name = id;
 		if (auto it = generated_steps.find(name); it != generated_steps.end())
 			return it->second;
 
-		if (steps.count(name) == 0)
+		if (steps.count(id) == 0)
 			return nullptr;
 
-		wf::step *s = steps[name]();
+		wf::step *s = steps[id]();
 // 		r->use(selected_tracer);
 		generated_steps[name] = s;
 		return s;

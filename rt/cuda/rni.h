@@ -4,7 +4,7 @@
 
 #include "gi/primary-hit.h"
 
-#include <curand.h>
+#include "rng.h"
 
 namespace wf {
 	namespace cuda {
@@ -13,8 +13,7 @@ namespace wf {
 		 *
 		 */
 		class batch_cam_ray_setup : public wf::wire::sample_camera_rays<raydata> {
-			curandGenerator_t gen;
-			float2 *random_numbers = nullptr;
+			random_number_generator<float2> rng;
 		public:
 			batch_cam_ray_setup();
 			~batch_cam_ray_setup();

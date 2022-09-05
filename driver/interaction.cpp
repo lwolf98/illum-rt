@@ -159,9 +159,19 @@ struct repl_update_checks {
 			 scene_touched_at = 0,
 			 tracer_touched_at = 0,
 			 accel_touched_at = 0;
+	bool valid_platform = true; // even true for "no platform", but false when a platform was requested but is not available.
 };
 static repl_update_checks uc;
 static vector<string> command_history;
+
+bool platform_and_algo_aligned() {
+	bool wf_algo = dynamic_cast<wavefront_algorithm*>(rc->algo);
+	if (wf_algo && rc->platform)
+		return true;
+	if (!wf_algo && !rc->platform)
+		return true;
+	return false;
+}
 
 void eval(const std::string &line) {
 	command_history.push_back(line);
@@ -258,7 +268,10 @@ void eval(const std::string &line) {
 		gi_algorithm *a = nullptr;
 		if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_SKIP_WF
-		else if (name == "primary-wf")  a = new wf::primary_hit_display;
+#define select_wf(X) if (!rc->platform) error("Cannot select wf algorithm without an active platform") else a = new X
+		else if (name == "primary-wf") select_wf(wf::primary_hit_display);
+		else if (name == "direct-wf")  select_wf(wf::direct_light);
+#undef select_wf
 #endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 		else if (name == "local")  a = new local_illumination;
@@ -334,6 +347,7 @@ void eval(const std::string &line) {
 		vector<string> args;
 		string s;
 		while (in >> s) args.push_back(s);
+		uc.valid_platform = true;
 		// this should be plugin-driven at some point
 		if (name == "cpu") rc->platform = new wf::cpu::platform(args);
 #ifdef HAVE_GL
@@ -342,10 +356,18 @@ void eval(const std::string &line) {
 #ifdef HAVE_CUDA
 		else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
 #endif
-		else error("There is no platform called '" << name << "'");
+		else if (name == "none") { delete rc->platform; rc->platform = nullptr; }
+		else {
+			delete rc->platform;
+			rc->platform = nullptr;
+			uc.valid_platform = false;
+			error("There is no platform called '" << name << "'");
+		}
 		uc.tracer_touched_at = uc.cmdid;
 	}
 	else ifcmd("commit") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
 		if (scene.vertices.empty())
 			error("There is no scene data to work with");
 		if (rc->algo)
@@ -373,6 +395,10 @@ void eval(const std::string &line) {
 		rc->sppx = sppx;
 	}
 	else ifcmd("run") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
+		if (!platform_and_algo_aligned())
+			error("Incompatible algorithm form platform");
 		if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || rc->algo == nullptr)
 			error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
 		if (uc.accel_touched_at < uc.tracer_touched_at)
@@ -599,7 +625,8 @@ void eval(const std::string &line) {
 	}
 	else if (command == "") ;
 	else if (command[0] == '#') ;
-	else if (rc->algo && rc->algo->interprete(command, in)) ;
+	else if (command.substr(0,2) == "//") ;
+	else if (rc->algo && platform_and_algo_aligned() && rc->algo->interprete(command, in)) ;
 	else if (scene.rt && scene.rt->interprete(command, in)) ;
 	else {
 		error("Unknown command");

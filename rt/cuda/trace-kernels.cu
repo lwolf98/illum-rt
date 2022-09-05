@@ -28,8 +28,8 @@
 // -----------------------------------------------------------------------------
 
 
-#define TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float tmin, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, bool anyhit
-#define ALPHA_TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float tmin, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, wf::cuda::material *materials, float2 *tex_coords, bool anyhit
+#define TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float ray_tmin, float ray_tmax, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, bool anyhit
+#define ALPHA_TRAVERSAL_PARAMETERS int &ray_index, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, float ray_tmin, float ray_tmax, wf::cuda::compact_bvh_node *bvh_nodes, cudaTextureObject_t bvh_nodes_tex, uint *index, cudaTextureObject_t index_tex, uint4 *triangles, cudaTextureObject_t triangles_tex, float4 *vertex_pos, cudaTextureObject_t vertex_pos_tex, wf::cuda::tri_is &hit, wf::cuda::material *materials, float2 *tex_coords, bool anyhit
 
 __forceinline__ __device__ void ifif_traversal(TRAVERSAL_PARAMETERS);
 __forceinline__ __device__ void ifif_traversal_alpha(ALPHA_TRAVERSAL_PARAMETERS);
@@ -80,6 +80,8 @@ __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -127,7 +129,7 @@ __global__ void simple_trace(int2 resolution, float4 *rays, float4 *vertex_pos,
 
                 if (intersect_triangle(v1, v2, v3,
                                         ray_o, ray_d,
-                                        0, FLT_MAX,
+                                        ray_tmin, ray_tmax,
                                         intersection.t, intersection.beta, intersection.gamma)) {
                     if (anyhit) { // trace any hit
                         intersections[ray_index] = intersection;
@@ -164,6 +166,8 @@ __global__ void simple_trace_alpha(int2 resolution, float4 *rays, float4 *vertex
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -211,7 +215,7 @@ __global__ void simple_trace_alpha(int2 resolution, float4 *rays, float4 *vertex
 
                 if (intersect_triangle(v1, v2, v3,
                                         ray_o, ray_d,
-                                        0, FLT_MAX,
+                                        ray_tmin, ray_tmax,
                                         intersection.t, intersection.beta, intersection.gamma)) {
                     if (!is_below_alpha_threshold(intersection, tri, materials, tex_coords))
                         if (anyhit) { // trace any hit
@@ -243,6 +247,8 @@ __global__ void ifif_trace(TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -251,7 +257,7 @@ __global__ void ifif_trace(TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    ifif_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+    ifif_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -268,6 +274,8 @@ __global__ void ifif_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -276,7 +284,7 @@ __global__ void ifif_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    ifif_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+    ifif_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -293,6 +301,8 @@ __global__ void whilewhile_trace(TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -301,7 +311,7 @@ __global__ void whilewhile_trace(TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    whilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+    whilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -318,6 +328,8 @@ __global__ void whilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -326,7 +338,7 @@ __global__ void whilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    whilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+    whilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -363,6 +375,8 @@ __global__ void persistentifif_trace(TRACE_PARAMETERS2) {
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -372,7 +386,7 @@ __global__ void persistentifif_trace(TRACE_PARAMETERS2) {
 
         // traverse
         wf::cuda::tri_is closest;
-        ifif_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+        ifif_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
         // Ergebnis speichern
         intersections[ray_index] = closest;
     }
@@ -411,6 +425,8 @@ __global__ void persistentifif_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -420,7 +436,7 @@ __global__ void persistentifif_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
 
         // traverse
         wf::cuda::tri_is closest;
-        ifif_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+        ifif_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
         // Ergebnis speichern
         intersections[ray_index] = closest;
     }
@@ -461,6 +477,8 @@ __global__ void persistentwhilewhile_trace(TRACE_PARAMETERS2) {
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -469,7 +487,7 @@ __global__ void persistentwhilewhile_trace(TRACE_PARAMETERS2) {
         float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
         wf::cuda::tri_is closest;
-        whilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+        whilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
         intersections[ray_index] = closest;
     }
 }
@@ -509,6 +527,8 @@ __global__ void persistentwhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -517,7 +537,7 @@ __global__ void persistentwhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
         float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
         wf::cuda::tri_is closest;
-        whilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+        whilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
         intersections[ray_index] = closest;
     }
 }
@@ -537,6 +557,8 @@ __global__ void speculativewhilewhile_trace(TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -545,7 +567,7 @@ __global__ void speculativewhilewhile_trace(TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    speculativewhilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+    speculativewhilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -564,6 +586,8 @@ __global__ void speculativewhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
 
     float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
     float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+	float ray_tmin = ray_o4.w;
+	float ray_tmax = ray_d4.w;
     float3 ray_id;
     const float ooeps = exp2f(-80.f); // avoid div by zero
     ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -572,7 +596,7 @@ __global__ void speculativewhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS1) {
     float3 ray_ood = make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 
     wf::cuda::tri_is closest;
-    speculativewhilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+    speculativewhilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
     intersections[ray_index] = closest;
 }
 
@@ -608,6 +632,8 @@ __global__ void persistentspeculativewhilewhile_trace(TRACE_PARAMETERS2) {
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -617,7 +643,7 @@ __global__ void persistentspeculativewhilewhile_trace(TRACE_PARAMETERS2) {
 
         // setup traversal
         wf::cuda::tri_is closest;
-        speculativewhilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
+        speculativewhilewhile_traversal(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, anyhit);
         intersections[ray_index] = closest;
     }
 }
@@ -654,6 +680,8 @@ __global__ void persistentspeculativewhilewhile_trace_alpha(ALPHA_TRACE_PARAMETE
 
         float3 ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
         float3 ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+		float ray_tmin = ray_o4.w;
+		float ray_tmax = ray_d4.w;
         float3 ray_id;
         const float ooeps = exp2f(-80.f); // avoid div by zero
         ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d.x));
@@ -663,7 +691,7 @@ __global__ void persistentspeculativewhilewhile_trace_alpha(ALPHA_TRACE_PARAMETE
 
         // setup traversal
         wf::cuda::tri_is closest;
-        speculativewhilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, 0, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
+        speculativewhilewhile_traversal_alpha(ray_index, ray_o, ray_d, ray_id, ray_ood, ray_tmin, ray_tmax, bvh_nodes, bvh_nodes_tex, index, index_tex, triangles, triangles_tex, vertex_pos, vertex_pos_tex, closest, materials, tex_coords, anyhit);
         intersections[ray_index] = closest;
     }
 }
@@ -685,6 +713,7 @@ __global__ void dynamicwhilewhile_trace(TRACE_PARAMETERS2) {
 
     wf::cuda::tri_is closest;
     float3 ray_o, ray_d, ray_id, ray_ood;
+	float ray_tmin, ray_tmax;
 
     // Initialize persistent threads.
     __shared__ volatile int next_ray_array[MAX_BLOCK_HEIGHT]; // Current ray index in global buffer.
@@ -718,6 +747,8 @@ __global__ void dynamicwhilewhile_trace(TRACE_PARAMETERS2) {
 
             ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
             ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+			ray_tmin = ray_o4.w;
+			ray_tmax = ray_d4.w;
             const float ooeps = exp2f(-80.f); // avoid div by zero
             ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d4.x));
             ray_id.y = 1.0f/ (fabsf(ray_d4.y) > ooeps ? ray_d4.y : copysignf(ooeps, ray_d4.y));
@@ -812,7 +843,7 @@ __global__ void dynamicwhilewhile_trace(TRACE_PARAMETERS2) {
                     wf::cuda::tri_is intersection;
                     if (intersect_triangle(v1, v2, v3,
                                             ray_o, ray_d,
-                                            0, FLT_MAX,
+											ray_tmin, ray_tmax,
                                             intersection.t, intersection.beta, intersection.gamma)) {
                         if (intersection.t < closest.t) {
                             closest = intersection;
@@ -859,6 +890,7 @@ __global__ void dynamicwhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
 
     wf::cuda::tri_is closest;
     float3 ray_o, ray_d, ray_id, ray_ood;
+	float ray_tmin, ray_tmax;
 
     // Initialize persistent threads.
     __shared__ volatile int next_ray_array[MAX_BLOCK_HEIGHT]; // Current ray index in global buffer.
@@ -892,6 +924,8 @@ __global__ void dynamicwhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
 
             ray_o = make_float3(ray_o4.x, ray_o4.y, ray_o4.z);
             ray_d = make_float3(ray_d4.x, ray_d4.y, ray_d4.z);
+			ray_tmin = ray_o4.w;
+			ray_tmax = ray_d4.w;
             const float ooeps = exp2f(-80.f); // avoid div by zero
             ray_id.x = 1.0f/ (fabsf(ray_d4.x) > ooeps ? ray_d4.x : copysignf(ooeps, ray_d4.x));
             ray_id.y = 1.0f/ (fabsf(ray_d4.y) > ooeps ? ray_d4.y : copysignf(ooeps, ray_d4.y));
@@ -986,7 +1020,7 @@ __global__ void dynamicwhilewhile_trace_alpha(ALPHA_TRACE_PARAMETERS2) {
                     wf::cuda::tri_is intersection;
                     if (intersect_triangle(v1, v2, v3,
                                             ray_o, ray_d,
-                                            0, FLT_MAX,
+											ray_tmin, ray_tmax,
                                             intersection.t, intersection.beta, intersection.gamma)) {
                         if (!is_below_alpha_threshold(intersection, tri, materials, tex_coords))
                             if (intersection.t < closest.t) {
@@ -1101,7 +1135,7 @@ __forceinline__ __device__ void ifif_traversal(TRAVERSAL_PARAMETERS) {
             wf::cuda::tri_is intersection;
             if (intersect_triangle(v1, v2, v3,
                                     ray_o, ray_d,
-                                    0, FLT_MAX,
+									ray_tmin, ray_tmax,
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 if (intersection.t < hit.t) {
                     hit = intersection;
@@ -1194,7 +1228,7 @@ __forceinline__ __device__ void ifif_traversal_alpha(ALPHA_TRAVERSAL_PARAMETERS)
             wf::cuda::tri_is intersection;
             if (intersect_triangle(v1, v2, v3,
                                     ray_o, ray_d,
-                                    0, FLT_MAX,
+									ray_tmin, ray_tmax,
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 
                 if (!is_below_alpha_threshold(intersection, tri, materials, tex_coords))
@@ -1289,7 +1323,7 @@ __forceinline__ __device__ void whilewhile_traversal(TRAVERSAL_PARAMETERS) {
             wf::cuda::tri_is intersection;
             if (intersect_triangle(v1, v2, v3,
                                     ray_o, ray_d,
-                                    0, FLT_MAX,
+									ray_tmin, ray_tmax,
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 if (intersection.t < hit.t) {
                     hit = intersection;
@@ -1382,7 +1416,7 @@ __forceinline__ __device__ void whilewhile_traversal_alpha(ALPHA_TRAVERSAL_PARAM
             wf::cuda::tri_is intersection;
             if (intersect_triangle(v1, v2, v3,
                                     ray_o, ray_d,
-                                    0, FLT_MAX,
+									ray_tmin, ray_tmax,
                                     intersection.t, intersection.beta, intersection.gamma)) {
                 if (!is_below_alpha_threshold(intersection, tri, materials, tex_coords))
                     if (intersection.t < hit.t) {
@@ -1481,7 +1515,7 @@ __forceinline__ __device__ void speculativewhilewhile_traversal(TRAVERSAL_PARAME
                 wf::cuda::tri_is intersection;
                 if (intersect_triangle(v1, v2, v3,
                                         ray_o, ray_d,
-                                        0, FLT_MAX,
+										ray_tmin, ray_tmax,
                                         intersection.t, intersection.beta, intersection.gamma)) {
                     if (intersection.t < hit.t) {
                         hit = intersection;
@@ -1590,7 +1624,7 @@ __forceinline__ __device__ void speculativewhilewhile_traversal_alpha(ALPHA_TRAV
                 wf::cuda::tri_is intersection;
                 if (intersect_triangle(v1, v2, v3,
                                         ray_o, ray_d,
-                                        0, FLT_MAX,
+										ray_tmin, ray_tmax,
                                         intersection.t, intersection.beta, intersection.gamma)) {
                     if (!is_below_alpha_threshold(intersection, tri, materials, tex_coords))
                         if (intersection.t < hit.t) {
@@ -1885,12 +1919,15 @@ __forceinline__ __device__ bool intersect_triangle_moeller_trumbore(INTERSECT_TR
     if (hit_gamma < 0.0 || hit_beta + hit_gamma > det)
         return false;
 
-    hit_t = dot(edge2, qvec);
-    inv_det = 1.0/det;
-    hit_t *= inv_det;
-    hit_beta *= inv_det;
-    hit_gamma *= inv_det;
-    return true;
+    float tt = dot(edge2, qvec);
+	if (tt > t_min && tt < t_max) {
+		inv_det = 1.0/det;
+		hit_t = tt * inv_det;
+		hit_beta *= inv_det;
+		hit_gamma *= inv_det;
+		return true;
+	}
+	return false;
 }
 
  __forceinline__ __device__ int vmin_max (int a, int b, int c) {

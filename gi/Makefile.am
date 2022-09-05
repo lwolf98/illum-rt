@@ -1,9 +1,11 @@
 AM_CPPFLAGS = -I$(top_srcdir)
 
 if have_cmera
-BUILT_SOURCES = primary-steps.h
+BUILT_SOURCES = primary-steps.h direct-steps.h
 
 primary-steps.h: primary-steps.lisp
+	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
+direct-steps.h: direct-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 endif
 

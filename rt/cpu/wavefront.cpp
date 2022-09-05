@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "preprocessing.h"
 #include "bounce.h"
+#include "libgi/util.h"
 #include "libgi/timer.h"
 
 #include "seq.h"
@@ -90,19 +91,15 @@ namespace wf {
 		void add_hitpoint_albedo::run() {
 			time_this_wf_step;
 			auto res = rc->resolution();
-			float one_over_samples = 1.0f/rc->sppx;
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					vec3 radiance(0);
-					for (int sample = 0; sample < rc->sppx; ++sample) {
-						triangle_intersection closest = sample_rays->intersections[y*res.x+x];
-						if (closest.valid()) {
-							diff_geom dg(closest, *pf->sd);
-							radiance += dg.albedo();
-						}
+					triangle_intersection closest = sample_rays->intersections[y*res.x+x];
+					if (closest.valid()) {
+						diff_geom dg(closest, *pf->sd);
+						radiance += dg.albedo();
 					}
-					radiance *= one_over_samples;
 					rc->framebuffer.color(x,y) += vec4(radiance, 1);
 				}
 		}
@@ -157,7 +154,9 @@ namespace wf {
 			register_wf_step_by_id(, find_closest_hits);
 			register_wf_step_by_id(, find_any_hits);
 			register_wf_step_by_id(, build_accel_struct);
-			register_wf_step_by_id(, sample_uniform_light_directions);
+			register_wf_step_by_id(, sample_uniform_dir);
+			register_wf_step_by_id(, sample_cos_weighted_dir);
+			register_wf_step_by_id(, integrate_light_sample);
 
 			timer = new wf::cpu::timer;
 		}
@@ -189,6 +188,11 @@ namespace wf {
 		raydata* platform::allocate_raydata() {
 			return new raydata(rc->resolution());
 		}
+		
+		per_sample_data<float>* platform::allocate_float_per_sample() {
+			return new per_sample_data<float>(rc->resolution());
+		}
+
 
 		platform *pf = nullptr;
 	}

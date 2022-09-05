@@ -3,6 +3,7 @@
 #include "libgi/wavefront-rt.h"
 
 #include "gi/primary-hit.h"
+#include "gi/direct.h"
 
 namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
@@ -62,7 +63,7 @@ namespace wf {
 		struct download_framebuffer : public wf::wire::download_framebuffer<raydata> {
 			void run() override;
 		};
-	
+
 		struct find_closest_hits : public wf::wire::find_closest_hits<raydata> {
 			find_closest_hits();
 		};
@@ -70,6 +71,6 @@ namespace wf {
 		struct find_any_hits : public wf::wire::find_any_hits<raydata> {
 			find_any_hits();
 		};
-	
+
 	}
 }

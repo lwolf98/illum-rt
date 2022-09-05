@@ -4,12 +4,6 @@
 
 #include "libgi/timer.h"
 
-#include <curand_kernel.h>
-/* include MTGP host helper functions */
-#include <curand_mtgp32_host.h>
-/* include MTGP pre-computed parameter sets */
-#include <curand_mtgp32dc_p_11213.h>
-
 #include <iostream>
 
 #include "kernels.h"
@@ -22,21 +16,9 @@ namespace wf {
 		// batch_cam_ray_setup::batch_cam_ray_setup() {}
 
 		batch_cam_ray_setup::batch_cam_ray_setup() {
-			CURAND_CALL(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT));
-			CURAND_CALL(curandSetPseudoRandomGeneratorSeed(gen, 2022));
-			rc->call_at_resolution_change[this] = [this](int w, int h) {
-				CHECK_CUDA_ERROR(cudaFree(random_numbers), "");
-				CHECK_CUDA_ERROR(cudaMalloc((void**)&random_numbers, w*h*sizeof(float2)), "");
-			};
-			int2 resolution{rc->resolution().x, rc->resolution().y};
-			if (resolution.x > 0 && resolution.y > 0)
-				CHECK_CUDA_ERROR(cudaMalloc((void**)&random_numbers, resolution.x*resolution.y*sizeof(float2)), "");
 		}
 		
 		batch_cam_ray_setup::~batch_cam_ray_setup() {
-			rc->call_at_resolution_change.erase(this);
-			CHECK_CUDA_ERROR(cudaFree(random_numbers), "");
-			CURAND_CALL(curandDestroyGenerator(gen));
 		}
 
 		void batch_cam_ray_setup::run() {
@@ -97,7 +79,7 @@ namespace wf {
 				potentially_sync_cuda("");
 			}
 			else {
-				CURAND_CALL(curandGenerateUniform(gen, (float*)random_numbers, resolution.x*resolution.y*2));
+				rng.compute();
 
 				camera &cam = rc->scene.camera;
 				vec3 U = cross(cam.dir, cam.up);
@@ -105,7 +87,7 @@ namespace wf {
 				launch_setup_rays(U, V, cam.near_w, cam.near_h, resolution,
 								  float3{cam.pos.x, cam.pos.y, cam.pos.z},
 								  float3{cam.dir.x, cam.dir.y, cam.dir.z},
-								  random_numbers, rd->rays.device_memory);
+								  rng.random_numbers, rd->rays.device_memory);
 				warn_on_cuda_error("");
 				potentially_sync_cuda("");
 			}

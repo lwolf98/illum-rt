@@ -1,5 +1,7 @@
 (load (format nil "~a/libgi/step-gen.lisp" cm-cmdline:top_srcdir))
 
+(pragma once)
+
 (namespace wf
 	   ;; TODO framebuffer should not be attached to rays
   (defstep initialize_framebuffer :id "initialize framebuffer" :data ((RD rd raydata)))

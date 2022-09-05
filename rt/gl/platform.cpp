@@ -91,5 +91,9 @@ namespace wf::gl {
 	    return new raydata(rc->resolution());
 	}
 
+	per_sample_data<float>* platform::allocate_float_per_sample() {
+		return new per_sample_data<float>(rc->resolution());
+	}
+
 	platform *pf = nullptr;
 }
