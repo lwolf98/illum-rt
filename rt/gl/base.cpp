@@ -52,7 +52,23 @@ namespace wf {
 			}
 			queries.clear();
 		}
-		
+			
+		rng::rng(const std::string &name) : pcg_data(name+" rng", BIND_RRNG, 0) {
+		}
+
+		void rng::init_pcg_data_host(int w, int h) {
+			vector<uint64_t> data(w*h*2);
+			#pragma omp parallel for
+			for (int y = 0; y < h; ++y)
+				for (int x = 0; x < w; ++x) {
+					rng_pcg init(y*w+x);
+					auto [s,i] = init.config();
+					data[2*(y*w+x)+0] = s;
+					data[2*(y*w+x)+1] = i;
+				}
+			pcg_data.resize(data);
+		}
+	
 		void scenedata::upload(scene *scene) {
 			triangles.resize(scene->triangles.size(), reinterpret_cast<ivec4*>(scene->triangles.data()));
 

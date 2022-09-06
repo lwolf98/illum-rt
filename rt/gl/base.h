@@ -4,6 +4,7 @@
 
 #include "libgi/timer.h"
 #include "libgi/wavefront-rt.h"
+#include "libgi/random.h"
 
 #include "opengl.h"
 #include "bindings.h"
@@ -135,9 +136,10 @@ namespace wf {
 			data_texture* operator=(const data_texture&) = delete;
 			std::pair<GLenum,GLenum> ft_via_T() {
 				GLenum fmt, type;
-				if      (std::is_same<T,vec4>::value) fmt = GL_RGBA, type = GL_FLOAT;
-				else if (std::is_same<T,vec3>::value) fmt = GL_RGB,  type = GL_FLOAT;
-				else throw std::logic_error(std::string("incomplete list of tex formats in ") + __PRETTY_FUNCTION__);
+				if      (std::is_same<T,vec4>::value)  fmt = GL_RGBA, type = GL_FLOAT;
+				else if (std::is_same<T,vec3>::value)  fmt = GL_RGB,  type = GL_FLOAT;
+				else if (std::is_same<T,float>::value) fmt = GL_RED,  type = GL_FLOAT;
+				else throw std::logic_error(std::string("incomplete list of tex formats in ") + __PRETTY_FUNCTION__ + "@" + __FILE__);
 				return {fmt, type};
 			}
 			void resize(int new_w, int new_h) {
@@ -191,6 +193,11 @@ namespace wf {
 			}
 		};
 
+		struct rng {
+			ssbo<uint64_t> pcg_data;
+			rng(const std::string &name);
+			void init_pcg_data_host(int w, int h);
+		};
 
 		
 		/*! \brief Ray data, including intersection points

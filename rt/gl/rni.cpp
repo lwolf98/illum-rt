@@ -48,12 +48,12 @@ namespace wf {
 				}
 		}
 
-		batch_cam_ray_setup::batch_cam_ray_setup() : pcg_data("ray gen rng", BIND_RRNG, 0) {
+		batch_cam_ray_setup::batch_cam_ray_setup() : rng("ray gen") {
 			rc->call_at_resolution_change[this] = [this](int w, int h) {
-				init_pcg_data(w, h);
+				rng.init_pcg_data_host(w, h);
 			};
 			if (rc->resolution().x > 0 && rc->resolution().y > 0)
-				init_pcg_data(rc->resolution().x, rc->resolution().y);
+				rng.init_pcg_data_host(rc->resolution().x, rc->resolution().y);
 			ray_setup_shader.bind();
 		}
 		
@@ -61,18 +61,6 @@ namespace wf {
 			rc->call_at_resolution_change.erase(this);
 		}
 		
-		void batch_cam_ray_setup::init_pcg_data(int w, int h) {
-			vector<uint64_t> data(w*h*2);
-			#pragma omp parallel for
-			for (int y = 0; y < h; ++y)
-				for (int x = 0; x < w; ++x) {
-					rng_pcg init(y*w+x);
-					auto [s,i] = init.config();
-					data[2*(y*w+x)+0] = s;
-					data[2*(y*w+x)+1] = i;
-				}
-			pcg_data.resize(data);
-		}
 
 		void batch_cam_ray_setup::run() {
 			time_this_wf_step;

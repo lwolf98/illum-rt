@@ -27,8 +27,7 @@ namespace wf {
 		 *
 		 */
 		class batch_cam_ray_setup : public wf::wire::sample_camera_rays<raydata> {
-			ssbo<uint64_t> pcg_data;
-			void init_pcg_data(int w, int h);
+			gl::rng rng;
 		public:
 			batch_cam_ray_setup();
 			~batch_cam_ray_setup();
