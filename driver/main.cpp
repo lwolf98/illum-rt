@@ -12,6 +12,12 @@
 
 #include "cmdline.h"
 
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "preview.h"
+#endif
+
 #include <png++/png.hpp>
 #include <iostream>
 #include <chrono>
@@ -22,6 +28,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/glm.hpp>
 
 using namespace std;
 using namespace glm;
@@ -38,26 +45,50 @@ rgb_pixel to_png(vec3 col01) {
  */
 void run(gi_algorithm *algo) {
 	using namespace std::chrono;
+
 	algo->prepare_frame();
 	test_camrays(rc->scene.camera);
 	rc->framebuffer.clear();
 
 	algo->compute_samples();
 	algo->finalize_frame();
-	
+
 	rc->framebuffer.png().write(cmdline.outfile);
 }
 
+void start_repl_and_process_commands() {
+	thread repls(run_repls);
+	process_command_queue();
+	repls.join();
+}
+
+/*! \brief When we render without a preview we start a thread for the repl and process the commands on the main thread
+ *  If the preview is active the preview render loop is processed on the main thead.
+ *  This is done as some GL calls depend on being only called from the main thread.
+ *  The processing of commands is done on a seperate thread to ensure a responsive preview.
+ */
 int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);
 
-	thread repls(run_repls);
-	process_command_queue();
+#ifdef HAVE_GL
+	if (preview_window) {
+		thread repls(run_repls);
+		thread process_commands(process_command_queue);
+		
+		render_preview();
+		
+		process_commands.join();
+		repls.join();
+		terminate_gl();
+	}
+	else start_repl_and_process_commands();
+#else
+	start_repl_and_process_commands();
+#endif
 
 	stats_timer.print();
 
-	repls.join();
 	delete rc->algo;
 	return 0;
 }

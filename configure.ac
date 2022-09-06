@@ -92,6 +92,7 @@ esac
 AC_CONFIG_FILES([Makefile 
 				driver/Makefile
 				libgi/Makefile
+				libgi/gl/Makefile
 				rt/Makefile
 				rt/cpu/Makefile
 				rt/gl/Makefile

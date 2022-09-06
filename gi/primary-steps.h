@@ -117,6 +117,35 @@ namespace wf
 			}
 		};
 	}
+
+	class copy_to_preview : public step
+	{
+	public:
+		static constexpr char id[] = "copy to preview";
+
+		virtual void use(raydata *rd) = 0;
+	};
+	namespace wire
+	{
+
+		template <typename RD>
+		class copy_to_preview : public wf::copy_to_preview
+		{
+		public:
+			using wf::copy_to_preview::copy_to_preview;
+			RD *rd = nullptr;
+
+			bool properly_wired()
+			{
+				return rd;
+			}
+
+			void use(raydata *rd)
+			{
+				this->rd = dynamic_cast<RD *>(rd);
+			}
+		};
+	}
 	namespace wire
 	{
 

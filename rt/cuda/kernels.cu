@@ -206,3 +206,18 @@ void launch_add_hitpoint_albedo(int2 res,
 																				tex_coords, materials, framebuffer);
 }
 
+// COPY FRAMEBUFFER TO PREVIEW OPENGL BUFFER
+
+__global__ void copy_to_preview_framebuffer(int2 res, float4 *framebuffer, float4 *preview_framebuffer) {
+	int i = threadIdx.x + blockIdx.x*blockDim.x;
+	int j = threadIdx.y + blockIdx.y*blockDim.y;
+	int index = i + j*res.x;
+
+	if (i >= res.x || j >= res.y) return;
+
+	preview_framebuffer[index] = framebuffer[index];
+}
+
+void launch_copy_to_preview_framebuffer(int2 res, float4 *framebuffer, float4 *preview_framebuffer) {
+	copy_to_preview_framebuffer<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, framebuffer, preview_framebuffer);
+}

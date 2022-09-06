@@ -14,7 +14,6 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					timer.cpp \
 					wavefront-rt.cpp
 
-
 #ifndef RTGI_SKIP_BRDF
 libgi_a_SOURCES +=  material.cpp
 #endif
@@ -45,3 +44,7 @@ noinst_HEADERS +=	discrete_distributions.h
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_HEADERS +=	sampling.h
 #endif
+
+if have_gl
+SUBDIRS = gl
+endif

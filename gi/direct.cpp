@@ -11,6 +11,12 @@
 
 #include "libgi/wavefront-rt.h"
 
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
+
 using namespace glm;
 using namespace std;
 
@@ -295,6 +301,10 @@ namespace wf {
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
 		frame_preparation_steps.push_back(init_fb);
+
+#ifdef HAVE_GL
+	if (!preview_window)
+#endif
 		frame_finalization_steps.push_back(download_fb);
 		
 		camrays = rc->platform->allocate_raydata();
@@ -331,6 +341,14 @@ namespace wf {
 		find_light->use(shadowrays);
 		integrate->use(camrays, shadowrays, pdf);
 		
+#ifdef HAVE_GL
+		if (preview_window) {
+			auto *copy_prev = rc->platform->step<copy_to_preview>();
+			sampling_steps.push_back(copy_prev);
+			copy_prev->use(camrays);
+		}
+#endif
+
 		sampling_steps.push_back(sample_cam);
 		sampling_steps.push_back(find_hit);
 		sampling_steps.push_back(sample_light);
