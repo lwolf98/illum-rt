@@ -6,6 +6,7 @@
 
 #ifdef HAVE_GL
 #include <GL/glew.h>
+#include "driver/preview.h"
 #endif
 
 #ifdef HAVE_LIBGLFW
@@ -27,12 +28,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
-#endif
-
-#ifdef HAVE_GLFW
-#include <GLFW/glfw3.h>
-		
-static GLFWwindow *window = nullptr;
 #endif
 
 // std::string headless_render_device = "/dev/dri/renderD128";
@@ -90,27 +85,23 @@ void init_generic_buffer_managed_headless_gl(int major, int minor) {
 #endif
 
 #ifdef HAVE_GLFW
-void init_glfw_headless_gl(int major, int minor) {
+void init_glfw_headless_gl() {
 	std::cout << "Setting up GLFW based OpenGL context without a window" << std::endl;
-	if (!glfwInit())
-		throw std::runtime_error("cannot create glfw window required for fallback opengl context");
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, major);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
-	window = glfwCreateWindow(1, 1, "Rasterizer", nullptr, nullptr);
-	if (!window) {
-		glfwTerminate();
-		throw std::runtime_error("cannot create glfw window required for fallback opengl context");
+	// when the preview window does not exist we have to init gl and generate a context window ourselves
+	if (!preview_window) {
+		init_glfw();
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+		render_window = glfwCreateWindow(1, 1, "render", nullptr, nullptr);
 	}
 
-	glfwMakeContextCurrent(window);
+	if (!render_window) throw std::runtime_error("Cannot create OpenGL render context");
+
+	glfwMakeContextCurrent(render_window);
 	glfwSwapInterval(0);
 
 	if (glewInit() != GLEW_OK) {
-		glfwTerminate();
-		throw std::runtime_error("cannot initialize glew");
+		throw std::runtime_error("Cannot initialize Glew for render context");
 	}
 }
 #endif
@@ -130,18 +121,12 @@ void initialize_opengl_context(::gl_mode gl_mode, int major, int minor) {
 #ifndef HAVE_GLFW
 		throw std::runtime_error("This version of RTGI was not compiled with GLFW support (try gl_truly_headless)");
 #else
-		init_glfw_headless_gl(major, minor);
+		init_glfw_headless_gl();
 #endif
 	}
 	else {
 		throw std::logic_error("Invalid OpenGL mode selected");
 	}
-
-	std::cout << "OpenGL context acquired:" << std::endl;
-    std::cerr << "- OpenGL version: " << glGetString(GL_VERSION) << ", " << glGetString(GL_RENDERER) << std::endl;
-    std::cerr << "- GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-    std::cerr << "- Vendor: " << glGetString(GL_VENDOR) << std::endl;
-    std::cerr << "- Renderer: " << glGetString(GL_RENDERER) << std::endl;
 }
 
 bool gl_variant_available(::gl_mode gl_mode) {

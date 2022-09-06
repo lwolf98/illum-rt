@@ -41,6 +41,7 @@ layout (std430, binding = BIND_TIDS) buffer b_tri_ids     { uint tri_index []; }
 layout (std430, binding = BIND_MTLS) buffer b_materials   { material materials []; };
 layout (std430, binding = BIND_TEXD) buffer b_texhack_data{ vec4 texhack_data []; };
 layout (std430, binding = BIND_RRNG) buffer b_pcg_rng     { uint64_t pcg_data []; };
+layout (std430, binding = BIND_PRFB) buffer b_preview_fb  { vec4 preview_framebuffer []; };
 
 uniform int w;
 uniform int h;
@@ -48,7 +49,7 @@ uniform int h;
 void run(uint x, uint y);
 
 void main() {
-	if (gl_GlobalInvocationID.x < w || gl_GlobalInvocationID.y < h)
+	if (gl_GlobalInvocationID.x < w && gl_GlobalInvocationID.y < h)
 		run(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 }
 

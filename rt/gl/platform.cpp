@@ -54,6 +54,7 @@ namespace wf::gl {
 		register_wf_step_by_id(, find_closest_hits);
 		register_wf_step_by_id(, find_any_hits);
 		register_wf_step_by_id(, build_accel_struct);
+		register_wf_step_by_id(, copy_to_preview);
 
 		timer = new wf::gl::timer;
 	}

@@ -1,5 +1,11 @@
 #include "primary-hit.h"
 
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
+
 #include "libgi/rt.h"
 #include "libgi/context.h"
 #include "libgi/intersect.h"
@@ -74,16 +80,26 @@ namespace wf {
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
 		frame_preparation_steps.push_back(init_fb);
-		frame_finalization_steps.push_back(download_fb);
 
 		auto *sample_cam = rc->platform->step<sample_camera_rays>();
 		auto *find_hit   = rc->platform->step<find_closest_hits>();
 		auto *add_albedo = rc->platform->step<add_hitpoint_albedo>();
+
+		rd = rc->platform->allocate_raydata();
+
+#ifdef HAVE_GL
+		if (preview_window) {
+			auto *copy_prev = rc->platform->step<copy_to_preview>();
+			sampling_steps.push_back(copy_prev);
+			copy_prev->use(rd);
+		}
+		else
+#endif
+		frame_finalization_steps.push_back(download_fb);
+
 		sampling_steps.push_back(sample_cam);
 		sampling_steps.push_back(find_hit);
 		sampling_steps.push_back(add_albedo);
-
-		rd = rc->platform->allocate_raydata();
 
 		init_fb->use(rd);
 		download_fb->use(rd);

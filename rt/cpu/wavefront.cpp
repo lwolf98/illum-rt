@@ -10,6 +10,10 @@
 
 #include "config.h"
 
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
+
 #ifdef HAVE_LIBEMBREE3
 #include "embree.h"
 #endif
@@ -113,6 +117,20 @@ namespace wf {
 					rc->framebuffer.color(x,y) /= rc->framebuffer.color(x,y).w;
 		}
 
+		void copy_to_preview::run() {
+#ifdef HAVE_GL
+			time_this_wf_step;
+
+			if(!preview_window) return;
+
+			glfwMakeContextCurrent(render_window);
+
+			auto res = rc->resolution();
+			preview_framebuffer->resize(res.x * res.y, rc->framebuffer.color.data);
+			glFinish();
+#endif
+		}
+
 		find_closest_hits::find_closest_hits() : wf::wire::find_closest_hits<raydata>(pf->rt) {
 		}
 
@@ -151,6 +169,7 @@ namespace wf {
 			register_wf_step_by_id(, batch_cam_ray_setup_cpu);
 			register_wf_step_by_id(, add_hitpoint_albedo);
 			register_wf_step_by_id(, download_framebuffer);
+			register_wf_step_by_id(, copy_to_preview);
 			register_wf_step_by_id(, find_closest_hits);
 			register_wf_step_by_id(, find_any_hits);
 			register_wf_step_by_id(, build_accel_struct);

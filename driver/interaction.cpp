@@ -32,6 +32,7 @@
 
 #ifdef HAVE_GL
 #include "rt/gl/platform.h"
+#include "preview.h"
 #endif
 
 #ifdef HAVE_CUDA
@@ -109,7 +110,12 @@ void run_repls() {
 	}
 	if (cmdline.interact)
 		repl(cin);
+
+#ifdef HAVE_GL
+	if (!preview_window) queue_command("exit");
+#else 
 	queue_command("exit");
+#endif
 }
 
 /* 
@@ -126,8 +132,9 @@ static bool expecting_commands = true; // only set via eval, called only via pro
 
 void eval(const std::string &command);
 
-void queue_command(const std::string &command) {
+void queue_command(const std::string &command, enqueue_mode mode) {
 	unique_lock lock(command_queue_mutex);
+	if (mode == remove_prev_same_commands) command_queue.remove(command);
 	command_queue.push_back(command);
 	lock.unlock();
 	queue_ready.notify_one();

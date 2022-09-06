@@ -1,6 +1,11 @@
 #include "rni.h"
 
 #include "platform.h"
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
 
 #include "libgi/timer.h"
 #include "libgi/random.h"
@@ -19,6 +24,7 @@ namespace wf {
 		extern compute_shader add_hitpoint_albedo_shader;
 		extern compute_shader add_hitpoint_albedo_hackytex_shader;
 		extern compute_shader add_hitpoint_albedo_plain_shader;
+		extern compute_shader copy_to_preview_shader;
 
 		initialize_framebuffer::initialize_framebuffer() {
 			clear_framebuffer_shader.bind();
@@ -40,12 +46,29 @@ namespace wf {
 			time_this_wf_step;
 			auto res = rc->resolution();
 			pf->rt->rd->framebuffer.download();
+
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
 					vec4 c = pf->rt->rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
 				}
+		}
+
+		void copy_to_preview::run() {
+#ifdef HAVE_GL
+			if (!preview_window) return;
+
+			time_this_wf_step;
+			auto res = rc->resolution();
+			bind_texture_as_image bind_f(rd->framebuffer, 2, false, true);
+			compute_shader &cs = copy_to_preview_shader;
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)preview_framebuffer->index, preview_framebuffer->id);
+			cs.bind();
+			cs.uniform("w", res.x).uniform("h", res.y);
+			cs.dispatch(res.x, res.y);
+			cs.unbind();
+#endif
 		}
 
 		batch_cam_ray_setup::batch_cam_ray_setup() : pcg_data("ray gen rng", BIND_RRNG, 0) {
@@ -78,8 +101,8 @@ namespace wf {
 			time_this_wf_step;
 			auto res = rc->resolution();
 			camera &cam = rc->scene.camera;
-			vec3 U = cross(cam.dir, cam.up);
-			vec3 V = cross(U, cam.dir);
+			vec3 U = normalize(cross(cam.dir, cam.up));
+			vec3 V = normalize(cross(U, cam.dir));
 			
 			bind_texture_as_image bind_r(rd->rays, 0, false, true);
 			compute_shader &cs = ray_setup_shader;

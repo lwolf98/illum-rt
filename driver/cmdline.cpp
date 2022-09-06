@@ -7,6 +7,11 @@
 #include "cmdline.h"
 
 #include "libgi/rt.h"
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "preview.h"
+#endif
 
 #include <argp.h>
 #include <string>
@@ -27,10 +32,11 @@ enum { FIRST = 300 };
 static struct argp_option options[] = 
 {
 	// --[opt]		short/const		arg-descr		flag	option-descr
-	{ "verbose", 			'v', 	0,         		0, "Be verbose." },
+	{ "verbose",            'v',    0,              0, "Be verbose." },
 	{ "script",             's',    "file",         0, "Use file instead of stdin to read commands from" },
 	{ "load",               'l',    "file",         0, "Read commands from file, then from stdin" },
 	{ "outfile",            'o',    "file",         0, "Store generated image (in png format) to this file" },
+	{ "preview",            'p',    0,              0, "Render Traced image to preview window" },
 	{ 0 }
 };
 
@@ -64,6 +70,12 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	case 's':   cmdline.script = sarg; cmdline.interact = false; break;
 	case 'l':   cmdline.script = sarg; break;
 	case 'o':   cmdline.outfile = sarg; break;
+	case 'p':
+#ifdef HAVE_GL
+	            init_preview(); break;
+#else
+	            cerr << "Cannot initialize a preview window without OpenGL" << endl; break;
+#endif
 	default:
 		return ARGP_ERR_UNKNOWN;
 	}

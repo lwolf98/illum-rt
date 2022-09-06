@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base.h"
-#include "shader.h"
+#include "libgi/gl/shader.h"
 
 #include "libgi/scene.h"
 

@@ -9,7 +9,8 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
 				  add-hitpoint-albedo-glsl.cpp \
 				  add-hitpoint-albedo-hackytex-glsl.cpp \
-				  add-hitpoint-albedo-plain-glsl.cpp
+				  add-hitpoint-albedo-plain-glsl.cpp \
+				  copy-to-preview-glsl.cpp
 
 libglrt_a_SOURCES = debug.cpp \
 					find-hit.cpp \
@@ -18,17 +19,16 @@ libglrt_a_SOURCES = debug.cpp \
 					opengl.cpp \
 					platform.cpp \
 					preprocessing.cpp \
-					shader.cpp \
 					$(glsl_GENSOURCES)
 
-noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h preprocessing.h
+noinst_HEADERS = find-hit.h opengl.h base.h rni.h platform.h preprocessing.h
 BUILT_SOURCES = glsl.deps $(glsl_GENSOURCES)
 CLEANFILES = glsl.deps $(glsl_GENSOURCES)
 glsl_SRC = $(glsl_GENSOURCES:%-glsl.cpp=%.glsl)
 EXTRA_DIST = $(glsl_SRC)
 
 %-glsl.cpp: %.glsl
-	echo '#include "shader.h"' > $@
+	echo '#include "libgi/gl/shader.h"' > $@
 	echo 'namespace wf::gl {' >> $@
 	echo '	'compute_shader $$(basename $*)'_shader("'$*'", R"(' | tr - _ >> $@
 	m4 -I$(srcdir) $< >> $@
