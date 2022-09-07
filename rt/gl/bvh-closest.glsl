@@ -66,7 +66,7 @@ void run_simple(uint x, uint y) {
 			for (uint i = 0; i < count; ++i) {
 				uint tri_id = tri_index[start+i];
 				vec4 is;
-				if (intersect(int(tri_id), o, d, vec2(0,FLT_MAX), is))
+				if (intersect(int(tri_id), o, d, vec2(o.w,d.w), is))
 					if (is.x < closest.x) {
 						closest = is;
 						closest.w = uintBitsToFloat(tri_id);
@@ -119,7 +119,7 @@ void run_reduce_stackuse(uint x, uint y) {
 			for (uint i = 0; i < count; ++i) {
 				uint tri_id = tri_index[start+i];
 				vec4 is;
-				if (intersect(int(tri_id), o, d, vec2(0,FLT_MAX), is))
+				if (intersect(int(tri_id), o, d, vec2(o.w,d.w), is))
 					if (is.x < closest.x) {
 						closest = is;
 						closest.w = uintBitsToFloat(tri_id);

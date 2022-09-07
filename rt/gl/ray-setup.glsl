@@ -15,10 +15,7 @@ void run(uint x, uint y) {
 	u = near_wh.x * u;	// \in (-near_w,near_w)
 	v = near_wh.y * v;
 	vec3 dir = normalize(d + U*u + V*v);
-	imageStore(rays, ivec2(x, y), vec4(p, 1));
-	imageStore(rays, ivec2(x, h+y), vec4(dir, 1));
+	imageStore(rays, ivec2(x, y), vec4(p, 0));
+	imageStore(rays, ivec2(x, h+y), vec4(dir, FLT_MAX));
 	imageStore(rays, ivec2(x, 2*h+y), vec4(vec3(1)/dir, 1));
-//	rays[id] = vec4(p, 1);
-//	rays[w*h+id] = vec4(dir, 0);
-//	rays[2*w*h+id] = vec4(vec3(1)/dir, 1);
 }
