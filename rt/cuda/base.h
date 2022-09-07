@@ -417,7 +417,6 @@ namespace wf {
 			virtual void build(scenedata *scene);
 			void use(wf::raydata *rays) override { 
 			    rd = dynamic_cast<raydata*>(rays);
-				rd->name = "oh yeah";
 			}
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {

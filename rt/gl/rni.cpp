@@ -39,11 +39,11 @@ namespace wf {
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 			time_this_wf_step;
 			auto res = rc->resolution();
-			pf->rt->rd->framebuffer.download();
+			rd->framebuffer.download();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x) {
-					vec4 c = pf->rt->rd->framebuffer.org_data[y*res.x+x];
+					vec4 c = rd->framebuffer.org_data[y*res.x+x];
 					rc->framebuffer.color(x,y) = c / c.w;
 				}
 		}

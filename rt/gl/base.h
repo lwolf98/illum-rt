@@ -270,9 +270,7 @@ namespace wf {
 		 */
 		struct batch_rt : public batch_ray_tracer {
 			gl::raydata *rd = nullptr;
-			virtual void build(scenedata *scene) {
-				rd = new raydata(rc->resolution());
-			}
+			virtual void build(scenedata *scene) = 0;
 			void use(wf::raydata *rays) override { 
 			    rd = dynamic_cast<raydata*>(rays);
 			}

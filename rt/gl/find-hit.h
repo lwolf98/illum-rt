@@ -15,6 +15,7 @@ namespace wf {
 		 */
 		struct seq_tri_is : public batch_rt {
 			seq_tri_is();
+			void build(scenedata *scene) override {}
 			void compute_closest_hit() override;
 			void compute_any_hit() override;
 		};

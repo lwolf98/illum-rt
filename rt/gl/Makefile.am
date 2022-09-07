@@ -25,7 +25,7 @@ noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h preprocess
 BUILT_SOURCES = glsl.deps $(glsl_GENSOURCES)
 CLEANFILES = glsl.deps $(glsl_GENSOURCES)
 glsl_SRC = $(glsl_GENSOURCES:%-glsl.cpp=%.glsl)
-EXTRA_DIST = $(glsl_SRC)
+EXTRA_DIST = $(glsl_SRC) preamble.glsl random.glsl
 
 %-glsl.cpp: %.glsl
 	echo '#include "shader.h"' > $@

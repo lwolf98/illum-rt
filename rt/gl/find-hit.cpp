@@ -80,8 +80,6 @@ namespace wf {
 		}
 
 		void bvh::build(scenedata *scene) {
-			batch_rt::build(scene);
-
 			cpu_bvh_builder_opengl_scene_traits st { scene };
 			bvh_ctor<bbvh_triangle_layout::indexed, cpu_bvh_builder_opengl_scene_traits> *ctor = nullptr;
 			ctor = new bvh_ctor_sah<bbvh_triangle_layout::indexed, cpu_bvh_builder_opengl_scene_traits>(st, 4, 16);
@@ -118,6 +116,7 @@ namespace wf {
 		}
 
 		void bvh::compute_any_hit() {
+			throw std::logic_error("OpenGL Any-Hit ist not implemented, yet");
 			// TODO
 		}
 	}
