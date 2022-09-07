@@ -87,6 +87,8 @@ namespace wf {
 			for (int i = 0; i < scene->materials.size(); ++i) {
 				material &m = mtl[i];
 				m.emissive = vec4(scene->materials[i].emissive, 1);
+				m.ior = scene->materials[i].ior;
+				m.roughness = scene->materials[i].roughness;
 				m.albedo = vec4(scene->materials[i].albedo, 1);
 				m.albedo_tex = 0;
 				if (scene->materials[i].albedo_tex) {

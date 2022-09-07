@@ -248,6 +248,7 @@ namespace wf {
 				vec4 albedo, emissive;
 				GLuint64 albedo_tex;
 				GLint has_tex;
+				GLfloat ior, roughness, dummy1, dummy2;
 			};
 			ssbo<vertex> vertices;
 			ssbo<ivec4> triangles;

@@ -9,11 +9,14 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
 				  add-hitpoint-albedo-glsl.cpp \
 				  add-hitpoint-albedo-hackytex-glsl.cpp \
-				  add-hitpoint-albedo-plain-glsl.cpp
+				  add-hitpoint-albedo-plain-glsl.cpp \
+				  sample-uniform-glsl.cpp \
+				  integrate-light-sample-glsl.cpp
 
 libglrt_a_SOURCES = debug.cpp \
 					find-hit.cpp \
 					base.cpp \
+					bounce.cpp \
 					rni.cpp \
 					opengl.cpp \
 					platform.cpp \
@@ -21,7 +24,7 @@ libglrt_a_SOURCES = debug.cpp \
 					shader.cpp \
 					$(glsl_GENSOURCES)
 
-noinst_HEADERS = find-hit.h opengl.h shader.h base.h rni.h platform.h preprocessing.h
+noinst_HEADERS = find-hit.h opengl.h shader.h base.h bounce.h rni.h platform.h preprocessing.h
 BUILT_SOURCES = glsl.deps $(glsl_GENSOURCES)
 CLEANFILES = glsl.deps $(glsl_GENSOURCES)
 glsl_SRC = $(glsl_GENSOURCES:%-glsl.cpp=%.glsl)

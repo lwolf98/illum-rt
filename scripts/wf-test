@@ -4,6 +4,7 @@ look -1 0 0
 
 resolution 960 544
 sppx 32
+sppx 64
 #sppx 500
 
 // simple rt version
@@ -84,11 +85,8 @@ run
 
 
 echo  - - - - Running WF GPU version - - - - 
-platform cuda
-raytracer while-while
-#raytracer optix
+platform opengl glfw
 
-#add-scene-step rotate scene keeping original data
 add-scene-step build accel struct
 commit
 
