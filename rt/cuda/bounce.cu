@@ -96,6 +96,7 @@ namespace wf::cuda {
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
+			float pdf = one_over_pi;
 			if (hit.valid()) {
 				uint4 tri = triangles[hit.ref];
 				material m = materials[tri.w];
@@ -108,13 +109,14 @@ namespace wf::cuda {
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ng, cam_dir);
 					w_i = align(sampled_dir, ng);
+					pdf *= cdot(w_i, ng);
 					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
 					tmax = FLT_MAX;
 				}
 			}
 			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
 			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
-			pdf[ray_index] = one_over_pi;
+			pdf[ray_index] = pdf;
 		}
 	}
 

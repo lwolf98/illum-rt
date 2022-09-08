@@ -62,6 +62,7 @@ namespace wf::cpu {
 						vec3 sampled_dir = cosine_sample_hemisphere(xi);
 						// until here
 						vec3 w_i = align(sampled_dir, hit.ng);
+						pdf *= cdot(sampled_dir, hit.ng);
 						shadow_ray = ray(hit.x, w_i);
 					}
 					this->pdf->data[y*res.x+x] = pdf;
