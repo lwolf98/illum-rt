@@ -126,10 +126,12 @@ namespace wf {
 		
 		scenedata::~scenedata() {
 			materials.download();
-			for (auto &m : materials.org_data)
-				glMakeTextureHandleNonResidentARB(m.albedo_tex);
-			for (auto tex : textures)
-				glDeleteTextures(1, &tex);
+			if (texture_support_mode == PROPER_BINDLESS) {
+				for (auto &m : materials.org_data)
+					glMakeTextureHandleNonResidentARB(m.albedo_tex);
+				for (auto tex : textures)
+					glDeleteTextures(1, &tex);
+			}
 		}
 
 	}
