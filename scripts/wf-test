@@ -5,6 +5,7 @@ look -1 0 0
 resolution 960 544
 sppx 32
 sppx 64
+sppx 16
 #sppx 500
 
 // simple rt version
@@ -92,4 +93,15 @@ commit
 
 algo direct-wf
 outfile /tmp/test-wf-gpu.png
+run
+
+echo  - - - - Running WF GPU cos version - - - - 
+#platform opengl glfw
+
+add-scene-step build accel struct
+commit
+
+algo direct-wf
+is cosine
+outfile /tmp/test-wf-gpu2.png
 run
