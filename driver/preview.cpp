@@ -4,12 +4,14 @@
 #include "libgi/global-context.h"
 #include "libgi/gl/shader.h"
 #include "interaction.h"
+#include "cmdline.h"
 
 #include "rt/gl/base.h"
 
 #include <stdexcept>
 #include <thread>
 #include <iostream>
+#include <chrono>
 
 #include <GL/glew.h>
 
@@ -21,13 +23,14 @@ GLFWwindow *render_window = nullptr;
 wf::gl::ssbo<glm::vec4> *preview_framebuffer = nullptr;
 
 static render_shader *shader;
-static bool update_res = true;
+static bool update_res = false;
+bool update = true, finalized = false;
 static double old_xpos, old_ypos;
 
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
 	if (window != preview_window) return;
 
-	if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+	if (button == GLFW_MOUSE_BUTTON_LEFT)
 		if (action == GLFW_PRESS) {
 			glfwGetCursorPos(window, &old_xpos, &old_ypos);
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -40,14 +43,23 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 
 	if (key == GLFW_KEY_C && action == GLFW_PRESS && mods == GLFW_MOD_CONTROL)
 		glfwSetWindowShouldClose(preview_window, GLFW_TRUE);
+	if (key == GLFW_KEY_P && action == GLFW_PRESS)
+		if(!finalized)
+			std::cerr << "WARNING: Wait for frame to finalize before saving" << std::endl;
+		else
+			rc->framebuffer.png().write(cmdline.outfile);
+}
+
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+	glViewport(0, 0, width, height);
 }
 
 // rudimentary movement control of preview camera
 // subject to change
 // TODO scale movement by time passed
+// frame time has to be calculated in algo not preview!
 static void move_view(){
-
-	static const float speed = 0.4f;
+	static const float speed = 0.2f;
 	glm::vec3 pos = rc->scene.camera.pos, new_pos = rc->scene.camera.pos;
 	glm::vec3 dir = rc->scene.camera.dir, new_dir = rc->scene.camera.dir;
 	glm::vec3 up = rc->scene.camera.up;
@@ -65,7 +77,7 @@ static void move_view(){
 	double xpos, ypos;
 	glfwGetCursorPos(preview_window, &xpos, &ypos);
 
-	if (glfwGetMouseButton(preview_window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) {
+	if (glfwGetMouseButton(preview_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 		double delta_x = old_xpos - xpos;
 		double delta_y = old_ypos - ypos;
 		float sensitivity = 0.001f;
@@ -85,8 +97,11 @@ static void move_view(){
 
 	if (new_pos != pos) queue_command("at "   + std::to_string(new_pos.x) + " " + std::to_string(new_pos.y) + " " + std::to_string(new_pos.z));
 	if (new_dir != dir) queue_command("look " + std::to_string(new_dir.x) + " " + std::to_string(new_dir.y) + " " + std::to_string(new_dir.z));
-	if (new_pos != pos || new_dir != dir) queue_command("run", remove_prev_same_commands);
-} 
+	if (new_pos != pos || new_dir != dir) {
+		update = true;
+		queue_command("run", remove_prev_same_commands);
+	}
+}
 
 void preview_render_setup() {
 
@@ -117,7 +132,7 @@ void preview_render_setup() {
 	const std::string fragment_shader_code =
 		R"(
 		#version 440
-		layout (std430, binding = 7) buffer b_frambuffer  { vec4 framebuffer []; };
+		layout (std430, binding = 7) buffer b_frambuffer { vec4 framebuffer []; };
 		in vec2 tex_coord;
 		out vec4 color;
 		uniform int w;
@@ -129,7 +144,10 @@ void preview_render_setup() {
 		}
 		)";
 
-    GLuint vao;
+	// gamma correction
+	glEnable(GL_FRAMEBUFFER_SRGB); 
+
+	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
@@ -189,10 +207,6 @@ void render_preview() {
 
 		move_view();
 
-		int w, h;
-		glfwGetWindowSize(preview_window, &w, &h);
-		glViewport(0, 0, w, h);
-
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 		glfwSwapBuffers(preview_window);
@@ -218,12 +232,11 @@ void terminate_gl() {
 
 /*! \brief We always call this when we run with the preview window.
  *  If a tracer implementation depends on GLFW it has to check if it is already active
- *  If not it needs to call this method itself. (see \ref init_glfw_headless_gl)
+ *  If not it needs to call this function itself. (see \ref init_glfw_headless_gl)
 */
 void init_glfw() {
 	if (!glfwInit()) throw std::runtime_error("can not initialize glfw");
 
-	glewExperimental = GL_TRUE;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_VERSION_MAJOR);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_VERSION_MINOR);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -245,4 +258,5 @@ void init_preview() {
 
 	glfwSetMouseButtonCallback(preview_window, mouse_button_callback);
 	glfwSetKeyCallback(preview_window, key_callback);
+	glfwSetFramebufferSizeCallback(preview_window, framebuffer_size_callback);
 }

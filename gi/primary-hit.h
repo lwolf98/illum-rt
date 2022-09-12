@@ -26,7 +26,8 @@ public:
 #ifndef RTGI_SKIP_WF
 #include "primary-steps.h"
 namespace wf {
-	class primary_hit_display : public wf::simple_algorithm {
+	template<typename T>
+	class primary_hit_display : public T  {
 		raydata *rd = nullptr;
 	public:
 		primary_hit_display();

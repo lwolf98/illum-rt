@@ -40,7 +40,8 @@ public:
 #ifndef RTGI_SKIP_WF
 #include "direct-steps.h"
 namespace wf {
-	class direct_light : public wf::simple_algorithm {
+	template<typename T>
+	class direct_light : public T {
 		raydata *camrays = nullptr,
 				*shadowrays = nullptr;
 		per_sample_data<float> *pdf = nullptr;
