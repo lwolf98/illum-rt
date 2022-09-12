@@ -15,3 +15,5 @@ void terminate_gl();
 extern GLFWwindow *preview_window;
 extern GLFWwindow *render_window;
 extern wf::gl::ssbo<glm::vec4> *preview_framebuffer;
+extern bool update;
+extern bool finalized;

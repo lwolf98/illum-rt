@@ -18,6 +18,8 @@
 #include "preview.h"
 #endif
 
+#include "gi/primary-hit.h"
+
 #include <png++/png.hpp>
 #include <iostream>
 #include <chrono>
@@ -38,6 +40,28 @@ rgb_pixel to_png(vec3 col01) {
 	col01 = clamp(col01, vec3(0), vec3(1));
 	col01 = pow(col01, vec3(1.0f/2.2f));
 	return rgb_pixel(col01.x*255, col01.y*255, col01.z*255);
+}
+
+void run_sample(gi_algorithm *algo) {
+	auto *preview_algo = dynamic_cast<wf::simple_preview_algorithm*>(algo);
+
+	if (!preview_algo) return;
+
+	if (update) {
+		preview_algo->prepare_frame();
+		queue_command("run", remove_prev_same_commands);
+		update = false;
+		finalized = false;
+	}
+	else if (preview_algo->compute_sample())
+		queue_command("run");
+	else {
+		if (cmdline.verbose)
+			std::cout << "INFO: Frame finished" << std::endl;
+		
+		finalized = true;
+		preview_algo->finalize_frame();
+	}
 }
 
 /*! \brief This is called from the \ref repl to compute a single image
@@ -64,7 +88,7 @@ void start_repl_and_process_commands() {
 
 /*! \brief When we render without a preview we start a thread for the repl and process the commands on the main thread
  *  If the preview is active the preview render loop is processed on the main thead.
- *  This is done as some GL calls depend on being only called from the main thread.
+ *  This is done as some GL calls depend on being called from the main thread.
  *  The processing of commands is done on a seperate thread to ensure a responsive preview.
  */
 int main(int argc, char **argv)

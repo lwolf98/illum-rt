@@ -76,10 +76,11 @@ gi_algorithm::sample_result local_illumination::sample_pixel(uint32_t x, uint32_
 #ifndef RTGI_SKIP_WF
 namespace wf {
 
-	primary_hit_display::primary_hit_display() {
+	template<typename T>
+	primary_hit_display<T>::primary_hit_display() {
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
-		frame_preparation_steps.push_back(init_fb);
+		this->frame_preparation_steps.push_back(init_fb);
 
 		auto *sample_cam = rc->platform->step<sample_camera_rays>();
 		auto *find_hit   = rc->platform->step<find_closest_hits>();
@@ -87,19 +88,18 @@ namespace wf {
 
 		rd = rc->platform->allocate_raydata();
 
+		this->sampling_steps.push_back(sample_cam);
+		this->sampling_steps.push_back(find_hit);
+		this->sampling_steps.push_back(add_albedo);
+
 #ifdef HAVE_GL
 		if (preview_window) {
 			auto *copy_prev = rc->platform->step<copy_to_preview>();
-			sampling_steps.push_back(copy_prev);
+			this->sampling_steps.push_back(copy_prev);
 			copy_prev->use(rd);
 		}
-		else
 #endif
-		frame_finalization_steps.push_back(download_fb);
-
-		sampling_steps.push_back(sample_cam);
-		sampling_steps.push_back(find_hit);
-		sampling_steps.push_back(add_albedo);
+		this->frame_finalization_steps.push_back(download_fb);
 
 		init_fb->use(rd);
 		download_fb->use(rd);
@@ -109,5 +109,7 @@ namespace wf {
 		add_albedo->use(rd);
 	}
 
+	template class primary_hit_display<simple_algorithm>;
+	template class primary_hit_display<simple_preview_algorithm>;
 }
 #endif
