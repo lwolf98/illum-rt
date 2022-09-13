@@ -19,7 +19,8 @@ public:
 	shader(const std::string &name) : name(name) {
 	}
 	~shader() {
-		if (program) glDeleteProgram(program);
+		glDeleteProgram(program);
+		program = 0;
 	}
 
 	virtual void compile() = 0;

@@ -88,6 +88,10 @@ void init_generic_buffer_managed_headless_gl(int major, int minor) {
 void init_glfw_headless_gl() {
 	std::cout << "Setting up GLFW based OpenGL context without a window" << std::endl;
 
+	// when the render_window is already there, then we have a running context from a previous platform command.
+	if (render_window)
+		return;
+
 	// when the preview window does not exist we have to init gl and generate a context window ourselves
 	if (!preview_window) {
 		init_glfw();
