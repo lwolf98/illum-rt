@@ -23,7 +23,7 @@ GLFWwindow *render_window = nullptr;
 wf::gl::ssbo<glm::vec4> *preview_framebuffer = nullptr;
 
 static render_shader *shader;
-static bool update_res = false;
+static bool update_res = true;
 bool update = true, finalized = false;
 static double old_xpos, old_ypos;
 
