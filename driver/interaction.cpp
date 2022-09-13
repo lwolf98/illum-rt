@@ -196,6 +196,15 @@ void eval(const std::string &line) {
 	string command;
 	in >> command;
 	vec3 tmp;
+	static bool skip = false;
+	if (skip) {
+		if (line == "}")
+			skip = false;
+		else if (cmdline.verbose)
+			cerr << "Warning: Skipping command '" << line << "'" << endl;
+		return;
+	}
+	
 	ifcmd("history") {
 		command_history.pop_back();
 		for (auto &x : command_history)
@@ -205,6 +214,38 @@ void eval(const std::string &line) {
 		expecting_commands = false;
 	else ifcmd("exit")
 		expecting_commands = false;
+	else ifcmd("with") {
+		bool newval = false;
+		string what, rest;
+		in >> what;
+		if (what == "gl") {
+#ifndef HAVE_GL
+			newval = true;
+#endif
+		}
+		else if (what == "cuda") {
+#ifndef HAVE_CUDA
+			newval = true;
+#endif
+		}
+		else if (what == "optix") {
+#ifndef HAVE_OPTIX
+			newval = true;
+#endif
+		}
+		else
+			error("Syntax error: expected one of gl, cuda, optix");
+		in >> rest;
+		check_in_complete("Syntax error, expecting only {");
+		if (rest != "{")
+			error("Syntax error, expecting {");
+		skip = newval;
+		if (skip)
+			cout << "Skipping a block due to missing " << what << endl;
+	}
+	else ifcmd("}") {
+		check_in_complete("Syntax error: } must be on an otherwise empty line");
+	}
 	else ifcmd("at") {
 		in.get();
 		if (in.eof()) {
@@ -365,18 +406,24 @@ void eval(const std::string &line) {
 	else ifcmd("platform") {
 		string name;
 		in >> name;
-		check_in("Syntax error, requires platform name");
+		if (name == "") {
+			if (rc->platform)
+				cout << "platform: " << rc->platform->name << endl;
+			else
+				cout << "platform: none" << endl;
+			return;
+		}
 		vector<string> args;
 		string s;
 		while (in >> s) args.push_back(s);
 		uc.valid_platform = true;
 		// this should be plugin-driven at some point
-		if (name == "cpu") rc->platform = new wf::cpu::platform(args);
+		if (name == "cpu") { delete rc->platform; rc->platform = new wf::cpu::platform(args); }
 #ifdef HAVE_GL
-		else if (name == "opengl") rc->platform = new wf::gl::platform(args);
+		else if (name == "opengl") { delete rc->platform; rc->platform = new wf::gl::platform(args); }
 #endif
 #ifdef HAVE_CUDA
-		else if (name == "cuda") rc->platform = new wf::cuda::platform(args);
+		else if (name == "cuda") { delete rc->platform; rc->platform = new wf::cuda::platform(args); }
 #endif
 		else if (name == "none") { delete rc->platform; rc->platform = nullptr; }
 		else {

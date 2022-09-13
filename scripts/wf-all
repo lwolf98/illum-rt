@@ -69,6 +69,9 @@ echo - - - - Running non-WF version - - - -
 algo primary
 outfile /tmp/wfall-primary-1-nonwf.png
 run
+platform
+stats print
+stats clear
 
 echo - - - - Running WF CPU version - - - - 
 platform cpu
@@ -78,32 +81,49 @@ commit
 algo primary-wf
 outfile /tmp/wfall-primary-2-cpu.png
 run
+platform
+stats print
+stats clear
 
-echo - - - - Running WF OpenGL version - - - - 
-platform opengl glfw
-add-scene-step build accel struct
-commit
-algo primary-wf
-outfile /tmp/wfall-primary-3-opengl.png
-run
+with gl {
+	echo - - - - Running WF OpenGL version - - - - 
+	platform opengl glfw
+	add-scene-step build accel struct
+	commit
+	algo primary-wf
+	outfile /tmp/wfall-primary-3-opengl.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda version - - - - 
-platform cuda
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo primary-wf
-outfile /tmp/wfall-primary-4-cuda.png
-run
+with cuda {
+	echo - - - - Running WF Cuda version - - - - 
+	platform cuda
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo primary-wf
+	outfile /tmp/wfall-primary-4-cuda.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda/RTX version - - - - 
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo primary-wf
-outfile /tmp/wfall-primary-5-cudartx.png
-run
-
+with optix {
+	echo - - - - Running WF Cuda/RTX version - - - - 
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo primary-wf
+	outfile /tmp/wfall-primary-5-cudartx.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
 echo ======= DIRECT LIGHT / Uniform =======
 echo - - - - Running non-WF version - - - - 
@@ -113,6 +133,9 @@ algo direct
 is uniform
 outfile /tmp/wfall-direct-uni-1-nonwf.png
 run
+platform
+stats print
+stats clear
 
 echo - - - - Running WF CPU version - - - - 
 platform cpu
@@ -123,35 +146,52 @@ algo direct-wf
 is uniform
 outfile /tmp/wfall-direct-uni-2-cpu.png
 run
+platform
+stats print
+stats clear
 
-echo - - - - Running WF OpenGL version - - - - 
-#platform opengl glfw
-#add-scene-step build accel struct
-#commit
-#algo direct-wf
-#is uniform
-#outfile /tmp/wfall-direct-uni-3-opengl.png
-#run
+with gl {
+	echo - - - - Running WF OpenGL version - - - - 
+	platform opengl glfw
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is uniform
+	outfile /tmp/wfall-direct-uni-3-opengl.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda version - - - - 
-platform cuda
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo direct-wf
-is uniform
-outfile /tmp/wfall-direct-uni-4-cuda.png
-run
+with cuda {
+	echo - - - - Running WF Cuda version - - - - 
+	platform cuda
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is uniform
+	outfile /tmp/wfall-direct-uni-4-cuda.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda/RTX version - - - - 
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo direct-wf
-is uniform
-outfile /tmp/wfall-direct-uni-5-cudartx.png
-run
-
+with optix {
+	echo - - - - Running WF Cuda/RTX version - - - - 
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is uniform
+	outfile /tmp/wfall-direct-uni-5-cudartx.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
 echo ======= DIRECT LIGHT / Cos-Distributed =======
 echo - - - - Running non-WF version - - - - 
@@ -161,6 +201,9 @@ algo direct
 is cosine
 outfile /tmp/wfall-direct-cos-1-nonwf.png
 run
+platform
+stats print
+stats clear
 
 echo - - - - Running WF CPU version - - - - 
 platform cpu
@@ -171,33 +214,51 @@ algo direct-wf
 is cosine
 outfile /tmp/wfall-direct-cos-2-cpu.png
 run
+platform
+stats print
+stats clear
 
-echo - - - - Running WF OpenGL version - - - - 
-#platform opengl glfw
-#add-scene-step build accel struct
-#commit
-#algo direct-wf
-#is cosine
-#outfile /tmp/wfall-direct-cos-3-opengl.png
-#run
+with gl {
+	echo - - - - Running WF OpenGL version - - - - 
+	platform opengl glfw
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is cosine
+	outfile /tmp/wfall-direct-cos-3-opengl.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda version - - - - 
-platform cuda
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo direct-wf
-is cosine
-outfile /tmp/wfall-direct-cos-4-cuda.png
-run
+with cuda {
+	echo - - - - Running WF Cuda version - - - - 
+	platform cuda
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is cosine
+	outfile /tmp/wfall-direct-cos-4-cuda.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
-echo - - - - Running WF Cuda/RTX version - - - - 
-raytracer while-while
-add-scene-step build accel struct
-commit
-algo direct-wf
-is cosine
-outfile /tmp/wfall-direct-cos-5-cudartx.png
-run
+with optix {
+	echo - - - - Running WF Cuda/RTX version - - - - 
+	raytracer while-while
+	add-scene-step build accel struct
+	commit
+	algo direct-wf
+	is cosine
+	outfile /tmp/wfall-direct-cos-5-cudartx.png
+	run
+	platform
+	stats print
+	stats clear
+}
 
 # vim: set syntax=sh :
