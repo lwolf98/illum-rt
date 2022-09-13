@@ -32,6 +32,7 @@
 
 #ifdef HAVE_GL
 #include "rt/gl/platform.h"
+#include "preview.h"
 #endif
 
 #ifdef HAVE_CUDA
@@ -76,6 +77,7 @@ const char *prompt = "rtgi > ";
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
 void run(gi_algorithm *algo);
+void run_sample(gi_algorithm *algo);
 
 /* 
  *  The Read Eval Print Loop is run in a thread and queues all commands in order
@@ -109,7 +111,12 @@ void run_repls() {
 	}
 	if (cmdline.interact)
 		repl(cin);
+
+#ifdef HAVE_GL
+	if (!preview_window) queue_command("exit");
+#else 
 	queue_command("exit");
+#endif
 }
 
 /* 
@@ -126,8 +133,9 @@ static bool expecting_commands = true; // only set via eval, called only via pro
 
 void eval(const std::string &command);
 
-void queue_command(const std::string &command) {
+void queue_command(const std::string &command, enqueue_mode mode) {
 	unique_lock lock(command_queue_mutex);
+	if (mode == remove_prev_same_commands) command_queue.remove(command);
 	command_queue.push_back(command);
 	lock.unlock();
 	queue_ready.notify_one();
@@ -269,8 +277,22 @@ void eval(const std::string &line) {
 		if (name == "primary")      a = new primary_hit_display;
 #ifndef RTGI_SKIP_WF
 #define select_wf(X) if (!rc->platform) error("Cannot select wf algorithm without an active platform") else a = new X
-		else if (name == "primary-wf") select_wf(wf::primary_hit_display);
-		else if (name == "direct-wf")  select_wf(wf::direct_light);
+		else if (name == "primary-wf") {
+#ifdef HAVE_GL
+			if(preview_window)
+				select_wf(wf::primary_hit_display<wf::simple_preview_algorithm>);
+			else
+#endif
+			select_wf(wf::primary_hit_display<wf::simple_algorithm>);
+		}
+		else if (name == "direct-wf") {
+#ifdef HAVE_GL
+			if(preview_window)
+				select_wf(wf::direct_light<wf::simple_preview_algorithm>);
+			else
+#endif
+			select_wf(wf::direct_light<wf::simple_algorithm>);
+		}
 #undef select_wf
 #endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM
@@ -405,7 +427,12 @@ void eval(const std::string &line) {
 			error("The current tracer does (might?) not have an up-to-date acceleration structure");
 		if (uc.accel_touched_at < uc.scene_touched_at)
 			error("The current acceleration structure is out-dated");
-		run(rc->algo);
+#ifdef HAVE_GL
+		if(preview_window)
+			run_sample(rc->algo);
+		else
+#endif
+			run(rc->algo);
 	}
 	else ifcmd("mesh") {
 		string name, cmd;

@@ -1,6 +1,6 @@
 #include "bounce.h"
 
-#include "shader.h"
+#include "libgi/gl/shader.h"
 
 #include <iostream>
 using std::cout, std::endl;

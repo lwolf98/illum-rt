@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base.h"
-#include "shader.h"
+#include "libgi/gl/shader.h"
 
 #include "gi/primary-hit.h"
 
@@ -20,6 +20,10 @@ namespace wf {
 		 *
 		 */
 		struct download_framebuffer : public wf::wire::download_framebuffer<raydata> {
+			void run() override;
+		};
+
+		struct copy_to_preview : public wf::wire::copy_to_preview<raydata> {
 			void run() override;
 		};
 			

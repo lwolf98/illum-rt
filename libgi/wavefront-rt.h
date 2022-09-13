@@ -129,6 +129,30 @@ namespace wf {
 		}
 	};
 
+	class simple_preview_algorithm : public simple_algorithm {
+	public:
+		int sample_count = 0;
+		void prepare_frame() override {
+			sample_count = 0;
+			simple_algorithm::prepare_frame();
+		}
+		bool compute_sample() {
+			if (sample_count >= rc->sppx) return false;
+			sample_count++;
+			for (auto *step : sampling_steps)
+				step->run();
+			rc->platform->timer->synchronize();
+			return sample_count < rc->sppx;	
+		}
+		void compute_samples() override {
+			for (sample_count = 0; sample_count < rc->sppx; ++sample_count) {
+				for (auto *step : sampling_steps) 
+					step->run();
+				rc->platform->timer->synchronize();
+			}
+		}
+	};
+
 	// partition in pure interface and templated version holding a reference to the data
 	struct batch_ray_tracer : public ray_tracer {
 		virtual void compute_closest_hit() = 0;

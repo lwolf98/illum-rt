@@ -11,6 +11,12 @@
 
 #include "libgi/wavefront-rt.h"
 
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
+
 using namespace glm;
 using namespace std;
 
@@ -291,11 +297,12 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 
 #ifndef RTGI_SKIP_WF
 namespace wf {
-	direct_light::direct_light() {
+	template<typename T>
+	direct_light<T>::direct_light() {
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
-		frame_preparation_steps.push_back(init_fb);
-		frame_finalization_steps.push_back(download_fb);
+		this->frame_preparation_steps.push_back(init_fb);
+		this->frame_finalization_steps.push_back(download_fb);
 		
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
@@ -306,8 +313,9 @@ namespace wf {
 		
 		regenerate_steps();
 	}
-	void direct_light::regenerate_steps() {
-		sampling_steps.clear();
+	template<typename T>
+	void direct_light<T>::regenerate_steps() {
+		this->sampling_steps.clear();
 		
 		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
 		auto *find_hit     = rc->platform->step<find_closest_hits>();
@@ -330,14 +338,23 @@ namespace wf {
 		find_hit->use(camrays);
 		find_light->use(shadowrays);
 		integrate->use(camrays, shadowrays, pdf);
+
+		this->sampling_steps.push_back(sample_cam);
+		this->sampling_steps.push_back(find_hit);
+		this->sampling_steps.push_back(sample_light);
+		this->sampling_steps.push_back(find_light);
+		this->sampling_steps.push_back(integrate);
 		
-		sampling_steps.push_back(sample_cam);
-		sampling_steps.push_back(find_hit);
-		sampling_steps.push_back(sample_light);
-		sampling_steps.push_back(find_light);
-		sampling_steps.push_back(integrate);
+#ifdef HAVE_GL
+		if (preview_window) {
+			auto *copy_prev = rc->platform->step<copy_to_preview>();
+			this->sampling_steps.push_back(copy_prev); // add this last so we have data to copy
+			copy_prev->use(camrays);
+		}
+#endif
 	}
-	bool direct_light::interprete(const std::string &command, std::istringstream &in) {
+	template<typename T>
+	bool direct_light<T>::interprete(const std::string &command, std::istringstream &in) {
 		string value;
 		if (command == "is") {
 			in >> value;
@@ -351,6 +368,9 @@ namespace wf {
 		}
 		return false;
 	}
+
+	template class direct_light<simple_algorithm>;
+	template class direct_light<simple_preview_algorithm>;
 }
 #endif
 

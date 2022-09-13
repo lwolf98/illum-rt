@@ -6,6 +6,7 @@
 	   ;; TODO framebuffer should not be attached to rays
   (defstep initialize_framebuffer :id "initialize framebuffer" :data ((RD rd raydata)))
   (defstep download_framebuffer   :id "download framebuffer"   :data ((RD rd raydata)))
+  (defstep copy_to_preview        :id "copy to preview"        :data ((RD rd raydata)))
 
   (defstep sample_camera_rays
 		  :id "sample camera rays"

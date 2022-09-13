@@ -1,8 +1,15 @@
 #include "rni.h"
 
 #include "platform.h"
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
 
 #include "libgi/timer.h"
+
+#include <cuda_gl_interop.h>
 
 #include <iostream>
 
@@ -149,6 +156,27 @@ namespace wf {
 					float4 c = fb[y*res.x+x];
 					rc->framebuffer.color(x,y) = vec4(c.x, c.y, c.z, c.w) / c.w;
 				}
+		}
+
+		void copy_to_preview::run() {
+#ifdef HAVE_GL
+			if (!preview_window) return;
+
+			time_this_wf_step;
+			glfwMakeContextCurrent(render_window);
+
+			struct cudaGraphicsResource *buffer_CUDA;
+			CHECK_CUDA_ERROR(cudaGraphicsGLRegisterBuffer(&buffer_CUDA, preview_framebuffer->id, cudaGraphicsRegisterFlagsReadOnly), ""); // what flags to use
+
+			float4 *pixels = nullptr;
+			CHECK_CUDA_ERROR(cudaGraphicsMapResources(1, &buffer_CUDA, 0), "");
+			size_t num_bytes = 0;
+			CHECK_CUDA_ERROR(cudaGraphicsResourceGetMappedPointer((void**)&pixels, &num_bytes, buffer_CUDA), "");
+
+			auto res = int2{rc->resolution().x, rc->resolution().y};
+			launch_copy_to_preview_framebuffer(res, rd->framebuffer.device_memory, pixels);
+			CHECK_CUDA_ERROR(cudaGraphicsUnmapResources(1, &buffer_CUDA, 0), "");
+#endif
 		}
 		
 		find_closest_hits::find_closest_hits() : wf::wire::find_closest_hits<raydata>(pf->rt) {

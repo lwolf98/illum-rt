@@ -64,6 +64,10 @@ namespace wf {
 			void run() override;
 		};
 
+		struct copy_to_preview : public wf::wire::copy_to_preview<raydata> {
+			void run() override;
+		};
+
 		struct find_closest_hits : public wf::wire::find_closest_hits<raydata> {
 			find_closest_hits();
 		};
