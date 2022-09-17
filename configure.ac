@@ -45,9 +45,11 @@ AS_IF([test x$have_cuda = xyes],
 	  [AC_DEFINE([HAVE_CUDA], [1], [Do we have CUDA])],
 	  [AC_MSG_WARN([Compiling without CUDA support])])
 
-have_embree=yes
-AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
-AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
+AC_ARG_WITH(compute-capability,
+            [AS_HELP_STRING([--with-compute-capability], 
+                [Which compute capability sould be used to compile the cuda files. We default to 86 currently, but lower versions might do for the non RTX version.])],
+            compute_cap="$withval", compute_cap="86")
+AC_SUBST([compute_cap])
 
 have_optix=yes
 AC_CHECK_HEADER([optix.h], [], [have_optix=no])
@@ -55,6 +57,10 @@ AM_CONDITIONAL([have_optix], [test x$have_optix = xyes])
 AS_IF([test x$have_optix = xyes],
 	  [AC_DEFINE([HAVE_OPTIX], [1], [Do we have OptiX])],
 	  [AC_MSG_WARN([Compiling without OptiX support])])
+
+have_embree=yes
+AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
+AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
 
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])
