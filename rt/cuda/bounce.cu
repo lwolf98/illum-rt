@@ -85,7 +85,7 @@ namespace wf::cuda {
 	namespace k {
 		static __global__ void sample_cos_dir(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
 											  uint4 *triangles, float4 *vert_norm, material *materials,
-											  float *pdf, float2 *random) {
+											  float *pdfs, float2 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -116,7 +116,7 @@ namespace wf::cuda {
 			}
 			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
 			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
-			pdf[ray_index] = pdf;
+			pdfs[ray_index] = pdf;
 		}
 	}
 
