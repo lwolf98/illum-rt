@@ -19,8 +19,13 @@ public:
 	shader(const std::string &name) : name(name) {
 	}
 	~shader() {
-		glDeleteProgram(program);
-		program = 0;
+		// This might look weird, but: When the preview is run and not GL trace is used, then the GL context
+		// is kept in the preview thread and cleanup should happen there. We might leak a program ressource
+		// for the global shaders, but deletion when the context is already gone will crash.
+		if (glDeleteProgram) {
+			glDeleteProgram(program);
+			program = 0;
+		}
 	}
 
 	virtual void compile() = 0;
@@ -39,7 +44,7 @@ public:
 		if(!program) return;
 		for (auto const shader : shaders) {
 			if(!shader) continue;
-			// after the program has been linked and validated we don't longer need the shader objects
+			// after the program has been linked and validated we no longer need the shader objects
 			glDetachShader(program, shader);
 			glDeleteShader(shader);
 		}
@@ -49,23 +54,11 @@ public:
 	int uniform_location(const std::string &name) {
 		return glGetUniformLocation(program, name.c_str());
 	}
-	shader& uniform(const std::string &name, int x) {
-		glUniform1i(uniform_location(name), x);
-		return *this;
-	}
-	shader& uniform(const std::string &name, int x, int y) {
-		glUniform2i(uniform_location(name), x, y);
-		return *this;
-	}
-	shader& uniform(const std::string &name, float x, float y) {
-		int l = uniform_location(name);
-		glUniform2f(uniform_location(name), x, y);
-		return *this;
-	}
-	shader& uniform(const std::string &name, const glm::vec3 &v) {
-		glUniform3f(uniform_location(name), v.x, v.y, v.z);
-		return *this;
-	}
+	shader& uniform(const std::string &name, int x)   { glUniform1i(uniform_location(name), x); return *this; }
+	shader& uniform(const std::string &name, float x) { glUniform1f(uniform_location(name), x); return *this; }
+	shader& uniform(const std::string &name, int x,   int y)   { glUniform2i(uniform_location(name), x, y); return *this; }
+	shader& uniform(const std::string &name, float x, float y) { glUniform2f(uniform_location(name), x, y); return *this; }
+	shader& uniform(const std::string &name, const glm::vec3 &v) { glUniform3f(uniform_location(name), v.x, v.y, v.z); return *this; }
 };
 
 class render_shader : public shader {

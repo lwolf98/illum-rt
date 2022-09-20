@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-void shader::compile_shader( const std::string &shader_src, GLenum shader_type) {
+void shader::compile_shader(const std::string &shader_src, GLenum shader_type) {
 
 	GLuint shader = glCreateShader(shader_type);
 	const char *src = shader_src.c_str();
