@@ -8,8 +8,6 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  bvh-closest-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
 				  add-hitpoint-albedo-glsl.cpp \
-				  add-hitpoint-albedo-hackytex-glsl.cpp \
-				  add-hitpoint-albedo-plain-glsl.cpp \
 				  sample-uniform-glsl.cpp \
 				  integrate-light-sample-glsl.cpp \
 				  copy-to-preview-glsl.cpp
@@ -34,7 +32,7 @@ EXTRA_DIST = $(glsl_SRC) preamble.glsl random.glsl
 	echo '#include "libgi/gl/shader.h"' > $@
 	echo 'namespace wf::gl {' >> $@
 	echo '	'compute_shader $$(basename $*)'_shader("'$*'", R"(' | tr - _ >> $@
-	m4 -I$(srcdir) $< >> $@
+	m4 -I$(srcdir) @have_tex@ $< >> $@
 	echo '	)");' >> $@
 	echo '}' >> $@
 

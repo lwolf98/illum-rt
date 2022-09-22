@@ -34,7 +34,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_closest_shader.bind();
 			seq_closest_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_closest_shader.uniform("N", pf->sd->triangles.size);
+			seq_closest_shader.uniform("N", (int) pf->sd->triangles.size);
 			seq_closest_shader.dispatch(res.x, res.y);
 			seq_closest_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -46,7 +46,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_any_shader.bind();
 			seq_any_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_any_shader.uniform("N", pf->sd->triangles.size);
+			seq_any_shader.uniform("N", (int) pf->sd->triangles.size);
 			seq_any_shader.dispatch(res.x, res.y);
 			seq_any_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);

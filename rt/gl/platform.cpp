@@ -7,6 +7,8 @@
 #include "preprocessing.h"
 #include "bounce.h"
 
+#include "config.h"
+
 #include <iostream>
 
 using namespace std;
@@ -32,15 +34,18 @@ namespace wf::gl {
 			initialize_opengl_context(gl_glfw_headless, 4, 4);
 
 		enable_gl_debug_output();
-
+		
 		if (texture_support_mode == PROPER_BINDLESS)
 			if (!GLEW_ARB_bindless_texture) {
-				cerr << "Your GPU or GL-version does not support ARB_bindless_texture, so textured materials will not work as expected" << endl;
+				cerr << "Your GPU or GL-version does not support ARB_bindless_texture, but your what we found during configure time suggested otherwise. " << endl
+				     << "Texturing will be disabled." << endl;
 				texture_support_mode = NO_TEX;
 			}
 			else if (!GLEW_NV_gpu_shader5) {
-				cerr << "Your GPU only supports bindless textures with dynamically uniform access pattern, which our shaders do not produce, so textured materials will rely on a hacky implementation with probably lower performance" << endl;
-				texture_support_mode = HACKY;
+				cerr << "Your GPU only supports bindless textures with dynamically uniform access pattern, which our shaders do not produce" << endl
+				 	 << "However, what we found during configure time suggested otherwise. " << endl
+				     << "Texturing will be disabled." << endl;
+				texture_support_mode = NO_TEX;
 			}
 
 		register_batch_rt("seq",, seq_tri_is);

@@ -1,3 +1,4 @@
+#include "config.h"
 #include "base.h"
 #include "rni.h"
 #include "find-hit.h"
@@ -12,7 +13,16 @@ using std::vector;
 namespace wf {
 	namespace gl {
 
-		texture_support_mode_t texture_support_mode = PROPER_BINDLESS;
+		texture_support_mode_t texture_support_mode = 
+		#ifdef HAVE_DYN_NUF_TEX
+		                                              PROPER_BINDLESS
+		#elif HAVE_DYN_NUF_TEX_HACK
+		                                              HACKY
+		#else
+		                                              NO_TEX
+		#endif
+		;
+
 
 		timer::timer() {
 		}
@@ -97,7 +107,7 @@ namespace wf {
 						GLuint tex;
 						glGenTextures(1, &tex);
 						glBindTexture(GL_TEXTURE_2D, tex);
-						glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, scene->materials[i].albedo_tex->w, scene->materials[i].albedo_tex->h, 0, GL_RGB, GL_FLOAT, scene->materials[i].albedo_tex->texel);
+						glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, scene->materials[i].albedo_tex->w, scene->materials[i].albedo_tex->h, 0, GL_RGBA, GL_FLOAT, scene->materials[i].albedo_tex->texel);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
 						glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

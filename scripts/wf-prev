@@ -6,9 +6,9 @@ look -1 0 0
 #platform cpu
 #raytracer bbvh-esc
 #raytracer embree
-#platform opengl glfw
-platform cuda
-raytracer while-while
+platform opengl glfw
+#platform cuda
+#raytracer while-while
 
 sppx 512
 resolution 1280 720

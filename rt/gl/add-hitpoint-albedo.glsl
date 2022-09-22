@@ -1,5 +1,4 @@
 define(VERSION, 460)
-define(HAVE_TEX, 1)
 include(preamble.glsl)
 
 uniform layout(rgba32f,binding=1) image2D intersections;
@@ -15,8 +14,7 @@ void run(uint x, uint y) {
 			vec2 tc = (1.0f - hit_beta(hit) - hit_gamma(hit)) * vertices[tri.x].tc
 					  + hit_beta(hit) * vertices[tri.y].tc
 					  + hit_gamma(hit) * vertices[tri.z].tc;
-			// result = vec4(tc, 0, 1);
-			result = texture(m.albedo_tex, tc);
+			result = tex_lookup(tc, m);
 		}
 		else
 			result = m.albedo;

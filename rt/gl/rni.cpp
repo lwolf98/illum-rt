@@ -22,8 +22,6 @@ namespace wf {
 		extern compute_shader ray_setup_shader;
 		extern compute_shader clear_framebuffer_shader;
 		extern compute_shader add_hitpoint_albedo_shader;
-		extern compute_shader add_hitpoint_albedo_hackytex_shader;
-		extern compute_shader add_hitpoint_albedo_plain_shader;
 		extern compute_shader copy_to_preview_shader;
 
 		initialize_framebuffer::initialize_framebuffer() {
@@ -108,17 +106,11 @@ namespace wf {
 		}
 
 		add_hitpoint_albedo::add_hitpoint_albedo() {
-			cs = &add_hitpoint_albedo_plain_shader;
-			if (texture_support_mode == PROPER_BINDLESS)
-				cs = &add_hitpoint_albedo_shader;
-			else if (texture_support_mode == HACKY)
-				cs = &add_hitpoint_albedo_hackytex_shader;
+			cs = &add_hitpoint_albedo_shader;
 			cs->bind();
 		}	
 		void add_hitpoint_albedo::run() {
 			time_this_wf_step;
-// 			glFinish();
-			//time_this_block(add_hitpoint_albedo);
 			bind_texture_as_image bind_i(sample_rays->intersections, 1, true, false);
 			bind_texture_as_image bind_f(sample_rays->framebuffer, 2, true, true);
 			auto res = rc->resolution();

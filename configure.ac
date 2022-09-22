@@ -20,6 +20,10 @@ AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On
 # libdl is needed by OptiX
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
 
+## 
+## CHECK FOR GL
+## 
+
 have_gl=yes
 AC_ARG_ENABLE([opengl], [AS_HELP_STRING([--disable-opengl], [Do not use OpenGL, even if present])], [have_gl=$enableval], [have_gl=yes])
 AC_CHECK_LIB([OpenGL], [main], [], [have_gl=no])
@@ -34,6 +38,27 @@ AM_CONDITIONAL([have_gl], [test x$have_gl_with_glfw = xyes || test x$have_headle
 AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 	  [AC_DEFINE([HAVE_GL], [1], [Do we have OpenGL])],
 	  [AC_MSG_WARN([Compiling without OpenGL support])])
+have_tex=
+AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
+	  [
+	  AC_MSG_CHECKING([for GPU dynamically non-uniform access capabilities])
+	  LSPCI="$(lspci  -v -s  $(lspci | grep ' VGA ' | cut -d" " -f 1))"
+	  	if echo "$LSPCI" | grep NVIDIA >/dev/null ; then
+			AC_MSG_RESULT([found NVIDIA GPU, using regular textures])
+			AC_DEFINE([HAVE_DYN_NUF_TEX], [1], [We do have dynamically non-uniform texture access capabilities])
+			have_tex="-D HAVE_TEX"
+		else if echo "$LSPCI" | grep AMD >/dev/null ; then
+			AC_MSG_RESULT([found AMD GPU, using a custom workaround])
+			AC_DEFINE([HAVE_DYN_NUF_TEX_HACK], [2], [We do not have dynamically non-uniform texture access capabilities, but hack around it])
+			have_tex="-D TEX_HACK"
+		else
+			AC_MSG_RESULT([found something not tested yet, or even unsupported, disabling surface textures])
+		fi fi])
+AC_SUBST([have_tex])
+
+## 
+## CHECK FOR CUDA and associated libs
+## 
 
 have_cuda=yes
 AC_ARG_ENABLE([cuda], [AS_HELP_STRING([--disable-cuda], [Do not use Cuda, even if present])], [have_cuda=$enableval], [have_cuda=yes])
@@ -61,6 +86,10 @@ AS_IF([test x$have_optix = xyes],
 have_embree=yes
 AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
 AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
+
+## 
+## More libs and tools
+## 
 
 ## support older systems with obsolete imagemagick version
 AC_MSG_CHECKING([MagickWand version])

@@ -3,7 +3,7 @@ ifdef(`VERSION',
 	`#version 450')
 
 ifdef(`HAVE_TEX', `#extension GL_ARB_bindless_texture : require')
-ifdef(`HAVE_TEX', `#extension GL_NV_gpu_shader5 : require') // AMD requires dynamically uniform access for arrays of samplers, which we cannot guarantee, so only allow this for NV
+ifdef(`HAVE_TEX', `#extension GL_NV_gpu_shader5 : require // AMD requires dynamically uniform access for arrays of samplers, which we cannot guarantee, so only allow this for NV')
 
 // for pcg random number generator
 #extension GL_ARB_gpu_shader_int64 : require
@@ -80,18 +80,20 @@ vec3 hit_ng(const vec4 hit, const ivec4 tri) {
 }
 
 vec4 tex_lookup(const vec2 tc_in, const material m) {
-	vec2 tc = fract(tc_in);
-	vec4 result = vec4(1,0,1,1);
-	vec2 dim = texhack_data[m.texhack_id].xy;
-	int texel_y = int(tc.y * dim.y);
-	int texel_x = int(tc.x * dim.x);
-	if (texel_x < 0 || texel_x >= int(dim.x))
-		result = vec4(1,0,1,1);
-	else if (texel_y < 0 || texel_y >= int(dim.y))
-		result = vec4(1,0,1,1);
-	else {
-		int texel = int(int(tc.y * dim.y) * dim.x + int(tc.x * dim.x));
-		result = texhack_data[m.texhack_id + 1 + texel];
-	}
+	ifdef(`HAVE_TEX',
+	      ` vec4 result = texture(m.albedo_tex, tc_in);
+	      ',`vec2 tc = fract(tc_in);
+			vec4 result = vec4(1,0,1,1);
+			vec2 dim = texhack_data[m.texhack_id].xy;
+			int texel_y = int(tc.y * dim.y);
+			int texel_x = int(tc.x * dim.x);
+			if (texel_x < 0 || texel_x >= int(dim.x))
+				result = vec4(1,0,1,1);
+			else if (texel_y < 0 || texel_y >= int(dim.y))
+				result = vec4(1,0,1,1);
+			else {
+				int texel = int(int(tc.y * dim.y) * dim.x + int(tc.x * dim.x));
+				result = texhack_data[m.texhack_id + 1 + texel];
+			}')
 	return result;
 }
