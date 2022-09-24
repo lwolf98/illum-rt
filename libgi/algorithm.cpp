@@ -8,6 +8,11 @@
 #endif
 
 #include "libgi/global-context.h"
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "driver/preview.h"
+#endif
 
 #include <chrono>
 
@@ -70,34 +75,56 @@ static std::string timediff(unsigned ms) {
 	else return std::to_string(ms) + " ms";
 }
 
-
-
-/*  Implementaiton for "one path at a time" traversal on the CPU over the complete image.
+/*  Implementation for "one path at a time" traversal on the CPU over the complete image.
  *
- *  Note: We first compute a single sample to get a rough estimate of how long rendering is going to take.
+ *  Note: We measure the execution time of the first sample to get a rough estimate of how long rendering is going to take.
  *
  *  Note: Times reported via \ref stats_timer might not be perfectly reliable as of now.  This is because the
  *        timer-overhead is in the one (at times even two) digit percentages of the individual fragments measured.
  *
  */
-
 void recursive_algorithm::compute_samples() {
 	using namespace std::chrono;
 	auto start = system_clock::now();
-	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc->framebuffer.add(x, y, sample_pixel(x, y, 1));
-    							   });
+	for (current_sample_index = 0; current_sample_index < rc->sppx; current_sample_index++) {
+		rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
+										rc->framebuffer.add(x, y, sample_pixel(x, y));
+									   });
+		if (current_sample_index == 0) {
+			auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
+			std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << std::endl;	
+		}
+	}
+
 	auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << std::endl;
-	
-	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc->framebuffer.add(x, y, sample_pixel(x, y, rc->sppx-1));
-    							   });
-	delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 	std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
+
+	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
+		glm::vec4 col = rc->framebuffer.color(x,y);
+		rc->framebuffer.color(x, y) = col / col.w;
+	});
+}
+
+bool recursive_algorithm::compute_sample() {
+	if (current_sample_index >= rc->sppx) return false;
+	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
+										rc->framebuffer.add(x, y, sample_pixel(x, y));
+								   });
+#ifdef HAVE_GL
+	if (preview_window) {
+		glfwMakeContextCurrent(render_window);
+
+		auto res = rc->resolution();
+		preview_framebuffer->resize(res.x * res.y, rc->framebuffer.color.data);
+		glFinish();
+	}
+#endif
+	current_sample_index++;
+	return current_sample_index < rc->sppx;
 }
 
 void recursive_algorithm::prepare_frame() {
+	rc->framebuffer.clear();
 	gi_algorithm::prepare_frame();
 	assert(rc->scene.rt != nullptr);
 }
@@ -105,6 +132,3 @@ void recursive_algorithm::prepare_frame() {
 void wavefront_algorithm::prepare_frame() {
 	gi_algorithm::prepare_frame();
 }
-
-
-

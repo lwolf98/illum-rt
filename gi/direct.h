@@ -20,18 +20,18 @@ protected:
 #endif
 	
 #ifndef RTGI_AXX
-	sample_result full_mis(uint32_t x, uint32_t y, uint32_t samples);
+	glm::vec3 full_mis(uint32_t x, uint32_t y);
 #endif
 
 public:
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
+	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
 
 #ifndef RTGI_SKIP_DIRECT_MIS
 class direct_light_mis : public direct_light {
 public:
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
+	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
 };
 #endif
@@ -40,8 +40,7 @@ public:
 #ifndef RTGI_SKIP_WF
 #include "direct-steps.h"
 namespace wf {
-	template<typename T>
-	class direct_light : public T {
+	class direct_light : public simple_algorithm {
 		raydata *camrays = nullptr,
 				*shadowrays = nullptr;
 		per_sample_data<float> *pdf = nullptr;

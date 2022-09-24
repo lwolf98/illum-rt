@@ -34,19 +34,13 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 //
 // #define SIGNIFICANT_RAY_COUNT
 
-gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
-	sample_result result;
-	for (int sample = 0; sample < samples; ++sample) {
+vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 #ifdef SIGNIFICANT_RAY_COUNT
 		vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
-		
-		result.push_back({ r==vec3(0) ? vec3(0) : vec3(1), vec2(0) });
+		return r==vec3(0) ? vec3(0) : vec3(1);
 #else
-		result.push_back({path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f))),
-						  vec2(0)});
+		return path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
 #endif
-	}
-	return result;
 }
 
 vec3 simple_pt::path(ray ray) {

@@ -43,25 +43,31 @@ rgb_pixel to_png(vec3 col01) {
 }
 
 void run_sample(gi_algorithm *algo) {
-	auto *preview_algo = dynamic_cast<wf::simple_preview_algorithm*>(algo);
 
-	if (!preview_algo) return;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start = chrono::high_resolution_clock::now();
+
+	if (!algo) return;
 
 	if (preview_update_in_progress) {
-		preview_algo->prepare_frame();
-		queue_command("run", remove_prev_same_commands);
 		preview_update_in_progress = false;
 		preview_finalized = false;
+		algo->prepare_frame();
+		algo->compute_sample();
+		queue_command("run", remove_prev_same_commands);
 	}
-	else if (preview_algo->compute_sample())
+	else if (algo->compute_sample())
 		queue_command("run");
 	else {
 		if (cmdline.verbose)
 			std::cout << "INFO: Frame finished" << std::endl;
 		
 		preview_finalized = true;
-		preview_algo->finalize_frame();
+		algo->finalize_frame();
 	}
+
+	auto end = chrono::high_resolution_clock::now();
+	delta_time = chrono::duration<double, milli>(end-start).count();
+	start = end;
 }
 
 /*! \brief This is called from the \ref repl to compute a single image

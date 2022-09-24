@@ -21,11 +21,13 @@
 GLFWwindow *preview_window = nullptr;
 GLFWwindow *render_window = nullptr;
 wf::gl::ssbo<glm::vec4> *preview_framebuffer = nullptr;
+bool preview_update_in_progress = true, preview_finalized = false;
+double delta_time = 0;
 
 static render_shader *shader;
 static bool update_res = true;
-bool preview_update_in_progress = true, preview_finalized = false;
 static double old_xpos, old_ypos;
+static float speed_factor = 0.02f;
 
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
 	if (window != preview_window) return;
@@ -52,16 +54,16 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 			rc->framebuffer.png().write(cmdline.outfile);
 }
 
+static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+	speed_factor = std::max((float) yoffset * 0.005 + speed_factor, 0.001);
+}
+
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
-// rudimentary movement control of preview camera
-// subject to change
-// TODO scale movement by time passed
-// frame time has to be calculated in algo not preview!
 static void move_view(){
-	static const float speed = 0.2f;
+	float speed = speed_factor * delta_time;
 	glm::vec3 pos = rc->scene.camera.pos, new_pos = rc->scene.camera.pos;
 	glm::vec3 dir = rc->scene.camera.dir, new_dir = rc->scene.camera.dir;
 	glm::vec3 up = rc->scene.camera.up;
@@ -82,15 +84,15 @@ static void move_view(){
 	if (glfwGetMouseButton(preview_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 		double delta_x = old_xpos - xpos;
 		double delta_y = old_ypos - ypos;
-		float sensitivity = 0.001f;
+		float sensitivity = 0.00005f;
 
 		if (delta_x) {
-			new_dir = glm::rotate(dir, (float) delta_x * sensitivity, glm::normalize(up));
+			new_dir = glm::rotate(dir, (float) (delta_x * sensitivity * delta_time), glm::normalize(up));
 			old_xpos = xpos;
 		}
 
 		if (delta_y) {
-			new_dir = glm::rotate(new_dir, (float) delta_y * sensitivity, glm::normalize(glm::cross(new_dir, up)));
+			new_dir = glm::rotate(new_dir, (float) (delta_y * sensitivity * delta_time), glm::normalize(glm::cross(new_dir, up)));
 			old_ypos = ypos;
 		}
 
@@ -175,37 +177,43 @@ void preview_render_setup() {
 	preview_framebuffer = new wf::gl::ssbo<glm::vec4>("framebuffer", wf::gl::BIND_PRFB, 1);
 }
 
+void update_resolution(glm::ivec2 res) {
+	glfwSetWindowSize(preview_window, res.x, res.y);
+	preview_framebuffer->resize(res.x * res.y);
+	shader->uniform("w", res.x);
+	shader->uniform("h", res.y);
+	update_res = false;
+}
+
 void render_preview() {
 
 	glfwMakeContextCurrent(preview_window);
 	glfwSwapInterval(1);
 
-	std::cout << "OpenGL context acquired:" << std::endl;
-	std::cerr << "- OpenGL version: " << glGetString(GL_VERSION) << ", " << glGetString(GL_RENDERER) << std::endl;
-	std::cerr << "- GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
-	std::cerr << "- Vendor: " << glGetString(GL_VENDOR) << std::endl;
-	std::cerr << "- Renderer: " << glGetString(GL_RENDERER) << std::endl;
+	if (cmdline.verbose) {
+		std::cout << "OpenGL context acquired:" << std::endl;
+		std::cout << "- OpenGL version: " << glGetString(GL_VERSION) << ", " << glGetString(GL_RENDERER) << std::endl;
+		std::cout << "- GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+		std::cout << "- Vendor: " << glGetString(GL_VENDOR) << std::endl;
+		std::cout << "- Renderer: " << glGetString(GL_RENDERER) << std::endl;
+	}
 
 	if (glewInit() != GLEW_OK) {
 		std::cerr << "glew init failed for preview window" << std::endl;
 		return;
 	}
 
+	preview_render_setup();
+
 	rc->call_at_resolution_change[&preview_window] = [&](int w, int h) {
 		update_res = true;
 	};
 
-	preview_render_setup();
+	update_resolution(rc->resolution());
 
 	while (!glfwWindowShouldClose(preview_window)) {
-		if (update_res) {
-			glm::ivec2 res = rc->resolution();
-			glfwSetWindowSize(preview_window, res.x, res.y);
-			preview_framebuffer->resize(res.x * res.y);
-			shader->uniform("w", res.x);
-			shader->uniform("h", res.y);
-			update_res = false;
-		}
+		if (update_res)
+			update_resolution(rc->resolution());
 
 		move_view();
 
@@ -261,4 +269,5 @@ void init_preview() {
 	glfwSetMouseButtonCallback(preview_window, mouse_button_callback);
 	glfwSetKeyCallback(preview_window, key_callback);
 	glfwSetFramebufferSizeCallback(preview_window, framebuffer_size_callback);
+	glfwSetScrollCallback(preview_window, scroll_callback);
 }

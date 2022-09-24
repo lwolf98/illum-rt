@@ -11,8 +11,8 @@ using namespace std;
 ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
 #ifndef RTGI_SKIP_CAMRAY_SETUP_IMPL
 	// find basis
-	vec3 U = cross(cam.dir, cam.up);
-	vec3 V = cross(U, cam.dir);
+	vec3 U = normalize(cross(cam.dir, cam.up));
+	vec3 V = normalize(cross(U, cam.dir));
 	// pixel position on near plane
 	float u = ((float)x+0.5f+offset.x)/(float)cam.w * 2.0f - 1.0f;	// \in (-1,1)
 	float v = ((float)y+0.5f+offset.y)/(float)cam.h * 2.0f - 1.0f;
