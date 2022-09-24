@@ -262,8 +262,8 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					radiance /= balance*0.5;
 				else 
 					continue;
-				break;
 			}
+			break;
 		}
 	}
 #ifndef RTGI_SKIP_SKY
