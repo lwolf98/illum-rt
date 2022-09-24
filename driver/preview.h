@@ -17,3 +17,4 @@ extern GLFWwindow *render_window;
 extern wf::gl::ssbo<glm::vec4> *preview_framebuffer;
 extern bool preview_update_in_progress;
 extern bool preview_finalized;
+extern double delta_time;

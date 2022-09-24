@@ -2,19 +2,23 @@ up 0 1 0
 at 2 -14 0
 look -1 0 0
 
-
 #platform cpu
 #raytracer bbvh-esc
 #raytracer embree
-platform opengl glfw
+#platform opengl glfw
 #platform cuda
 #raytracer while-while
 
-sppx 512
-resolution 1280 720
+raytracer bbvh
+algo primary
+#algo direct
+
+sppx 5
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik.obj
+
+resolution 800 600
 
 material select pod
 material roughness 0.055
@@ -62,7 +66,7 @@ add-scene-step build accel struct
 
 commit
 
-algo direct-wf
+#algo direct-wf
 #algo primary-wf
 outfile /tmp/test-prev.png
 run

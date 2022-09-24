@@ -7,16 +7,10 @@ void framebuffer::clear() {
 	color.clear(vec4(0,0,0,0));
 }
 
-void framebuffer::add(unsigned x, unsigned y, gi_algorithm::sample_result res) {
-	vec3 acc = vec3(0);
-	for (auto [c,p] : res)
-		acc += c;
+void framebuffer::add(unsigned x, unsigned y, vec3 res) {
 	auto &c = color(x,y);
-	float new_count = c.w + res.size();
-	vec3 avg(c);
-	c = vec4((vec3(c)*c.w + acc) / new_count, new_count);
+	c = vec4(vec3(c) + res, c.w + 1);
 }
-
 
 png::image<png::rgb_pixel> framebuffer::png() const {
 	png::image<png::rgb_pixel> out(color.w, color.h);

@@ -319,20 +319,10 @@ void eval(const std::string &line) {
 #ifndef RTGI_SKIP_WF
 #define select_wf(X) if (!rc->platform) error("Cannot select wf algorithm without an active platform") else a = new X
 		else if (name == "primary-wf") {
-#ifdef HAVE_GL
-			if(preview_window)
-				select_wf(wf::primary_hit_display<wf::simple_preview_algorithm>);
-			else
-#endif
-			select_wf(wf::primary_hit_display<wf::simple_algorithm>);
+			select_wf(wf::primary_hit_display);
 		}
 		else if (name == "direct-wf") {
-#ifdef HAVE_GL
-			if(preview_window)
-				select_wf(wf::direct_light<wf::simple_preview_algorithm>);
-			else
-#endif
-			select_wf(wf::direct_light<wf::simple_algorithm>);
+			select_wf(wf::direct_light);
 		}
 #undef select_wf
 #endif

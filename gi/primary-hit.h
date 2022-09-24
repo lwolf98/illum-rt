@@ -13,21 +13,20 @@
  */
 class primary_hit_display : public recursive_algorithm {
 public:
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
+	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 };
 
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 class local_illumination : public recursive_algorithm {
 public:
-	gi_algorithm::sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) override;
+	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 };
 #endif
 
 #ifndef RTGI_SKIP_WF
 #include "primary-steps.h"
 namespace wf {
-	template<typename T>
-	class primary_hit_display : public T  {
+	class primary_hit_display : public simple_algorithm  {
 		raydata *rd = nullptr;
 	public:
 		primary_hit_display();

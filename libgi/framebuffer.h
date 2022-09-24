@@ -59,6 +59,6 @@ public:
 		color = buffer<vec4>(new_w, new_h);
 	}
 	void clear();
-	void add(unsigned x, unsigned y, gi_algorithm::sample_result res);
+	void add(unsigned x, unsigned y, vec3 res);
 	png::image<png::rgb_pixel> png() const;
 };

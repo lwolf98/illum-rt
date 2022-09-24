@@ -116,40 +116,21 @@ namespace wf {
 			wavefront_algorithm::prepare_frame();
 			for (auto *s : frame_preparation_steps) s->run();
 		}
+		bool compute_sample() override {
+			if (current_sample_index >= rc->sppx) return false;
+			current_sample_index++;
+			for (auto *step : sampling_steps)
+				step->run();
+			rc->platform->timer->synchronize();
+			return current_sample_index < rc->sppx;	
+		}
 		void compute_samples() override {
-			for (int i = 0; i < rc->sppx; ++i) {
-				for (auto *step : sampling_steps)
-					step->run();
-				rc->platform->timer->synchronize();
-			}
+			while(bool run = compute_sample())
+				run = compute_sample();
 		}
 		void finalize_frame() override {
 			for (auto *s : frame_finalization_steps) s->run();
 			rc->platform->timer->synchronize();
-		}
-	};
-
-	class simple_preview_algorithm : public simple_algorithm {
-	public:
-		int sample_count = 0;
-		void prepare_frame() override {
-			sample_count = 0;
-			simple_algorithm::prepare_frame();
-		}
-		bool compute_sample() {
-			if (sample_count >= rc->sppx) return false;
-			sample_count++;
-			for (auto *step : sampling_steps)
-				step->run();
-			rc->platform->timer->synchronize();
-			return sample_count < rc->sppx;	
-		}
-		void compute_samples() override {
-			for (sample_count = 0; sample_count < rc->sppx; ++sample_count) {
-				for (auto *step : sampling_steps) 
-					step->run();
-				rc->platform->timer->synchronize();
-			}
 		}
 	};
 
