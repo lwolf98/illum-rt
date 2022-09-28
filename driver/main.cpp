@@ -12,15 +12,25 @@
 
 #include "cmdline.h"
 
+#include "config.h"
+
+#ifdef HAVE_GL
+#include "preview.h"
+#endif
+
+#include "gi/primary-hit.h"
+
 #include <png++/png.hpp>
 #include <iostream>
 #include <chrono>
 #include <cstdio>
 #include <omp.h>
+#include <thread>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/glm.hpp>
 
 using namespace std;
 using namespace glm;
@@ -32,49 +42,80 @@ rgb_pixel to_png(vec3 col01) {
 	return rgb_pixel(col01.x*255, col01.y*255, col01.z*255);
 }
 
+void run_sample(gi_algorithm *algo) {
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> start = chrono::high_resolution_clock::now();
+
+	if (!algo) return;
+
+	if (preview_update_in_progress) {
+		preview_update_in_progress = false;
+		preview_finalized = false;
+		algo->prepare_frame();
+		algo->compute_sample();
+		queue_command("run", remove_prev_same_commands);
+	}
+	else if (algo->compute_sample())
+		queue_command("run");
+	else {
+		if (cmdline.verbose)
+			std::cout << "INFO: Frame finished" << std::endl;
+		
+		preview_finalized = true;
+		algo->finalize_frame();
+	}
+
+	auto end = chrono::high_resolution_clock::now();
+	delta_time = chrono::duration<double, milli>(end-start).count();
+	start = end;
+}
+
 /*! \brief This is called from the \ref repl to compute a single image
  *  
  */
 void run(gi_algorithm *algo) {
 	using namespace std::chrono;
+
 	algo->prepare_frame();
 	test_camrays(rc->scene.camera);
 	rc->framebuffer.clear();
 
 	algo->compute_samples();
 	algo->finalize_frame();
-	
+
 	rc->framebuffer.png().write(cmdline.outfile);
 }
 
-void rt_bench() {
-	//create Buffer for rays and intersections with the size of the camera resolution
-	buffer<triangle_intersection> triangle_intersections(rc->scene.camera.w, rc->scene.camera.h);
-	buffer<ray> rays(rc->scene.camera.w, rc->scene.camera.h);
-	
-	//init Buffer with Camera rays
-	rays.for_each([&](unsigned x, unsigned y) {
-		rays(x, y) = cam_ray(rc->scene.camera, x, y);
-	});
-	
-	//calculate closest triangle intersection for each ray
-	raii_timer bench_timer("rt_bench");
-	rays.for_each([&](unsigned x, unsigned y) {
-		triangle_intersections(x, y) = rc->scene.single_rt->closest_hit(rays(x, y));
-	});
+void start_repl_and_process_commands() {
+	thread repls(run_repls);
+	process_command_queue();
+	repls.join();
 }
 
+/*! \brief When we render without a preview we start a thread for the repl and process the commands on the main thread
+ *  If the preview is active the preview render loop is processed on the main thead.
+ *  This is done as some GL calls depend on being called from the main thread.
+ *  The processing of commands is done on a seperate thread to ensure a responsive preview.
+ */
 int main(int argc, char **argv)
 {
 	parse_cmdline(argc, argv);
 
-	repl_update_checks uc;
-	if (cmdline.script != "") {
-		ifstream script(cmdline.script);
-		repl(script, uc);
+#ifdef HAVE_GL
+	if (preview_window) {
+		thread repls(run_repls);
+		thread process_commands(process_command_queue);
+		
+		render_preview();
+		
+		process_commands.join();
+		repls.join();
+		terminate_gl();
 	}
-	if (cmdline.interact)
-		repl(cin, uc);
+	else start_repl_and_process_commands();
+#else
+	start_repl_and_process_commands();
+#endif
 
 	stats_timer.print();
 

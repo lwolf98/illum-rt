@@ -1,0 +1,28 @@
+omp on
+
+at -516 300 0
+look 1 0 0
+up 0 1 0
+default-brdf layered-gtr2
+
+platform cuda
+outfile out-cuda-while-while-sponza.png
+raytracer while-while
+
+sppx 32
+resolution 1920 1080
+
+load render-data/sponza/sponza.fixed.obj
+
+material select vase_round.001
+material emissive 760 600 200
+#material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.01
+
+commit
+
+algo primary-wf
+run

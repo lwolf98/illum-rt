@@ -16,15 +16,16 @@ namespace wf {
 	class batch_ray_tracer;
 }
 
-struct texture {
+template <typename T>
+struct texture2d {
 	std::string name;
 	std::filesystem::path path;
 	unsigned w, h;
-	vec3 *texel = nullptr;
-	~texture() {
+	T *texel = nullptr;
+	~texture2d() {
 		delete [] texel;
 	}
-	const vec3& sample(float u, float v) const {
+	const T& sample(float u, float v) const {
 		u = u - floor(u);
 		v = v - floor(v);
 		int x = (int)(u*w+0.5f);
@@ -33,25 +34,27 @@ struct texture {
 		if (y == h) y = 0;
 		return texel[y*w+x];
 	}
-	const vec3& sample(vec2 uv) const {
+	const T& sample(vec2 uv) const {
 		return sample(uv.x, uv.y);
 	}
-	const vec3& operator()(float u, float v) const {
+	const T& operator()(float u, float v) const {
 		return sample(u, v);
 	}
-	const vec3& operator()(vec2 uv) const {
+	const T& operator()(vec2 uv) const {
 		return sample(uv.x, uv.y);
 	}
-	const vec3& value(int x, int y) const {
+	const T& value(int x, int y) const {
 		return texel[y*w+x];
 	}
-	const vec3& operator[](glm::uvec2 xy) const {
+	const T& operator[](glm::uvec2 xy) const {
 		return value(xy.x, xy.y);
 	}
 };
 
-texture* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
-texture* load_hdr_image3f(const std::filesystem::path &path);
+texture2d<vec3>* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
+texture2d<vec4>* load_image4f(const std::filesystem::path &path, const std::filesystem::path *opacity_path = nullptr, bool crash_on_error = true);
+texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &path);
+
 
 #ifndef RTGI_SKIP_BRDF
 struct light {
@@ -97,7 +100,7 @@ struct trianglelight : public light, public triangle {
 
 #ifndef RTGI_SKIP_SKY
 struct skylight : public light {
-	texture *tex = nullptr;
+	texture2d<vec3> *tex = nullptr;
 	float intensity_scale;
 	distribution_2d *distribution = nullptr;
 	float scene_radius;
@@ -115,6 +118,7 @@ struct skylight : public light {
 
 #endif
 
+
 /*  \brief The scene culminates all the geometric information that we use.
  *
  *  This naturally includes the surface geometry to be displayed, but also light sources and cameras.
@@ -131,7 +135,7 @@ struct scene {
 	std::vector<::vertex>    vertices;
 	std::vector<::triangle>  triangles;
 	std::vector<::material>  materials;
-	std::vector<::texture*>  textures;
+	std::vector<::texture2d<vec4>*>  textures;
 	std::vector<object>      objects;
 #ifndef RTGI_SKIP_BRDF
 	std::map<std::string, brdf*> brdfs;
@@ -162,19 +166,15 @@ struct scene {
 	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4());
 
 	vec3 normal(const triangle &tri) const;
-	
-	vec3 sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const;
-	vec3 sample_texture(const triangle_intersection &is, const texture *tex) const {
-		return sample_texture(is, triangles[is.ref], tex);
-	}
 
+#ifndef RTGI_SKIP_WF
+	//! This is only used for individual_ray_tracers
+#endif
+	individual_ray_tracer *rt = nullptr;
+	
 	//! The scene takes ownership of the RT, deletes it upon destruction and when taking ownership of a new RT.
 	void release_rt();
-	void use(ray_tracer *new_rt);
-
-	ray_tracer *rt = nullptr;
-	individual_ray_tracer *single_rt = nullptr;
-	wf::batch_ray_tracer *batch_rt = nullptr;
+	void use(individual_ray_tracer *new_rt);
 };
 
 // std::vector<triangle> scene_triangles();

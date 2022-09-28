@@ -8,14 +8,8 @@
 
 #include <iostream>
 
-//! Keep track of when the user changed important values we have to know about in other places.
-struct repl_update_checks {
-	unsigned cmdid = 0,
-			 scene_touched_at = 0,
-			 tracer_touched_at = 0,
-			 accel_touched_at = 0;
-};
+enum enqueue_mode { keep_prev_same_commands, remove_prev_same_commands };
 
-//! Call the read-eval-print-loop (can be called multiple times, e.g. for the script and the cin)
-void repl(std::istream &infile, repl_update_checks &uc);
-
+void queue_command(const std::string &command, enqueue_mode mode = keep_prev_same_commands);
+void process_command_queue(); // runs until exit command is given
+void run_repls();

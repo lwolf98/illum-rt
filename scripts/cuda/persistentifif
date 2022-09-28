@@ -1,0 +1,72 @@
+omp on
+
+at -10 -10 0
+at -13 -12 0
+look 1 0 0
+up 0 1 0
+
+platform cuda
+
+outfile out-cuda-persistent-if-if.png
+raytracer cuda persistent-if-if
+#bvh max_tris 4
+incoherence 0 0
+
+sppx 32
+resolution 480 270
+resolution 1000 1000
+resolution 10000 10000
+
+default-brdf layered-gtr2
+load render-data/sibenik/sibenik.obj
+
+material select pod
+material roughness 0.055
+material ior 2.289
+
+
+#skylight load render-data/skylight-sunset.floats 30
+
+
+# kept this in in case you want to render the regular sibenik model
+# but then don't forget to disable the skylight
+# same not applies to all a8-sibenik files
+material select kamen_zid_parapet
+material albedo  0.73412 0.73059 0.67412
+material ior  1.3
+material roughness  0.50372
+        
+material select pod
+material albedo  0.73412 0.70941 0.67412
+material ior  2.289
+material roughness  0.155
+ 
+material select pod_tepih
+material albedo  0.54627 0.21961 0.18392
+material ior 1.3
+material roughness  0.50372
+        
+material select sprljci
+material albedo  0.78431 0.78431 0.78431
+material ior 1.3
+material roughness  0.50372
+        
+material select staklo
+material emissive 7.8431 7.8431 7.8431
+        
+material select staklo_crveno
+material emissive 50.118 8.392 0.562
+        
+material select staklo_plavo
+material emissive 1.61177 2.82549 16.9216
+        
+material select staklo_zeleno
+material emissive 1.9 18.3 2.15
+        
+#material select staklo_zuto
+#material emissive 37.5 32.2 0.3
+
+commit
+
+algo primary-wf
+run

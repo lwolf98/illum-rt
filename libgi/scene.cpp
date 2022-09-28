@@ -48,7 +48,7 @@ void magickwand_error(MagickWand *wand, bool crash) {
 		exit(1);
 }
 
-texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
+texture2d<vec3>* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 	if (verbose_scene) cout << "loading texture " << path << endl;
 	MagickWandGenesis();
 	MagickWand *img = NewMagickWand();
@@ -58,7 +58,7 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 		return nullptr;
 	}
 	MagickFlipImage(img);
-	texture *tex = new texture;
+	texture2d<vec3> *tex = new texture2d<vec3>;
 	tex->name = path;
 	tex->path = path;
 	tex->w = MagickGetImageWidth(img);
@@ -73,13 +73,74 @@ texture* load_image3f(const std::filesystem::path &path, bool crash_on_error) {
 	return tex;
 }
 
-texture* load_hdr_image3f(const std::filesystem::path &path) {
+/*! Loads an image and the corresponding mask if the image has no alpha channel and the mask
+ *  is provided. The texture mask is then integrated into the image data such that it represents the alpha value. 
+ */
+texture2d<vec4>* load_image4f(const std::filesystem::path &path, const std::filesystem::path *mask_path,  bool crash_on_error) {
+	if (verbose_scene) cout << "loading texture " << path << endl;
+	MagickWandGenesis();
+	MagickWand *img = NewMagickWand();
+	int status = MagickReadImage(img, path.c_str());
+	if (status == MagickFalse) {
+		magickwand_error(img, crash_on_error);
+		return nullptr;
+	}
+	MagickFlipImage(img);
+	texture2d<vec4> *tex = new texture2d<vec4>;
+	tex->name = path;
+	tex->path = path;
+	tex->w = MagickGetImageWidth(img);
+	tex->h = MagickGetImageHeight(img);
+	tex->texel = new vec4[tex->w*tex->h];
+		
+	MagickBooleanType has_alpha_channel = MagickGetImageAlphaChannel(img);
+	MagickExportImagePixels(img, 0, 0, tex->w, tex->h, "RGBA", FloatPixel, (void*)tex->texel);
+	#pragma omp parallel for
+	for (int i = 0; i < tex->w*tex->h; ++i) {
+		tex->texel[i].x = pow(tex->texel[i].x, 2.2f);
+		tex->texel[i].y = pow(tex->texel[i].y, 2.2f);
+		tex->texel[i].z = pow(tex->texel[i].z, 2.2f);
+		
+		if (!has_alpha_channel) tex->texel[i].w = 1;
+	}
+	
+	if (!has_alpha_channel && mask_path) {
+		MagickWand *mask_image = NewMagickWand();
+		int status = MagickReadImage(mask_image, mask_path->c_str());
+		if (status == MagickFalse)
+			magickwand_error(mask_image, crash_on_error);
+		
+		MagickFlipImage(mask_image);
+		
+		int w = MagickGetImageWidth(mask_image);
+		int h = MagickGetImageHeight(mask_image);
+
+		float *mask = new float[w * h];
+		status = MagickExportImagePixels(mask_image, 0, 0, w, h, "I", FloatPixel, (void*)mask);
+		if (status == MagickFalse)	
+			magickwand_error(mask_image, crash_on_error);
+		
+		#pragma omp parallel for
+		for (int i = 0; i < w*h; ++i)
+			tex->texel[i].w = mask[i];
+		
+		DestroyMagickWand(mask_image);
+	}
+
+	DestroyMagickWand(img);
+	MagickWandTerminus();
+	return tex;
+}
+
+
+
+texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &path) {
 	cout << "loading hdr texture from floats-file " << path << endl;
 	ifstream in;
 	in.open(path, ios::in | ios::binary);
 	if (!in.is_open())
 		throw runtime_error("Cannot open file '" + path.string() + "' for hdr floats texture.");
-	texture *tex = new texture;
+	texture2d<vec3> *tex = new texture2d<vec3>;
 	tex->name = path;
 	tex->path = path;
 	in.read(((char*)&tex->w), sizeof(int));
@@ -137,9 +198,18 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			aiString path_ai;
 			mat_ai->GetTexture(aiTextureType_DIFFUSE, 0, &path_ai);
 			filesystem::path p = path.parent_path() / path_ai.C_Str();
-			material.albedo_tex = load_image3f(p);
+
+			if (mat_ai->GetTextureCount(aiTextureType_OPACITY) > 0) {
+				aiString mask_path_ai;
+				mat_ai->GetTexture(aiTextureType_OPACITY, 0, &mask_path_ai);
+				filesystem::path mask_path = path.parent_path() / mask_path_ai.C_Str();
+				material.albedo_tex = load_image4f(p, &mask_path);
+			} else {
+				material.albedo_tex = load_image4f(p);
+			}
 			textures.push_back(material.albedo_tex);
 		}
+
 
 #ifndef RTGI_SKIP_BRDF
 		material.brdf = brdfs["default"];
@@ -238,7 +308,8 @@ void scene::compute_light_distribution() {
 #endif
 
 scene::~scene() {
-	delete rt;
+	if(!rc->platform)
+		delete rt;
 	for (auto *x : textures)
 		delete x;
 #ifndef RTGI_SKIP_BRDF
@@ -257,22 +328,14 @@ vec3 scene::normal(const triangle &tri) const {
 	return cross(e1, e2);
 }
 
-vec3 scene::sample_texture(const triangle_intersection &is, const triangle &tri, const texture *tex) const {
-	vec2 tc = (1.0f-is.beta-is.gamma)*vertices[tri.a].tc + is.beta*vertices[tri.b].tc + is.gamma*vertices[tri.c].tc;
-	return (*tex)(tc);
-}
-	
 void scene::release_rt() {
 	rt = nullptr;
-	single_rt = nullptr;
-	batch_rt = nullptr;
 }
 
-void scene::use(ray_tracer *new_rt) {
+void scene::use(individual_ray_tracer *new_rt) {
+	assert(rc->platform == nullptr);
 	delete rt;
 	rt = new_rt;
-	single_rt = dynamic_cast<individual_ray_tracer*>(rt);
-	batch_rt = dynamic_cast<wf::batch_ray_tracer*>(rt);
 }
 
 
@@ -303,7 +366,7 @@ trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.
 }
 
 vec3 trianglelight::power() const {
-#ifdef RTGI_SKIP_DIRECT_ILLUM_LIGHT_POWER_IMPL
+#ifndef RTGI_SKIP_DIRECT_ILLUM_LIGHT_POWER_IMPL
 	const vertex &a = scene.vertices[this->a];
 	const vertex &b = scene.vertices[this->b];
 	const vertex &c = scene.vertices[this->c];

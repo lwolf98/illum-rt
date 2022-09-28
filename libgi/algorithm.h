@@ -28,6 +28,7 @@ class render_context;
  */
 class gi_algorithm {
 protected:
+	unsigned current_sample_index = 0;
 	float uniform_float() const;
 	glm::vec2 uniform_float2() const;
 #ifndef RTGI_SKIP_SIMPLE_PT
@@ -39,12 +40,18 @@ protected:
 #endif
 
 public:
-	typedef std::vector<pair<vec3, vec2>> sample_result;
+	bool data_reset_required = true;
 
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
-	virtual void prepare_frame() {}
+	virtual void prepare_data() {}
+	virtual void prepare_frame() {
+		current_sample_index = 0;
+		if (data_reset_required)
+			data_reset_required = false, prepare_data();
+	}
 	virtual void finalize_frame() {}
 	virtual void compute_samples() = 0;
+	virtual bool compute_sample() = 0;
 	virtual ~gi_algorithm(){}
 };
  
@@ -63,13 +70,12 @@ class recursive_algorithm : public gi_algorithm {
 public:
 	using gi_algorithm::gi_algorithm;
 
-	virtual sample_result sample_pixel(uint32_t x, uint32_t y, uint32_t samples) = 0;
+	virtual glm::vec3 sample_pixel(uint32_t x, uint32_t y) = 0;
 
 	void compute_samples() override;
+	bool compute_sample() override;
 	void prepare_frame() override;
 };
-
-
 
 /*  This is the basic GPU-style "one segment at a time" algorithm.
  *  

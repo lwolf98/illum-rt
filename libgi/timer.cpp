@@ -5,15 +5,7 @@
 #include <iostream>
 #include <sstream>
 
-void timer::start(const std::string& name) { starts[name] = std::chrono::steady_clock::now(); }
-
-void timer::stop(const std::string& name) {
-    times[name] += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - starts[name]) .count();
-    counts[name]++;
-}
-
 void timer::clear() {
-    starts.clear();
     times.clear();
     counts.clear();
 }
@@ -93,5 +85,18 @@ void timer::print(const std::string& timer_name) {
     std::cout << std::right << std::setw(25) << format(ms_total(), ms_total()) << std::endl;
     std::cout << std::endl;
 }
+
+void cpu_timer::start(const std::string& name) { starts[name] = std::chrono::steady_clock::now(); }
+
+void cpu_timer::stop(const std::string& name) {
+    times[name] += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - starts[name]) .count();
+    counts[name]++;
+}
+
+void cpu_timer::clear() {
+	timer::clear();
+	starts.clear();
+}
+
 
 omp_timer stats_timer;

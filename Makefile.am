@@ -1,5 +1,6 @@
-SUBDIRS = libgi rt gi driver scripts
-EXTRA_DIST = README.md render-data
+AM_CPPFLAGS = -I$(top_srcdir)
+SUBDIRS = libgi gi rt driver scripts #render-data
+EXTRA_DIST = README.md nvcc-wrapper
 
 all-local: rtgi
 

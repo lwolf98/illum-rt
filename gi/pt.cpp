@@ -34,19 +34,13 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 //
 // #define SIGNIFICANT_RAY_COUNT
 
-gi_algorithm::sample_result simple_pt::sample_pixel(uint32_t x, uint32_t y, uint32_t samples) {
-	sample_result result;
-	for (int sample = 0; sample < samples; ++sample) {
+vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 #ifdef SIGNIFICANT_RAY_COUNT
 		vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
-		
-		result.push_back({ r==vec3(0) ? vec3(0) : vec3(1), vec2(0) });
+		return r==vec3(0) ? vec3(0) : vec3(1);
 #else
-		result.push_back({path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f))),
-						  vec2(0)});
+		return path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
 #endif
-	}
-	return result;
 }
 
 vec3 simple_pt::path(ray ray) {
@@ -60,7 +54,7 @@ vec3 simple_pt::path(ray ray) {
 	for (int i = 0; i < max_path_len; ++i) {
 		
 		// find hitpoint with scene
-		triangle_intersection closest = rc->scene.single_rt->closest_hit(ray);
+		triangle_intersection closest = rc->scene.rt->closest_hit(ray);
 		if (!closest.valid()) {
 			if (rc->scene.sky)
 				radiance = throughput * rc->scene.sky->Le(ray);
@@ -157,7 +151,7 @@ vec3 pt_nee::path(ray ray) {
 	for (int i = 0; i < max_path_len; ++i) {
 		record_ray(i, ray);
 		// find hitpoint with scene
-		triangle_intersection closest = rc->scene.single_rt->closest_hit(ray);
+		triangle_intersection closest = rc->scene.rt->closest_hit(ray);
 		if (!closest.valid()) {
 			if (rc->scene.sky)
 				if (!mis || i==0)
@@ -188,7 +182,7 @@ vec3 pt_nee::path(ray ray) {
 		auto [shadow_ray,light_col,light_pdf] = sample_light(hit);
 		if (light_pdf != 0 && light_col != vec3(0)) {
 			record_ray(i+100,shadow_ray);
-			if (!rc->scene.single_rt->any_hit(shadow_ray)) {
+			if (!rc->scene.rt->any_hit(shadow_ray)) {
 				float divisor = light_pdf;
 				assert(light_pdf > 0);
 				if (mis)

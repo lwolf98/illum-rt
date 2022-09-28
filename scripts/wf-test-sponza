@@ -1,0 +1,33 @@
+at -516 300 0
+look 1 0 0
+up 0 1 0
+
+#platform cpu
+platform opengl
+
+sppx 32
+sppx 1
+resolution 960 540
+#resolution 480 270
+
+default-brdf layered-gtr2
+load render-data/sponza/sponza.fixed.obj
+
+
+#skylight load render-data/skylight-sunset.floats 30
+
+material select vase_round.001
+material emissive 760 600 200
+#material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.01
+
+
+commit
+
+#omp off
+algo primary-wf
+outfile /tmp/test2.png
+run

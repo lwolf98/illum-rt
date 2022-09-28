@@ -8,6 +8,7 @@
 using glm::vec3;
 using glm::vec2;
 using glm::vec4;
+using glm::ivec4;
 using std::pair;
 using std::tuple;
 
@@ -77,6 +78,7 @@ struct diff_geom {
 	diff_geom(const triangle_intersection &is, const scene &scene);
 
 	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
+	float opacity() const; // evaluates the surface opacity (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
@@ -92,7 +94,6 @@ class ray_tracer {
 protected:
 	::scene *scene;
 public:
-	virtual void build(::scene *) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual ~ray_tracer() {}
 };
@@ -101,6 +102,7 @@ class individual_ray_tracer : public ray_tracer {
 protected:
 	::scene *scene;
 public:
+	virtual void build(::scene *) = 0;
 	virtual triangle_intersection closest_hit(const ray &) = 0;
 	virtual bool any_hit(const ray &) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

@@ -29,3 +29,9 @@ vec3 diff_geom::albedo() const {
 		return mat->albedo_tex->sample(tc);
 	return mat->albedo;
 }
+
+float diff_geom::opacity() const {
+	if (mat->albedo_tex)
+		return mat->albedo_tex->sample(tc).w;
+	return 1.0f;
+};

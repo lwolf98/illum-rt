@@ -4,7 +4,7 @@ at -13 -12 0
 look 1 0 0
 up 0 1 0
 load render-data/sibenik/sibenik.obj
-load render-data/sibenik/sibenbunny.obj
+#load render-data/sibenik/sibenbunny.obj
 raytracer bbvh
 algo direct
 sppx 500

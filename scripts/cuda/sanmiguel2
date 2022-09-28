@@ -1,0 +1,28 @@
+omp on
+
+at 600 130 200
+look 1 -0.2 -0.5
+
+# at 900 100 500
+# look -0.58 0.01 -0.81
+
+up 0 1 0
+
+platform cuda
+
+outfile out-cuda-while-while.png
+raytracer cuda while-while
+bvh type sm
+
+resolution 10000 10000
+
+#skylight load render-data/skylight-day.floats 30
+
+default-brdf layered-gtr2
+
+load render-data/San_Miguel_casual-effects/san-miguel-scale50.obj
+
+commit
+
+algo primary-wf
+run

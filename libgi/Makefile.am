@@ -1,5 +1,6 @@
 noinst_LIBRARIES = libgi.a
 
+AM_CPPFLAGS = -I$(top_srcdir)
 libgi_a_CXXFLAGS = $(WAND_CFLAGS)
 #libgi_a_LIBADD = $(WAND_LIBS)
 
@@ -10,7 +11,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					random.cpp \
 					rt.cpp \
 					scene.cpp \
-					timer.cpp
+					timer.cpp \
+					wavefront-rt.cpp
 
 #ifndef RTGI_SKIP_BRDF
 libgi_a_SOURCES +=  material.cpp
@@ -42,3 +44,7 @@ noinst_HEADERS +=	discrete_distributions.h
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_HEADERS +=	sampling.h
 #endif
+
+if have_gl
+SUBDIRS = gl
+endif

@@ -1,0 +1,102 @@
+#pragma once
+
+#include "libgi/scene.h"
+#include "libgi/intersect.h"
+
+#include <vector>
+#include <float.h>
+#include <glm/glm.hpp>
+
+constexpr const float ALPHA_THRESHOLD = 0.5f;
+// #define COUNT_HITS
+
+#ifndef RTGI_SKIP_WF
+/*! Here we are inconsistent and use the ::scene instead of wf::cpu::scene
+ *  because this is code that is also run for the individual ray tracer.
+ *
+ *  TODO: will this cause problems?
+ */
+#endif
+struct naive_bvh : public individual_ray_tracer {
+	struct node {
+		aabb box;
+		uint32_t left, right;
+		uint32_t triangle = (uint32_t)-1;
+		bool inner() const { return triangle == (uint32_t)-1; }
+	};
+
+	std::vector<node> nodes;
+	uint32_t root;
+	void build(::scene *scene);
+private:
+	uint32_t subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
+	triangle_intersection closest_hit(const ray &ray) override;
+	bool any_hit(const ray &ray) override;
+};
+	
+/* Innere und Blattknoten werden durch trickserei unterschieden.
+ * Für Blattknoten gilt:
+ * - link_l = -tri_offset
+ * - link_r = -tri_count
+ */
+struct bbvh_node {
+	aabb box_l, box_r;
+	int32_t link_l, link_r;
+	bool inner() const { return link_r >= 0; }
+	int32_t tri_offset() const { return -link_l; }
+	int32_t tri_count()  const { return -link_r; }
+	void tri_offset(int32_t offset) { link_l = -offset; }
+	void tri_count(int32_t count) { link_r = -count; }
+};
+static_assert(sizeof(bbvh_node) == 2*2*3*4+2*4);
+
+struct bvh {
+	typedef bbvh_node node;
+	uint32_t root;
+	std::vector<node> nodes;
+	std::vector<uint32_t> index;  // can be empty if we don't use indexing
+};
+
+enum class bbvh_triangle_layout { flat, indexed };
+enum class bbvh_esc_mode { off, on };
+
+template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware = false>
+struct binary_bvh_tracer : public individual_ray_tracer {
+	typedef bbvh_node node;
+
+	template<bool cond, typename T>
+    using variant = typename std::enable_if<cond, T>::type;
+
+	::bvh bvh;
+	enum binary_split_type {sm, om, sah};
+	binary_split_type binary_split_type = om;
+
+	// config options
+	int max_triangles_per_node = 1;
+	int number_of_planes = 1;
+	bool should_export = false;
+	
+	binary_bvh_tracer();
+	void build(::scene *scene) override;
+	triangle_intersection closest_hit(const ray &ray) override;
+	bool any_hit(const ray &ray) override;
+	bool interprete(const std::string &command, std::istringstream &in) override;
+
+private:
+	void print_node_stats();
+	void export_bvh(uint32_t node, uint32_t *id, uint32_t depth, const std::string &filename, int max_depth);
+
+	// Get triangle index (if an index is used)
+	template<bbvh_triangle_layout LO=tr_layout> 
+	variant<LO==bbvh_triangle_layout::flat, int>
+		triangle_index(int i) {
+			return i;
+		}
+	
+	template<bbvh_triangle_layout LO=tr_layout> 
+	variant<LO!=bbvh_triangle_layout::flat, int>
+		triangle_index(int i) {
+			return bvh.index[i];
+		}
+};
+
