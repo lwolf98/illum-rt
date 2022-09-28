@@ -18,12 +18,16 @@ rtgi_LDADD += ../gi/libpt.a
 #endif
 
 if have_gl
+#ifndef RTGI_SKIP_WF
 rtgi_LDADD += ../rt/gl/libglrt.a 
+#endif
 rtgi_LDADD += ../libgi/gl/libgl.a
 endif
 rtgi_LDADD += ../libgi/libgi.a
 rtgi_LDADD += $(WAND_LIBS)
 
+#ifndef RTGI_SKIP_WF
 if have_cuda
 rtgi_LDADD += ../rt/cuda/libcudaraytracing.a
 endif
+#endif

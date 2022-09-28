@@ -1,5 +1,7 @@
 #include "seq.h"
 
+#include "libgi/scene.h"
+
 #include <iostream>
 
 using namespace std;

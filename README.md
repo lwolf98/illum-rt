@@ -99,13 +99,18 @@ Hier eine erste Sammlung
            [] (int x) { 
                return x;
            },
-           more_ars);
+           more_args);
 ```
 - Wichtige Bitte: den Code nicht automatisch formatieren lassen, da geht immer etwas verloren, insb. z.B. korrekte Einrückung für "Alignment" (also: Tabs für Nesting, Spaces für Ausrichtung z.B. von Continuation Lines, dann sieht die ganze Sache mit anderen Tab-Settings auch noch ok aus).
 
 Das ist bestimmt nicht vollständig und im Zweifel gilt natürlich immer "hauptsache lesbar und klar", aber ich würde darum bitten, dass Sie versuchen sich daran zu orientieren :)
 
 Eine weitere Bitte falls Sie keinen ausgeprägten C++ Hintergrund haben: Schauen Sie sich ein Tutorial für Newcomer von Ihrer "Heimatsprache" an, so dass Sie Code schreiben der "üblich" aussieht.
+
+## Wavefront Tracing
+
+Für GL und CUDA wird der GI-Algorithmus in mehrere Unterschritte aufgeteilt, die sequentiell ausgeführt werden und jeweils für alle Pixel des Bilds en-bloc berechnet werden.
+Dieser Zweig im Code ist für die Vorlesung ausmaskiert und primär für Examens- und Projektarbeiten relevant, entsprechend erwartet dieser Zweig auch alle RTGI Features (keine RTGI_SKIP_...)
 
 ## BVH Export
 

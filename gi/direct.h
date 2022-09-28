@@ -2,7 +2,11 @@
 
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
+
+#ifndef RTGI_SKIP_WF
 #include "libgi/wavefront-rt.h"
+#endif
+
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 class direct_light : public recursive_algorithm {

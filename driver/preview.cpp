@@ -1,12 +1,12 @@
-
 #include "preview.h"
+
 #include "config.h"
+
 #include "libgi/global-context.h"
 #include "libgi/gl/shader.h"
+
 #include "interaction.h"
 #include "cmdline.h"
-
-#include "rt/gl/base.h"
 
 #include <stdexcept>
 #include <thread>
@@ -18,13 +18,15 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+using namespace gl;
+
 GLFWwindow *preview_window = nullptr;
 GLFWwindow *render_window = nullptr;
-wf::gl::ssbo<glm::vec4> *preview_framebuffer = nullptr;
+gl::ssbo<glm::vec4> *preview_framebuffer = nullptr;
 bool preview_update_in_progress = true, preview_finalized = false;
 double delta_time = 0;
 
-static render_shader *shader;
+static render_shader *preview_shader;
 static bool update_res = true;
 static double old_xpos, old_ypos;
 static float speed_factor = 0.02f;
@@ -171,17 +173,17 @@ void preview_render_setup() {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
 
-	shader = new render_shader("preview", vertex_shader_code, fragment_shader_code);
-	shader->bind();
+	preview_shader = new render_shader("preview", vertex_shader_code, fragment_shader_code);
+	preview_shader->bind();
 
-	preview_framebuffer = new wf::gl::ssbo<glm::vec4>("framebuffer", wf::gl::BIND_PRFB, 1);
+	preview_framebuffer = new gl::ssbo<glm::vec4>("framebuffer", 7, 1);
 }
 
 void update_resolution(glm::ivec2 res) {
 	glfwSetWindowSize(preview_window, res.x, res.y);
 	preview_framebuffer->resize(res.x * res.y);
-	shader->uniform("w", res.x);
-	shader->uniform("h", res.y);
+	preview_shader->uniform("w", res.x);
+	preview_shader->uniform("h", res.y);
 	update_res = false;
 }
 
@@ -235,7 +237,7 @@ void render_preview() {
 void terminate_gl() {
 	if (preview_window) throw std::runtime_error("can not terminate gl as the preview window is still active");
 
-	delete shader;
+	delete preview_shader;
 	delete preview_framebuffer;
 	glfwTerminate();
 }

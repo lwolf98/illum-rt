@@ -1,5 +1,6 @@
 AM_CPPFLAGS = -I$(top_srcdir)
 
+#ifndef RTGI_SKIP_WF
 if have_cmera
 BUILT_SOURCES = primary-steps.h direct-steps.h
 
@@ -8,10 +9,11 @@ primary-steps.h: primary-steps.lisp
 direct-steps.h: direct-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 endif
+#endif
 
 noinst_LIBRARIES = libprimary-hit.a
 libprimary_hit_a_SOURCES = primary-hit.cpp
-noinst_HEADERS = primary-hit.h primary-steps.h
+noinst_HEADERS = primary-hit.h
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_LIBRARIES += libdirect.a 
@@ -25,3 +27,8 @@ libpt_a_SOURCES = pt.cpp
 noinst_HEADERS += pt.h
 #endif
 
+#ifndef RTGI_SKIP_WF
+noinst_HEADERS +=  primary-steps.h direct-steps.h
+EXTRA_DIST  = primary-steps.lisp direct-steps.lisp
+EXTRA_DIST += primary-steps.h    direct-steps.h
+#endif

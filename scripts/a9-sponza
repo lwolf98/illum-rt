@@ -9,7 +9,7 @@ default-brdf layered-gtr2
 #load /home/kai/lehre/cg/gl/cg/render-data/models/sponza/sponza.fixed.obj
 load render-data/sponza/sponza.fixed.obj
 #load render-data/sibenik/sibenik.obj
-raytracer bbvh indexed esc
+raytracer embree
 #skylight load render-data/skylight-day.floats 30
 
 material select vase_round.001
@@ -37,17 +37,17 @@ path rr-start 3
 path bounce brdf
 sppx 2500
 
-# center
-at -516 300 0
-look 1 0 0
-outfile a9-sponza-center-1-simplept.png
-run
-
-# corridor
-at 200 180 400
-look 1 0 -0.6
-outfile a9-sponza-corridor-1-simplept.png
-run
+## center
+#at -516 300 0
+#look 1 0 0
+#outfile a9-sponza-center-1-simplept.png
+#run
+#
+## corridor
+#at 200 180 400
+#look 1 0 -0.6
+#outfile a9-sponza-corridor-1-simplept.png
+#run
 
 
 algo pt

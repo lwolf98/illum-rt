@@ -9,7 +9,7 @@ look -1 0 0
 #platform cuda
 #raytracer while-while
 
-raytracer bbvh
+raytracer embree
 algo primary
 #algo direct
 

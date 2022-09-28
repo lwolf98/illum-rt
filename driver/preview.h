@@ -1,6 +1,6 @@
 #pragma once
 
-#include "rt/gl/base.h"
+#include "libgi/gl/buffer.h"
 
 #include <GLFW/glfw3.h>
 
@@ -14,7 +14,7 @@ void terminate_gl();
 
 extern GLFWwindow *preview_window;
 extern GLFWwindow *render_window;
-extern wf::gl::ssbo<glm::vec4> *preview_framebuffer;
+extern gl::ssbo<glm::vec4> *preview_framebuffer;
 extern bool preview_update_in_progress;
 extern bool preview_finalized;
 extern double delta_time;

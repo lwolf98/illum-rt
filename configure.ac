@@ -1,4 +1,4 @@
-AC_INIT([rtgi], [2021], [kai selgrad at oth regensburg de])
+AC_INIT([rtgi], [2022], [kai selgrad at oth regensburg de])
 
 AC_CONFIG_SRCDIR([driver/main.cpp])
 AC_CONFIG_HEADERS(config.h)
@@ -56,6 +56,7 @@ AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 		fi fi])
 AC_SUBST([have_tex])
 
+#ifndef RTGI_SKIP_WF
 ## 
 ## CHECK FOR CUDA and associated libs
 ## 
@@ -82,10 +83,14 @@ AM_CONDITIONAL([have_optix], [test x$have_optix = xyes])
 AS_IF([test x$have_optix = xyes],
 	  [AC_DEFINE([HAVE_OPTIX], [1], [Do we have OptiX])],
 	  [AC_MSG_WARN([Compiling without OptiX support])])
+#endif
 
+#ifndef RTGI_SKIP_BVH
 have_embree=yes
 AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
 AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
+AS_IF([test x$have_embree = xyes], [], [AC_MSG_WARN([Compiling without Embree support: CPU tracing will be slow])])
+#endif
 
 ## 
 ## More libs and tools
@@ -125,16 +130,18 @@ case "$(g++ --version | head -n1)" in
 esac
 
 AC_CONFIG_FILES([Makefile 
-				driver/Makefile
-				libgi/Makefile
-				libgi/gl/Makefile
-				rt/Makefile
-				rt/cpu/Makefile
-				rt/gl/Makefile
-				rt/cuda/Makefile
-				gi/Makefile
-				scripts/Makefile
-				render-data/Makefile
+				 driver/Makefile
+				 libgi/Makefile
+				 libgi/gl/Makefile
+				 rt/Makefile
+				 rt/cpu/Makefile
+				 gi/Makefile
+				 scripts/Makefile
+				 render-data/Makefile
 				])
-
+#ifndef RTGI_SKIP_WF
+AC_CONFIG_FILES([rt/gl/Makefile
+				 rt/cuda/Makefile
+                ])
+#endif
 AC_OUTPUT

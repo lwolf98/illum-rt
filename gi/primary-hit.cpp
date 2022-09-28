@@ -14,8 +14,6 @@
 
 #include "libgi/global-context.h"
 
-#include "libgi/wavefront-rt.h"
-
 using namespace glm;
 using namespace std;
 

@@ -1,8 +1,11 @@
 #pragma once
 
 #include "libgi/algorithm.h"
-#include "libgi/wavefront-rt.h"
 #include "libgi/material.h"
+
+#ifndef RTGI_SKIP_WF
+#include "libgi/wavefront-rt.h"
+#endif
 
 /* \brief Display the color (albedo) of the surface closest to the given ray.
  *

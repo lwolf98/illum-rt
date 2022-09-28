@@ -7,6 +7,7 @@ fi
 
 ASS="$1"
 REF="$2"
+YEAR=2022
 
 branch="master"
 if [ "$(git branch --show-current)" != "$branch" ] ; then
@@ -17,7 +18,10 @@ fi
 git archive --prefix make-ass/ -o make-ass.tar $(git branch --show-current)
 if [ -e make-ass ] ; then
 	echo make-ass already exists!
-	exit 1
+	echo abort with ^C or remove and continue with RET
+	read x
+	rm -r make-ass
+	git archive --prefix make-ass/ -o make-ass.tar $(git branch --show-current)
 fi
 tar xf make-ass.tar
 cd make-ass
@@ -26,15 +30,22 @@ ASS=$(printf "%02d" "$ASS")
 if [ "$REF" != "" ] ; then
 	REF="-$REF"
 fi
-sed -i 's/\[2021\]/[2021-a'$ASS$REF']/' configure.ac
+sed -i 's/\['$YEAR'\]/['$YEAR'-a'$ASS$REF']/' configure.ac
 
 for f in $(find . -name "*.cpp" -o -name "*.h" -o -name "Makefile.am") configure.ac ; do
 	unifdef -x2 -m -f assconf/a$ASS$REF "$f"
 done
 
 #cd ..; cp -r make-ass /tmp/; cd -;
-autoreconf -if && ./configure && make -j20
-make dist-bzip2
-cp rtgi-2021-a??$REF.tar.bz2 ..
+autoreconf -if && ./configure && make -j20 || failed=true
+make dist-bzip2 || failed=true
+cp rtgi-$YEAR-a??$REF.tar.bz2 ..
 cd ..
+
+if [ "$failed" = "true" ] ; then
+	echo ================================================================================
+	echo If something weird happened, did you remember to commit all the things you need?
+	echo Abort here to keep the build directory
+	read x
+fi
 rm -r make-ass

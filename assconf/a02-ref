@@ -31,3 +31,4 @@
 #undef  RTGI_SKIP_RAY_BOX_IS_3
 #undef  RTGI_SKIP_RAY_BOX_IS_4
 
+#define RTGI_SKIP_WF

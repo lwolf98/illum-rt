@@ -11,8 +11,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					random.cpp \
 					rt.cpp \
 					scene.cpp \
-					timer.cpp \
-					wavefront-rt.cpp
+					timer.cpp
+
 
 #ifndef RTGI_SKIP_BRDF
 libgi_a_SOURCES +=  material.cpp
@@ -20,6 +20,10 @@ libgi_a_SOURCES +=  material.cpp
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 libgi_a_SOURCES +=  discrete_distributions.cpp
+#endif
+
+#ifndef RTGI_SKIP_WF
+libgi_a_SOURCES += wavefront-rt.cpp
 #endif
 
 noinst_HEADERS = 	algorithm.h \
@@ -34,8 +38,7 @@ noinst_HEADERS = 	algorithm.h \
 					rt.h \
 					scene.h \
 					timer.h \
-					util.h \
-					wavefront-rt.h
+					util.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
@@ -43,6 +46,9 @@ noinst_HEADERS +=	discrete_distributions.h
 #endif
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_HEADERS +=	sampling.h
+#endif
+#ifndef RTGI_SKIP_WF
+noinst_HEADERS +=   wavefront-rt.h
 #endif
 
 if have_gl

@@ -9,8 +9,6 @@
 
 #include "libgi/global-context.h"
 
-#include "libgi/wavefront-rt.h"
-
 #include "config.h"
 
 #ifdef HAVE_GL

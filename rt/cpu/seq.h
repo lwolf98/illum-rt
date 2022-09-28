@@ -1,7 +1,5 @@
 #pragma once
 
-#include "wavefront.h"
-
 #include "libgi/intersect.h"
 
 #ifndef RTGI_SKIP_WF

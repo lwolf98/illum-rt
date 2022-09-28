@@ -1,5 +1,10 @@
 #include "embree.h"
 
+#include "config.h"
+
+#ifdef HAVE_LIBEMBREE3
+#ifndef RTGI_SKIP_BVH
+
 template <bool alpha_aware>
 embree_tracer<alpha_aware>::embree_tracer() {
 	em_device = rtcNewDevice(0);
@@ -245,3 +250,6 @@ void embvh_split_primitive(const struct RTCBuildPrimitive *primitive,
 
 template struct embree_tracer<>;
 template struct embree_tracer<true>;
+
+#endif
+#endif

@@ -31,7 +31,7 @@ EXTRA_DIST = $(glsl_SRC) preamble.glsl random.glsl
 %-glsl.cpp: %.glsl
 	echo '#include "libgi/gl/shader.h"' > $@
 	echo 'namespace wf::gl {' >> $@
-	echo '	'compute_shader $$(basename $*)'_shader("'$*'", R"(' | tr - _ >> $@
+	echo '	'::gl::compute_shader $$(basename $*)'_shader("'$*'", R"(' | tr - _ >> $@
 	m4 -I$(srcdir) @have_tex@ $< >> $@
 	echo '	)");' >> $@
 	echo '}' >> $@

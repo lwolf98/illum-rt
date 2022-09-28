@@ -14,9 +14,12 @@
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
+
+#ifndef RTGI_SKIP_WF
 #include "libgi/wavefront-rt.h"
 
 #include "rt/cpu/platform.h"
+#endif
 
 #include "rt/cpu/seq.h"
 #ifndef RTGI_SKIP_BVH
@@ -31,12 +34,16 @@
 #endif
 
 #ifdef HAVE_GL
+#ifndef RTGI_SKIP_WF
 #include "rt/gl/platform.h"
+#endif
 #include "preview.h"
 #endif
 
+#ifndef RTGI_SKIP_WF
 #ifdef HAVE_CUDA
 #include "rt/cuda/platform.h"
+#endif
 #endif
 
 #ifdef HAVE_LIBEMBREE3
@@ -173,12 +180,17 @@ static repl_update_checks uc;
 static vector<string> command_history;
 
 bool platform_and_algo_aligned() {
+#ifndef RTGI_SKIP_WF
 	bool wf_algo = dynamic_cast<wavefront_algorithm*>(rc->algo);
 	if (wf_algo && rc->platform)
 		return true;
 	if (!wf_algo && !rc->platform)
 		return true;
 	return false;
+#else
+	// This is used in a version of this code that supports different computing platfomrs
+	return true;
+#endif
 }
 
 void eval(const std::string &line) {
@@ -359,10 +371,12 @@ void eval(const std::string &line) {
 // 		
 // 	}
 	else ifcmd("raytracer") {
+#ifndef RTGI_SKIP_WF
 		if (rc->platform) {
 			rc->platform->interprete(command, in);
 			return;
 		}
+#endif
 		string name;
 		in >> name;
 		if (name == "seq") scene.use(new seq_tri_is);
@@ -386,13 +400,14 @@ void eval(const std::string &line) {
 			else
 				error("There is no such bbvh variant");
 		}
-#endif
 #ifdef HAVE_LIBEMBREE3
 		else if (name == "embree") scene.use(new embree_tracer);
+#endif
 #endif
 		else error("There is no ray tracer called '" << name << "'");
 		uc.tracer_touched_at = uc.cmdid;
 	}
+#ifndef RTGI_SKIP_WF
 	else ifcmd("platform") {
 		string name;
 		in >> name;
@@ -424,6 +439,7 @@ void eval(const std::string &line) {
 		}
 		uc.tracer_touched_at = uc.cmdid;
 	}
+#endif
 	else ifcmd("commit") {
 		if (!uc.valid_platform)
 			error("Invalid platform");
@@ -683,7 +699,6 @@ void eval(const std::string &line) {
 	}
 	else ifcmd("echo") {
 		string text;
-		char c; in >> c; // skip first whitespace
 		getline(in, text);
 		cout << text << endl;
 	}

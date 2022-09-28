@@ -1,5 +1,6 @@
 #include "scene.h"
 
+#include "global-context.h"
 #include "color.h"
 #include "util.h"
 #ifndef RTGI_SKIP_DIRECT_ILLUM
@@ -8,7 +9,6 @@
 #ifndef RTGI_SKIP_SKY
 #include "framebuffer.h"
 #endif
-#include "wavefront-rt.h"
 
 #include <vector>
 #include <iostream>

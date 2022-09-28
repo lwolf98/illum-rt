@@ -9,7 +9,7 @@ namespace wf::gl {
 		BIND_MTLS = 4,
 		BIND_TEXD = 5,
 		BIND_RRNG = 6,
-		BIND_PRFB = 7,
+		BIND_PRFB = 7,	// note: magic number used in preview.cpp
 	};
 }
 #else
