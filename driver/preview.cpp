@@ -250,6 +250,7 @@ void init_glfw() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_VERSION_MAJOR);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_VERSION_MINOR);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_FLOATING, GLFW_TRUE); // do not put in tile (in a tiling WM)
 }
 
 /*! \brief Here we create two GL contexts on the main thread which share resources.
@@ -260,7 +261,7 @@ void init_glfw() {
 void init_preview() {
 	init_glfw();
 
-	preview_window = glfwCreateWindow(1, 1, "preview", nullptr, nullptr);
+	preview_window = glfwCreateWindow(1, 1, "RTGI live", nullptr, nullptr);
 	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 	render_window = glfwCreateWindow(1, 1, "render", nullptr, preview_window);
 
