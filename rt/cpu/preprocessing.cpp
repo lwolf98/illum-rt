@@ -12,8 +12,6 @@ namespace wf::cpu {
 
 	void compute_light_distribution::run() {
 		unsigned prims = 0;
-		for (auto g : pf->sd->light_geom)
-			prims += g.end-g.start;
 		
 		// TODO
 	}

@@ -144,7 +144,6 @@ struct scene {
 	std::vector<light*>      lights;
 #endif
 #ifndef RTGI_SKIP_DIRECT_ILLUM
-	std::vector<object>      light_geom;	// Expires after bvh is built, do not use!
 	void compute_light_distribution();
 #endif
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
