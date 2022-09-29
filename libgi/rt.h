@@ -18,6 +18,9 @@ constexpr float one_over_2pi = (1.0 / (2*M_PI));
 constexpr float one_over_4pi = (1.0 / (4*M_PI));
 
 
+/*! \brief A ray holds its origin, direction and inverse direction (o, d, id) as well
+ *         as its minimal and maximal parameter range.
+ */
 struct ray {
 	static constexpr float eps = 1e-4f;
 	vec3 o, d, id;
@@ -27,17 +30,25 @@ struct ray {
 	void length_exclusive(float d) { t_max = d - eps; }
 };
 
+/*! \brief A vertex is a point in space with associated normal and texture coordinate.
+ */
 struct vertex {
 	vec3 pos;
 	vec3 norm;
 	vec2 tc;
 };
 
+/*! \brief A trinalge references three vertices (from the scene's vertex data)
+ *         as well as its surface properties (via material_id)
+ */
 struct triangle {
 	uint32_t a, b, c;
 	uint32_t material_id;
 };
 
+/*! \brief A ray/triangle intersection holds the distance along the ray to where the
+ *         triangle is intersected and two of the intersection's barycentric coordinates.
+ */
 struct triangle_intersection {
 	typedef unsigned int uint;
 	float t, beta, gamma;

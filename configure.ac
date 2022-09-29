@@ -42,7 +42,7 @@ have_tex=
 AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 	  [
 	  AC_MSG_CHECKING([for GPU dynamically non-uniform access capabilities])
-	  LSPCI="$(lspci  -v -s  $(lspci | grep ' VGA ' | cut -d" " -f 1))"
+	  LSPCI="$(lspci  -v -s  $(lspci 2>/dev/null | grep ' VGA ' | cut -d" " -f 1) 2>/dev/null || echo 'lspci not available on this system')"
 	  	if echo "$LSPCI" | grep NVIDIA >/dev/null ; then
 			AC_MSG_RESULT([found NVIDIA GPU, using regular textures])
 			AC_DEFINE([HAVE_DYN_NUF_TEX], [1], [We do have dynamically non-uniform texture access capabilities])
@@ -52,7 +52,8 @@ AS_IF([test x$have_gl_with_glfw = xyes || test x$have_headless_gl = xyes],
 			AC_DEFINE([HAVE_DYN_NUF_TEX_HACK], [2], [We do not have dynamically non-uniform texture access capabilities, but hack around it])
 			have_tex="-D TEX_HACK"
 		else
-			AC_MSG_RESULT([found something not tested yet, or even unsupported, disabling surface textures])
+			AC_MSG_RESULT([found something not tested yet, or even unsupported, disabling surface textures for OpenGL rendering])
+			AC_MSG_NOTICE([$LSPCI])
 		fi fi])
 AC_SUBST([have_tex])
 

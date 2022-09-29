@@ -21,8 +21,8 @@ ray cam_ray(const camera &cam, int x, int y, vec2 offset) {
 	// near is implicitly at 1 (as per tanf above)
 	return ray(cam.pos, normalize(cam.dir + U*u + V*v));
 #else
-	// todo: compute the camera rays for each pixel.
-	// note: you can use the following function to export them as an obj model and look at them in blender.
+	// todo: compute a camera ray a given each pixel position.
+	// note: you can use the function `test_camrays' to export them as an obj model and look at them in blender.
 	return ray(cam.pos, vec3(0,0,-1));
 #endif
 }

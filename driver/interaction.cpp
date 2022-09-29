@@ -84,7 +84,9 @@ const char *prompt = "rtgi > ";
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 
 void run(gi_algorithm *algo);
+#ifdef HAVE_GL
 void run_sample(gi_algorithm *algo);
+#endif
 
 /* 
  *  The Read Eval Print Loop is run in a thread and queues all commands in order

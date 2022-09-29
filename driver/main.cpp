@@ -32,6 +32,8 @@
 #include <glm/gtc/random.hpp>
 #include <glm/glm.hpp>
 
+#include "config.h"
+
 using namespace std;
 using namespace glm;
 using namespace png;
@@ -42,11 +44,10 @@ rgb_pixel to_png(vec3 col01) {
 	return rgb_pixel(col01.x*255, col01.y*255, col01.z*255);
 }
 
+#ifdef HAVE_GL
 void run_sample(gi_algorithm *algo) {
-
-	std::chrono::time_point<std::chrono::high_resolution_clock> start = chrono::high_resolution_clock::now();
-
 	if (!algo) return;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start = chrono::high_resolution_clock::now();
 
 	if (preview_update_in_progress) {
 		preview_update_in_progress = false;
@@ -69,6 +70,7 @@ void run_sample(gi_algorithm *algo) {
 	delta_time = chrono::duration<double, milli>(end-start).count();
 	start = end;
 }
+#endif
 
 /*! \brief This is called from the \ref repl to compute a single image
  *  
