@@ -13,12 +13,17 @@ raytracer embree
 algo primary
 #algo direct
 
-sppx 5
+algo direct	
+#algo pt
+#algo primary
+
+sppx 1000
+preview-offset 8
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik.obj
 
-resolution 800 600
+resolution 1920 1080
 
 material select pod
 material roughness 0.055
