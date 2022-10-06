@@ -57,7 +57,7 @@ void run_sample(gi_algorithm *algo) {
 		queue_command("run", remove_prev_same_commands);
 	}
 	else if (algo->compute_sample())
-		queue_command("run");
+		queue_command("run", remove_prev_same_commands);
 	else {
 		if (cmdline.verbose)
 			std::cout << "INFO: Frame finished" << std::endl;

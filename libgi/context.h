@@ -22,6 +22,7 @@ struct render_context {
 	::framebuffer framebuffer;
 	gi_algorithm *algo = nullptr;
 	unsigned int sppx = 1;
+	unsigned int preview_offset = 1;
 	wf::platform *platform = nullptr;
 	render_context() : framebuffer(scene.camera.w, scene.camera.h) {
 		call_at_resolution_change[&framebuffer] = [this](int w, int h) { framebuffer.resize(w, h); };
