@@ -27,7 +27,7 @@ bool preview_update_in_progress = true, preview_finalized = false;
 double delta_time = 0;
 
 static render_shader *preview_shader;
-static bool update_res = true;
+static bool update_res = true, alternative_display_mode = true;
 static double old_xpos, old_ypos;
 static float speed_factor = 0.02f;
 
@@ -77,6 +77,10 @@ static void move_view(){
 	if (glfwGetKey(preview_window, GLFW_KEY_D) == GLFW_PRESS) pos_diff += glm::normalize(glm::cross(dir, up));
 	if (glfwGetKey(preview_window, GLFW_KEY_R) == GLFW_PRESS) pos_diff += glm::normalize(up);
 	if (glfwGetKey(preview_window, GLFW_KEY_F) == GLFW_PRESS) pos_diff -= glm::normalize(up);
+
+	// The alternative display stretches the color value of the first pixels sample over all the whole preview offset until a sample was calculated for every pixel.
+	if (glfwGetKey(preview_window, GLFW_KEY_1) == GLFW_PRESS) alternative_display_mode = true;
+	if (glfwGetKey(preview_window, GLFW_KEY_2) == GLFW_PRESS) alternative_display_mode = false;
 
 	if (glm::length(pos_diff) > 0) new_pos += glm::normalize(pos_diff) * speed;
 
@@ -143,9 +147,22 @@ void preview_render_setup() {
 		out vec4 color;
 		uniform int w;
 		uniform int h;
+		uniform int offset;
+		uniform int sample_count;
+		uniform int alternative_display_mode;
+
+		uniform ivec2 render_offset;
 		void main()
 		{
-			int pos = int(tex_coord.y * h) * w + int(tex_coord.x * w);
+			int x = int(tex_coord.x * w);
+			int y = int(tex_coord.y * h);
+
+			if(sample_count == 0 && bool(alternative_display_mode)) {
+				x = x / offset * offset;
+				y = y / offset * offset;
+			}
+
+			int pos = y * w + x;
 			color =  framebuffer[pos] / framebuffer[pos].w;
 		}
 		)";
@@ -216,6 +233,12 @@ void render_preview() {
 	while (!glfwWindowShouldClose(preview_window)) {
 		if (update_res)
 			update_resolution(rc->resolution());
+
+		if(rc->algo) {
+			preview_shader->uniform("sample_count", (int)rc->algo->current_sample_index);
+			preview_shader->uniform("alternative_display_mode", alternative_display_mode);
+			preview_shader->uniform("offset", (int)rc->preview_offset);
+		}
 
 		move_view();
 

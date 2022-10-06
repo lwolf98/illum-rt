@@ -144,7 +144,8 @@ void eval(const std::string &command);
 
 void queue_command(const std::string &command, enqueue_mode mode) {
 	unique_lock lock(command_queue_mutex);
-	if (mode == remove_prev_same_commands) command_queue.remove(command);
+	if (mode == remove_prev_same_commands)
+		command_queue.remove(command);
 	command_queue.push_back(command);
 	lock.unlock();
 	queue_ready.notify_one();
@@ -179,7 +180,7 @@ struct repl_update_checks {
 	bool valid_platform = true; // even true for "no platform", but false when a platform was requested but is not available.
 };
 static repl_update_checks uc;
-static vector<string> command_history;
+static list<string> command_history;
 
 bool platform_and_algo_aligned() {
 #ifndef RTGI_SKIP_WF
@@ -196,7 +197,9 @@ bool platform_and_algo_aligned() {
 }
 
 void eval(const std::string &line) {
-	command_history.push_back(line);
+	if (command_history.back() != line)
+		command_history.push_back(line);
+
 	istringstream in(line);
 	uc.cmdid++;
 	
@@ -470,6 +473,14 @@ void eval(const std::string &line) {
 		in >> sppx;
 		check_in_complete("Syntax error, requires exactly one positive integral value");
 		rc->sppx = sppx;
+	}
+	else ifcmd("preview-offset") {
+		int offset;
+		in >> offset;
+		check_in_complete("Syntax error, requires exactly one positive integral value");
+		if (offset <= 0)
+			error("Thge preview offset needs to be larger than zero");
+		rc->preview_offset = offset;
 	}
 	else ifcmd("run") {
 		if (!uc.valid_platform)

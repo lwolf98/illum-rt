@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <iostream>
 
 #include "rt.h"
 
@@ -28,7 +29,6 @@ class render_context;
  */
 class gi_algorithm {
 protected:
-	unsigned current_sample_index = 0;
 	float uniform_float() const;
 	glm::vec2 uniform_float2() const;
 #ifndef RTGI_SKIP_SIMPLE_PT
@@ -41,7 +41,8 @@ protected:
 
 public:
 	bool data_reset_required = true;
-
+	unsigned current_sample_index = 0;
+	
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 	virtual void prepare_data() {}
 	virtual void prepare_frame() {
@@ -69,7 +70,9 @@ public:
 class recursive_algorithm : public gi_algorithm {
 public:
 	using gi_algorithm::gi_algorithm;
+	glm::ivec2 current_preview_offset = glm::ivec2(0);
 
+	void next_preview_offset();
 	virtual glm::vec3 sample_pixel(uint32_t x, uint32_t y) = 0;
 
 	void compute_samples() override;

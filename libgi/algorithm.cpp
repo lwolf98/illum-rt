@@ -105,11 +105,24 @@ void recursive_algorithm::compute_samples() {
 	});
 }
 
-bool recursive_algorithm::compute_sample() {
+bool recursive_algorithm::compute_sample() { 
 	if (current_sample_index >= rc->sppx) return false;
-	rc->framebuffer.color.for_each([&](unsigned x, unsigned y) {
-										rc->framebuffer.add(x, y, sample_pixel(x, y));
-								   });
+
+	glm::ivec2 res = rc->resolution();
+
+	glm::ivec2 render_res = res;
+	render_res += rc->preview_offset - 1;
+	render_res /= rc->preview_offset;
+
+	#pragma omp parallel for
+	for (int x = 0; x < render_res.x; x++)
+		for (int y = 0; y < render_res.y; y++) {
+			unsigned real_x = x * rc->preview_offset + current_preview_offset.x;
+			unsigned real_y = y * rc->preview_offset + current_preview_offset.y;
+			if (real_x < res.x && real_y < res.y)
+				rc->framebuffer.add(real_x, real_y, sample_pixel(real_x, real_y));
+		}
+	
 #ifdef HAVE_GL
 	if (preview_window) {
 		glfwMakeContextCurrent(render_window);
@@ -119,12 +132,23 @@ bool recursive_algorithm::compute_sample() {
 		glFinish();
 	}
 #endif
-	current_sample_index++;
+	next_preview_offset();
 	return current_sample_index < rc->sppx;
+}
+
+void recursive_algorithm::next_preview_offset() {
+	if(++current_preview_offset.x < rc->preview_offset)
+		return;
+	current_preview_offset.x = 0;
+	if(++current_preview_offset.y < rc->preview_offset)
+		return;
+	current_preview_offset.y = 0;
+	current_sample_index++;
 }
 
 void recursive_algorithm::prepare_frame() {
 	rc->framebuffer.clear();
+	current_preview_offset = glm::ivec2(0);
 	gi_algorithm::prepare_frame();
 	assert(rc->scene.rt != nullptr);
 }
