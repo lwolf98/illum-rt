@@ -18,6 +18,8 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 using namespace gl;
 
 GLFWwindow *preview_window = nullptr;
