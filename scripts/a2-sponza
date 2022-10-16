@@ -4,9 +4,12 @@ look 1 0 0
 up 0 1 0
 load render-data/sponza/sponza.fixed.obj
 raytracer naive-bvh
-#raytracer bbvh
+#raytracer bbvh om
+#raytracer bbvh sm
 commit
 algo primary
 sppx 32
 resolution 1280 720
 run
+
+# vim: set syntax=sh :

@@ -16,6 +16,7 @@
 #undef  RTGI_SKIP_RAY_TRI_IS_IMPL
 
 // a2
+#define RTGI_SIMPLER_BBVH
 #undef  RTGI_SKIP_BVH
 #undef  RTGI_SKIP_RAY_BOX_IS
 

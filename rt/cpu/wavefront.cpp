@@ -149,6 +149,7 @@ namespace wf {
 // 			raydata = rd;
 
 			register_batch_rt("seq",, batch_rt_adapter(new seq_tri_is));
+#ifndef RTGI_SIMPLER_BBVH
 			register_batch_rt("bbvh-esc",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>));
 			register_batch_rt("bbvh-esc-alpha",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on, true>));
 
@@ -162,6 +163,8 @@ namespace wf {
 #else
 			link_tracer("seq", "default");
 #endif
+#endif
+#warning "Compiling WF CPU with tutorial's ray tracer is not tested, are you sure about this?"
 #endif
 
 			// bvh mode?
