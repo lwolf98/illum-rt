@@ -17,8 +17,9 @@
 #define check_in_complete(x) { if (in.bad() || in.fail() || !in.eof()) error(x); }
 using namespace glm;
 
-#ifndef RTGI_SKIP_WF
+#ifndef RTGI_SIMPLER_BBVH
 
+//! This indirection is to support different compute platforms using the same bvh construction code.
 struct scene_access_traits {
 	scene *s;
 	typedef ::triangle tri_t;
@@ -33,13 +34,9 @@ struct scene_access_traits {
 	}
 };
 
-#endif
-
 // 
 //    a more realistic binary bvh
 //
-
-#ifndef RTGI_SIMPLER_BBVH
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
 binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::binary_bvh_tracer() {

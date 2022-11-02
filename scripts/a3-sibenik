@@ -6,8 +6,9 @@ look 1 0 0
 up 0 1 0
 
 
+default-brdf lambert
 #default-brdf phong
-default-brdf layered-phong
+#default-brdf layered-phong
 #default-brdf gtr2
 #default-brdf layered-gtr2
 
