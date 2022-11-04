@@ -15,6 +15,10 @@ noinst_LIBRARIES = libprimary-hit.a
 libprimary_hit_a_SOURCES = primary-hit.cpp
 noinst_HEADERS = primary-hit.h
 
+noinst_LIBRARIES += libmanylight.a
+libmanylight_a_SOURCES = manylight.cpp
+noinst_HEADERS += manylight.h
+
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_LIBRARIES += libdirect.a 
 libdirect_a_SOURCES = direct.cpp

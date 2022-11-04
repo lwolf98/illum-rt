@@ -34,6 +34,10 @@
 
 #include "config.h"
 
+// TMP: test only
+#include "gi/manylight.h"
+void test_russian_roulette();
+
 using namespace std;
 using namespace glm;
 using namespace png;
@@ -101,6 +105,9 @@ void start_repl_and_process_commands() {
  */
 int main(int argc, char **argv)
 {
+	// TMP: test only
+	//test_russian_roulette();
+
 	parse_cmdline(argc, argv);
 
 #ifdef HAVE_GL
@@ -123,4 +130,18 @@ int main(int argc, char **argv)
 
 	delete rc->algo;
 	return 0;
+}
+
+void test_russian_roulette() {
+	russian_roulette rr(4, 1);
+	bool shot;
+
+	for(int i; i < 10; i++) {
+		int count = 1;
+		while(!(shot = rr.shot())) {
+			count++;
+		}
+		cout << "shot at: " << count << endl;
+		rr.reset();
+	}
 }
