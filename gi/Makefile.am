@@ -18,6 +18,9 @@ noinst_HEADERS = primary-hit.h
 noinst_LIBRARIES += libmanylight.a
 libmanylight_a_SOURCES = manylight.cpp
 noinst_HEADERS += manylight.h
+noinst_LIBRARIES += libobjdraw.a
+libobjdraw_a_SOURCES = objdraw.cpp
+noinst_HEADERS += objdraw.h
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_LIBRARIES += libdirect.a 

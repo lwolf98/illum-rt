@@ -2,11 +2,19 @@
 
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
+#include "libgi/scene.h"
 
 class manylight_algorithm : public recursive_algorithm {
 public:
 	void prepare_frame() override;
     vec3 sample_pixel(uint32_t x, uint32_t y) override;
+};
+
+// virtual point light
+class vpl : public pointlight {
+    public:
+    vpl(const vec3 pos, const vec3 col)
+        : pointlight(pos, col) {}
 };
 
 class russian_roulette {
