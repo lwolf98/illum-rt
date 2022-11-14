@@ -6,9 +6,9 @@ up 0 1 0
 load render-data/sibenik/sibenik.obj
 raytracer seq
 algo manylight
-sppx 1
+sppx 10
 pointlight pos 0 -4 0 col 35 30 26
-resolution 64 36
+resolution 640 360
 outfile out.png
 
 material select pod
