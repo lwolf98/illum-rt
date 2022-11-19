@@ -15,7 +15,7 @@ struct vpl : public pointlight {
 
 class manylight_algorithm : public recursive_algorithm {
 private:
-    std::vector<vpl*> vpls;
+    std::vector<vpl> vpls;
 
 public:
 	void prepare_frame() override;

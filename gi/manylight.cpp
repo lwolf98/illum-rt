@@ -28,11 +28,12 @@ void manylight_algorithm::prepare_frame() {
     bool pathTerminated = false;
 
     // setup russian roulette
-	int length = 10;
-    russian_roulette rr(length);
-	int samples = 200;
+	int length = 3;
+    russian_roulette rr(length, length);
+	int samples = 3;
 
 	vec3 origin_pl(0,-4,0);
+    vec3 col(0.8,0.4,0.7);
 
     // test: begin paths.obj
     vector<vec3> vertices;
@@ -45,6 +46,7 @@ void manylight_algorithm::prepare_frame() {
 		vec3 pos = origin_pl;
 		vec3 dir = random_dir();
         vec3 throughput(1.0f);
+        //vec3 throughput(col);
 
 		int j = 0;
 		while(!pathTerminated) {
@@ -62,19 +64,22 @@ void manylight_algorithm::prepare_frame() {
 			//cout << " (" << bounced.o << "; " << bounced.d << "; " << pdf << ")" << endl;
 
 			// 3. create a VPL
+            //if(j == 0)
+            //    throughput *= col;
+
 			pos = bounced.o;
 			dir = bounced.d;
-			//vec3 col(0.8,0.4,0.7);
             vec3 col = hit.albedo();
-			vpl* v = new vpl(pos, col);
-            v->throughput = throughput;
+			//vpl* v = new vpl(pos, col);
+            vpl v(pos, col);
+            v.throughput = throughput;
             vpls.push_back(v);
 
 			path.push_vertex(pos);
 			vertices.push_back(pos);
 
 			// test: add pointlight
-			rc->scene.lights.push_back(v);
+			//rc->scene.lights.push_back(v);
 			//rc->scene.lights.resize(rc->scene.lights.size() + 1);
 			//rc->scene.lights[rc->scene.lights.size() - 1] = v;
 
@@ -137,12 +142,13 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
     //radiance = dg.albedo();
 
     /* Render with VPLs */
+    int i = 0;
     for(auto v : vpls) {
-        vec3 dir = normalize(dg.x - v->pos);
-        triangle_intersection vpl_closest = rc->scene.rt->closest_hit(ray(v->pos, dir));
+        vec3 dir = normalize(dg.x - v.pos);
+        triangle_intersection vpl_closest = rc->scene.rt->closest_hit(ray(v.pos, dir));
         diff_geom vpl_dg(vpl_closest, rc->scene);
         //if(vpl_dg.x != dg.x) {
-        if(length(vpl_dg.x - dg.x) < 0.5f) {
+        if(length(vpl_dg.x - dg.x) > 0.1f) {
             //cout << "difference: " << vpl_dg.x - dg.x << endl;
             //cout << "difference: " << length(vpl_dg.x - dg.x) << endl;
             /*if(length(vpl_dg.x - dg.x) < 0.1f) {
@@ -151,25 +157,27 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
                 //cout << "difference: " << length(vpl_dg.x - dg.x) << ", hit: " << dg.x << ", vpl_hit: " << vpl_dg.x << endl;
             }*/
 
-            break;
+            continue;
         }
         //cout << "same hit?" << endl;
         //cout << "difference: " << length(vpl_dg.x - dg.x) << ", hit: " << dg.x << ", vpl_hit: " << vpl_dg.x << endl;
 
         float D = cdot(dg.ns, -dir);
         //cout << "radiance pre: " << radiance << endl;
-        radiance += D*v->throughput*v->col*(1.0f/n);
+        float pdf = dg.mat->brdf->pdf(dg, view_ray.d, -dir);
+        radiance += D*v.throughput*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/pdf);
+        //radiance += D*v->throughput*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/n);
         //cout << "add: " << D*v->throughput*v->col*(1.0f/n) << endl;
         //cout << "radiance after: " << radiance << endl;
     }
 
-    return radiance*dg.albedo()*4.0f*pi;
+    return radiance; //*dg.albedo()*4.0f*pi;
 }
 
 manylight_algorithm::~manylight_algorithm() {
     // reference here correct? what does it do here exactly?
-    for(auto& v : vpls)
-        delete v;
+    /*for(auto& v : vpls)
+        delete v;*/
 }
 
 /*** Util ***/
