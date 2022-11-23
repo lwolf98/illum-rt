@@ -93,6 +93,8 @@ void recursive_algorithm::compute_samples() {
 		if (current_sample_index == 0) {
 			auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
 			std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << std::endl;	
+		} else {
+			std::cout << "Sample " << current_sample_index+1 << " completed" << std::endl;
 		}
 	}
 

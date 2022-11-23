@@ -28,12 +28,14 @@ void manylight_algorithm::prepare_frame() {
     bool pathTerminated = false;
 
     // setup russian roulette
-	int length = 3;
+	int length = 8;
     russian_roulette rr(length, length);
-	int samples = 3;
+	int samples = 128;
 
 	vec3 origin_pl(0,-4,0);
-    vec3 col(0.8,0.4,0.7);
+    //vec3 col(0.7,0.7,0.7);
+    //vec3 col(10, 32, 8);
+    vec3 col(3.0f);
 
     // test: begin paths.obj
     vector<vec3> vertices;
@@ -45,8 +47,8 @@ void manylight_algorithm::prepare_frame() {
 		objdraw::path path(origin_pl);
 		vec3 pos = origin_pl;
 		vec3 dir = random_dir();
-        vec3 throughput(1.0f);
-        //vec3 throughput(col);
+        //vec3 throughput(1.0f);
+        vec3 throughput(col*(1.0f/samples));
 
 		int j = 0;
 		while(!pathTerminated) {
@@ -59,6 +61,14 @@ void manylight_algorithm::prepare_frame() {
 				break;
 			}
 			diff_geom hit(closest, rc->scene);
+
+            // if it is a light, add the light's contribution
+            /*if (hit.mat->emissive != vec3(0)) {
+                //radiance = throughput * dg.mat->emissive;
+                //break;
+                return radiance + hit.mat->emissive;
+            }*/
+
 			auto [bounced, pdf] = sample_brdf_distributed_direction(hit, ray);
 		    throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
 			//cout << " (" << bounced.o << "; " << bounced.d << "; " << pdf << ")" << endl;
@@ -141,6 +151,13 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
     diff_geom dg(closest, rc->scene);
     //radiance = dg.albedo();
 
+    // if it is a light, add the light's contribution
+    if (dg.mat->emissive != vec3(0)) {
+        //radiance = throughput * dg.mat->emissive;
+        //break;
+        return dg.mat->emissive;
+    }
+
     /* Render with VPLs */
     int i = 0;
     for(auto v : vpls) {
@@ -149,6 +166,8 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
         diff_geom vpl_dg(vpl_closest, rc->scene);
         //if(vpl_dg.x != dg.x) {
         if(length(vpl_dg.x - dg.x) > 0.1f) {
+        //auto tmp = vpl_dg.x - dg.x;
+        //if(dot(tmp, tmp) > 0.1f*0.1f) {
             //cout << "difference: " << vpl_dg.x - dg.x << endl;
             //cout << "difference: " << length(vpl_dg.x - dg.x) << endl;
             /*if(length(vpl_dg.x - dg.x) < 0.1f) {
