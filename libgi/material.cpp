@@ -60,6 +60,8 @@ vec3 lambertian_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3
 	return one_over_pi * geom.albedo();
 #else
 	// todo
+	// hint: make sure the incoming direction is in the upper hemisphere,
+	//       see same_hemisphere (util.h)
 	return vec3(0);
 #endif
 }
@@ -91,6 +93,7 @@ vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const 
 	return (coat ? vec3(1) : geom.albedo()) * powf(cos_theta, exponent) * norm_f * cdot(w_i,geom.ns);
 #else
 	// todo
+	// hint: make sure the incoming direction is in the upper hemisphere,
 	return vec3(0);
 #endif
 }

@@ -42,7 +42,8 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 		}
 #else
-		// todo: compute direct lighting contribution
+		// todo: compute direct lighting contribution.
+		// delegate to sample_uniformly or sample_lights to implement the actual sampling,
 #endif
 	}
 #ifndef RTGI_SKIP_SKY
@@ -57,7 +58,14 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
 #ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
-	// todo: implement uniform hemisphere sampling
+	// todo: Implement uniform hemisphere sampling by computing directions as described in the lecture.
+	// Note that we always compute such directions with the z-axis pointing upwards in the hemisphere,
+	// but that this does not generally correspond to the actual geometry we place the hemisphere on.
+	// To that end, use the \c align function (see util.h) to align the sampled direction with the
+	// hit-geometry's orientation.
+	// With that direction, compute one sample for the DII by casting a ray and evaluating the integrand
+	// with the proper scaling factors (see MC estimator for the DII)
+	// Note that the normalization by the number of samples is taken care outside of this function.
 	return vec3(0);
 #else
 	float z = xi.x;
@@ -118,7 +126,11 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 
 vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 #ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
-	// todo: implement uniform sampling on the first few of the scene's lights' surfaces
+	// todo: Implement uniform sampling on the first few of the scene's lights' surfaces To this
+	// end, convert the lights to triangle lights, take two random numbers and compute a position on
+	// the light according to the information on the assignment sheet. 
+	// Note that this direction is already in the correct coordinate frame.
+	// Use the thusly sampled direction to evaluate the area formulation of the DII.
 	return vec3(0);
 #elif defined(RTGI_DIRECT_ILLUM_IMPL_SIMPLE)
 	const size_t N_max = 2;
