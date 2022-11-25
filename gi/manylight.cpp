@@ -28,14 +28,14 @@ void manylight_algorithm::prepare_frame() {
     bool pathTerminated = false;
 
     // setup russian roulette
-	int length = 8;
-    russian_roulette rr(length, length);
-	int samples = 128;
+	int length = 3;
+    russian_roulette rr(length);
+	int samples = 3;
 
 	vec3 origin_pl(0,-4,0);
     //vec3 col(0.7,0.7,0.7);
     //vec3 col(10, 32, 8);
-    vec3 col(3.0f);
+    vec3 L_e(1.0f);
 
     // test: begin paths.obj
     vector<vec3> vertices;
@@ -43,12 +43,15 @@ void manylight_algorithm::prepare_frame() {
     int32_t start = 0;
 	int32_t off = 0;
 
+    //vpls.push_back(vpl(origin_pl, L_e));
+
 	for(int i = 0; i < samples; ++i) {
 		objdraw::path path(origin_pl);
 		vec3 pos = origin_pl;
 		vec3 dir = random_dir();
+
         //vec3 throughput(1.0f);
-        vec3 throughput(col*(1.0f/samples));
+        vec3 throughput = L_e * (1.0f/samples);
 
 		int j = 0;
 		while(!pathTerminated) {
@@ -70,19 +73,31 @@ void manylight_algorithm::prepare_frame() {
             }*/
 
 			auto [bounced, pdf] = sample_brdf_distributed_direction(hit, ray);
-		    throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
-			//cout << " (" << bounced.o << "; " << bounced.d << "; " << pdf << ")" << endl;
+
+            if(j == 0) {
+                float D = 1.0f;
+                throughput = L_e * D;
+                // D_x(y) is here 1.0f because source is a volumetric point
+                // What is p(v_0)?
+                // p(w_0) = 1.0f because source is pointlight (in space)?
+            } else {
+                //D = cdot(-dir, hit.ns); //cdot(bounced.d, hit.ns)
+                vpl previous = vpls.back();
+                float D = cdot(dir, previous.geometry.ns);
+                vec3 f = previous.geometry.mat->brdf->f(previous.geometry, dir, -previous.in);
+                float prev_pdf = previous.geometry.mat->brdf->pdf(previous.geometry, dir, -previous.in);
+
+                //TODO: divide by q (probability for russian roulette)
+                throughput *= f * D / prev_pdf;
+            }
+
+            //outdated:
+            //throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
 
 			// 3. create a VPL
-            //if(j == 0)
-            //    throughput *= col;
-
 			pos = bounced.o;
+            vpl v(pos, throughput, hit, dir);
 			dir = bounced.d;
-            vec3 col = hit.albedo();
-			//vpl* v = new vpl(pos, col);
-            vpl v(pos, col);
-            v.throughput = throughput;
             vpls.push_back(v);
 
 			path.push_vertex(pos);
@@ -99,7 +114,6 @@ void manylight_algorithm::prepare_frame() {
 			// 5. increment j and go to step 2
 			j++;
 		}
-		//cout << "sample: " << i << ", terminated at: j = " << j << endl << endl;
 		out << path.obj_string(start) << endl;
 
 		rr.reset();
@@ -140,21 +154,15 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
     vec3 radiance(0);
     int n = vpls.size();
 
-    //if(x == 0)
-    //    cout << "New row: " << y << endl;
-
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (!closest.valid())
         return vec3(0);
 
     diff_geom dg(closest, rc->scene);
-    //radiance = dg.albedo();
 
     // if it is a light, add the light's contribution
     if (dg.mat->emissive != vec3(0)) {
-        //radiance = throughput * dg.mat->emissive;
-        //break;
         return dg.mat->emissive;
     }
 
@@ -166,37 +174,19 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
         diff_geom vpl_dg(vpl_closest, rc->scene);
         //if(vpl_dg.x != dg.x) {
         if(length(vpl_dg.x - dg.x) > 0.1f) {
-        //auto tmp = vpl_dg.x - dg.x;
-        //if(dot(tmp, tmp) > 0.1f*0.1f) {
-            //cout << "difference: " << vpl_dg.x - dg.x << endl;
-            //cout << "difference: " << length(vpl_dg.x - dg.x) << endl;
-            /*if(length(vpl_dg.x - dg.x) < 0.1f) {
-                //cout << "difference: " << length(vpl_dg.x - dg.x) << ", hit: " << dg.x << ", vpl_hit: " << vpl_dg.x << endl;
-            } else {
-                //cout << "difference: " << length(vpl_dg.x - dg.x) << ", hit: " << dg.x << ", vpl_hit: " << vpl_dg.x << endl;
-            }*/
-
             continue;
         }
-        //cout << "same hit?" << endl;
-        //cout << "difference: " << length(vpl_dg.x - dg.x) << ", hit: " << dg.x << ", vpl_hit: " << vpl_dg.x << endl;
 
         float D = cdot(dg.ns, -dir);
-        //cout << "radiance pre: " << radiance << endl;
         float pdf = dg.mat->brdf->pdf(dg, view_ray.d, -dir);
-        radiance += D*v.throughput*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/pdf);
-        //radiance += D*v->throughput*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/n);
-        //cout << "add: " << D*v->throughput*v->col*(1.0f/n) << endl;
-        //cout << "radiance after: " << radiance << endl;
+        radiance += D*v.col*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/pdf);
     }
 
-    return radiance; //*dg.albedo()*4.0f*pi;
+    return radiance;
 }
 
 manylight_algorithm::~manylight_algorithm() {
-    // reference here correct? what does it do here exactly?
-    /*for(auto& v : vpls)
-        delete v;*/
+    //...
 }
 
 /*** Util ***/

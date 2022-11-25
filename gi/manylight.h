@@ -7,10 +7,15 @@
 
 // virtual point light
 struct vpl : public pointlight {
-    vec3 throughput;
+    //vec3 throughput;
+    diff_geom geometry;
+    vec3 in;
 
-    vpl(const vec3 pos, const vec3 col)
-        : pointlight(pos, col) {}
+    vpl(const vec3 pos, const vec3 col, diff_geom dg, vec3 in)
+        : pointlight(pos, col), geometry(dg), in(in) {}
+
+    //vpl(const vec3 pos, const vec3 col)
+    //    : pointlight(pos, col) {}
 };
 
 class manylight_algorithm : public recursive_algorithm {
