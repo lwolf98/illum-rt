@@ -58,4 +58,12 @@ namespace objdraw {
 
         return out.str();
     }
+
+    void obj_writer::write_path(path path) {
+		out << path.obj_string(start) << endl;
+    }
+
+    void obj_writer::write_icosphere(icosphere ico) {
+        out << ico.obj_string(start) << endl;
+    }
 }

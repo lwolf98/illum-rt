@@ -7,25 +7,26 @@
 
 // virtual point light
 struct vpl : public pointlight {
-    //vec3 throughput;
     diff_geom geometry;
     vec3 in;
 
     vpl(const vec3 pos, const vec3 col, diff_geom dg, vec3 in)
         : pointlight(pos, col), geometry(dg), in(in) {}
 
-    //vpl(const vec3 pos, const vec3 col)
-    //    : pointlight(pos, col) {}
 };
 
 class manylight_algorithm : public recursive_algorithm {
 private:
+    uint32_t paths;
+    uint32_t path_length;
     std::vector<vpl> vpls;
 
 public:
+    manylight_algorithm(uint32_t paths, uint32_t path_length)
+        : paths(paths), path_length(path_length) {}
+
 	void prepare_frame() override;
     vec3 sample_pixel(uint32_t x, uint32_t y) override;
-    ~manylight_algorithm();
 };
 
 class russian_roulette {

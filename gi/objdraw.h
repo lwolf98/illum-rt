@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <fstream>
 #include <glm/glm.hpp>
 #include <vector>
 #include "libgi/rt.h"
@@ -21,14 +22,6 @@ namespace objdraw {
         {N,Z,X}, {N,Z,-X}, {N,-Z,X}, {N,-Z,-X},
         {Z,X,N}, {-Z,X, N}, {Z,-X,N}, {-Z,-X, N}
     };
-
-    /*static const vector<triangle> triangles =
-    {
-        {0,4,1},{0,9,4},{9,5,4},{4,5,8},{4,8,1},
-        {8,10,1},{8,3,10},{5,3,8},{5,2,3},{2,7,3},
-        {7,10,3},{7,6,10},{7,11,6},{11,0,6},{0,1,6},
-        {6,1,10},{9,0,11},{9,11,2},{9,2,5},{7,2,11}
-    };*/
 
     static const vector<triangle> triangles =
     {
@@ -59,5 +52,19 @@ namespace objdraw {
         path(vec3 start_vertex);
         void push_vertex(vec3 v);
         string obj_string(int32_t& start);
+    };
+
+    class obj_writer {
+        private:
+        ofstream out;
+        int32_t start;
+        int32_t off;
+
+        public:
+        obj_writer(string out_file)
+            : out(ofstream(out_file)), start(0), off(0) {}
+
+        void write_path(path path);
+        void write_icosphere(icosphere ico);
     };
 }

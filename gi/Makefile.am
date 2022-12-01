@@ -17,6 +17,7 @@ noinst_HEADERS = primary-hit.h
 
 noinst_LIBRARIES += libmanylight.a
 libmanylight_a_SOURCES = manylight.cpp
+libmanylight_a_SOURCES += manylight_util.cpp
 noinst_HEADERS += manylight.h
 noinst_LIBRARIES += libobjdraw.a
 libobjdraw_a_SOURCES = objdraw.cpp

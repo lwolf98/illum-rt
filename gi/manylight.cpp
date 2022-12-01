@@ -16,42 +16,41 @@
 using namespace glm;
 using namespace std;
 
-void file_put_contents(const std::string& name, const std::string& content, bool append);
-void test_paths(const camera &camera, int stride);
+//TODO: only for testing: will be replaced by using and sampling the scene lights
+pointlight origin_pl = pointlight(vec3(0,-4,0), vec3(35, 30, 26));
 vec3 random_dir();
 
 void manylight_algorithm::prepare_frame() {
     /* Generate VPLs */
+
+    /*
+        Note to steps 1. - 5.:
+        The numbering is set accordingly to the manylight State of The Art Report (STAR):
+        https://cgg.mff.cuni.cz/~jaroslav/papers/2013-mlstar/eg2013star_manylights.pdf
+
+        This initialization algorithm is described in chapter 4.1 Random Walk VPL Distribution
+    */
 
     // 1. initialize j:=0
     int j = 0;
     bool pathTerminated = false;
 
     // setup russian roulette
-	int length = 3;
-    russian_roulette rr(length);
-	int samples = 3;
+    //TODO: "activate" RR: currently 'start' is set to the 'max' length => RR only ends after reaching the max. value
+    russian_roulette rr(path_length, path_length);
 
-	vec3 origin_pl(0,-4,0);
-    //vec3 col(0.7,0.7,0.7);
-    //vec3 col(10, 32, 8);
-    vec3 L_e(1.0f);
+    // begin writing paths.obj
+    objdraw::obj_writer obj_writer("paths.obj");
+    vector<vec3> obj_vertices;
 
-    // test: begin paths.obj
-    vector<vec3> vertices;
-    ofstream out("paths.obj");
-    int32_t start = 0;
-	int32_t off = 0;
+    diff_geom dg_invalid(triangle_intersection(), rc->scene);
 
-    //vpls.push_back(vpl(origin_pl, L_e));
-
-	for(int i = 0; i < samples; ++i) {
-		objdraw::path path(origin_pl);
-		vec3 pos = origin_pl;
+	for(int i = 0; i < paths; ++i) {
+		objdraw::path obj_path(origin_pl.pos);
+		vec3 pos = origin_pl.pos;
 		vec3 dir = random_dir();
 
-        //vec3 throughput(1.0f);
-        vec3 throughput = L_e * (1.0f/samples);
+        vec3 throughput(1.0f/paths);
 
 		int j = 0;
 		while(!pathTerminated) {
@@ -65,6 +64,7 @@ void manylight_algorithm::prepare_frame() {
 			}
 			diff_geom hit(closest, rc->scene);
 
+            // TODO: Is emissive light relevant here?
             // if it is a light, add the light's contribution
             /*if (hit.mat->emissive != vec3(0)) {
                 //radiance = throughput * dg.mat->emissive;
@@ -76,37 +76,32 @@ void manylight_algorithm::prepare_frame() {
 
             if(j == 0) {
                 float D = 1.0f;
-                throughput = L_e * D;
+                throughput *= origin_pl.col * D;
                 // D_x(y) is here 1.0f because source is a volumetric point
-                // What is p(v_0)?
-                // p(w_0) = 1.0f because source is pointlight (in space)?
-            } else {
-                //D = cdot(-dir, hit.ns); //cdot(bounced.d, hit.ns)
+                // What is p(v_0)? -> "probability that this light source is selected (at this point v_0)"
+                // p(w_0) = 1.0f because source is pointlight (in space)
+            }
+            else {
                 vpl previous = vpls.back();
                 float D = cdot(dir, previous.geometry.ns);
-                vec3 f = previous.geometry.mat->brdf->f(previous.geometry, dir, -previous.in);
+                vec3 prev_f = previous.geometry.mat->brdf->f(previous.geometry, dir, -previous.in);
                 float prev_pdf = previous.geometry.mat->brdf->pdf(previous.geometry, dir, -previous.in);
 
-                //TODO: divide by q (probability for russian roulette)
-                throughput *= f * D / prev_pdf;
+                //TODO: divide by q when using russian roulette (q: probability for russian roulette, see paper)
+                throughput *= prev_f * D / prev_pdf;
             }
-
-            //outdated:
-            //throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
 
 			// 3. create a VPL
 			pos = bounced.o;
             vpl v(pos, throughput, hit, dir);
-			dir = bounced.d;
             vpls.push_back(v);
 
-			path.push_vertex(pos);
-			vertices.push_back(pos);
+            // set dir for the next iteration
+			dir = bounced.d;
 
-			// test: add pointlight
-			//rc->scene.lights.push_back(v);
-			//rc->scene.lights.resize(rc->scene.lights.size() + 1);
-			//rc->scene.lights[rc->scene.lights.size() - 1] = v;
+            // preparation for obj file
+			obj_path.push_vertex(pos);
+			obj_vertices.push_back(pos);
 
 			// 4. terminate path
 			pathTerminated = rr.shot();
@@ -114,43 +109,24 @@ void manylight_algorithm::prepare_frame() {
 			// 5. increment j and go to step 2
 			j++;
 		}
-		out << path.obj_string(start) << endl;
+        obj_writer.write_path(obj_path);
 
 		rr.reset();
 		pathTerminated = false;
 		j = 0;
 	}
 
-	out << objdraw::icosphere(origin_pl).obj_string(start) << endl;
-    for(auto v : vertices) {
+    // draw path vertices in paths.obj as icospheres
+    obj_writer.write_icosphere(objdraw::icosphere(origin_pl.pos));
+    for(auto v : obj_vertices) {
         objdraw::icosphere sphere(v, 0.5f);
-        out << sphere.obj_string(start) << endl;
+        obj_writer.write_icosphere(sphere);
     }
-
-    // test: check lights
-    /*int i = 0;
-    for(light* l : rc->scene.lights) {
-        pointlight* pl;
-        trianglelight* tl;
-        if(pl = dynamic_cast<pointlight*> (l))
-            cout << i << ": pointlight" << endl;
-        else if(tl = dynamic_cast<trianglelight*> (l)) {
-            cout << i << ": trianglelight: ";
-            cout << "(" << rc->scene.vertices[tl->a].pos << "), ";
-            cout << "(" << rc->scene.vertices[tl->b].pos << "), ";
-            cout << "(" << rc->scene.vertices[tl->c].pos << "), ";
-            cout << "(" << rc->scene.materials[tl->material_id].albedo << ")" << endl;;
-
-        } else if(dynamic_cast<skylight*> (l))
-            cout << i << ": skylight" << endl;
-        else
-            cout << i <<": none of the above" << endl;
-
-        i++;
-    }*/
 }
 
 vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
+    /* Render with VPLs */
+
     vec3 radiance(0);
     int n = vpls.size();
 
@@ -166,55 +142,45 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
         return dg.mat->emissive;
     }
 
-    /* Render with VPLs */
+    {
+        // direct illumination
+        vec3 dir = normalize(dg.x - origin_pl.pos);
+        triangle_intersection vpl_closest = rc->scene.rt->closest_hit(ray(origin_pl.pos, dir));
+        diff_geom vpl_dg(vpl_closest, rc->scene);
+        if(length(vpl_dg.x - dg.x) <= 0.1f) {
+            vec3 f = dg.mat->brdf->f(dg, -view_ray.d, -dir); // BRDF at x; BRDF at origin_pl is 1.0f because in space
+            float G = cdot(dg.ns, -dir); // D at origin_pl is 1.0f because in space
+            // div. by ||o_pl -> x||² needed when using pointlight?
+            //G *= 1.0f / (length(dg.x - origin_pl.pos)*length(dg.x - origin_pl.pos));
+            radiance += f*G;
+        }
+    }
+
+    // indirect illumination by using VPLs
     int i = 0;
     for(auto v : vpls) {
         vec3 dir = normalize(dg.x - v.pos);
         triangle_intersection vpl_closest = rc->scene.rt->closest_hit(ray(v.pos, dir));
         diff_geom vpl_dg(vpl_closest, rc->scene);
-        //if(vpl_dg.x != dg.x) {
-        if(length(vpl_dg.x - dg.x) > 0.1f) {
+        float len = length(vpl_dg.x - dg.x);
+        if(len > 0.1f) {
             continue;
         }
 
-        float D = cdot(dg.ns, -dir);
-        float pdf = dg.mat->brdf->pdf(dg, view_ray.d, -dir);
-        radiance += D*v.col*dg.mat->brdf->f(dg, view_ray.d, -dir)*(1.0f/pdf);
+        // radiance calculation for hitpoint x (dg.x)
+        float D_v_to_x = cdot(v.geometry.ns, dir);
+        float D_x_to_v = cdot(dg.x, -dir);
+        float G = D_v_to_x * D_x_to_v / (length(v.pos - dg.x)*length(v.pos - dg.x));
+        float pdf = dg.mat->brdf->pdf(v.geometry, dir, -v.in);
+        //vec3 throughput = D_v_to_x*v.col*dg.mat->brdf->f(v.geometry, dir, -v.in)*(1.0f/pdf);
+        
+        vec3 throughput = G*v.col*dg.mat->brdf->f(v.geometry, dir, -v.in);
+
+        // radiance calculation for camera / eye
+        //float D_x_to_cam = cdot(dg.ns, -view_ray.d); // only relevant for specular lighting?
+        pdf = dg.mat->brdf->pdf(dg, -view_ray.d, -dir);
+        radiance += throughput*dg.mat->brdf->f(dg, -view_ray.d, -dir);
     }
 
     return radiance;
-}
-
-manylight_algorithm::~manylight_algorithm() {
-    //...
-}
-
-/*** Util ***/
-bool russian_roulette::shot() {
-    if(cold_count < start) {
-        cold_count++;
-        return false;
-    }
-    if(hot_count >= max_hot) {
-        return true;
-    }
-
-    float rnd = rc->rng.uniform_float();
-    float p = 1.0f/(max_hot-hot_count);
-    bool shot = p > rnd;
-
-    hot_count++;
-    return shot;
-}
-
-void russian_roulette::reset() {
-    cold_count = 1;
-    hot_count = 0;
-}
-
-vec3 random_dir() {
-    float x = rc->rng.uniform_float() - 0.5f;
-    float y = rc->rng.uniform_float() - 0.5f;
-    float z = rc->rng.uniform_float() - 0.5f;
-    return normalize(vec3(x,y,z));
 }
