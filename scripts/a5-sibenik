@@ -6,8 +6,9 @@ up 0 1 0
 load render-data/sibenik/sibenik.obj
 #load render-data/sibenik/sibenbunny.obj
 raytracer bbvh
+raytracer embree
 algo direct
-sppx 500
+sppx 1000
 #pointlight pos 0 -4 0 col 35 30 26
 resolution 1280 720
 resolution 960 540
@@ -76,6 +77,11 @@ run
 
 is brdf
 outfile a6-sibenik-3-brdf.png
+run
+
+is light
+outfile a6-sibenik-2-lights-more.png
+sppx 10000
 run
 
 

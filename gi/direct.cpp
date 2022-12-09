@@ -99,7 +99,6 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
 	vec2 xi = rc->rng.uniform_float2();
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
-	// todo: implement importance sampling on the cosine-term
 	vec3 sampled_dir = cosine_sample_hemisphere(xi);
 	vec3 w_i = align(sampled_dir, hit.ng);
 	ray sample_ray(hit.x, w_i);
@@ -119,6 +118,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 	// evaluate reflectance
 	return brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
 #else
+	// todo: implement importance sampling on the cosine-term
 	return vec3(0);
 #endif
 }
@@ -166,8 +166,8 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 	return accum / (float)lighs_processed;
 #elif defined(RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL)
 	// todo: implement importance sampling on the light sources
-	//       use rc->scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
-	//       don't forget to divide by the respective PDF values
+	//       use rc->scene.light_distribution and, once you have found a light to sample, trianglelight::sample_Li (via light::sample_Li)
+	//       return the full value of the DII for this sample and don't forget to divide by the respective PDF values
 	return vec3(0);
 #else
 	auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());

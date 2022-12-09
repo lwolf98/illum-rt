@@ -8,7 +8,12 @@
 #include <cstdint>
 
 class distribution_1d {
+	// f holds the discrete function values that the distribution will be built on
+	// cdf holds the cdf of the pdf derived from f
 	std::vector<float> f, cdf;
+	// integral_1spaced is the sum of all entries in f
+	// it is called 1spaced as each sample of f is one unit apart
+	// i.e. it is the integral over f (and, consequently, the pdf's scaling factor)
 	float integral_1spaced;
 	void build_cdf();
 
