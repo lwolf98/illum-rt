@@ -32,9 +32,9 @@
 #ifndef RTGI_SKIP_SIMPLE_PT
 #include "gi/pt.h"
 #endif
-//#ifndef RTGI_SKIP_MANYLIGHT
+#ifndef RTGI_SKIP_MANYLIGHT
 #include "gi/manylight.h"
-//#endif
+#endif
 
 #ifdef HAVE_GL
 #ifndef RTGI_SKIP_WF
@@ -363,7 +363,7 @@ void eval(const std::string &line) {
 		else if (name == "pt")  a = new pt_nee;
 #endif
 #endif
-//#ifndef RTGI_SKIP_MANYLIGHT
+#ifndef RTGI_SKIP_MANYLIGHT
 		else if (name == "manylight") {
 			uint32_t paths, length;
 			string cmd;
@@ -382,7 +382,7 @@ void eval(const std::string &line) {
 
 			a = new manylight_algorithm(paths, length);
 		}
-//#endif
+#endif
 		else error("There is no gi algorithm called '" << name << "'");
 		if (a) {
 			delete rc->algo;
