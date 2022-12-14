@@ -216,8 +216,10 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #ifndef RTGI_SKIP_DIRECT_MIS
+#ifdef RTGI_SKIP_DIRECT_MIS_IMPL
 // separate version to not include the rejection part in all methods
 // this should be improved upon
+#endif
 vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	vec3 radiance(0);
@@ -241,7 +243,9 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					light *l = rc->scene.lights[l_id];
 					auto [shadow_ray,l_col,pdf] = l->sample_Li(dg, rc->rng.uniform_float2());
 					pdf_light = l_pdf*pdf;
+					#ifndef BAD_MIS
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
+					#endif
 					if (l_col != vec3(0))
 						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
@@ -254,8 +258,10 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								trianglelight tl(rc->scene, is.ref);
+								#ifndef BAD_MIS
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();
 								pdf_light *= tl.pdf(light_ray, hit_geom);
+								#endif
 								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
 							}
 				}
@@ -267,11 +273,15 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				assert(radiance.z >= 0);assert(std::isfinite(radiance.z));
 				assert(std::isfinite(pdf_light));
 				assert(std::isfinite(pdf_brdf));
+				#ifndef BAD_MIS
 				float balance = pdf_light + pdf_brdf; // 1920/229
 				if (balance != 0.0f)
 					radiance /= balance*0.5;
 				else 
 					continue;
+				#else
+				radiance /= (pdf_brdf + pdf_light); // only one will be != 0 here
+				#endif
 			}
 			break;
 		}
@@ -283,6 +293,22 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 	return radiance;
 #else
+	/* todo: implement MIS for light and brdf sampling.
+	 * the outline is the same as for the non-mis variant, the sampling part differs.
+	 * to get the "global" index of the current sample use current_sample_index (cf algorithm.h and the exercise sheet).
+	 * tip: initialize both pdf values to 0 before selecting which sampling scheme to use and fill them in each branch, both.
+	 *      then use the results consistently and put in a ton of asserts.
+	 * tip: A TON
+	 * 	assert(pdf_light >= 0);
+	 *  assert(pdf_brdf >= 0);
+	 *  assert(radiance.x >= 0);assert(std::isfinite(radiance.x));
+	 *  assert(radiance.y >= 0);assert(std::isfinite(radiance.y));
+	 *  assert(radiance.z >= 0);assert(std::isfinite(radiance.z));
+	 *  assert(std::isfinite(pdf_light));
+	 *  assert(std::isfinite(pdf_brdf));
+	 *
+	 * also, include sky sampling for the background, see direct. you might want to check out the sky "assignment" first.
+	 */
 	return vec3(0);
 #endif
 }

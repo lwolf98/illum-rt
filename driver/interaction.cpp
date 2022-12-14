@@ -322,6 +322,12 @@ void eval(const std::string &line) {
 		scene.add(file, name);
 		uc.scene_touched_at = uc.cmdid;
 	}
+	else ifcmd("modelpath") {
+		string name;
+		in >> name;
+		check_in_complete("Syntax error, requires a path name (no spaces, sorry)");
+		scene.add_modelpath(name);
+	}
 	else ifcmd("resolution") {
 		int w, h;
 		in >> w >> h;

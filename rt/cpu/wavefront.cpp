@@ -164,6 +164,7 @@ namespace wf {
 			link_tracer("seq", "default");
 #endif
 #endif
+#else
 #warning "Compiling WF CPU with tutorial's ray tracer is not tested, are you sure about this?"
 #endif
 
