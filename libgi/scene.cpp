@@ -365,7 +365,7 @@ tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 
 /////
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
-trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene) {
+trianglelight::trianglelight(const ::scene &scene, uint32_t i) : triangle(scene.triangles[i]), scene(scene), tri_id(i) {
 }
 
 vec3 trianglelight::power() const {
