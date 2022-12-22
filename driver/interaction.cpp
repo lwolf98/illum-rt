@@ -313,6 +313,12 @@ void eval(const std::string &line) {
 		scene.camera.up = tmp;
 		cam_has_up = true;
 	}
+	else ifcmd("print-cam") {
+		cout << "at "   << scene.camera.pos << endl;
+		cout << "look " << scene.camera.dir << endl;
+		cout << "up "   << scene.up << endl;
+		cout << "up "   << scene.camera.up << endl;
+	}
 	else ifcmd("load") {
 		string file, name;
 		in >> file;

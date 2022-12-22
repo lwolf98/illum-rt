@@ -1,0 +1,127 @@
+#at -516 584 -138
+at -516 300 0
+look 1 0 0
+up 0 1 0
+default-brdf layered-gtr2
+#default-brdf lambert
+#default-brdf gtr2
+
+load render-data/sponza/sponza.fixed.obj
+raytracer embree
+
+material select vase_round.001
+#material emissive 760 600 200
+material emissive 360 300 100
+#material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.001
+
+commit
+algo direct
+sppx 512
+#resolution 320 180
+resolution 640 360
+
+at -1250 100 200
+look 1 0 -0.3
+
+at -1250 650 300
+look 1 0 -0.4
+
+sppx 1000
+
+### center
+##at -516 300 0
+##look 1 0 0
+##outfile a8-sponza-center-1-simplept.png
+##run
+##
+### corridor
+##at 200 180 400
+##look 1 0 -0.6
+##outfile a8-sponza-corridor-1-simplept.png
+##run
+
+# use this to test on sponza with complex/hard-to-reach area lights
+# feel free to compare to direct lighting
+
+echo ====== Rendering Center =====
+at -516 300 0
+look 1 0 0
+
+echo ----- Naive PT -----
+algo simple-pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-center-1-spt.png
+run
+
+echo ----- PT/NEE -----
+algo pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-center-2-nee.png
+run
+
+echo ----- PT/NEE/MIS -----
+path mis on
+outfile a8-sponza-center-3-nee-mis.png
+run
+
+# corridor
+#at 200 180 400
+#look 1 0 -0.6
+#outfile a8-sponza-corridor-2-nee.png
+#run
+
+
+echo ====== Rendering Corridor =====
+at -325.982 128.775 423.106
+look 0.793793 0.014668 -0.608011
+
+echo ----- Naive PT -----
+algo simple-pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-corridor-1-spt.png
+run
+
+echo ----- PT/NEE -----
+algo pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-corridor-2-nee.png
+run
+
+echo ----- PT/NEE/MIS -----
+path mis on
+outfile a8-sponza-corridor-3-nee-mis.png
+run
+
+
+echo ====== Rendering Gallery =====
+at -415.31 666.03 240.897
+look 0.957152 -0.280984 -0.070053
+
+echo ----- Naive PT -----
+algo simple-pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-gallery-1-spt.png
+run
+
+echo ----- PT/NEE -----
+algo pt
+path rr-start 3
+path bounce brdf
+outfile a8-sponza-gallery-2-nee.png
+run
+
+echo ----- PT/NEE/MIS -----
+path mis on
+outfile a8-sponza-gallery-3-nee-mis.png
+run
+
+

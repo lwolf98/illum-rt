@@ -1,0 +1,28 @@
+#at -516 584 -138
+at -516 300 0
+look 1 0 0
+up 0 1 0
+default-brdf layered-gtr2
+load render-data/sponza/sponza.fixed.obj
+raytracer embree
+skylight load /tmp/night.floats 15
+
+material select vase_round.001
+material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.05
+
+commit
+
+sppx 1000
+resolution 960 540
+at -1100 650 100
+look 1 -0.2 -0.3
+
+algo direct
+is light
+outfile a6-sponza-sky3.png
+run
+

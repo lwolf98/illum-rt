@@ -4,7 +4,7 @@ at -13 -12 0
 look 1 0 0
 up 0 1 0
 
-raytracer bbvh indexed esc
+raytracer embree
 bvh sm
 
 algo direct
@@ -68,19 +68,29 @@ look -1 0 0
 
 
 algo direct/mis
-outfile a9-sibenik-00-500-direct.png
-run
+outfile a8-sibenik-00-500-direct.png
+#run
 
 algo simple-pt
 path bounce brdf
-path len 10
-outfile a9-sibenik-01-500-simplept.png
+path len 8
+path rr-start 4
+outfile a8-sibenik-01-500-simplept.png
+#run
+
+algo pt
+path bounce brdf
+path len 8
+path rr-start 4
+outfile a8-sibenik-02-500-pt-nee.png
 run
 
 algo pt
 path bounce brdf
-path len 10
-outfile a9-sibenik-02-500-pt.png
+path len 8
+path mis on
+path rr-start 4
+outfile a8-sibenik-02-500-pt-nee-mis.png
 run
 
 

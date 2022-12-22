@@ -157,10 +157,20 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 // 
 // ----------------------- pt with next event estimation -----------------------
 //
+#define assert_valid_pdf(x) {assert(x>0); assert(std::isfinite(x));}
 
 vec3 pt_nee::path(ray ray) {
 	vec3 radiance(0);
-#ifndef RTGI_SKIP_PT_IMPL
+#ifdef RTGI_SKIP_PT_IMPL
+	// Start by implementing PT with NEE
+	// Layout
+	// - find hitpoint with scene
+	// - if it is a light AND we have not bounced yet, add the light's contribution
+	// - for mis we take the next path vertex to be the brdf sample of the next-event path
+	// - branch off direct lighting path that directly terminates
+	// - bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
+	// - apply RR
+#else
 	vec3 throughput(1);
 	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {
@@ -190,6 +200,8 @@ vec3 pt_nee::path(ray ray) {
 			trianglelight tl(rc->scene, closest.ref);
 			float light_pdf = luma(tl.power()) / rc->scene.light_distribution->integral();
 			light_pdf *= tl.pdf(ray, hit);
+			assert_valid_pdf(brdf_pdf);
+			assert_valid_pdf(light_pdf);
 			radiance += throughput * hit.mat->emissive * brdf_pdf / (light_pdf + brdf_pdf);
 		}
 
@@ -199,7 +211,7 @@ vec3 pt_nee::path(ray ray) {
 			record_ray(i+100,shadow_ray);
 			if (!rc->scene.rt->any_hit(shadow_ray)) {
 				float divisor = light_pdf;
-				assert(light_pdf > 0);
+				assert_valid_pdf(light_pdf);
 				if (mis)
 					divisor += hit.mat->brdf->pdf(hit, -ray.d, shadow_ray.d);
 				radiance += throughput

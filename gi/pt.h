@@ -21,8 +21,8 @@ public:
 class pt_nee : public simple_pt {
 	vec3 path(ray view_ray) override;
 	std::tuple<ray,vec3,float> sample_light(const diff_geom &hit);
-	bool mis = true;
-// 	bool mis = false;
+// 	bool mis = true;
+	bool mis = false;
 public:
 	bool interprete(const std::string &command, std::istringstream &in) override;
 	void finalize_frame();
