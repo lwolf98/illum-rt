@@ -89,7 +89,6 @@ struct pointlight : public light {
  */
 struct trianglelight : public light, public triangle {
 	const ::scene& scene;
-	const uint32_t tri_id;
 	trianglelight(const ::scene &scene, uint32_t i);
 	vec3 power() const override;
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

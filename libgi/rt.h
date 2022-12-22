@@ -87,12 +87,16 @@ struct diff_geom {
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
 	diff_geom(const triangle_intersection &is, const scene &scene);
+	
+	// Pay attention when using this constructor:
+	// According to the passed triangle and intersection, the 'ref' of 'is' does potentially not match the passed triangle 'tri'.
+	// The primary usage of this constructor is to create a diff_geom from a given triangle but its 'ref' is not known
+	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 
 	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
 	float opacity() const; // evaluates the surface opacity (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
-	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 };
 
 /*  \brief Ray tracing interface.
