@@ -4,7 +4,7 @@ look 1 0 0
 up 0 1 0
 default-brdf layered-gtr2
 load render-data/sponza/sponza.fixed.obj
-raytracer bbvh indexed esc
+raytracer embree
 skylight load render-data/skylight-sunset.floats 30
 
 material select vase_round.001

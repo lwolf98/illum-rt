@@ -1,4 +1,4 @@
-#define RTGI_CONFIG_A5
+#define RTGI_CONFIG_A6
 
 #define RTGI_SKIP_WF
 

@@ -1,8 +1,8 @@
-#define RTGI_CONFIG_A6
+#define RTGI_CONFIG_A7
 
 #define RTGI_SKIP_WF
 
-#define RTGI_SKIP_SIMPLE_PT
+#define RTGI_SKIP_PT
 
 // a1 ref
 #undef  RTGI_SKIP_CAMRAY_SETUP_IMPL
@@ -58,3 +58,7 @@
 #undef RTGI_SKIP_SKY
 #undef RTGI_SKIP_DIRECT_MIS
 #undef RTGI_SKIP_DIRECT_MIS_IMPL
+
+// a7
+#undef  RTGI_SKIP_SIMPLE_PT
+#define RTGI_SKIP_SIMPLE_PT_IMPL

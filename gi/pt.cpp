@@ -45,7 +45,16 @@ vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 
 vec3 simple_pt::path(ray ray) {
 #ifdef RTGI_SKIP_SIMPLE_PT_IMPL
-	// it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
+	// TODO implement the first variant of the PT algorithm (and later on, add RR)
+	// Layout:
+	// - radiance = 0,0,0, throughput = 1,1,1
+	// - loop until max path length
+	// - find closest hit starting with "current ray"
+	// - check if intersected surface is emissive. if so, add correctly weighted radiance and break the loop
+	// - if not, compute a properly sampled reflection ray
+	// Notes
+	// - it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
+	// - for RR, compute the perceived brightness of the throughput via the luma function to obtain a scalar value
 	return vec3(0);
 #else
 	time_this_block(pathtrace);
@@ -91,12 +100,18 @@ vec3 simple_pt::path(ray ray) {
 }
 
 std::tuple<ray,float> simple_pt::bounce_ray(const diff_geom &hit, const ray &to_hit) {
+#ifdef RTGI_SKIP_SIMPLE_PT_IMPL
+	// TODO the reference implementation uses this function to switch between different sampling strategies
+	// you can also do this in the function above, already, if you prefer
+	return {ray({0,0,0},{0,0,0}), 0};
+#else
 	if (bounce == bounce::uniform)
 		return sample_uniform_direction(hit);
 	else if (bounce == bounce::cosine)
 		return sample_cosine_distributed_direction(hit);
 	else
 		return sample_brdf_distributed_direction(hit, to_hit);
+#endif
 }
 
 bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
@@ -195,7 +210,7 @@ vec3 pt_nee::path(ray ray) {
 			}
 		}
 
-		// bounce the ray
+		// bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
 		auto [bounced,pdf] = bounce_ray(hit, ray);
 		brdf_pdf = pdf;	// for mis in next iteration
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
