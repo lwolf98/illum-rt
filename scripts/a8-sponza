@@ -46,6 +46,7 @@ sppx 1000
 
 # use this to test on sponza with complex/hard-to-reach area lights
 # feel free to compare to direct lighting
+# note that each image takes around a minute to compute on the gralab hardware
 
 echo ====== Rendering Center =====
 at -516 300 0

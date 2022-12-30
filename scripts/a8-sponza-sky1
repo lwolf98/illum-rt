@@ -13,7 +13,6 @@ material emissive 0 0 0
 material select floor.001
 material ior 2.5
 material roughness 0.001
-material texture drop
 
 commit
 
@@ -27,24 +26,27 @@ look 1 0 -0.4
 #outfile teaser-sponza-sky1-dl.png
 #run
 #
+echo ----- Naive PT -----
 algo simple-pt
 path bounce brdf
 outfile a8-sponza-sky1-2-simplept.png
-#run
+run
 
+echo ----- PT/NEE -----
 algo pt
 path bounce brdf
 path len 7
 path rr-start 4
-outfile teaser-sponza-sky1-pt-nee.png
+outfile a8-sponza-sky1-pt-nee.png
 run
 
+echo ----- PT/NEE/MIS -----
 algo pt
 path bounce brdf
 path len 7
 path rr-start 4
 path mis on
-outfile teaser-sponza-sky1-pt-mis.png
+outfile a8-sponza-sky1-pt-nee-mis.png
 run
 
 

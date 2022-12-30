@@ -22,18 +22,31 @@ resolution 640 360
 at -1100 650 100
 look 1 -0.2 -0.3
 
-algo direct
-outfile teaster-sponza-sky-dl.png
-run
-
-#algo simple-pt
-#path bounce brdf
-#outfile a8-sponza-sky2-2-simplept.png
+#algo direct
+#outfile teaster-sponza-sky-dl.png
 #run
 
+echo ----- Naive PT -----
+algo simple-pt
+path bounce brdf
+outfile a8-sponza-sky2-2-simplept.png
+run
+
+echo ----- PT/NEE -----
 algo pt
 path bounce brdf
 path len 7
 path rr-start 4
-outfile teaster-sponza-sky-pt.png
+outfile a8-sponza-sky2-pt-nee.png
 run
+
+echo ----- PT/NEE/MIS -----
+algo pt
+path bounce brdf
+path len 7
+path rr-start 4
+path mis on
+outfile a8-sponza-sky2-pt-nee-mis.png
+run
+
+
