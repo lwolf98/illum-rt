@@ -16,13 +16,11 @@
 using namespace glm;
 using namespace std;
 
-static const bool debug_print = false;
+static const bool export_debug_obj = false;
 
 tuple<diff_geom, float, vec3, float> sample_trianglelight(const scene& scene);
 
 void manylight_algorithm::prepare_frame() {
-	/* Generate VPLs */
-
 	/*
 		Note to steps 1. - 5.:
 		The numbering is set accordingly to the manylight State of The Art Report (STAR):
@@ -32,7 +30,6 @@ void manylight_algorithm::prepare_frame() {
 		The index j here is used accordingly to the paper.
 	*/
 
-	//TODO: can I make this declaration/initialization conditional by debug_print?
 	vector<objdraw::path> obj_paths;
 
 	for (int i = 0; i < paths; i++) {
@@ -42,20 +39,18 @@ void manylight_algorithm::prepare_frame() {
 		auto [geometry_v_0, pdf_v_0, w_0, pdf_w_0] = sample_trianglelight(rc->scene);
 		
 		vec3 Le_v_0(geometry_v_0.mat->emissive);
-		vpl v_0(Le_v_0, geometry_v_0);
+		vpl v_0(Le_v_0 * (1.0f/paths), geometry_v_0);
 		sampled_lights.push_back(sample_context(v_0, pdf_v_0));
-		objdraw::path obj_path(v_0.pos); //TODO: can I make this declaration/initialization conditional by debug_print?
+		objdraw::path obj_path(v_0.pos);
 
 		ray to_next_vpl(v_0.pos, w_0);
 		vec3 throughput(1);
 
 		int rr_start = 4; // start RR after this many unrestricted bounces
 
-		{
-			// Setup the throughput for VPL v_1
-			float D = cdot(v_0.geometry.ns, to_next_vpl.d); //D_v_0(v_1)
-			throughput *= D / (pdf_v_0*pdf_w_0);
-		}
+		// Setup the throughput for VPL v_1
+		float D_v_0 = cdot(v_0.geometry.ns, to_next_vpl.d); //D_v_0(v_1)
+		throughput *= D_v_0 / (pdf_v_0*pdf_w_0);
 
 		// 1. initialize j:=0 and 5. increment j (j:=j+1)
 		for (int j = 1; j <= path_length; ++j) {
@@ -66,19 +61,17 @@ void manylight_algorithm::prepare_frame() {
 			diff_geom hit(closest, rc->scene);
 
 			// 3. create a VPL (v_j)
-			vpl v_j(Le_v_0 * throughput, hit, to_next_vpl.d);
+			vpl v_j(Le_v_0 * throughput * (1.0f/paths), hit, to_next_vpl.d);
 			vpls.push_back(v_j);
-			if (debug_print)
+			if (export_debug_obj)
 				obj_path.push_vertex(v_j.pos);
 
 			// 4. Terminate path (apply RR)
-			//TODO: throughput often bigger than 1 because of the pdfs
 			if (j >= rr_start) {
 				float xi = uniform_float();
 				float q = luma(throughput);
 				//TODO: is this q_j or q_j+1?
 				// -> equals: float q = luma(v_j.col/Le_v_0);
-				//TODO: should throughput be divided by paths?
 				
 				if (xi >= q)
 					break;
@@ -89,20 +82,21 @@ void manylight_algorithm::prepare_frame() {
 				break;
 
 			// Sample ray to next VPL
-			auto [w_i, f, pdf] = hit.mat->brdf->sample(v_j.geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
-			float pdf_f = hit.mat->brdf->pdf(v_j.geometry, w_i, -v_j.w_in); //p(w_j)
-			to_next_vpl = ray(v_j.pos, w_i);
+			auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j.geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+
+			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
+			float pdf_f = hit.mat->brdf->pdf(v_j.geometry, w_o, -v_j.w_in); //p(w_j)
+			to_next_vpl = ray(v_j.pos, w_o);
 
 			// Setup the throughput for the next VPL
 			float D = cdot(to_next_vpl.d, v_j.geometry.ns); //D_v_j(v_j+1)
-			//TODO: Which pdf is correct? 'pdf' from sample or 'pdf_f'?
 			throughput *= D*f/pdf_f; //throughput for v_j+1
 		}
 
 		obj_paths.push_back(obj_path);
 	}
 
-	if (debug_print) {
+	if (export_debug_obj) {
 		// begin writing paths.obj
 		objdraw::obj_writer obj_writer("paths.obj");
 
@@ -122,7 +116,6 @@ void manylight_algorithm::prepare_frame() {
 }
 
 vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
-	/* Render with VPLs */
 	vec3 radiance(0);
 
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
@@ -134,29 +127,26 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	flip_normals_to_ray(hit, view_ray);
 
 	// if it is a light, add the light's contribution
-	if (hit.mat->emissive != vec3(0)) {
+	if (hit.mat->emissive != vec3(0))
 		return hit.mat->emissive;
-	}
 
 	// direct illumination
-	{
-		for (int i = 0; i < sampled_lights.size(); ++i) {
-			sample_context& sampled_light = sampled_lights[i];
-			float pdf = sampled_light.pdf;
-			vpl& vpl = sampled_light.v;
-			auto [shadow_ray, col_delete, pdf_delete] = vpl.sample_Li(hit, rc->rng.uniform_float2());
-			float t = length(vpl.pos - hit.x);
-			float D_x_v = cdot(shadow_ray.d, hit.ns);
-			float D_v_x = cdot(vpl.geometry.ns, -shadow_ray.d);
-			float factor_sr = t*t/D_v_x;
-			float G = D_x_v*D_v_x/(t*t);
-			G = G > 0.1f ? 0.1f : G;
-			if (vpl.col != vec3(0))
-				if (!rc->scene.rt->any_hit(shadow_ray))
-					radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * G / pdf;
-					//TODO: What approach do we take?
-					//radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * D_x_v / (pdf*factor_sr);
-		}
+	for (int i = 0; i < sampled_lights.size(); ++i) {
+		sample_context& sampled_light = sampled_lights[i];
+		float pdf = sampled_light.pdf;
+		vpl& vpl = sampled_light.v;
+		auto [shadow_ray, col_delete, pdf_delete] = vpl.sample_Li(hit, rc->rng.uniform_float2());
+		float t = length(vpl.pos - hit.x);
+		float D_x_v = cdot(shadow_ray.d, hit.ns);
+		float D_v_x = cdot(vpl.geometry.ns, -shadow_ray.d);
+		float factor_sr = t*t/D_v_x;
+		float G = D_x_v*D_v_x/(t*t);
+		G = G > 0.1f ? 0.1f : G;
+		if (vpl.col != vec3(0))
+			if (!rc->scene.rt->any_hit(shadow_ray))
+				radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * G / pdf;
+				//TODO: What approach do we take?
+				//radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * D_x_v / (pdf*factor_sr);
 	}
 
 	// indirect illumination by using VPLs
@@ -169,9 +159,9 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			vec3 f_x = hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
 			vec3 f_v = v.geometry.mat->brdf->f(v.geometry, -shadow_ray.d, -v.w_in); // BRDF at v
 
-			float D_x_v = cdot(hit.ns, shadow_ray.d);
-			float D_v_x = cdot(v.geometry.ns, -shadow_ray.d);
-			float G = D_x_v*D_v_x/(t*t);
+			float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
+			float D_v = cdot(v.geometry.ns, -shadow_ray.d); // D_v(x)
+			float G = D_x*D_v/(t*t);
 			//TODO: G cap solves the issue with the bright spots but adds bias
 			//-> see chapter 5: bias compensation (final gathering, ...)
 			G = G > 0.1f ? 0.1f : G;
@@ -179,9 +169,6 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			radiance += f_x*G*v.col*f_v;
 		}
 	}
-	//TODO: hier durch Anzahl paths teilen verständlich? (vgl. mit Paper)
-	//      Oder: schon in prepare_frame bei jedem VPL einzeln, wie im Paper beschrieben
-	radiance /= paths;
 
 	return radiance;
 }
@@ -195,8 +182,8 @@ tuple<diff_geom, float, vec3, float> sample_trianglelight(const scene& scene) {
 	const vertex &a = rc->scene.vertices[tl->a];
 	const vertex &b = rc->scene.vertices[tl->b];
 	const vertex &c = rc->scene.vertices[tl->c];
-	vec2 bc     = uniform_sample_triangle(rc->rng.uniform_float2());
-	float area  = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
+	vec2 bc = uniform_sample_triangle(rc->rng.uniform_float2());
+	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
 	float pdf_tri_sample = 1.f/area;
 	float pdf_v = pdf_l * pdf_tri_sample;
 

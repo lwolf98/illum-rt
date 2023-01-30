@@ -37,6 +37,9 @@ private:
 public:
 	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {}
 
+	/* Generate VPLs */
 	void prepare_frame() override;
+
+	/* Integration via the previously generated VPLs */
 	vec3 sample_pixel(uint32_t x, uint32_t y) override;
 };
