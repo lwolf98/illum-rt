@@ -30,17 +30,17 @@ void manylight_algorithm::prepare_frame() {
 		The index j here is used accordingly to the paper.
 	*/
 
-	vector<objdraw::path> obj_paths;
+	vector<objdraw::path> obj_paths; // list of all sampled paths
+	vector<vpl> obj_sampled_lights;  // list of all sampled v_0 lights
 
 	for (int i = 0; i < paths; i++) {
 		// Calculate v_0:
-		//TODO: should v_0 be "transformed" into a pointlight or should it stay in its original form (e. g. trianglelight)
 		//TODO: currently it is only possible to sample from trianglelights
 		auto [geometry_v_0, pdf_v_0, w_0, pdf_w_0] = sample_trianglelight(rc->scene);
 		
 		vec3 Le_v_0(geometry_v_0.mat->emissive);
 		vpl v_0(Le_v_0 * (1.0f/paths), geometry_v_0);
-		sampled_lights.push_back(sample_context(v_0, pdf_v_0));
+		obj_sampled_lights.push_back(v_0);
 		objdraw::path obj_path(v_0.pos);
 
 		ray to_next_vpl(v_0.pos, w_0);
@@ -61,7 +61,7 @@ void manylight_algorithm::prepare_frame() {
 			diff_geom hit(closest, rc->scene);
 
 			// 3. create a VPL (v_j)
-			vpl v_j(Le_v_0 * throughput * (1.0f/paths), hit, to_next_vpl.d);
+			vpl v_j(Le_v_0 * throughput * (1.0f), hit, to_next_vpl.d);
 			vpls.push_back(v_j);
 			if (export_debug_obj)
 				obj_path.push_vertex(v_j.pos);
@@ -96,6 +96,8 @@ void manylight_algorithm::prepare_frame() {
 		obj_paths.push_back(obj_path);
 	}
 
+	avg_path_length = vpls.size() * (1.0f/(paths));
+
 	if (export_debug_obj) {
 		// begin writing paths.obj
 		objdraw::obj_writer obj_writer("paths.obj");
@@ -104,8 +106,8 @@ void manylight_algorithm::prepare_frame() {
 			obj_writer.write_path(p);
 
 		// draw path vertices in paths.obj as icospheres
-		for (auto c : sampled_lights) {
-			objdraw::icosphere sphere(c.v.pos, 0.15f);
+		for (auto v_0 : obj_sampled_lights) {
+			objdraw::icosphere sphere(v_0.pos, 0.15f);
 			obj_writer.write_icosphere(sphere);
 		}
 		for (auto v : vpls) {
@@ -129,29 +131,25 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	// if it is a light, add the light's contribution
 	if (hit.mat->emissive != vec3(0))
 		return hit.mat->emissive;
-
+	
 	// direct illumination
-	for (int i = 0; i < sampled_lights.size(); ++i) {
-		sample_context& sampled_light = sampled_lights[i];
-		float pdf = sampled_light.pdf;
-		vpl& vpl = sampled_light.v;
-		auto [shadow_ray, col_delete, pdf_delete] = vpl.sample_Li(hit, rc->rng.uniform_float2());
-		float t = length(vpl.pos - hit.x);
-		float D_x_v = cdot(shadow_ray.d, hit.ns);
-		float D_v_x = cdot(vpl.geometry.ns, -shadow_ray.d);
-		float factor_sr = t*t/D_v_x;
-		float G = D_x_v*D_v_x/(t*t);
-		G = G > 0.1f ? 0.1f : G;
-		if (vpl.col != vec3(0))
-			if (!rc->scene.rt->any_hit(shadow_ray))
-				radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * G / pdf;
-				//TODO: What approach do we take?
-				//radiance += vpl.col * hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d) * D_x_v / (pdf*factor_sr);
-	}
+	brdf *brdf = hit.mat->brdf;
+	if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(hit, view_ray);
+	else if (sampling_mode == sample_light)     radiance = sample_lights(hit, view_ray);
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
+	else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(hit, view_ray);
+	else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(hit, view_ray);
+#endif
 
 	// indirect illumination by using VPLs
-	for (int i = 0; i < vpls.size(); ++i) {
-		vpl v = vpls[i];
+	for (int i = 0; i < avg_path_length; ++i) {
+		// sample a random VPL
+		//int32_t pos = rc->rng.uniform_float() * vpls.size();
+		//vpl v = vpls[pos];
+
+		vpl v = vpls[vpl_index];
+		vpl_index = (vpl_index+1) % vpls.size();
+
 		auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
 		float t = length(v.pos - hit.x);
 

@@ -1,12 +1,11 @@
 at -13 -12 0
-#at -14 -12 0
 look 1 0 0
 up 0 1 0
 load render-data/sibenik/sibenik.obj
 
 raytracer embree
-algo manylight paths 32 length 10
-sppx 8
+algo manylight paths 10000 length 10
+sppx 1280
 resolution 640 360
 outfile out_ml.png
 

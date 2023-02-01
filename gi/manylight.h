@@ -3,6 +3,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
 #include "libgi/scene.h"
+#include "gi/direct.h"
 #include <vector>
 
 #include "libgi/global-context.h"
@@ -20,19 +21,15 @@ struct vpl : public pointlight {
 	vpl(const vec3& col, const diff_geom& dg) : vpl(col, dg, vec3(0)) {}
 };
 
-struct sample_context {
-	vpl v;
-	float pdf;
-
-	sample_context(const vpl& v, float pdf) : v(v), pdf(pdf) {}
-};
-
-class manylight_algorithm : public recursive_algorithm {
+class manylight_algorithm : public direct_light {
 private:
+	enum sampling_mode sampling_mode = sample_light;
+
 	uint32_t paths;
 	uint32_t path_length;
 	std::vector<vpl> vpls;
-	std::vector<sample_context> sampled_lights;
+	uint32_t vpl_index = 0;
+	float avg_path_length = 0;
 
 public:
 	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {}
