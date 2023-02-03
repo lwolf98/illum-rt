@@ -11,7 +11,7 @@
 
 #include "libgi/global-context.h"
 
-#include "gi/objdraw.h"
+#include "libgi/objdraw.h"
 
 using namespace glm;
 using namespace std;
@@ -31,7 +31,7 @@ void manylight_algorithm::prepare_frame() {
 	*/
 
 	vector<objdraw::path> obj_paths; // list of all sampled paths
-	vector<vpl> obj_sampled_lights;  // list of all sampled v_0 lights
+	vector<vpl> obj_v_0_samples;  // list of all sampled v_0 lights
 
 	for (int i = 0; i < paths; i++) {
 		// Calculate v_0:
@@ -40,7 +40,7 @@ void manylight_algorithm::prepare_frame() {
 		
 		vec3 Le_v_0(geometry_v_0.mat->emissive);
 		vpl v_0(Le_v_0 * (1.0f/paths), geometry_v_0);
-		obj_sampled_lights.push_back(v_0);
+		obj_v_0_samples.push_back(v_0);
 		objdraw::path obj_path(v_0.pos);
 
 		ray to_next_vpl(v_0.pos, w_0);
@@ -106,7 +106,7 @@ void manylight_algorithm::prepare_frame() {
 			obj_writer.write_path(p);
 
 		// draw path vertices in paths.obj as icospheres
-		for (auto v_0 : obj_sampled_lights) {
+		for (auto v_0 : obj_v_0_samples) {
 			objdraw::icosphere sphere(v_0.pos, 0.15f);
 			obj_writer.write_icosphere(sphere);
 		}

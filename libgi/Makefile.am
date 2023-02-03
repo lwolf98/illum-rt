@@ -11,7 +11,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					random.cpp \
 					rt.cpp \
 					scene.cpp \
-					timer.cpp
+					timer.cpp \
+					objdraw.cpp
 
 
 #ifndef RTGI_SKIP_BRDF
@@ -38,7 +39,8 @@ noinst_HEADERS = 	algorithm.h \
 					rt.h \
 					scene.h \
 					timer.h \
-					util.h
+					util.h \
+					objdraw.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
