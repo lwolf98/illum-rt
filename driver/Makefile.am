@@ -11,7 +11,6 @@ endif
 
 rtgi_LDADD  = ../gi/libprimary-hit.a ../rt/cpu/libcputracing.a
 rtgi_LDADD += ../gi/libmanylight.a
-rtgi_LDADD += ../gi/libobjdraw.a
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 rtgi_LDADD += ../gi/libdirect.a
 #endif
