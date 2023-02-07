@@ -381,6 +381,13 @@ tuple<ray, vec3, float> pointlight::sample_Li(const diff_geom &from, const vec2 
 	return { r, c, 1.0f };
 }
 
+tuple<ray, vec3, vec3, float> pointlight::sample_Le(const vec2 &xis1, const vec2 &xis2) const {
+	// Compare with pbrt Pointlights:
+	// pbrt3/955
+	ray r(pos, uniform_sample_sphere(xis1));
+	return {r, col, r.d, 1.f*uniform_sphere_pdf()};
+}
+
 #endif
 
 /////
@@ -443,6 +450,30 @@ float trianglelight::pdf(const ray &r, const diff_geom &on_light) const {
 	float pdf = d*d/(cos_theta_light*area);
 	return pdf;
 }
+
+tuple<ray, vec3, vec3, float> trianglelight::sample_Le(const vec2 &xis_pos, const vec2 &xis_dir) const {
+	// Sample position on triangle:
+	const vertex &a = scene.vertices[this->a];
+	const vertex &b = scene.vertices[this->b];
+	const vertex &c = scene.vertices[this->c];
+	vec2 bc = uniform_sample_triangle(xis_pos);
+	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
+	float pdf_pos = 1.f/area;
+
+	vec3 target = (1.0f-bc.x-bc.y)*a.pos + bc.x*b.pos + bc.y*c.pos;
+	vec3 n      = (1.0f-bc.x-bc.y)*a.norm + bc.x*b.norm + bc.y*c.norm;
+
+	// Sample w:
+	vec3 w_tan = cosine_sample_hemisphere(xis_dir);
+	vec3 w = align(w_tan, n);
+	float cos_theta = cdot(w, n);
+	float pdf_dir = cosine_hemisphere_pdf(cos_theta);
+
+	const material &m = scene.materials[this->material_id];
+	vec3 col = m.emissive;
+
+	return {ray(target, w), col, n, pdf_pos*pdf_dir};
+}
 #endif
 #endif
 
@@ -500,6 +531,43 @@ vec3 skylight::Le(const ray &ray) const {
     assert(std::isfinite(u));
     assert(std::isfinite(v));
     return tex->sample(u, v) * intensity_scale;
+}
+
+tuple<ray, vec3, vec3, float> skylight::sample_Le(const vec2 &xis1, const vec2 &xis2) const {
+	// Compare with pbrt Infinite Area Lights:
+	// https://www.pbr-book.org/3ed-2018/Light_Transport_III_Bidirectional_Methods/The_Path-Space_Measurement_Equation#x2-InfiniteAreaLights
+	// pbrt3/959
+
+	// 1. Compute direction for skylight sample ray:
+	// Find (u, v) sample coordinates in skylight texture
+	auto [uv, map_pdf] = distribution->sample(xis1);
+	float theta = uv[1] * pi;
+	float phi = uv[0] * 2.f * pi;
+	float cos_theta = cosf(theta);
+	float sin_theta = sinf(theta);
+	if (map_pdf <= 0.0f || sin_theta <= 0.0f)
+		return { ray(vec3(0), vec3(0)), vec3(0), vec3(0), 0.f };
+	vec3 w = -vec3(sin_theta * cosf(phi), cos_theta, sin_theta * sinf(phi));
+
+	// 2. Compute origin for skylight sample ray:
+	// Calculate base around -w
+	vec3 v1 = -w;
+	vec3 v2, v3;
+	if (abs(v1.x) > abs(v1.y)) v2 = vec3(-v1.z, 0, v1.x) / std::sqrt(v1.x * v1.x + v1.z * v1.z);
+	else                       v2 = vec3(0, v1.z, -v1.y) / std::sqrt(v1.y * v1.y + v1.z * v1.z);
+	v3 = cross(v1, v2);
+
+	vec2 cd = uniform_sample_disk(xis2);
+	vec3 p_disk = scene_radius * (cd.x * v2 + cd.y * v3); //TODO: in the future take world_center offset into consideration (compare to pbrt3)
+	ray r(p_disk + scene_radius * -w, w);
+
+	// 3. Compute skylight ray PDFs:
+	float pdf_dir = sin_theta == 0 ? 0 : map_pdf / (2 * pi * pi * sin_theta);
+	float pdf_pos = 1 / (pi * scene_radius * scene_radius);
+
+	vec3 col = tex->sample(uv) * intensity_scale;
+
+	return {r, col, r.d, pdf_pos*pdf_dir};
 }
 
 vec3 skylight::power() const {
