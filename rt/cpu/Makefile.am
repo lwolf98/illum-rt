@@ -7,7 +7,10 @@ noinst_HEADERS = seq.h
 
 #ifndef RTGI_SKIP_BVH
 libcputracing_a_SOURCES += bvh.cpp bvh2.cpp
-noinst_HEADERS += bvh.h bvh-ctor.h
+noinst_HEADERS += bvh.h
+#ifndef RTGI_SIMPLER_BBVH
+noinst_HEADERS += bvh-ctor.h
+#endif
 
 if have_embree
 libcputracing_a_SOURCES += embree.cpp

@@ -1,0 +1,38 @@
+#at -516 584 -138
+at -516 300 0
+look 1 0 0
+up 0 1 0
+default-brdf layered-gtr2
+load render-data/sponza/sponza.fixed.obj
+raytracer embree
+skylight load render-data/skylight-day.floats 30
+
+material select vase_round.001
+material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.05
+
+commit
+
+sppx 1000
+resolution 960 540
+# direct showcase
+at -1250 650 300
+look 1 0 -0.4
+# mood showcase
+at -1100 650 100
+look 1 -0.2 -0.3
+
+algo direct
+is light
+outfile a6-sponza-sky1.png
+run
+
+algo direct/mis
+outfile a6-sponza-sky1-mis.png
+run
+
+
+

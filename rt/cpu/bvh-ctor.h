@@ -322,8 +322,8 @@ uint32_t bvh_ctor_sm<tr_layout, scene_traits>::subdivide(::bvh &bvh, std::vector
 	float largest = std::max(extent.x, std::max(extent.y, extent.z));
 	float spatial_median;
 	int mid = start;
-	uint32_t* current_left  = index.data() + start;
-	uint32_t* current_right = index.data() + end-1;
+	uint32_t *current_left  = index.data() + start;
+	uint32_t *current_right = index.data() + end-1;
 
 	auto sort_sm = [&](auto component_selector) {
 		float spatial_median = component_selector(box.min + (box.max - box.min)*0.5f);
@@ -422,8 +422,8 @@ uint32_t bvh_ctor_sah<tr_layout, scene_traits>::subdivide(::bvh &bvh, std::vecto
 
 		auto split = [&](auto component_selector, float plane) {
 			int current_mid = start;
-			uint32_t* current_left  = index.data() + start;
-			uint32_t* current_right = index.data() + end-1;
+			uint32_t *current_left  = index.data() + start;
+			uint32_t *current_right = index.data() + end-1;
 			aabb current_box_l, current_box_r;
 			while (current_left < current_right) {
 				while (component_selector(prims[*current_left].center()) <= plane && current_left < current_right) {

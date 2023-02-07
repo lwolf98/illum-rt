@@ -151,15 +151,36 @@ texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &path) {
 		throw runtime_error("Error loading data from '" + path.string() + "' for hdr floats texture.");
 	return tex;
 }
+	
+void scene::add_modelpath(const std::filesystem::path &p) {
+	if (p.begin() != p.end() && *p.begin() == "~") {
+		filesystem::path mod = getenv("HOME");
+		for (auto it = ++p.begin(); it != p.end(); ++it)
+			mod /= *it;
+		modelpaths.push_back(mod);
+	}
+	else
+		modelpaths.push_back(p);
+}
+
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
+	// find file
+	filesystem::path modelpath;
+	if (path.is_relative())
+		for (auto p : modelpaths)
+			if (exists(p / path)) {
+				modelpath = p / path;
+				break;
+			}
+	if (modelpath == "")
+		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
     // load from disk
     Assimp::Importer importer;
-//     std::cout << "Loading: " << path << "..." << std::endl;
 	unsigned int flags = aiProcess_Triangulate | aiProcess_GenNormals;  // | aiProcess_FlipUVs  // TODO assimp
-    const aiScene* scene_ai = importer.ReadFile(path.string(), flags);
+    const aiScene* scene_ai = importer.ReadFile(modelpath.string(), flags);
     if (!scene_ai) // handle error
-        throw std::runtime_error("ERROR: Failed to load file: " + path.string() + "!");
+        throw std::runtime_error("ERROR: Failed to load file: " + modelpath.string() + "!");
 
 	// todo: store indices prior to adding anything to allow "transform-last"
 
@@ -197,12 +218,12 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		if (mat_ai->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
 			aiString path_ai;
 			mat_ai->GetTexture(aiTextureType_DIFFUSE, 0, &path_ai);
-			filesystem::path p = path.parent_path() / path_ai.C_Str();
+			filesystem::path p = modelpath.parent_path() / path_ai.C_Str();
 
 			if (mat_ai->GetTextureCount(aiTextureType_OPACITY) > 0) {
 				aiString mask_path_ai;
 				mat_ai->GetTexture(aiTextureType_OPACITY, 0, &mask_path_ai);
-				filesystem::path mask_path = path.parent_path() / mask_path_ai.C_Str();
+				filesystem::path mask_path = modelpath.parent_path() / mask_path_ai.C_Str();
 				material.albedo_tex = load_image4f(p, &mask_path);
 			} else {
 				material.albedo_tex = load_image4f(p);

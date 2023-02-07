@@ -45,7 +45,16 @@ vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 
 vec3 simple_pt::path(ray ray) {
 #ifdef RTGI_SKIP_SIMPLE_PT_IMPL
-	// it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
+	// TODO implement the first variant of the PT algorithm (and later on, add RR)
+	// Layout:
+	// - radiance = 0,0,0, throughput = 1,1,1
+	// - loop until max path length
+	// - find closest hit starting with "current ray"
+	// - check if intersected surface is emissive. if so, add correctly weighted radiance and break the loop
+	// - if not, compute a properly sampled reflection ray
+	// Notes
+	// - it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
+	// - for RR, compute the perceived brightness of the throughput via the luma function to obtain a scalar value
 	return vec3(0);
 #else
 	time_this_block(pathtrace);
@@ -91,12 +100,18 @@ vec3 simple_pt::path(ray ray) {
 }
 
 std::tuple<ray,float> simple_pt::bounce_ray(const diff_geom &hit, const ray &to_hit) {
+#ifdef RTGI_SKIP_SIMPLE_PT_IMPL
+	// TODO the reference implementation uses this function to switch between different sampling strategies
+	// you can also do this in the function above, already, if you prefer
+	return {ray({0,0,0},{0,0,0}), 0};
+#else
 	if (bounce == bounce::uniform)
 		return sample_uniform_direction(hit);
 	else if (bounce == bounce::cosine)
 		return sample_cosine_distributed_direction(hit);
 	else
 		return sample_brdf_distributed_direction(hit, to_hit);
+#endif
 }
 
 bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
@@ -142,10 +157,20 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 // 
 // ----------------------- pt with next event estimation -----------------------
 //
+#define assert_valid_pdf(x) {assert(x>0); assert(std::isfinite(x));}
 
 vec3 pt_nee::path(ray ray) {
 	vec3 radiance(0);
-#ifndef RTGI_SKIP_PT_IMPL
+#ifdef RTGI_SKIP_PT_IMPL
+	// Start by implementing PT with NEE
+	// Layout
+	// - find hitpoint with scene
+	// - if it is a light AND we have not bounced yet, add the light's contribution
+	// - for mis we take the next path vertex to be the brdf sample of the next-event path
+	// - branch off direct lighting path that directly terminates
+	// - bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
+	// - apply RR
+#else
 	vec3 throughput(1);
 	float brdf_pdf = 0;
 	for (int i = 0; i < max_path_len; ++i) {
@@ -175,6 +200,8 @@ vec3 pt_nee::path(ray ray) {
 			trianglelight tl(rc->scene, closest.ref);
 			float light_pdf = luma(tl.power()) / rc->scene.light_distribution->integral();
 			light_pdf *= tl.pdf(ray, hit);
+			assert_valid_pdf(brdf_pdf);
+			assert_valid_pdf(light_pdf);
 			radiance += throughput * hit.mat->emissive * brdf_pdf / (light_pdf + brdf_pdf);
 		}
 
@@ -184,7 +211,7 @@ vec3 pt_nee::path(ray ray) {
 			record_ray(i+100,shadow_ray);
 			if (!rc->scene.rt->any_hit(shadow_ray)) {
 				float divisor = light_pdf;
-				assert(light_pdf > 0);
+				assert_valid_pdf(light_pdf);
 				if (mis)
 					divisor += hit.mat->brdf->pdf(hit, -ray.d, shadow_ray.d);
 				radiance += throughput
@@ -195,7 +222,7 @@ vec3 pt_nee::path(ray ray) {
 			}
 		}
 
-		// bounce the ray
+		// bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
 		auto [bounced,pdf] = bounce_ray(hit, ray);
 		brdf_pdf = pdf;	// for mis in next iteration
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;

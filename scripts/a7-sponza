@@ -23,8 +23,8 @@ material roughness 0.01
 commit
 algo direct
 sppx 512
-#resolution 320 180
-resolution 640 360
+resolution 320 180
+#resolution 640 360
 
 at -1250 100 200
 look 1 0 -0.3
@@ -37,33 +37,16 @@ path rr-start 3
 path bounce brdf
 sppx 2500
 
-## center
-#at -516 300 0
-#look 1 0 0
-#outfile a9-sponza-center-1-simplept.png
-#run
-#
-## corridor
-#at 200 180 400
-#look 1 0 -0.6
-#outfile a9-sponza-corridor-1-simplept.png
-#run
-
-
-algo pt
-path rr-start 3
-path bounce brdf
-
 # center
 at -516 300 0
 look 1 0 0
-outfile a9-sponza-center-2-nee.png
+outfile a8-sponza-center.png
 run
 
 # corridor
 at 200 180 400
 look 1 0 -0.6
-outfile a9-sponza-corridor-2-nee.png
+outfile a8-sponza-corridor.png
 run
 
 

@@ -160,9 +160,13 @@ struct scene {
 		return materials[triangles[triangle_index].material_id];
 	}
 	scene() : camera(vec3(0,0,-1), vec3(0,0,0), vec3(0,1,0), 65, 1280, 720) {
+		modelpaths.push_back("");
 	}
 	~scene();
 	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4());
+	
+	std::vector<std::filesystem::path> modelpaths;
+	void add_modelpath(const std::filesystem::path &p);
 
 	vec3 normal(const triangle &tri) const;
 

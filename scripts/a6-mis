@@ -3,7 +3,7 @@ at -516 300 0
 look 1 0 0
 up 0 1 0
 load render-data/mis.obj
-raytracer bbvh
+raytracer embree
 algo direct/mis
 sppx 32
 resolution 640 640
@@ -62,11 +62,11 @@ algo direct
 
 is light
 outfile mis-2500-1-light.png
-run
+#run
 
 is brdf
 outfile mis-2500-3-brdf.png
-run
+#run
 
 algo direct/mis
 
@@ -79,11 +79,11 @@ algo direct
 sppx 100
 is light
 outfile mis-100-1-light.png
-run
+#run
 
 is brdf
 outfile mis-100-3-brdf.png
-run
+#run
 
 algo direct/mis
 

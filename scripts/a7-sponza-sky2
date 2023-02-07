@@ -5,7 +5,7 @@ up 0 1 0
 default-brdf layered-gtr2
 load render-data/sponza/sponza.fixed.obj
 raytracer embree
-skylight load render-data/skylight-day.floats 30
+skylight load render-data/skylight-sunset.floats 30
 
 material select vase_round.001
 material emissive 0 0 0
@@ -16,24 +16,17 @@ material roughness 0.05
 
 commit
 
-sppx 1000
+sppx 500
 resolution 320 180
 resolution 640 360
-at -1250 650 300
-look 1 0 -0.4
+at -1100 650 100
+look 1 -0.2 -0.3
 
 algo direct/mis
-outfile teaser-sponza-sky1-dl.png
+outfile a8-sponza-sky2-direct.png
 run
 
-#algo simple-pt
-#path bounce brdf
-#outfile a9-sponza-sky1-2-simplept.png
-#run
-
-algo pt
+algo simple-pt
 path bounce brdf
-path len 7
-path rr-start 4
-outfile teaser-sponza-sky1-pt.png
+outfile a8-sponza-sky2-simplept.png
 run

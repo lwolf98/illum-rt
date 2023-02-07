@@ -316,6 +316,12 @@ void eval(const std::string &line) {
 		scene.camera.up = tmp;
 		cam_has_up = true;
 	}
+	else ifcmd("print-cam") {
+		cout << "at "   << scene.camera.pos << endl;
+		cout << "look " << scene.camera.dir << endl;
+		cout << "up "   << scene.up << endl;
+		cout << "up "   << scene.camera.up << endl;
+	}
 	else ifcmd("load") {
 		string file, name;
 		in >> file;
@@ -324,6 +330,12 @@ void eval(const std::string &line) {
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
 		scene.add(file, name);
 		uc.scene_touched_at = uc.cmdid;
+	}
+	else ifcmd("modelpath") {
+		string name;
+		in >> name;
+		check_in_complete("Syntax error, requires a path name (no spaces, sorry)");
+		scene.add_modelpath(name);
 	}
 	else ifcmd("resolution") {
 		int w, h;
@@ -411,6 +423,7 @@ void eval(const std::string &line) {
 #ifndef RTGI_SKIP_BVH
 		else if (name == "naive-bvh") scene.use(new naive_bvh);
 		else if (name == "bbvh") {
+			#ifndef RTGI_SIMPLER_BBVH
 			string tag1, tag2;
 			in >> tag1 >> tag2;
 			bool flat = true;
@@ -427,9 +440,18 @@ void eval(const std::string &line) {
 				error("This combination is technically problematic")
 			else
 				error("There is no such bbvh variant");
+			#else
+			string tag;
+			in >> tag;
+			if (tag == "om")      scene.use(new binary_bvh_tracer(binary_bvh_tracer::om));
+			else if (tag == "sm") scene.use(new binary_bvh_tracer(binary_bvh_tracer::sm));
+			else error("There is no such bbvh variant");
+			#endif
 		}
 #ifdef HAVE_LIBEMBREE3
+#ifndef RTGI_SIMPLER_BBVH
 		else if (name == "embree") scene.use(new embree_tracer);
+#endif
 #endif
 #endif
 		else error("There is no ray tracer called '" << name << "'");

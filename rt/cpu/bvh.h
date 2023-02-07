@@ -50,6 +50,7 @@ struct bbvh_node {
 };
 static_assert(sizeof(bbvh_node) == 2*2*3*4+2*4);
 
+#ifndef RTGI_SIMPLER_BBVH
 struct bvh {
 	typedef bbvh_node node;
 	uint32_t root;
@@ -75,7 +76,7 @@ struct binary_bvh_tracer : public individual_ray_tracer {
 	int max_triangles_per_node = 1;
 	int number_of_planes = 1;
 	bool should_export = false;
-	
+
 	binary_bvh_tracer();
 	void build(::scene *scene) override;
 	triangle_intersection closest_hit(const ray &ray) override;
@@ -99,4 +100,32 @@ private:
 			return bvh.index[i];
 		}
 };
+#else
+struct binary_bvh_tracer : public individual_ray_tracer {
+	typedef bbvh_node node;
+
+	std::vector<node> nodes;
+	int32_t root = 0;
+
+	enum binary_split_type {sm, om };
+	binary_split_type split_type = om;
+
+	// config options
+	int max_triangles_per_node = 1;
+	int number_of_planes = 1;
+	
+	// helper
+	vec3 center(const triangle &t);
+	
+	binary_bvh_tracer(binary_split_type type);
+	void build(::scene *scene) override;
+	triangle_intersection closest_hit(const ray &ray) override;
+	bool any_hit(const ray &ray) override;
+	bool interprete(const std::string &command, std::istringstream &in) override;
+
+private:
+	int32_t subdivide_om(int start, int end, aabb box); 
+	int32_t subdivide_sm(int start, int end, aabb box); 
+};
+#endif
 

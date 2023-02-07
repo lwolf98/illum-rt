@@ -42,7 +42,8 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 		}
 #else
-		// todo: compute direct lighting contribution
+		// todo: compute direct lighting contribution.
+		// delegate to sample_uniformly or sample_lights to implement the actual sampling,
 #endif
 	}
 #ifndef RTGI_SKIP_SKY
@@ -57,7 +58,14 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 	// set up a ray in the hemisphere that is uniformly distributed
 	vec2 xi = rc->rng.uniform_float2();
 #ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
-	// todo: implement uniform hemisphere sampling
+	// todo: Implement uniform hemisphere sampling by computing directions as described in the lecture.
+	// Note that we always compute such directions with the z-axis pointing upwards in the hemisphere,
+	// but that this does not generally correspond to the actual geometry we place the hemisphere on.
+	// To that end, use the \c align function (see util.h) to align the sampled direction with the
+	// hit-geometry's orientation.
+	// With that direction, compute one sample for the DII by casting a ray and evaluating the integrand
+	// with the proper scaling factors (see MC estimator for the DII)
+	// Note that the normalization by the number of samples is taken care outside of this function.
 	return vec3(0);
 #else
 	float z = xi.x;
@@ -91,7 +99,6 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_ray) {
 	vec2 xi = rc->rng.uniform_float2();
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
-	// todo: implement importance sampling on the cosine-term
 	vec3 sampled_dir = cosine_sample_hemisphere(xi);
 	vec3 w_i = align(sampled_dir, hit.ng);
 	ray sample_ray(hit.x, w_i);
@@ -111,6 +118,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 	// evaluate reflectance
 	return brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
 #else
+	// todo: implement importance sampling on the cosine-term
 	return vec3(0);
 #endif
 }
@@ -118,7 +126,11 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 
 vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 #ifdef RTGI_SKIP_DIRECT_ILLUM_IMPL
-	// todo: implement uniform sampling on the first few of the scene's lights' surfaces
+	// todo: Implement uniform sampling on the first few of the scene's lights' surfaces To this
+	// end, convert the lights to triangle lights, take two random numbers and compute a position on
+	// the light according to the information on the assignment sheet. 
+	// Note that this direction is already in the correct coordinate frame.
+	// Use the thusly sampled direction to evaluate the area formulation of the DII.
 	return vec3(0);
 #elif defined(RTGI_DIRECT_ILLUM_IMPL_SIMPLE)
 	const size_t N_max = 2;
@@ -154,8 +166,8 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 	return accum / (float)lighs_processed;
 #elif defined(RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL)
 	// todo: implement importance sampling on the light sources
-	//       use rc->scene.light_distribution and, once you have found light so sample, trianglelight::sample_Li
-	//       don't forget to divide by the respective PDF values
+	//       use rc->scene.light_distribution and, once you have found a light to sample, trianglelight::sample_Li (via light::sample_Li)
+	//       return the full value of the DII for this sample and don't forget to divide by the respective PDF values
 	return vec3(0);
 #else
 	auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
@@ -204,8 +216,10 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #ifndef RTGI_SKIP_DIRECT_MIS
+#ifdef RTGI_SKIP_DIRECT_MIS_IMPL
 // separate version to not include the rejection part in all methods
 // this should be improved upon
+#endif
 vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	vec3 radiance(0);
@@ -229,7 +243,9 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					light *l = rc->scene.lights[l_id];
 					auto [shadow_ray,l_col,pdf] = l->sample_Li(dg, rc->rng.uniform_float2());
 					pdf_light = l_pdf*pdf;
+					#ifndef BAD_MIS
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
+					#endif
 					if (l_col != vec3(0))
 						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
@@ -242,8 +258,10 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								trianglelight tl(rc->scene, is.ref);
+								#ifndef BAD_MIS
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();
 								pdf_light *= tl.pdf(light_ray, hit_geom);
+								#endif
 								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
 							}
 				}
@@ -255,11 +273,15 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				assert(radiance.z >= 0);assert(std::isfinite(radiance.z));
 				assert(std::isfinite(pdf_light));
 				assert(std::isfinite(pdf_brdf));
+				#ifndef BAD_MIS
 				float balance = pdf_light + pdf_brdf; // 1920/229
 				if (balance != 0.0f)
 					radiance /= balance*0.5;
 				else 
 					continue;
+				#else
+				radiance /= (pdf_brdf + pdf_light); // only one will be != 0 here
+				#endif
 			}
 			break;
 		}
@@ -271,6 +293,22 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 	return radiance;
 #else
+	/* todo: implement MIS for light and brdf sampling.
+	 * the outline is the same as for the non-mis variant, the sampling part differs.
+	 * to get the "global" index of the current sample use current_sample_index (cf algorithm.h and the exercise sheet).
+	 * tip: initialize both pdf values to 0 before selecting which sampling scheme to use and fill them in each branch, both.
+	 *      then use the results consistently and put in a ton of asserts.
+	 * tip: A TON
+	 * 	assert(pdf_light >= 0);
+	 *  assert(pdf_brdf >= 0);
+	 *  assert(radiance.x >= 0);assert(std::isfinite(radiance.x));
+	 *  assert(radiance.y >= 0);assert(std::isfinite(radiance.y));
+	 *  assert(radiance.z >= 0);assert(std::isfinite(radiance.z));
+	 *  assert(std::isfinite(pdf_light));
+	 *  assert(std::isfinite(pdf_brdf));
+	 *
+	 * also, include sky sampling for the background, see direct. you might want to check out the sky "assignment" first.
+	 */
 	return vec3(0);
 #endif
 }

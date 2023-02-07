@@ -4,31 +4,49 @@ look 1 0 0
 up 0 1 0
 default-brdf layered-gtr2
 load render-data/sponza/sponza.fixed.obj
-raytracer bbvh indexed esc
+raytracer embree
 skylight load render-data/skylight-day.floats 30
 
 material select vase_round.001
 material emissive 0 0 0
 
 material select floor.001
-material ior 2.3
-material roughness 0.05
+material ior 2.5
+material roughness 0.001
 
 commit
 
-sppx 500
+sppx 1000
 resolution 320 180
 resolution 640 360
 at -1250 650 300
 look 1 0 -0.4
 
-algo direct/mis
-outfile a8-sponza-sky1-direct.png
-run
-
-
+#algo direct/mis
+#outfile teaser-sponza-sky1-dl.png
+#run
+#
+echo ----- Naive PT -----
 algo simple-pt
 path bounce brdf
-sppx 500
-outfile a8-sponza-sky1-simplept.png
+outfile a8-sponza-sky1-2-simplept.png
 run
+
+echo ----- PT/NEE -----
+algo pt
+path bounce brdf
+path len 7
+path rr-start 4
+outfile a8-sponza-sky1-pt-nee.png
+run
+
+echo ----- PT/NEE/MIS -----
+algo pt
+path bounce brdf
+path len 7
+path rr-start 4
+path mis on
+outfile a8-sponza-sky1-pt-nee-mis.png
+run
+
+

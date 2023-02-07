@@ -1,6 +1,7 @@
 #pragma once
 
 #ifndef RTGI_SKIP_BVH
+#ifndef RTGI_SIMPLER_BBVH
 #ifndef RTGI_SKIP_WF
 #include "wavefront.h"
 #endif
@@ -64,4 +65,5 @@ void embvh_split_primitive(const struct RTCBuildPrimitive *primitive,
 						   struct RTCBounds *left_bounds,
 						   struct RTCBounds *right_bounds,
 						   void* user_ptr);
+#endif
 #endif

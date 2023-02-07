@@ -2,7 +2,9 @@
 
 #include "libgi/timer.h"
 
+#ifndef RTGI_SIMPLER_BBVH
 #include "rt/cpu/bvh-ctor.h"
+#endif
 
 #include "bindings.h"
 #include "platform.h"
@@ -53,11 +55,11 @@ namespace wf {
 		}
 
 
+#ifndef RTGI_SIMPLER_BBVH
 		/*
 		 * bvh adaptor for rt/bbvh-base
 		 *
 		 */
-		
 		struct cpu_bvh_builder_opengl_scene_traits {
 			scenedata *s;
 			typedef ivec4 tri_t;
@@ -119,5 +121,15 @@ namespace wf {
 			throw std::logic_error("OpenGL Any-Hit ist not implemented, yet");
 			// TODO
 		}
+#else
+#warning "GL tracing not supported with tutorial's tracer"
+		bvh::bvh() : nodes("nodes", BIND_NODE, 0), indices("tri_index", BIND_TIDS, 0) {
+			throw std::logic_error("There is no viable implementation as this version of the code relies on an incompatible tracer");
+		}
+		void bvh::build(scenedata *scene) {}
+		void bvh::compute_closest_hit() {}
+		void bvh::compute_any_hit() {}
+
+#endif
 	}
 }
