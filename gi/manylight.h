@@ -13,12 +13,9 @@ struct vpl : public pointlight {
 	diff_geom geometry;
 	vec3 w_in;
 
-	// Constructor for following VPLs (v_1 to v_...)
+	// Constructor for VPLs (v_1 to v_...)
 	vpl(const vec3& col, const diff_geom& dg, const vec3& w_in)
 	: pointlight(dg.x, col), geometry(dg), w_in(w_in) {}
-
-	// Constructor for first VPL in path (v_0)
-	vpl(const vec3& col, const diff_geom& dg) : vpl(col, dg, vec3(0)) {}
 };
 
 class manylight_algorithm : public direct_light {

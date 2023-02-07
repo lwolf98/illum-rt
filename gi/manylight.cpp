@@ -18,8 +18,6 @@ using namespace std;
 
 static const bool export_debug_obj = false;
 
-tuple<diff_geom, float, vec3, float> sample_trianglelight(const scene& scene);
-
 void manylight_algorithm::prepare_frame() {
 	/*
 		Note to steps 1. - 5.:
@@ -31,28 +29,28 @@ void manylight_algorithm::prepare_frame() {
 	*/
 
 	vector<objdraw::path> obj_paths; // list of all sampled paths
-	vector<vpl> obj_v_0_samples;  // list of all sampled v_0 lights
+	vector<vec3> obj_v_0_samples;  // list of all sampled v_0 lights
+	int rr_start = 4; // start RR after this many unrestricted bounces
 
 	for (int i = 0; i < paths; i++) {
 		// Calculate v_0:
-		//TODO: currently it is only possible to sample from trianglelights
-		auto [geometry_v_0, pdf_v_0, w_0, pdf_w_0] = sample_trianglelight(rc->scene);
+		auto [l_id, pdf_l] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
+		light *l = rc->scene.lights[l_id];
+		vec2 xis_pos = rc->rng.uniform_float2();
+		vec2 xis_dir = rc->rng.uniform_float2();
+		auto [to_next_vpl, Le_v_0, normal_v_0, pdf_Le] = l->sample_Le(xis_pos, xis_dir);
+		float pdf_v_0 = pdf_l * pdf_Le;
 		
-		vec3 Le_v_0(geometry_v_0.mat->emissive);
-		vpl v_0(Le_v_0 * (1.0f/paths), geometry_v_0);
-		obj_v_0_samples.push_back(v_0);
-		objdraw::path obj_path(v_0.pos);
-
-		ray to_next_vpl(v_0.pos, w_0);
-		vec3 throughput(1);
-
-		int rr_start = 4; // start RR after this many unrestricted bounces
+		obj_v_0_samples.push_back(to_next_vpl.o);
+		objdraw::path obj_path(to_next_vpl.o);
 
 		// Setup the throughput for VPL v_1
-		float D_v_0 = cdot(v_0.geometry.ns, to_next_vpl.d); //D_v_0(v_1)
-		throughput *= D_v_0 / (pdf_v_0*pdf_w_0);
+		float D_v_0 = cdot(normal_v_0, to_next_vpl.d); //D_v_0(v_1)
+		vec3 throughput(1);
+		throughput *= D_v_0 / pdf_v_0;
 
-		// 1. initialize j:=0 and 5. increment j (j:=j+1)
+		// 1. initialize j and 5. increment j (j:=j+1)
+		// j represents the VPL index, e. g. in the loop j=1: v_1 is calculated
 		for (int j = 1; j <= path_length; ++j) {
 			// 2. sample the next path vertex
 			triangle_intersection closest = rc->scene.rt->closest_hit(to_next_vpl);
@@ -105,7 +103,7 @@ void manylight_algorithm::prepare_frame() {
 
 		// draw path vertices in paths.obj as icospheres
 		for (auto v_0 : obj_v_0_samples) {
-			objdraw::icosphere sphere(v_0.pos, 0.15f);
+			objdraw::icosphere sphere(v_0, 0.15f);
 			obj_writer.write_icosphere(sphere);
 		}
 		for (auto v : vpls) {
@@ -155,8 +153,9 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
 			float D_v = cdot(v.geometry.ns, -shadow_ray.d); // D_v(x)
 			float G = D_x*D_v/(t*t);
-			//TODO: G cap solves the issue with the bright spots but adds bias
-			//-> see chapter 5: bias compensation (final gathering, ...)
+			//TODO: G cap solves the issue with the bright spots but adds bias.
+			//      In the future include bias compensation
+			//      -> see chapter 5: bias compensation (final gathering, ...)
 			G = G > 0.1f ? 0.1f : G;
 
 			radiance += f_x*G*v.col*f_v;
@@ -164,32 +163,4 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	}
 
 	return radiance;
-}
-
-/* Util */
-tuple<diff_geom, float, vec3, float> sample_trianglelight(const scene& scene) {
-	auto [l_id, pdf_l] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
-	light *l = rc->scene.lights[l_id];
-	trianglelight* tl = dynamic_cast<trianglelight*>(l);
-
-	const vertex &a = rc->scene.vertices[tl->a];
-	const vertex &b = rc->scene.vertices[tl->b];
-	const vertex &c = rc->scene.vertices[tl->c];
-	vec2 bc = uniform_sample_triangle(rc->rng.uniform_float2());
-	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));
-	float pdf_tri_sample = 1.f/area;
-	float pdf_v = pdf_l * pdf_tri_sample;
-
-	triangle_intersection is;
-	is.beta = bc.x;
-	is.gamma = bc.y;
-	diff_geom geometry(*tl, is, rc->scene);
-	// Note: is.t, is.ref and accordingly geometry.ref are not set (correctly), but are also not required here
-
-	// Sample w:
-	vec3 w_tan = cosine_sample_hemisphere(rc->rng.uniform_float2());
-	vec3 w = align(w_tan, geometry.ns);
-	float pdf_w = cosine_hemisphere_pdf(cdot(w, geometry.ns));
-
-	return {geometry, pdf_v, w, pdf_w};
 }
