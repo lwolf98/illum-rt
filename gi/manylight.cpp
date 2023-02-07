@@ -96,8 +96,6 @@ void manylight_algorithm::prepare_frame() {
 		obj_paths.push_back(obj_path);
 	}
 
-	avg_path_length = vpls.size() * (1.0f/(paths));
-
 	if (export_debug_obj) {
 		// begin writing paths.obj
 		objdraw::obj_writer obj_writer("paths.obj");
@@ -142,13 +140,10 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 
 	// indirect illumination by using VPLs
-	for (int i = 0; i < avg_path_length; ++i) {
+	for (int i = 0; i < vpls_per_sample; ++i) {
 		// sample a random VPL
-		//int32_t pos = rc->rng.uniform_float() * vpls.size();
-		//vpl v = vpls[pos];
-
-		vpl v = vpls[vpl_index];
-		vpl_index = (vpl_index+1) % vpls.size();
+		int32_t pos = rc->rng.uniform_float() * vpls.size();
+		vpl v = vpls[pos];
 
 		auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
 		float t = length(v.pos - hit.x);

@@ -27,9 +27,8 @@ private:
 
 	uint32_t paths;
 	uint32_t path_length;
+	uint32_t vpls_per_sample = 5;
 	std::vector<vpl> vpls;
-	uint32_t vpl_index = 0;
-	float avg_path_length = 0;
 
 public:
 	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {}
