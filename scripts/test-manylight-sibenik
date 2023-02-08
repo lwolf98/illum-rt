@@ -4,10 +4,12 @@ up 0 1 0
 load render-data/sibenik/sibenik.obj
 
 raytracer embree
-algo manylight paths 256 length 10
-sppx 2048
+algo manylight paths 5000000 length 10
+sppx 512
 resolution 640 360
 outfile out_ml.png
+
+omp on
 
 material select kamen_zid_parapet
 material albedo  0.73412 0.73059 0.67412

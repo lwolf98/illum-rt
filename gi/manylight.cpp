@@ -28,70 +28,83 @@ void manylight_algorithm::prepare_frame() {
 		The index j here is used accordingly to the paper.
 	*/
 
-	vector<objdraw::path> obj_paths; // list of all sampled paths
-	vector<vec3> obj_v_0_samples;  // list of all sampled v_0 lights
+	vector<vector<vpl>> vpl_store(paths);
+	vector<objdraw::path> obj_paths(paths); // list of all sampled paths
+	vector<vec3> obj_v_0_samples(paths);  // list of all sampled v_0 lights
 	int rr_start = 4; // start RR after this many unrestricted bounces
 
-	for (int i = 0; i < paths; i++) {
-		// Calculate v_0:
-		auto [l_id, pdf_l] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
-		light *l = rc->scene.lights[l_id];
-		vec2 xis_pos = rc->rng.uniform_float2();
-		vec2 xis_dir = rc->rng.uniform_float2();
-		auto [to_next_vpl, Le_v_0, normal_v_0, pdf_Le] = l->sample_Le(xis_pos, xis_dir);
-		float pdf_v_0 = pdf_l * pdf_Le;
-		
-		obj_v_0_samples.push_back(to_next_vpl.o);
-		objdraw::path obj_path(to_next_vpl.o);
+	{
+		time_this_block(ml_prepare_vpls);
 
-		// Setup the throughput for VPL v_1
-		float D_v_0 = cdot(normal_v_0, to_next_vpl.d); //D_v_0(v_1)
-		vec3 throughput(1);
-		throughput *= D_v_0 / pdf_v_0;
+		#pragma omp parallel for
+		for (int i = 0; i < paths; i++) {
+			// Calculate v_0:
+			auto [l_id, pdf_l] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
+			light *l = rc->scene.lights[l_id];
+			vec2 xis_pos = rc->rng.uniform_float2();
+			vec2 xis_dir = rc->rng.uniform_float2();
+			auto [to_next_vpl, Le_v_0, normal_v_0, pdf_Le] = l->sample_Le(xis_pos, xis_dir);
+			float pdf_v_0 = pdf_l * pdf_Le;
+			
+			obj_v_0_samples[i] = to_next_vpl.o;
+			objdraw::path obj_path(to_next_vpl.o);
 
-		// 1. initialize j and 5. increment j (j:=j+1)
-		// j represents the VPL index, e. g. in the loop j=1: v_1 is calculated
-		for (int j = 1; j <= path_length; ++j) {
-			// 2. sample the next path vertex
-			triangle_intersection closest = rc->scene.rt->closest_hit(to_next_vpl);
-			if (!closest.valid())
-				break;
-			diff_geom hit(closest, rc->scene);
+			// Setup the throughput for VPL v_1
+			float D_v_0 = cdot(normal_v_0, to_next_vpl.d); //D_v_0(v_1)
+			vec3 throughput(1);
+			throughput *= D_v_0 / pdf_v_0;
 
-			// 3. create a VPL (v_j)
-			vpl v_j(Le_v_0 * throughput * (1.0f), hit, to_next_vpl.d);
-			vpls.push_back(v_j);
-			if (export_debug_obj)
-				obj_path.push_vertex(v_j.pos);
+			// 1. initialize j and 5. increment j (j:=j+1)
+			// j represents the VPL index, e. g. in the loop j=1: v_1 is calculated
+			for (int j = 1; j <= path_length; ++j) {
+				// 2. sample the next path vertex
+				triangle_intersection closest = rc->scene.rt->closest_hit(to_next_vpl);
+				if (!closest.valid())
+					break;
+				diff_geom hit(closest, rc->scene);
 
-			// 4. Terminate path (apply RR)
-			if (j >= rr_start) {
-				float xi = uniform_float();
-				float q = luma(throughput);
-				//TODO: is this q_j or q_j+1?
-				// -> equals: float q = luma(v_j.col/Le_v_0);
-				
-				if (xi >= q)
+				// 3. create a VPL (v_j)
+				vpl v_j(Le_v_0 * throughput * (1.0f), hit, to_next_vpl.d);
+				vpl_store[i].push_back(v_j);
+				if (export_debug_obj)
+					obj_path.push_vertex(v_j.pos);
+
+				// 4. Terminate path (apply RR)
+				if (j >= rr_start) {
+					float xi = uniform_float();
+					float q = luma(throughput);
+					//TODO: is this q_j or q_j+1?
+					// -> equals: float q = luma(v_j.col/Le_v_0);
+					
+					if (xi >= q)
+						break;
+
+					throughput *= 1.0f/q;
+				}
+				else if (luma(throughput) == 0)
 					break;
 
-				throughput *= 1.0f/q;
+				// Sample ray to next VPL
+				auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j.geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+
+				// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
+				float pdf_f = hit.mat->brdf->pdf(v_j.geometry, w_o, -v_j.w_in); //p(w_j)
+				to_next_vpl = ray(v_j.pos, w_o);
+
+				// Setup the throughput for the next VPL
+				float D = cdot(to_next_vpl.d, v_j.geometry.ns); //D_v_j(v_j+1)
+				throughput *= D*f/pdf_f; //throughput for v_j+1
 			}
-			else if (luma(throughput) == 0)
-				break;
 
-			// Sample ray to next VPL
-			auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j.geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
-
-			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
-			float pdf_f = hit.mat->brdf->pdf(v_j.geometry, w_o, -v_j.w_in); //p(w_j)
-			to_next_vpl = ray(v_j.pos, w_o);
-
-			// Setup the throughput for the next VPL
-			float D = cdot(to_next_vpl.d, v_j.geometry.ns); //D_v_j(v_j+1)
-			throughput *= D*f/pdf_f; //throughput for v_j+1
+			obj_paths[i] = obj_path;
 		}
+	}
 
-		obj_paths.push_back(obj_path);
+	{
+		time_this_block(ml_prepare_copying);
+		for (auto path : vpl_store)
+			for (auto v : path)
+				vpls.push_back(v);
 	}
 
 	if (export_debug_obj) {
@@ -111,6 +124,9 @@ void manylight_algorithm::prepare_frame() {
 			obj_writer.write_icosphere(sphere);
 		}
 	}
+
+	cout << "max. VPL storage: " << vpl_store.size()*path_length << endl;
+	cout << "VPL count: " << vpls.size() << endl;
 }
 
 vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
