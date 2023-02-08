@@ -356,6 +356,9 @@ void eval(const std::string &line) {
 		else if (name == "direct-wf") {
 			select_wf(wf::direct_light);
 		}
+		else if (name == "manylight-wf") {
+			select_wf(wf::manylight_algorithm);
+		}
 #undef select_wf
 #endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM

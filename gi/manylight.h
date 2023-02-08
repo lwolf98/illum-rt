@@ -36,3 +36,19 @@ public:
 	/* Integration via the previously generated VPLs */
 	vec3 sample_pixel(uint32_t x, uint32_t y) override;
 };
+
+#ifndef RTGI_SKIP_WF
+#include "manylight-steps.h"
+namespace wf {
+	class manylight_algorithm : public simple_algorithm {
+		raydata *camrays = nullptr,
+				*shadowrays = nullptr;
+		per_sample_data<float> *pdf = nullptr;
+		//enum ::direct_light::sampling_mode sampling_mode = ::direct_light::sample_uniform;
+		void regenerate_steps();
+	public:
+		manylight_algorithm();
+		bool interprete(const std::string &command, std::istringstream &in) override;
+	};
+}
+#endif

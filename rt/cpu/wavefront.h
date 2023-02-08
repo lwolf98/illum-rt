@@ -4,6 +4,7 @@
 
 #include "gi/primary-hit.h"
 #include "gi/direct.h"
+#include "gi/manylight.h"
 
 namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
