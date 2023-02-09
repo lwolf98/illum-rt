@@ -196,13 +196,58 @@ namespace wf {
 		test_step->use(camrays, shadowrays, pdf);
 		sampling_steps.push_back(test_step);
 
+		/**
+		 * Manylight steps:
+		 * prepare:
+		 * sample_lights(w:v0_raydata, w:throughput/Le_v0, (r:survived), (w:obj_paths))
+		 * create_vpls(r:vj_raydata, w:throughput, (r:survived), (w:obj_paths))
+		 * russian_roulette(w:survived, w:throughput)
+		 * copy_vpls(r:vpl_arr, w:vpls)
+		 * (debug_write_obj(r:obj_paths))
+		 * 
+		 * integration:
+		 * sample_vpls(w:ray/dir, r:vpls)
+		 * integrate_vpl_sample(r:camrays, r:shadowrays, r:pdf?, r:vpls)
+		 * 
+		 * Direct steps:
+		 * integrate_light_sample(camdata(raydata), shadowrays(raydata), pdf)
+		 * sample_uniform_dir(camdata(raydata), bouncedata(raydata), pdf)
+		 * sample_cos_weighted_dir(camdata(raydata), bouncedata(raydata), pdf)
+		 * (sample_light_dir(camdata(raydata), bouncedata(raydata), pdf))
+		 * 
+		 * Primary steps:
+		 * initialize_framebuffer
+		 * download_framebuffer
+		 * copy_to_preview
+		 * sample_camera_rays(raydata)
+		 * add_hitpoint_albedo(sample_rays(raydata))
+		 * find_closest_hits(raydata)
+		 * find_any_hits(raydata)
+		 * 
+		*/
+
 		//Add prepare frame steps
-		//...
+		/**
+		 * sample_lights
+		 * for (int j = 1; j <= path_length; ++j) //better solutions? buffer will be empty around 40 - 70%
+		 * 		find_closest_hits
+		 * 		create_vpls
+		 * 		russian_roulette
+		 * 
+		 * copy_vpls (not parallel!)
+		 * (debug_write_obj (probably not parallel!))
+		 * 
+		 */
 
 		//Add steps for indirect illumination / integration
-		//for (int i = 0; i < vpls_per_sample; ++i)
-			//find light (vpl)
-			//integrate contribution
+		/**
+		 * > steps from direct_light
+		 * 
+		 * for (int i = 0; i < vpls_per_sample; ++i) 
+		 * 		sample_vpls
+		 * 		find_closest_hits
+		 * 		integrate_vpl_sample
+		*/
 	}
 
 	bool manylight_algorithm::interprete(const std::string &command, std::istringstream &in) {
