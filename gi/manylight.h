@@ -40,12 +40,9 @@ public:
 #ifndef RTGI_SKIP_WF
 #include "manylight-steps.h"
 namespace wf {
-	class manylight_algorithm : public simple_algorithm {
-		raydata *camrays = nullptr,
-				*shadowrays = nullptr;
-		per_sample_data<float> *pdf = nullptr;
-		//enum ::direct_light::sampling_mode sampling_mode = ::direct_light::sample_uniform;
-		void regenerate_steps();
+	//TODO-ML: check if inheritance is correctly setup (fields, visibility, virtual, override)
+	class manylight_algorithm : public direct_light {
+		void regenerate_steps() override;
 	public:
 		manylight_algorithm();
 		bool interprete(const std::string &command, std::istringstream &in) override;

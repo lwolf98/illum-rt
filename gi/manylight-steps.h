@@ -2,6 +2,19 @@
 #include "direct-steps.h"
 namespace wf
 {
+	/**
+	 * Manylight steps:
+	 * prepare:
+	 * sample_light(w:v0_raydata, w:throughput/Le_v0, (r:survived), (w:obj_paths))
+	 * create_vpl(r:vj_raydata, w:throughput, (r:survived), (w:obj_paths))
+	 * russian_roulette(w:survived, w:throughput)
+	 * copy_vpls(r:vpl_arr, w:vpls)
+	 * (debug_write_obj(r:obj_paths))
+	 * 
+	 * integration:
+	 * integrate_vpl_sample(r:camrays, r:shadowrays, r:pdf?, r:vpls)
+	*/
+
 	class manylight_step : public step
 	{
 	public:

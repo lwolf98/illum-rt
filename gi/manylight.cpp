@@ -183,75 +183,34 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_WF
 namespace wf {
-	manylight_algorithm::manylight_algorithm() {
-		/*auto *init_fb = rc->platform->step<initialize_framebuffer>();
-		auto *download_fb = rc->platform->step<download_framebuffer>();
-		frame_preparation_steps.push_back(init_fb);
-		frame_finalization_steps.push_back(download_fb);
-		
-		camrays = rc->platform->allocate_raydata();
-		shadowrays = rc->platform->allocate_raydata();
-		pdf = rc->platform->allocate_float_per_sample();
-		
-		init_fb->use(camrays);
-		download_fb->use(camrays);
-		
-		regenerate_steps();*/
+	manylight_algorithm::manylight_algorithm() : direct_light() {
+		//TODO-ML: manylight specific intialization
+		//...
 	}
 
 	void manylight_algorithm::regenerate_steps() {
-		/*sampling_steps.clear();
+		//direct_light::regenerate_steps();
+		//TODO-ML: add ML steps
 		
-		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
-		auto *find_hit     = rc->platform->step<find_closest_hits>();
-		auto *find_light   = rc->platform->step<find_closest_hits>("secondary hits");
-		auto *integrate    = rc->platform->step<integrate_light_sample>();
-		step *sample_light = nullptr;
-		if (sampling_mode == ::direct_light::sample_uniform) {
-			auto *sample = rc->platform->step<sample_uniform_dir>();
-			sample->use(camrays, shadowrays, pdf);
-			sample_light = sample;
-		}
-		else if (sampling_mode == ::direct_light::sample_cosine) {
-			auto *sample = rc->platform->step<sample_cos_weighted_dir>();
-			sample->use(camrays, shadowrays, pdf);
-			sample_light = sample;
-		}
-		else throw runtime_error("unsupported importance sampling method for wf/direct");
+		auto *test_step = rc->platform->step<manylight_step>();
+		test_step->use(camrays, shadowrays, pdf);
+		sampling_steps.push_back(test_step);
 
-		sample_cam->use(camrays);
-		find_hit->use(camrays);
-		find_light->use(shadowrays);
-		integrate->use(camrays, shadowrays, pdf);
+		//Add prepare frame steps
+		//...
 
-		sampling_steps.push_back(sample_cam);
-		sampling_steps.push_back(find_hit);
-		sampling_steps.push_back(sample_light);
-		sampling_steps.push_back(find_light);
-		sampling_steps.push_back(integrate);
-
-#ifdef HAVE_GL
-		if (preview_window) {
-			auto *copy_prev = rc->platform->step<copy_to_preview>();
-			sampling_steps.push_back(copy_prev); // add this last so we have data to copy
-			copy_prev->use(camrays);
-		}
-#endif*/
+		//Add steps for indirect illumination / integration
+		//for (int i = 0; i < vpls_per_sample; ++i)
+			//find light (vpl)
+			//integrate contribution
 	}
 
 	bool manylight_algorithm::interprete(const std::string &command, std::istringstream &in) {
-		/*string value;
-		if (command == "is") {
-			in >> value;
-			if (value == "uniform") sampling_mode = ::direct_light::sample_uniform;
-			else if (value == "cosine") sampling_mode = ::direct_light::sample_cosine;
-			else if (value == "light") sampling_mode = ::direct_light::sample_light;
-			else if (value == "brdf") sampling_mode = ::direct_light::sample_brdf;
-			else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
-			regenerate_steps();
-			return true;
-		}*/
-		return false;
+		bool result_direct = direct_light::interprete(command, in);
+		//TODO-ML: include parameters paths, path_length, vpls_per_sample
+		bool result_ml = result_direct;
+
+		return result_ml;
 	}
 }
 #endif

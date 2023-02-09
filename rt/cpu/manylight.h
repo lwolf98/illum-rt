@@ -8,7 +8,7 @@
 
 namespace wf::cpu {
 
-	struct sample_uniform_dir : public wf::wire::sample_uniform_dir<raydata, per_sample_data<float>> {
+	struct manylight_step : public wf::wire::manylight_step<raydata, per_sample_data<float>> {
 		void run() override;
 	};
 	
