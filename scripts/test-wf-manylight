@@ -18,9 +18,9 @@ omp on
 #algo direct-wf
 algo manylight-wf
 #importance sampling (is) methods: uniform cosine light brdf
-is uniform
+is light
 
-sppx 64
+sppx 4096
 resolution 640 360
 outfile out_wf.png
 

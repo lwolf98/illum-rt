@@ -71,6 +71,43 @@ namespace wf::cpu {
 			}
 	}
 
+	void sample_light_dir::run() {
+		time_this_wf_step;
+		auto res = rc->resolution();
+		float pdf = 1.f; //one_over_pi;	// changed wrt sample_uniform_dir
+		#pragma omp parallel for
+		for (int y = 0; y < res.y; ++y)
+			for (int x = 0; x < res.x; ++x) {
+				auto is = camdata->intersections[y*res.x+x];
+				vec3 radiance(0);
+				//TODO: Is it correct to set the ray like that by default?
+				//      Does t_max = -FLT_MAX handle the issue / invalidate the ray? shouldn't it be +FLT_MAX for valid() check?
+				ray shadow_ray(vec3(0),vec3(1));
+				shadow_ray.t_max = FLT_MAX;
+				if (is.valid()) {
+					diff_geom hit(is, *pf->sd);
+					flip_normals_to_ray(hit, camdata->rays[y*res.x+x]);
+					if (hit.mat->emissive != vec3(0)) {
+						radiance = hit.mat->emissive;
+						rc->framebuffer.color(x,y) += vec4(radiance, 1);
+					}
+					else {
+						// changed wrt sample_uniform_dir
+						auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
+						light *l = rc->scene.lights[l_id];
+						auto [sampled_ray,l_col,li_pdf] = l->sample_Li(hit, rc->rng.uniform_float2());
+						// until here
+						if (l_col != vec3(0)) {
+							shadow_ray = ray(sampled_ray.o, sampled_ray.d);
+							pdf = l_pdf*li_pdf;
+						}
+					}
+					this->pdf->data[y*res.x+x] = pdf;
+					bouncedata->rays[y*res.x+x] = shadow_ray;
+				}
+			}
+	}
+
 	void integrate_light_sample::run() {
 		time_this_wf_step;
 		auto res = rc->resolution();

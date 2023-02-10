@@ -181,6 +181,7 @@ namespace wf {
 			register_wf_step_by_id(, build_accel_struct);
 			register_wf_step_by_id(, sample_uniform_dir);
 			register_wf_step_by_id(, sample_cos_weighted_dir);
+			register_wf_step_by_id(, sample_light_dir);
 			register_wf_step_by_id(, integrate_light_sample);
 			//manylight steps
 			register_wf_step_by_id(, manylight_step);

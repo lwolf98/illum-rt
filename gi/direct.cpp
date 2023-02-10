@@ -356,8 +356,9 @@ namespace wf {
 			sample_light = sample;
 		}
 		else if (sampling_mode == ::direct_light::sample_light) {
-			//TODO-ML: implement light sampling
-			throw runtime_error("importance sampling method light needs to be implemented (also for manylight!)");
+			auto *sample = rc->platform->step<sample_light_dir>();
+			sample->use(camrays, shadowrays, pdf);
+			sample_light = sample;
 		}
 		else throw runtime_error("unsupported importance sampling method for wf/direct");
 

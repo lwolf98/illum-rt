@@ -189,12 +189,13 @@ namespace wf {
 	}
 
 	void manylight_algorithm::regenerate_steps() {
-		//direct_light::regenerate_steps();
+		//TODO: prevent double or triple initialization of direct_light steps
+		direct_light::regenerate_steps();
 		//TODO-ML: add ML steps
 		
-		auto *test_step = rc->platform->step<manylight_step>();
+		/*auto *test_step = rc->platform->step<manylight_step>();
 		test_step->use(camrays, shadowrays, pdf);
-		sampling_steps.push_back(test_step);
+		sampling_steps.push_back(test_step);*/
 
 		/**
 		 * Manylight steps:
@@ -206,7 +207,7 @@ namespace wf {
 		 * (debug_write_obj(r:obj_paths))
 		 * 
 		 * integration:
-		 * sample_vpls(w:ray/dir, r:vpls)
+		 * sample_vpls(w:ray/dir, r:vpls) <- randomly select vpl
 		 * integrate_vpl_sample(r:camrays, r:shadowrays, r:pdf?, r:vpls)
 		 * 
 		 * Direct steps:
@@ -233,6 +234,7 @@ namespace wf {
 		 * 		find_closest_hits
 		 * 		create_vpls
 		 * 		russian_roulette
+		 * 		sample_next_vpl
 		 * 
 		 * copy_vpls (not parallel!)
 		 * (debug_write_obj (probably not parallel!))
