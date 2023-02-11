@@ -15,39 +15,7 @@ namespace wf
 	 * integrate_vpl_sample(r:camrays, r:shadowrays, r:pdf?, r:vpls)
 	*/
 
-	class manylight_step : public step
-	{
-	public:
-		static constexpr char id[] = "manylight step";
-
-		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf) = 0;
-	};
-	namespace wire
-	{
-
-		template <typename RD, typename PDF>
-		class manylight_step : public wf::manylight_step
-		{
-		public:
-			using wf::manylight_step::manylight_step;
-			RD *camdata = nullptr;
-			RD *bouncedata = nullptr;
-			PDF *pdf = nullptr;
-
-			bool properly_wired()
-			{
-				return camdata && bouncedata && pdf;
-			}
-
-			void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf)
-			{
-				this->camdata = dynamic_cast<RD *>(camdata);
-				this->bouncedata = dynamic_cast<RD *>(bouncedata);
-				this->pdf = dynamic_cast<PDF *>(pdf);
-			}
-		};
-	}
-
+	/* Preparation steps */
 	class sample_v_0s : public step
 	{
 	public:
@@ -112,6 +80,70 @@ namespace wf
 		};
 	}
 
+	class russian_roulette : public step
+	{
+	public:
+		static constexpr char id[] = "russian roulette";
+
+		virtual void use(raydata *light_rays, vec3 *light_throughput) = 0;
+	};
+	namespace wire
+	{
+
+		template <typename RD, typename LT>
+		class russian_roulette : public wf::russian_roulette
+		{
+		public:
+			using wf::russian_roulette::russian_roulette;
+			RD *light_rays = nullptr;
+			LT *light_throughput = nullptr;
+
+			bool properly_wired()
+			{
+				return light_rays && light_throughput;
+			}
+
+			void use(raydata *light_rays, vec3 *light_throughput)
+			{
+				this->light_rays = dynamic_cast<RD *>(light_rays);
+				this->light_throughput = dynamic_cast<LT *>(light_throughput);
+			}
+		};
+	}
+
+	class sample_next_vpls : public step
+	{
+	public:
+		static constexpr char id[] = "sample next vpls";
+
+		virtual void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane) = 0;
+	};
+	namespace wire
+	{
+
+		template <typename RD, typename LT, typename VL>
+		class sample_next_vpls : public wf::sample_next_vpls
+		{
+		public:
+			using wf::sample_next_vpls::sample_next_vpls;
+			RD *light_rays = nullptr;
+			LT *light_throughput = nullptr;
+			VL *vpl_store_lane = nullptr;
+
+			bool properly_wired()
+			{
+				return light_rays && light_throughput && vpl_store_lane;
+			}
+
+			void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane)
+			{
+				this->light_rays = dynamic_cast<RD *>(light_rays);
+				this->light_throughput = dynamic_cast<LT *>(light_throughput);
+				this->vpl_store_lane = dynamic_cast<VL *>(vpl_store_lane);
+			}
+		};
+	}
+
 	class copy_vpls : public step
 	{
 	public:
@@ -143,6 +175,7 @@ namespace wf
 		};
 	}
 
+	/* Integration steps */
 	class sample_vpls : public step
 	{
 	public:

@@ -1,28 +1,12 @@
 #include "manylight.h"
 
 #include "libgi/util.h"
-//#include "libgi/sampling.h"
+#include "libgi/color.h"
 
 #include <iostream>
 using namespace std;
 
 namespace wf::cpu {
-	void manylight_step::run() {
-		time_this_wf_step;
-		auto res = rc->resolution();
-		#pragma omp parallel for
-		for (int y = 0; y < res.y; ++y) {
-			for (int x = 0; x < res.x; ++x) {
-				/*if (x%20==0||y%20==0) {
-					vec3 radiance = vec3(1, 0, 0);
-					//rc->framebuffer.color(x,y) += vec4(radiance, 1);
-					rc->framebuffer.color(x,y) = vec4(radiance, 1);
-				}*/
-				rc->framebuffer.color(x,y) += vec4(vec3(0,0,0.2), 1);
-			}
-		}
-	}
-
 	void sample_v_0s::run() {
 		time_this_wf_step;
 		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
@@ -31,8 +15,6 @@ namespace wf::cpu {
 		}
 		manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
 		auto paths = ml->get_paths();
-		int w = rc->resolution().x;
-		int h = rc->resolution().y;
 		#pragma omp parallel for
 		for (int i = 0; i < paths; ++i) {
 			auto [l_id, pdf_l] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
@@ -53,6 +35,9 @@ namespace wf::cpu {
 			light_rays->rays[i] = to_next_vpl;
 			light_throughput[i] = throughput;
 		}
+		cout << "RD(S0): " << light_rays->rays[0].d << endl;
+		cout << "TP(S0): " << light_throughput[0] << endl;
+		//cout << "finished: sample_v_0s" << endl;
 	}
 
 	void create_vpls::run() {
@@ -66,6 +51,10 @@ namespace wf::cpu {
 
 		#pragma omp parallel for
 		for (int i = 0; i < paths; ++i) {
+			// check if light ray is valid else continue
+			if (light_rays->rays[i].d == vec3(0))
+				continue;
+
 			triangle_intersection is = light_rays->intersections[i];
 			diff_geom hit(is, rc->scene);
 			vec3 col = light_throughput[i];
@@ -75,6 +64,76 @@ namespace wf::cpu {
 			vpl v(col, pos, normal, w_in, is);
 			vpl_store_lane[i] = v;
 		}
+		//cout << "finished: create_vpls" << endl;
+	}
+
+	void russian_roulette::run() {
+		time_this_wf_step;
+		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+			//TODO: better handling for this situation
+			return;
+		}
+		manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+		auto paths = ml->get_paths();
+
+		#pragma omp parallel for
+		for (int i = 0; i < paths; ++i) {
+			// check if light ray is valid else continue
+			if (light_rays->rays[i].d == vec3(0))
+				continue;
+			
+			if (luma(light_throughput[i]) == 0) {
+				light_rays->rays[i].d = vec3(0);
+				continue;
+			}
+
+			float xi = rc->rng.uniform_float();
+			float q = luma(light_throughput[i]);
+			//TODO: is this q_j or q_j+1?
+			// -> equals: float q = luma(v_j.col/Le_v_0);
+			
+			if (xi >= q) {
+				light_rays->rays[i].d = vec3(0);
+				continue;
+			}
+
+			light_throughput[i] *= 1.0f/q;
+		}
+		cout << "TP(RR): " << light_throughput[0] << endl;
+		//cout << "finished: russian_roulette" << endl;
+	}
+
+	void sample_next_vpls::run() {
+		time_this_wf_step;
+		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+			//TODO: better handling for this situation
+			return;
+		}
+		manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+		auto paths = ml->get_paths();
+
+		#pragma omp parallel for
+		for (int i = 0; i < paths; ++i) {
+			// check if light ray is valid else continue
+			if (light_rays->rays[i].d == vec3(0))
+				continue;
+
+			vpl v = vpl_store_lane[i];
+
+			// Sample ray to next VPL
+			diff_geom v_geometry(v.is, rc->scene);
+			auto [w_o, f, pdf] = v_geometry.mat->brdf->sample(v_geometry, -v.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+
+			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
+			float pdf_f = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
+			ray to_next_vpl(v.pos, w_o);
+			light_rays->rays[i] = to_next_vpl;
+
+			// Setup the throughput for the next VPL
+			float D = cdot(to_next_vpl.d, v.normal); //D_v_j(v_j+1)
+			light_throughput[i] *= D*f/pdf_f; //throughput for v_j+1
+		}
+		//cout << "finished: sample_next_vpls" << endl;
 	}
 
 	void copy_vpls::run() {
@@ -94,6 +153,10 @@ namespace wf::cpu {
 					vpls->push_back(v);
 			}
 		}
+
+		//cout << "VPL count: " << vpls->size() << endl;
+		cout << "max. VPL storage: " << paths*path_length << endl;
+		vpl_stats(*vpls);
 	}
 
 	void sample_vpls::run() {
@@ -146,7 +209,7 @@ namespace wf::cpu {
 
 					radiance = f_x*G*v.col*f_v;
 				}
-				rc->framebuffer.color(x,y) += vec4(radiance, 1);
+				rc->framebuffer.color(x,y) += vec4(radiance, 0);
 			}
 	}
 }

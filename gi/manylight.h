@@ -8,6 +8,9 @@
 
 #include "libgi/global-context.h"
 
+struct vpl;
+void vpl_stats(const std::vector<vpl>& vpls);
+
 // virtual point light
 struct vpl : public pointlight {
 	triangle_intersection is;
@@ -48,6 +51,7 @@ namespace wf {
 		uint32_t paths = 32;
 		uint32_t path_length = 10;
 		uint32_t vpls_per_sample = 5;
+		uint32_t rr_start = 4;
 
 		std::vector<vpl>* vpls = nullptr;
 
@@ -74,6 +78,9 @@ namespace wf {
 		}
 		uint32_t get_path_length() const {
 			return path_length;
+		}
+		uint32_t get_rr_start() const {
+			return rr_start;
 		}
 	};
 }
