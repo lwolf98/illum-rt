@@ -37,7 +37,9 @@ namespace wf::cpu {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
+		raydata* allocate_raydata_manually(int w, int h) override;
 		per_sample_data<float>* allocate_float_per_sample();
+		//per_sample_data<void>* allocate_data_per_sample(int32_t typesize);
 		
 		batch_rt *rt = nullptr;
 		cpu::scene *sd = nullptr;

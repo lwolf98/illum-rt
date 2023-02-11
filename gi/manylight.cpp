@@ -64,7 +64,7 @@ void manylight_algorithm::prepare_frame() {
 				diff_geom hit(closest, rc->scene);
 
 				// 3. create a VPL (v_j)
-				vpl v_j(Le_v_0 * throughput * (1.0f), hit, to_next_vpl.d);
+				vpl v_j(Le_v_0 * throughput, hit.x, hit.ns, to_next_vpl.d, closest);
 				vpl_store[i].push_back(v_j);
 				if (export_debug_obj)
 					obj_path.push_vertex(v_j.pos);
@@ -85,14 +85,15 @@ void manylight_algorithm::prepare_frame() {
 					break;
 
 				// Sample ray to next VPL
-				auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j.geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+				diff_geom v_j_geometry = hit;
+				auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j_geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
 
 				// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
-				float pdf_f = hit.mat->brdf->pdf(v_j.geometry, w_o, -v_j.w_in); //p(w_j)
+				float pdf_f = hit.mat->brdf->pdf(v_j_geometry, w_o, -v_j.w_in); //p(w_j)
 				to_next_vpl = ray(v_j.pos, w_o);
 
 				// Setup the throughput for the next VPL
-				float D = cdot(to_next_vpl.d, v_j.geometry.ns); //D_v_j(v_j+1)
+				float D = cdot(to_next_vpl.d, v_j.normal); //D_v_j(v_j+1)
 				throughput *= D*f/pdf_f; //throughput for v_j+1
 			}
 
@@ -164,10 +165,11 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 
 		if (!rc->scene.rt->any_hit(shadow_ray)) {
 			vec3 f_x = hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
-			vec3 f_v = v.geometry.mat->brdf->f(v.geometry, -shadow_ray.d, -v.w_in); // BRDF at v
+			diff_geom v_geometry(v.is, rc->scene);
+			vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
 
 			float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
-			float D_v = cdot(v.geometry.ns, -shadow_ray.d); // D_v(x)
+			float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
 			float G = D_x*D_v/(t*t);
 			//TODO: G cap solves the issue with the bright spots but adds bias.
 			//      In the future include bias compensation
@@ -191,8 +193,8 @@ namespace wf {
 	void manylight_algorithm::regenerate_steps() {
 		//TODO: prevent double or triple initialization of direct_light steps
 		direct_light::regenerate_steps();
-		//TODO-ML: add ML steps
 		
+		// Test step
 		/*auto *test_step = rc->platform->step<manylight_step>();
 		test_step->use(camrays, shadowrays, pdf);
 		sampling_steps.push_back(test_step);*/
@@ -200,7 +202,7 @@ namespace wf {
 		/**
 		 * Manylight steps:
 		 * prepare:
-		 * sample_lights(w:v0_raydata, w:throughput/Le_v0, (r:survived), (w:obj_paths))
+		 * sample_v_0s(w:v0_raydata, w:throughput/Le_v0, (r:survived), (w:obj_paths))
 		 * create_vpls(r:vj_raydata, w:throughput, (r:survived), (w:obj_paths))
 		 * russian_roulette(w:survived, w:throughput)
 		 * copy_vpls(r:vpl_arr, w:vpls)
@@ -208,7 +210,7 @@ namespace wf {
 		 * 
 		 * integration:
 		 * sample_vpls(w:ray/dir, r:vpls) <- randomly select vpl
-		 * integrate_vpl_sample(r:camrays, r:shadowrays, r:pdf?, r:vpls)
+		 * integrate_vpl_samples(r:camrays, r:shadowrays, r:pdf?, r:vpls)
 		 * 
 		 * Direct steps:
 		 * integrate_light_sample(camdata(raydata), shadowrays(raydata), pdf)
@@ -227,9 +229,50 @@ namespace wf {
 		 * 
 		*/
 
+		vpl_rays = rc->platform->allocate_raydata_manually(paths, 1);
+		//TODO-ML: maybe delete throughput and use data from vpls
+		light_throughput = allocate_light_throughput();
+		vpl_store = allocate_vpl_store();
+		vpls = allocate_vpls();
+		//sampled_vpls =  static_cast<per_sample_data<vpl>*>(rc->platform->allocate_data_per_sample(sizeof(vpl)));
+		sampled_vpls = allocate_vpl_per_sample();
+
+		int depth = 0;
+
+		/* preparation steps */
+		auto *sample_v_0     = rc->platform->step<sample_v_0s>();
+		auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
+		auto *create_vpl     = rc->platform->step<create_vpls>();
+		auto *copy_vpl       = rc->platform->step<copy_vpls>();
+
+		sample_v_0->use(vpl_rays, light_throughput);
+		find_next_hit->use(vpl_rays);
+		vpl* vpl_store_lane = vpl_store+depth*paths;
+		create_vpl->use(vpl_rays, light_throughput, vpl_store_lane);
+		depth++;
+		copy_vpl->use(vpl_store, vpls);
+
+		frame_preparation_steps.push_back(sample_v_0);
+		frame_preparation_steps.push_back(find_next_hit);
+		frame_preparation_steps.push_back(create_vpl);
+		frame_preparation_steps.push_back(copy_vpl);
+
+		/* sampling steps */
+		auto *sample_vpl = rc->platform->step<sample_vpls>();
+		auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
+		auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+
+		sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls);
+		find_light->use(shadowrays);
+		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+
+		sampling_steps.push_back(sample_vpl);
+		sampling_steps.push_back(find_light);
+		sampling_steps.push_back(integrate_vpl_sample);
+
 		//Add prepare frame steps
 		/**
-		 * sample_lights
+		 * sample_v_0s
 		 * for (int j = 1; j <= path_length; ++j) //better solutions? buffer will be empty around 40 - 70%
 		 * 		find_closest_hits
 		 * 		create_vpls
@@ -248,8 +291,25 @@ namespace wf {
 		 * for (int i = 0; i < vpls_per_sample; ++i) 
 		 * 		sample_vpls
 		 * 		find_closest_hits
-		 * 		integrate_vpl_sample
+		 * 		integrate_vpl_samples
 		*/
+	}
+
+	vpl* manylight_algorithm::allocate_vpl_store() {
+		return new vpl[paths*path_length];
+	}
+
+	vec3* manylight_algorithm::allocate_light_throughput() {
+		return new vec3[paths];
+	}
+
+	vector<vpl>* manylight_algorithm::allocate_vpls() {
+		return new vector<vpl>;
+	}
+
+	vpl* manylight_algorithm::allocate_vpl_per_sample() {
+		ivec2 res = rc->resolution();
+		return new vpl[res.x*res.y];
 	}
 
 	bool manylight_algorithm::interprete(const std::string &command, std::istringstream &in) {

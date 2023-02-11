@@ -185,6 +185,11 @@ namespace wf {
 			register_wf_step_by_id(, integrate_light_sample);
 			//manylight steps
 			register_wf_step_by_id(, manylight_step);
+			register_wf_step_by_id(, sample_v_0s);
+			register_wf_step_by_id(, create_vpls);
+			register_wf_step_by_id(, copy_vpls);
+			register_wf_step_by_id(, sample_vpls);
+			register_wf_step_by_id(, integrate_vpl_samples);
 
 			timer = new wf::cpu::timer;
 		}
@@ -216,10 +221,18 @@ namespace wf {
 		raydata* platform::allocate_raydata() {
 			return new raydata(rc->resolution());
 		}
+
+		raydata* platform::allocate_raydata_manually(int w, int h) {
+			return new raydata(w, h);
+		}
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
 			return new per_sample_data<float>(rc->resolution());
 		}
+		
+		/*per_sample_data<void>* platform::allocate_data_per_sample(int32_t typesize) {
+			return new per_sample_data<void>(rc->resolution()*typesize);
+		}*/
 
 
 		platform *pf = nullptr;

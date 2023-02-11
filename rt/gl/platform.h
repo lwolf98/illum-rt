@@ -34,6 +34,7 @@ namespace wf::gl {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
+		raydata* allocate_raydata_manually(int w, int h) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		
 		scenedata *sd = nullptr;

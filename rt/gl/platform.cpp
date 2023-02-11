@@ -100,6 +100,10 @@ namespace wf::gl {
 	raydata* platform::allocate_raydata() {
 	    return new raydata(rc->resolution());
 	}
+		
+	raydata* platform::allocate_raydata_manually(int w, int h) {
+	    return new raydata(w, h);
+	}
 
 	per_sample_data<float>* platform::allocate_float_per_sample() {
 		return new per_sample_data<float>(rc->resolution());

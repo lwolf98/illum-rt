@@ -10,12 +10,15 @@
 
 // virtual point light
 struct vpl : public pointlight {
-	diff_geom geometry;
+	triangle_intersection is;
+	vec3 normal; //optional with 'is'
 	vec3 w_in;
 
 	// Constructor for VPLs (v_1 to v_...)
-	vpl(const vec3& col, const diff_geom& dg, const vec3& w_in)
-	: pointlight(dg.x, col), geometry(dg), w_in(w_in) {}
+	vpl(const vec3& col, const vec3& pos, const vec3& normal, const vec3& w_in, const triangle_intersection& is)
+	: pointlight(pos, col), normal(normal), w_in(w_in), is(is) {}
+
+	vpl() : pointlight(vec3(0), vec3(0)) {}
 };
 
 class manylight_algorithm : public direct_light {
@@ -42,10 +45,36 @@ public:
 namespace wf {
 	//TODO-ML: check if inheritance is correctly setup (fields, visibility, virtual, override)
 	class manylight_algorithm : public direct_light {
+		uint32_t paths = 32;
+		uint32_t path_length = 10;
+		uint32_t vpls_per_sample = 5;
+
+		std::vector<vpl>* vpls = nullptr;
+
+		vpl* vpl_store = nullptr;
+		raydata* vpl_rays = nullptr;
+		vec3* light_throughput = nullptr;
+		per_sample_data<bool>* alive;
+		//per_sample_data<vpl>* sampled_vpls;
+		vpl* sampled_vpls;
+
 		void regenerate_steps() override;
+		vpl* allocate_vpl_store();
+		vec3* allocate_light_throughput();
+		std::vector<vpl>* allocate_vpls();
+		vpl* allocate_vpl_per_sample();
+
 	public:
+		uint32_t current_depth = 0;
+
 		manylight_algorithm();
 		bool interprete(const std::string &command, std::istringstream &in) override;
+		uint32_t get_paths() const {
+			return paths;
+		}
+		uint32_t get_path_length() const {
+			return path_length;
+		}
 	};
 }
 #endif

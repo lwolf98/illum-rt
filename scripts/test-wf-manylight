@@ -20,7 +20,7 @@ algo manylight-wf
 #importance sampling (is) methods: uniform cosine light brdf
 is light
 
-sppx 4096
+sppx 64
 resolution 640 360
 outfile out_wf.png
 
