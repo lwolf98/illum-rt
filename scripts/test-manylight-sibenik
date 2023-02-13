@@ -5,7 +5,8 @@ load render-data/sibenik/sibenik.obj
 
 raytracer embree
 algo manylight paths 256 length 10
-sppx 2048
+sppx 8
+omp on
 resolution 640 360
 outfile out_ml.png
 

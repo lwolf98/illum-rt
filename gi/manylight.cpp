@@ -59,7 +59,7 @@ void manylight_algorithm::prepare_frame() {
 			diff_geom hit(closest, rc->scene);
 
 			// 3. create a VPL (v_j)
-			vpl v_j(Le_v_0 * throughput * (1.0f), hit, to_next_vpl.d);
+			vpl v_j(Le_v_0 * throughput, hit, to_next_vpl.d);
 			vpls.push_back(v_j);
 			if (export_debug_obj)
 				obj_path.push_vertex(v_j.pos);
@@ -129,19 +129,18 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 		return hit.mat->emissive;
 	
 	// direct illumination
-	brdf *brdf = hit.mat->brdf;
-	if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(hit, view_ray);
-	else if (sampling_mode == sample_light)     radiance = sample_lights(hit, view_ray);
+	for (int i = 0; i < paths; ++i) {
+		if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(hit, view_ray);
+		else if (sampling_mode == sample_light)     radiance += sample_lights(hit, view_ray);
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
-	else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(hit, view_ray);
-	else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(hit, view_ray);
+		else if (sampling_mode == sample_cosine)    radiance += sample_cosine_weighted(hit, view_ray);
+		else if (sampling_mode == sample_brdf)      radiance += sample_brdfs(hit, view_ray);
 #endif
+	}
 
 	// indirect illumination by using VPLs
-	for (int i = 0; i < vpls_per_sample; ++i) {
-		// sample a random VPL
-		int32_t pos = rc->rng.uniform_float() * vpls.size();
-		vpl v = vpls[pos];
+	for (int i = 0; i < vpls.size(); ++i) {
+		vpl v = vpls[i];
 
 		auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
 		float t = length(v.pos - hit.x);
@@ -156,11 +155,13 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			//TODO: G cap solves the issue with the bright spots but adds bias.
 			//      In the future include bias compensation
 			//      -> see chapter 5: bias compensation (final gathering, ...)
-			G = G > 0.1f ? 0.1f : G;
+			//G = G > 0.1f ? 0.1f : G;
 
 			radiance += f_x*G*v.col*f_v;
 		}
 	}
+	// TODO: divide all radiance or only indirect illumination?
+	radiance /= paths;
 
 	return radiance;
 }
