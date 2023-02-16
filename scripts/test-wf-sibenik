@@ -1,0 +1,24 @@
+omp on
+at -13 -12 0
+look 1 0 0
+up 0 1 0
+load render-data/sibenik/sibenik.obj
+
+platform cpu
+raytracer embree
+#algo primary-wf
+algo direct-wf
+is uniform
+
+add-scene-step build accel struct
+
+outfile out_wf_di.png
+
+sppx 1024
+#sppx 4096
+resolution 1920 1080
+
+commit
+
+
+run
