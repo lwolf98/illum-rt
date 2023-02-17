@@ -1,15 +1,26 @@
+#tri setup
+#at 0 0 0
+#look 0 0 -1
+#sibenik setup
 at -13 -12 0
 look 1 0 0
 up 0 1 0
-load render-data/sibenik/sibenik.obj
 
+#load render-data/tri.obj
+load render-data/sibenik/sibenik.obj
+platform cpu
 raytracer embree
-algo manylight paths 32 length 10
+add-scene-step build accel struct
+
+#algo primary-wf
+#algo direct-wf
+algo manylight-wf
+#importance sampling (is) methods: uniform cosine light brdf
+omp on
+is light paths 32 length 10 vps 5
 sppx 64
 resolution 640 360
-outfile out_ml_sib.png
-
-omp on
+outfile out_wf_sib.png
 
 material select kamen_zid_parapet
 material albedo  0.73412 0.73059 0.67412

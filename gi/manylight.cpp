@@ -131,7 +131,6 @@ void manylight_algorithm::prepare_frame() {
 	}
 
 	cout << "max. VPL storage: " << vpl_store.size()*path_length << endl;
-	cout << "VPL count: " << vpls.size() << endl;
 	vpl_stats(vpls);
 }
 
@@ -232,6 +231,7 @@ namespace wf {
 		vpl_rays = rc->platform->allocate_raydata_manually(paths, 1);
 		//TODO-ML: maybe delete throughput and use data from vpls
 		light_throughput = allocate_light_throughput();
+		le = allocate_light_throughput();
 		vpl_store = allocate_vpl_store();
 		vpls = allocate_vpls();
 		//sampled_vpls =  static_cast<per_sample_data<vpl>*>(rc->platform->allocate_data_per_sample(sizeof(vpl)));
@@ -239,7 +239,7 @@ namespace wf {
 
 		/* preparation steps */
 		auto *sample_v_0 = rc->platform->step<sample_v_0s>();
-		sample_v_0->use(vpl_rays, light_throughput);
+		sample_v_0->use(vpl_rays, light_throughput, le);
 		frame_preparation_steps.push_back(sample_v_0);
 
 		for (int depth = 0; depth < path_length; ++depth) {
@@ -255,7 +255,7 @@ namespace wf {
 			
 			if (depth >= (rr_start-1)) {
 				auto *roulette = rc->platform->step<russian_roulette>();
-				roulette->use(vpl_rays, light_throughput);
+				roulette->use(vpl_rays, light_throughput, le);
 				frame_preparation_steps.push_back(roulette);
 			}
 
@@ -264,14 +264,23 @@ namespace wf {
 			frame_preparation_steps.push_back(sample_next_vpl);
 		}
 
-		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls);
-		frame_preparation_steps.push_back(copy_vpl);
+		if (path_length > 0) {
+			auto *copy_vpl = rc->platform->step<copy_vpls>();
+			copy_vpl->use(vpl_store, vpls);
+			frame_preparation_steps.push_back(copy_vpl);
+		}
+		else {
+			// Push one vpl with col=vec3(0) that at least one vpl can be sampled
+			// TODO-ML: test this
+			vpls->push_back(vpl());
+		}
 
 		/* sampling steps */
+		//TODO-ML: handle vpls->size() == 0 in step
 		for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
 			auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
+			//auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 
 			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls);
@@ -327,28 +336,42 @@ namespace wf {
 
 	bool manylight_algorithm::interprete(const std::string &command, std::istringstream &in) {
 		bool result_direct = direct_light::interprete(command, in);
-		//TODO-ML: include parameters paths, path_length, vpls_per_sample
-		//TODO-ML: handle regenerate_steps properly (currently e.g. segmentation fault when setting ml-length)
-		if (command == "ml-paths") {
-			in >> paths;
-			return true;
+		bool executed = false;
+		while (!in.eof()) {
+			string cmd;
+			in >> cmd;
+			if (cmd == "paths") {
+				in >> paths;
+				executed = true;
+			}
+
+			if (cmd == "length") {
+				in >> path_length;
+				executed = true;
+			}
+
+			if (cmd == "vps") {
+				in >> vpls_per_sample;
+				executed = true;
+			}
 		}
-		else if (command == "ml-length") {
-			in >> path_length;
-			return true;
-		}
-		else if (command == "ml-vpls-per-sample") {
-			in >> vpls_per_sample;
-			return true;
-		}
-		else if (command == "rr-start") {
-			in >> rr_start;
-			return true;
-		}
-		return result_direct;
+
+		if (executed)
+			regenerate_steps();
+
+		return result_direct || executed;
 	}
 }
 #endif
+
+void throughput_stats(const vec3 tp[], const int start, const int size) {
+	vec3 sum(0);
+	for (int i = 0; i < size; ++i)
+		sum += tp[start+i];
+
+	vec3 avg = sum * (1.0f/size);
+	cout << "Test throughput (avg)   : " << avg << endl;
+}
 
 void vpl_stats(const vector<vpl>& vpls) {
 	vec3 col;
@@ -365,4 +388,17 @@ void vpl_stats(const vector<vpl>& vpls) {
 
 	cout << "VPLs: " << vpls.size() << endl;
 	cout << "col: " << col << ", pos: " << pos << ", normal: " << normal << endl;
+}
+
+void framebuffer_stats() {
+	ivec2 res = rc->resolution();
+	int size = res.x * res.y;
+	vec4 col = vec4(0);
+	for (int y = 0; y < res.y; ++y)
+		for (int x = 0; x < res.x; ++x) {
+			col += rc->framebuffer.color(x,y);
+		}
+
+	vec4 avg = col * (1.0f/size);
+	cout << "Test framebuffer (avg)  : " << avg << endl;
 }

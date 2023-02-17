@@ -21,28 +21,30 @@ namespace wf
 	public:
 		static constexpr char id[] = "sample v_0 lights";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput) = 0;
+		virtual void use(raydata *light_rays, vec3 *light_throughput, vec3 *le) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename LT>
+		template <typename RD, typename V>
 		class sample_v_0s : public wf::sample_v_0s
 		{
 		public:
 			using wf::sample_v_0s::sample_v_0s;
 			RD *light_rays = nullptr;
-			LT *light_throughput = nullptr;
+			V *light_throughput = nullptr;
+			V *le = nullptr;
 
 			bool properly_wired()
 			{
-				return light_rays && light_throughput;
+				return light_rays && light_throughput && le;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput)
+			void use(raydata *light_rays, vec3 *light_throughput, vec3 *le)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<LT *>(light_throughput);
+				this->light_throughput = dynamic_cast<V *>(light_throughput);
+				this->le = dynamic_cast<V *>(le);
 			}
 		};
 	}
@@ -85,28 +87,30 @@ namespace wf
 	public:
 		static constexpr char id[] = "russian roulette";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput) = 0;
+		virtual void use(raydata *light_rays, vec3 *light_throughput, vec3 *le) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename LT>
+		template <typename RD, typename V>
 		class russian_roulette : public wf::russian_roulette
 		{
 		public:
 			using wf::russian_roulette::russian_roulette;
 			RD *light_rays = nullptr;
-			LT *light_throughput = nullptr;
+			V *light_throughput = nullptr;
+			V *le = nullptr;
 
 			bool properly_wired()
 			{
-				return light_rays && light_throughput;
+				return light_rays && light_throughput && le;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput)
+			void use(raydata *light_rays, vec3 *light_throughput, vec3 *le)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<LT *>(light_throughput);
+				this->light_throughput = dynamic_cast<V *>(light_throughput);
+				this->le = dynamic_cast<V *>(le);
 			}
 		};
 	}

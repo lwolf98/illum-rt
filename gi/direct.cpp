@@ -323,6 +323,13 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 #ifndef RTGI_SKIP_WF
 namespace wf {
 	direct_light::direct_light() {
+		regenerate_steps();
+	}
+	void direct_light::regenerate_steps() {
+		frame_preparation_steps.clear();
+		sampling_steps.clear();
+		frame_finalization_steps.clear();
+		
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
 		frame_preparation_steps.push_back(init_fb);
@@ -334,12 +341,7 @@ namespace wf {
 		
 		init_fb->use(camrays);
 		download_fb->use(camrays);
-		
-		regenerate_steps();
-	}
-	void direct_light::regenerate_steps() {
-		sampling_steps.clear();
-		
+
 		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
 		auto *find_hit     = rc->platform->step<find_closest_hits>();
 		auto *find_light   = rc->platform->step<find_closest_hits>("secondary hits");

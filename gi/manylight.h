@@ -9,7 +9,9 @@
 #include "libgi/global-context.h"
 
 struct vpl;
+void throughput_stats(const vec3 tp[], const int start, const int size);
 void vpl_stats(const std::vector<vpl>& vpls);
+void framebuffer_stats();
 
 // virtual point light
 struct vpl : public pointlight {
@@ -58,9 +60,9 @@ namespace wf {
 		vpl* vpl_store = nullptr;
 		raydata* vpl_rays = nullptr;
 		vec3* light_throughput = nullptr;
-		per_sample_data<bool>* alive;
+		vec3* le = nullptr;
 		//per_sample_data<vpl>* sampled_vpls;
-		vpl* sampled_vpls;
+		vpl* sampled_vpls = nullptr;
 
 		void regenerate_steps() override;
 		vpl* allocate_vpl_store();

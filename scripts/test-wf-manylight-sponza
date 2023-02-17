@@ -1,13 +1,8 @@
-#tri setup
-#at 0 0 0
-#look 0 0 -1
-#sibenik setup
-at -13 -12 0
+at -516 300 0
 look 1 0 0
 up 0 1 0
 
-#load render-data/tri.obj
-load render-data/sibenik/sibenik.obj
+load render-data/sponza/sponza.fixed.obj
 platform cpu
 raytracer embree
 add-scene-step build accel struct
@@ -24,9 +19,19 @@ algo manylight-wf
 #rr-start 4
 is light
 
-sppx 2048
+sppx 256
 resolution 640 360
-outfile out_wf.png
+outfile out_wf_spo.png
+
+#skylight load render-data/skylight-sunset.floats 30
+
+material select vase_round.001
+material emissive 76 60 20
+#material emissive 0 0 0
+
+material select floor.001
+material ior 2.3
+material roughness 0.01
 
 commit
 

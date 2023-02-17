@@ -34,10 +34,8 @@ namespace wf::cpu {
 
 			light_rays->rays[i] = to_next_vpl;
 			light_throughput[i] = throughput;
+			le[i] = Le_v_0;
 		}
-		cout << "RD(S0): " << light_rays->rays[0].d << endl;
-		cout << "TP(S0): " << light_throughput[0] << endl;
-		//cout << "finished: sample_v_0s" << endl;
 	}
 
 	void create_vpls::run() {
@@ -56,7 +54,7 @@ namespace wf::cpu {
 				continue;
 
 			triangle_intersection is = light_rays->intersections[i];
-			diff_geom hit(is, rc->scene);
+			diff_geom hit(is, *pf->sd);
 			vec3 col = light_throughput[i];
 			vec3 pos = hit.x;
 			vec3 normal = hit.ns;
@@ -88,7 +86,7 @@ namespace wf::cpu {
 			}
 
 			float xi = rc->rng.uniform_float();
-			float q = luma(light_throughput[i]);
+			float q = luma(light_throughput[i]/le[i]);
 			//TODO: is this q_j or q_j+1?
 			// -> equals: float q = luma(v_j.col/Le_v_0);
 			
@@ -99,8 +97,6 @@ namespace wf::cpu {
 
 			light_throughput[i] *= 1.0f/q;
 		}
-		cout << "TP(RR): " << light_throughput[0] << endl;
-		//cout << "finished: russian_roulette" << endl;
 	}
 
 	void sample_next_vpls::run() {
@@ -121,7 +117,7 @@ namespace wf::cpu {
 			vpl v = vpl_store_lane[i];
 
 			// Sample ray to next VPL
-			diff_geom v_geometry(v.is, rc->scene);
+			diff_geom v_geometry(v.is, *pf->sd);
 			auto [w_o, f, pdf] = v_geometry.mat->brdf->sample(v_geometry, -v.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
 
 			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
@@ -130,10 +126,9 @@ namespace wf::cpu {
 			light_rays->rays[i] = to_next_vpl;
 
 			// Setup the throughput for the next VPL
-			float D = cdot(to_next_vpl.d, v.normal); //D_v_j(v_j+1)
+			float D = cdot(to_next_vpl.d, v_geometry.ns); //v.normal); //D_v_j(v_j+1)
 			light_throughput[i] *= D*f/pdf_f; //throughput for v_j+1
 		}
-		//cout << "finished: sample_next_vpls" << endl;
 	}
 
 	void copy_vpls::run() {
@@ -154,7 +149,6 @@ namespace wf::cpu {
 			}
 		}
 
-		//cout << "VPL count: " << vpls->size() << endl;
 		cout << "max. VPL storage: " << paths*path_length << endl;
 		vpl_stats(*vpls);
 	}
@@ -166,12 +160,14 @@ namespace wf::cpu {
 		for (int y = 0; y < res.y; ++y)
 			for (int x = 0; x < res.x; ++x) {
 				triangle_intersection is_camray = camrays->intersections[y*res.x+x];
-				diff_geom hit(is_camray, rc->scene);
+				diff_geom hit(is_camray, *pf->sd);
 				int32_t pos = rc->rng.uniform_float() * vpls->size();
 				vpl v = (*vpls)[pos];
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
 				auto [sampled_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+				diff_geom v_geom(v.is, *pf->sd);
+
 				ray shadow_ray = ray(sampled_ray.o, sampled_ray.d);
 
 				shadowrays->rays[y*res.x+x] = shadow_ray;
@@ -188,26 +184,31 @@ namespace wf::cpu {
 				vec3 radiance(0);
 				ray cam_ray = camrays->rays[y*res.x+x];
 				triangle_intersection is_x = camrays->intersections[y*res.x+x];
-				diff_geom hit(is_x, rc->scene);
+				diff_geom hit(is_x, *pf->sd);
 
 				ray shadow_ray = shadowrays->rays[y*res.x+x];
 				triangle_intersection is_test = shadowrays->intersections[y*res.x+x];
 				vpl v = sampled_vpls[y*res.x+x];
 
 				if (is_x.valid() && is_test.valid()) {
-					diff_geom v_geometry(v.is, rc->scene);
-					vec3 f_x = hit.mat->brdf->f(hit, -cam_ray.d, shadow_ray.d); // BRDF at x (hit)
-					vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
-					float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
-					float D_v = cdot(v_geometry.ns, -shadow_ray.d); // D_v(x)
+					diff_geom geom_test(is_test, *pf->sd);
+					diff_geom v_geometry(v.is, *pf->sd);
 					float t = length(v_geometry.x - hit.x);
-					float G = D_x*D_v/(t*t);
-					//TODO: G cap solves the issue with the bright spots but adds bias.
-					//      In the future include bias compensation
-					//      -> see chapter 5: bias compensation (final gathering, ...)
-					G = G > 0.1f ? 0.1f : G;
+					float t_test = length(v_geometry.x - geom_test.x);
 
-					radiance = f_x*G*v.col*f_v;
+					if (t_test < 0.1f) {
+						vec3 f_x = hit.mat->brdf->f(hit, -cam_ray.d, shadow_ray.d); // BRDF at x (hit)
+						vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
+						float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
+						float D_v = cdot(v_geometry.ns, -shadow_ray.d); // D_v(x)
+						float G = D_x*D_v/(t*t);
+						//TODO: G cap solves the issue with the bright spots but adds bias.
+						//      In the future include bias compensation
+						//      -> see chapter 5: bias compensation (final gathering, ...)
+						G = G > 0.1f ? 0.1f : G;
+
+						radiance = f_x*G*v.col*f_v;
+					}
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 0);
 			}
