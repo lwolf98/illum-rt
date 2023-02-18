@@ -374,9 +374,9 @@ void throughput_stats(const vec3 tp[], const int start, const int size) {
 }
 
 void vpl_stats(const vector<vpl>& vpls) {
-	vec3 col;
-	vec3 pos;
-	vec3 normal;
+	vec3 col(0);
+	vec3 pos(0);
+	vec3 normal(0);
 	for (auto v : vpls) {
 		col += v.col;
 		pos += v.pos;

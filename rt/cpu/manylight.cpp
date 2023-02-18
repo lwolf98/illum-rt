@@ -165,10 +165,8 @@ namespace wf::cpu {
 				vpl v = (*vpls)[pos];
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
-				auto [sampled_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+				auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
 				diff_geom v_geom(v.is, *pf->sd);
-
-				ray shadow_ray = ray(sampled_ray.o, sampled_ray.d);
 
 				shadowrays->rays[y*res.x+x] = shadow_ray;
 				sampled_vpls[y*res.x+x] = v;
@@ -190,25 +188,21 @@ namespace wf::cpu {
 				triangle_intersection is_test = shadowrays->intersections[y*res.x+x];
 				vpl v = sampled_vpls[y*res.x+x];
 
-				if (is_x.valid() && is_test.valid()) {
-					diff_geom geom_test(is_test, *pf->sd);
+				if (is_x.valid() && !is_test.valid()) {
 					diff_geom v_geometry(v.is, *pf->sd);
 					float t = length(v_geometry.x - hit.x);
-					float t_test = length(v_geometry.x - geom_test.x);
 
-					if (t_test < 0.1f) {
-						vec3 f_x = hit.mat->brdf->f(hit, -cam_ray.d, shadow_ray.d); // BRDF at x (hit)
-						vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
-						float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
-						float D_v = cdot(v_geometry.ns, -shadow_ray.d); // D_v(x)
-						float G = D_x*D_v/(t*t);
-						//TODO: G cap solves the issue with the bright spots but adds bias.
-						//      In the future include bias compensation
-						//      -> see chapter 5: bias compensation (final gathering, ...)
-						G = G > 0.1f ? 0.1f : G;
+					vec3 f_x = hit.mat->brdf->f(hit, -cam_ray.d, shadow_ray.d); // BRDF at x (hit)
+					vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
+					float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
+					float D_v = cdot(v_geometry.ns, -shadow_ray.d); // D_v(x)
+					float G = D_x*D_v/(t*t);
+					//TODO: G cap solves the issue with the bright spots but adds bias.
+					//      In the future include bias compensation
+					//      -> see chapter 5: bias compensation (final gathering, ...)
+					G = G > 0.1f ? 0.1f : G;
 
-						radiance = f_x*G*v.col*f_v;
-					}
+					radiance = f_x*G*v.col*f_v;
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 0);
 			}

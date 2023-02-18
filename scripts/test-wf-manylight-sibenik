@@ -17,8 +17,8 @@ add-scene-step build accel struct
 algo manylight-wf
 #importance sampling (is) methods: uniform cosine light brdf
 omp on
-is light paths 32 length 10 vps 5
-sppx 64
+is light paths 4096 length 10 vps 5
+sppx 16384
 resolution 640 360
 outfile out_wf_sib.png
 
