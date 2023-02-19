@@ -64,11 +64,15 @@ namespace wf {
 					rd->intersections[y*res.x+x] = underlying_rt->closest_hit(rd->rays[y*res.x+x]);*/
 		}
 		void batch_rt_adapter::compute_any_hit() {
-			glm::ivec2 res = rc->resolution();	
+			//glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
-			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x)
-					rd->intersections[y*res.x+x] = underlying_rt->any_hit(rd->rays[y*res.x+x]);
+			for (int y = 0; y < rd->h; ++y)
+				for (int x = 0; x < rd->w; ++x)
+					if (underlying_rt->any_hit(rd->rays[y*rd->w+x]))
+						rd->intersections[y*rd->w+x].t = rd->intersections[y*rd->w+x].ref = -1;
+					else
+						rd->intersections[y*rd->w+x].reset();
+
 		}
 
 		void batch_rt_adapter::build(cpu::scene *s) {
@@ -187,6 +191,7 @@ namespace wf {
 			register_wf_step_by_id(, sample_uniform_dir);
 			register_wf_step_by_id(, sample_cos_weighted_dir);
 			register_wf_step_by_id(, sample_light_dir);
+			register_wf_step_by_id(, integrate_dir_sample);
 			register_wf_step_by_id(, integrate_light_sample);
 			//manylight steps
 			register_wf_step_by_id(, sample_v_0s);
@@ -236,10 +241,13 @@ namespace wf {
 			return new per_sample_data<float>(rc->resolution());
 		}
 		
+		per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
+			return new per_sample_data<vec3>(rc->resolution());
+		}
+
 		/*per_sample_data<void>* platform::allocate_data_per_sample(int32_t typesize) {
 			return new per_sample_data<void>(rc->resolution()*typesize);
 		}*/
-
 
 		platform *pf = nullptr;
 	}

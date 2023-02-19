@@ -188,6 +188,8 @@ namespace wf::cpu {
 				triangle_intersection is_test = shadowrays->intersections[y*res.x+x];
 				vpl v = sampled_vpls[y*res.x+x];
 
+				//TODO-ML: Does this need to be checked when using any_hits?
+				//bool valid_shadowray = (shadowrays->rays[y*res.x+x].t_max > 0);
 				if (is_x.valid() && !is_test.valid()) {
 					diff_geom v_geometry(v.is, *pf->sd);
 					float t = length(v_geometry.x - hit.x);

@@ -279,8 +279,8 @@ namespace wf {
 		//TODO-ML: handle vpls->size() == 0 in step
 		for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
-			auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
-			//auto *find_light = rc->platform->step<find_any_hits>("any hits");
+			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
+			auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 
 			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls);

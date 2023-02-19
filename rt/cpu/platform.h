@@ -9,7 +9,7 @@ class scene;
 namespace wf::cpu {
 
 	template<typename T> struct per_sample_data : public wf::per_sample_data<T> {
-		float *data = nullptr;
+		T *data = nullptr;
 		per_sample_data(glm::ivec2 dim) : data(new T[dim.x * dim.y]) {
 			rc->call_at_resolution_change[this] = [this](int w, int h) {
 				delete [] data;
@@ -38,7 +38,8 @@ namespace wf::cpu {
 		
 		raydata* allocate_raydata() override;
 		raydata* allocate_raydata_manually(int w, int h) override;
-		per_sample_data<float>* allocate_float_per_sample();
+		per_sample_data<float>* allocate_float_per_sample() override;
+		per_sample_data<vec3>* allocate_vec3_per_sample() override;
 		//per_sample_data<void>* allocate_data_per_sample(int32_t typesize);
 		
 		batch_rt *rt = nullptr;

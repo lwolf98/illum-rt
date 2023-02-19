@@ -235,7 +235,7 @@ namespace wf::cuda {
 		}
 	}
 
-	void integrate_light_sample::run() {
+	void integrate_dir_sample::run() {
 		int2 res = frame_res();
 		k::integrate_light<<<launch_config>>>(res,
 											  camrays->rays.device_memory,

@@ -8,13 +8,13 @@ platform cpu
 raytracer embree
 #algo primary-wf
 algo direct-wf
-is uniform
+is light
 
 add-scene-step build accel struct
 
 outfile out_wf_di.png
 
-sppx 1024
+sppx 32
 #sppx 4096
 resolution 1920 1080
 
