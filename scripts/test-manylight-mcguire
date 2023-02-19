@@ -4,9 +4,9 @@ up 0 1 0
 load render-data/cornell-mcguire/CornellBox-Sphere.obj
 
 raytracer embree
-algo manylight paths 1000000 length 10
+algo manylight paths 1000 length 10
 #algo pt
-sppx 8
+sppx 128
 resolution 480 480
 outfile out_ml.png
 

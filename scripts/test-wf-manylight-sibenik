@@ -18,8 +18,9 @@ algo manylight-wf
 #importance sampling (is) methods: uniform cosine light brdf
 omp on
 is light paths 4096 length 10 vps 5
-sppx 16384
+sppx 128
 resolution 640 360
+#resolution 1920 1024
 outfile out_wf_sib.png
 
 material select kamen_zid_parapet

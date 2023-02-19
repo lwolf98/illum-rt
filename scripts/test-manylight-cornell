@@ -5,7 +5,7 @@ load render-data/cornell/cornell-box.obj
 
 raytracer embree
 algo manylight paths 32 length 10
-sppx 8
+sppx 256
 resolution 480 480
 outfile out_ml.png
 
