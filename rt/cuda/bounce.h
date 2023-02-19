@@ -25,7 +25,7 @@ namespace wf::cuda {
 		void run() override;
 	};
 
-	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>> {
+	struct integrate_dir_sample : public wf::wire::integrate_dir_sample<raydata, per_sample_data<float>> {
 		void run() override;
 	};
 

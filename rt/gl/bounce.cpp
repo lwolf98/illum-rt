@@ -46,7 +46,7 @@ namespace wf::gl {
 		cs.unbind();
 	}
 
-	void integrate_light_sample::run() {
+	void integrate_dir_sample::run() {
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		time_this_wf_step;
 		auto res = rc->resolution();

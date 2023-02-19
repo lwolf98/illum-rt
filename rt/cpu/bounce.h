@@ -18,7 +18,15 @@ namespace wf::cpu {
 		void run() override;
 	};
 
-	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>> {
+	struct integrate_dir_sample : public wf::wire::integrate_dir_sample<raydata, per_sample_data<float>> {
+		void run() override;
+	};
+
+	struct sample_light_dir : public wf::wire::sample_light_dir<raydata, per_sample_data<float>, per_sample_data<vec3>> {
+		void run() override;
+	};
+
+	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>, per_sample_data<vec3>> {
 		void run() override;
 	};
 

@@ -35,6 +35,7 @@ namespace wf::gl {
 		
 		raydata* allocate_raydata() override;
 		per_sample_data<float>* allocate_float_per_sample() override;
+		per_sample_data<vec3>* allocate_vec3_per_sample() override;
 		
 		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;
