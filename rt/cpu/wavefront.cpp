@@ -61,7 +61,11 @@ namespace wf {
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x)
-					rd->intersections[y*res.x+x] = underlying_rt->any_hit(rd->rays[y*res.x+x]);
+					if (underlying_rt->any_hit(rd->rays[y*res.x+x]))
+						rd->intersections[y*res.x+x].t = rd->intersections[y*res.x+x].ref = -1;
+					else
+						rd->intersections[y*res.x+x].reset();
+
 		}
 
 		void batch_rt_adapter::build(cpu::scene *s) {
