@@ -180,10 +180,10 @@ vec3 pt_nee::path(ray ray) {
 		if (!closest.valid()) {
 			if (rc->scene.sky)
 				if (!mis || i==0)
-					radiance = throughput * rc->scene.sky->Le(ray);
+					radiance += throughput * rc->scene.sky->Le(ray);
 				else {
 					float light_pdf = rc->scene.sky->pdf_Li(ray);
-					radiance = throughput * rc->scene.sky->Le(ray) * brdf_pdf / (light_pdf+brdf_pdf);
+					radiance += throughput * rc->scene.sky->Le(ray) * brdf_pdf / (light_pdf+brdf_pdf);
 				}
 			break;
 		}
@@ -192,7 +192,7 @@ vec3 pt_nee::path(ray ray) {
 
 		// if it is a light AND we have not bounced yet, add the light's contribution
 		if (i == 0 && hit.mat->emissive != vec3(0)) {
-			radiance = throughput * hit.mat->emissive;
+			radiance += throughput * hit.mat->emissive;
 			break;
 		}
 		// for mis we take the next path vertex to be the brdf sample of the next-event path
