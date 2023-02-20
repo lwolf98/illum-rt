@@ -4,6 +4,7 @@
 
 #include "gi/primary-hit.h"
 #include "gi/direct.h"
+#include "gi/manylight.h"
 
 namespace wf {
 	//! Simple CPU implementation of wavefront style ray tracing primitives
@@ -24,7 +25,7 @@ namespace wf {
 			triangle_intersection *intersections = nullptr;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {}
-			raydata(int w, int h);
+			raydata(int w, int h, bool update_size = true);
 			~raydata();
 		};
 

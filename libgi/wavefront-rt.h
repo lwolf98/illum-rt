@@ -90,7 +90,11 @@ namespace wf {
 		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
 		
 		virtual wf::raydata* allocate_raydata() = 0;
-		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0; // sadly, this cannot be templated...
+		virtual wf::raydata* allocate_raydata_manually(int w, int h) = 0;
+		// sadly, this cannot be templated...
+		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
+		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample() = 0;
+		//virtual wf::per_sample_data<void>* allocate_data_per_sample(int32_t typesize) = 0;
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

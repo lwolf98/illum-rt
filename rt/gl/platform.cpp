@@ -62,7 +62,7 @@ namespace wf::gl {
 		register_wf_step_by_id(, build_accel_struct);
 		register_wf_step_by_id(, sample_uniform_dir);
 		register_wf_step_by_id(, sample_cos_weighted_dir);
-		register_wf_step_by_id(, integrate_light_sample);
+		register_wf_step_by_id(, integrate_dir_sample);
 		register_wf_step_by_id(, copy_to_preview);
 
 		timer = new wf::gl::timer;
@@ -100,9 +100,17 @@ namespace wf::gl {
 	raydata* platform::allocate_raydata() {
 	    return new raydata(rc->resolution());
 	}
+		
+	raydata* platform::allocate_raydata_manually(int w, int h) {
+	    return new raydata(w, h);
+	}
 
 	per_sample_data<float>* platform::allocate_float_per_sample() {
 		return new per_sample_data<float>(rc->resolution());
+	}
+		
+	per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
+		return new per_sample_data<vec3>(rc->resolution());
 	}
 
 	platform *pf = nullptr;

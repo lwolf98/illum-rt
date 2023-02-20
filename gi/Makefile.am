@@ -8,6 +8,8 @@ primary-steps.h: primary-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 direct-steps.h: direct-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
+manylight-steps.h: manylight-steps.lisp
+	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 endif
 #endif
 
@@ -32,7 +34,7 @@ noinst_HEADERS += pt.h
 #endif
 
 #ifndef RTGI_SKIP_WF
-noinst_HEADERS +=  primary-steps.h direct-steps.h
-EXTRA_DIST  = primary-steps.lisp direct-steps.lisp
-EXTRA_DIST += primary-steps.h    direct-steps.h
+noinst_HEADERS +=  primary-steps.h direct-steps.h manylight-steps.h
+EXTRA_DIST  = primary-steps.lisp direct-steps.lisp manylight-steps.lisp
+EXTRA_DIST += primary-steps.h    direct-steps.h    manylight-steps.h
 #endif

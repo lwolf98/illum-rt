@@ -333,17 +333,19 @@ namespace wf {
 			global_memory_buffer<float4> framebuffer;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {}
-			raydata(int w, int h) : w(w), h(h),
+			raydata(int w, int h, bool update_size = true) : w(w), h(h),
 									rays("rays", 2*w*h),
 									intersections("intersections", w*h),
 									framebuffer("framebuffer", w*h)	{
-				  rc->call_at_resolution_change[this] = [this](int w, int h) {
-					  this->w = w;
-					  this->h = h;
-					  this->rays.resize(2*w*h);
-					  this->intersections.resize(w*h);
-					  this->framebuffer.resize(w*h);
-				  };
+				if (update_size) {
+					rc->call_at_resolution_change[this] = [this](int w, int h) {
+						this->w = w;
+						this->h = h;
+						this->rays.resize(2*w*h);
+						this->intersections.resize(w*h);
+						this->framebuffer.resize(w*h);
+					};
+				}
 			}
 			~raydata() {
 				rc->call_at_resolution_change.erase(this);
