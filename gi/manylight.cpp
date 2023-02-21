@@ -53,10 +53,6 @@ void manylight_algorithm::prepare_frame() {
 			float D_v_0 = cdot(normal_v_0, to_next_vpl.d); //D_v_0(v_1)
 			vec3 throughput(1);
 			throughput *= D_v_0 / pdf_v_0;
-			if (i == 0) {
-				cout << "RD(S0): " << to_next_vpl.d << endl;
-				cout << "TP(S0): " << throughput*Le_v_0 << endl;
-			}
 
 			// 1. initialize j and 5. increment j (j:=j+1)
 			// j represents the VPL index, e. g. in the loop j=1: v_1 is calculated
@@ -148,19 +144,22 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	// if it is a light, add the light's contribution
 	if (hit.mat->emissive != vec3(0))
 		return hit.mat->emissive;
-	
+
 	// direct illumination
-	for (int i = 0; i < paths; ++i) {
-		if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(hit, view_ray);
-		else if (sampling_mode == sample_light)     radiance += sample_lights(hit, view_ray);
+	if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(hit, view_ray);
+	else if (sampling_mode == sample_light)     radiance += sample_lights(hit, view_ray);
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
-		else if (sampling_mode == sample_cosine)    radiance += sample_cosine_weighted(hit, view_ray);
-		else if (sampling_mode == sample_brdf)      radiance += sample_brdfs(hit, view_ray);
+	else if (sampling_mode == sample_cosine)    radiance += sample_cosine_weighted(hit, view_ray);
+	else if (sampling_mode == sample_brdf)      radiance += sample_brdfs(hit, view_ray);
 #endif
-	}
+
+	int block_size = rc->sppx / vpl_integrations;
+	float vpls_per_sample = vpls.size() * (1.f/block_size);
+	int vpl_index = (current_sample_index % block_size) * vpls_per_sample;
+	vec3 indirect_radiance(0);
 
 	// indirect illumination by using VPLs
-	for (int i = 0; i < vpls.size(); ++i) {
+	for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
 		vpl v = vpls[i];
 
 		auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
@@ -179,13 +178,14 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			//      -> see chapter 5: bias compensation (final gathering, ...)
 			G = G > 0.1f ? 0.1f : G;
 
-			radiance += f_x*G*v.col*f_v;
+			indirect_radiance += f_x*G*v.col*f_v;	
 		}
 	}
-	// TODO: divide all radiance or only indirect illumination?
-	radiance /= paths;
-
-	return radiance;
+	// Scale indirect radiance to sample path
+	float avg_path_length = vpls.size() / paths;
+	indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * avg_path_length;
+	
+	return radiance + indirect_radiance;
 }
 
 #ifndef RTGI_SKIP_WF
