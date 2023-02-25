@@ -163,6 +163,66 @@ void scene::add_modelpath(const std::filesystem::path &p) {
 		modelpaths.push_back(p);
 }
 
+// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
+glm::mat4x4 to_glm(const aiMatrix4x4 &from) {
+	glm::mat4x4 to;
+	
+	to[0][0] = from.a1; to[0][1] = from.b1;  to[0][2] = from.c1; to[0][3] = from.d1;
+	to[1][0] = from.a2; to[1][1] = from.b2;  to[1][2] = from.c2; to[1][3] = from.d2;
+	to[2][0] = from.a3; to[2][1] = from.b3;  to[2][2] = from.c3; to[2][3] = from.d3;
+	to[3][0] = from.a4; to[3][1] = from.b4;  to[3][2] = from.c4; to[3][3] = from.d4;
+
+	return to;
+}
+
+glm::vec4 to_glm_vec4(const aiVector3D &from) {
+	return glm::vec4(from.x, from.y, from.z, 1.0f);
+}
+
+// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
+// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
+void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4x4 parent_transform, unsigned material_offset, scene *rtgi_scene) {
+	glm::mat4x4 transform = to_glm(node_ai->mTransformation) * parent_transform;
+	for (int i = 0; i < node_ai->mNumMeshes; i++) {
+		aiMesh *mesh_ai = scene_ai->mMeshes[node_ai->mMeshes[i]];
+
+		// load mesh data
+		uint32_t material_id = mesh_ai->mMaterialIndex + material_offset;
+		uint32_t index_offset = rtgi_scene->vertices.size();
+		std::string object_name = mesh_ai->mName.C_Str();
+		rtgi_scene->objects.push_back({object_name, (unsigned)rtgi_scene->triangles.size(), (unsigned)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
+
+		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
+			vertex vertex;
+			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
+			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+			vertex.norm = glm::vec3(glm::transpose(glm::inverse(glm::mat3x3(transform))) * to_glm_vec4(mesh_ai->mNormals[i]));
+			if (mesh_ai->HasTextureCoords(0))
+				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
+			else
+				vertex.tc = vec2(0,0);
+			rtgi_scene->vertices.push_back(vertex);
+			rtgi_scene->scene_bounds.grow(vertex.pos);
+		}
+
+		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
+			const aiFace &face = mesh_ai->mFaces[i];
+			if (face.mNumIndices == 3) {
+				triangle triangle;
+				triangle.a = face.mIndices[0] + index_offset;
+				triangle.b = face.mIndices[1] + index_offset;
+				triangle.c = face.mIndices[2] + index_offset;
+				triangle.material_id = material_id;
+				rtgi_scene->triangles.push_back(triangle);
+			}
+			else
+				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
+		}
+	}
+
+	for (int i = 0; i < node_ai->mNumChildren; i++)
+		mesh_load_process_node(node_ai->mChildren[i], scene_ai, transform, material_offset, rtgi_scene);
+}
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
 	// find file
@@ -240,39 +300,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	}
 
     // load meshes
-    for (uint32_t i = 0; i < scene_ai->mNumMeshes; ++i) {
-        const aiMesh *mesh_ai = scene_ai->mMeshes[i];
-		uint32_t material_id = scene_ai->mMeshes[i]->mMaterialIndex + material_offset;
-		uint32_t index_offset = vertices.size();
-		std::string object_name = mesh_ai->mName.C_Str();
-		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
-		
-		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
-			vertex vertex;
-			vertex.pos = to_glm(mesh_ai->mVertices[i]);
-			vertex.norm = to_glm(mesh_ai->mNormals[i]);
-			if (mesh_ai->HasTextureCoords(0))
-				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
-			else
-				vertex.tc = vec2(0,0);
-			vertices.push_back(vertex);
-			scene_bounds.grow(vertex.pos);
-		}
- 
-		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
-			const aiFace &face = mesh_ai->mFaces[i];
-			if (face.mNumIndices == 3) {
-				triangle triangle;
-				triangle.a = face.mIndices[0] + index_offset;
-				triangle.b = face.mIndices[1] + index_offset;
-				triangle.c = face.mIndices[2] + index_offset;
-				triangle.material_id = material_id;
-				triangles.push_back(triangle);
-			}
-			else
-				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
-		}
-	}
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), material_offset, this);
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
