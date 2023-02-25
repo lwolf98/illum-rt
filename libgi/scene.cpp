@@ -239,6 +239,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		materials.push_back(material);
 	}
 
+	mat3 normalmatrix = transpose(inverse(mat3(trafo)));
+
     // load meshes
     for (uint32_t i = 0; i < scene_ai->mNumMeshes; ++i) {
         const aiMesh *mesh_ai = scene_ai->mMeshes[i];
@@ -249,8 +251,8 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
-			vertex.pos = to_glm(mesh_ai->mVertices[i]);
-			vertex.norm = to_glm(mesh_ai->mNormals[i]);
+			vertex.pos = vec3(trafo * vec4(to_glm(mesh_ai->mVertices[i]), 1));
+			vertex.norm = normalmatrix * to_glm(mesh_ai->mNormals[i]);
 			if (mesh_ai->HasTextureCoords(0))
 				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
 			else

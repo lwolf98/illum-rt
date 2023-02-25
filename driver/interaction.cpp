@@ -182,6 +182,8 @@ struct repl_update_checks {
 static repl_update_checks uc;
 static list<string> command_history;
 
+static mat4 modelmatrix(1);
+
 bool platform_and_algo_aligned() {
 #ifndef RTGI_SKIP_WF
 	bool wf_algo = dynamic_cast<wavefront_algorithm*>(rc->algo);
@@ -319,13 +321,20 @@ void eval(const std::string &line) {
 		cout << "up "   << scene.up << endl;
 		cout << "up "   << scene.camera.up << endl;
 	}
+	else ifcmd("modelmatrix") {
+		in >> modelmatrix[0][0] >> modelmatrix[0][1] >> modelmatrix[0][2] >> modelmatrix[0][3];
+		in >> modelmatrix[1][0] >> modelmatrix[1][1] >> modelmatrix[1][2] >> modelmatrix[1][3];
+		in >> modelmatrix[2][0] >> modelmatrix[2][1] >> modelmatrix[2][2] >> modelmatrix[2][3];
+		in >> modelmatrix[3][0] >> modelmatrix[3][1] >> modelmatrix[3][2] >> modelmatrix[3][3];
+		check_in_complete("Syntax error in model matrix");
+	}
 	else ifcmd("load") {
 		string file, name;
 		in >> file;
 		if (!in.eof())
 			in >> name;
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name);
+		scene.add(file, name, modelmatrix);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {
