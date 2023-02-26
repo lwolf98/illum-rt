@@ -181,8 +181,10 @@ glm::vec4 to_glm_vec4(const aiVector3D &from) {
 
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 // Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
-void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4x4 parent_transform, unsigned material_offset, scene *rtgi_scene) {
-	glm::mat4x4 transform = to_glm(node_ai->mTransformation) * parent_transform;
+void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 parent_trafo, glm::mat4 model_trafo, unsigned material_offset, scene *rtgi_scene) {
+	glm::mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
+	glm::mat4 transform = model_trafo * node_trafo;
+	glm::mat4 normal_transform = transpose(inverse(mat3(transform)));
 	for (int i = 0; i < node_ai->mNumMeshes; i++) {
 		aiMesh *mesh_ai = scene_ai->mMeshes[node_ai->mMeshes[i]];
 
@@ -196,7 +198,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4x
 			vertex vertex;
 			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
 			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-			vertex.norm = glm::vec3(glm::transpose(glm::inverse(glm::mat3x3(transform))) * to_glm_vec4(mesh_ai->mNormals[i]));
+			vertex.norm = glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i]));
 			if (mesh_ai->HasTextureCoords(0))
 				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
 			else
@@ -221,7 +223,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4x
 	}
 
 	for (int i = 0; i < node_ai->mNumChildren; i++)
-		mesh_load_process_node(node_ai->mChildren[i], scene_ai, transform, material_offset, rtgi_scene);
+		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, rtgi_scene);
 }
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
@@ -300,7 +302,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	}
 
     // load meshes
-    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), material_offset, this);
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, this);
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM

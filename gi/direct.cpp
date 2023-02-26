@@ -252,11 +252,14 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				}
 				else {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
+					// TODO pdf can be zero, if we dont hit a light, then we divide by zero
+					// check other branch as well
 					ray light_ray(dg.x, w_i);
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
+								// Need to document this!!!
 								trianglelight tl(rc->scene, is.ref);
 								#ifndef BAD_MIS
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();
