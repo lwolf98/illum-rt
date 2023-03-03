@@ -64,7 +64,9 @@ void manylight_algorithm::prepare_frame() {
 				diff_geom hit(closest, rc->scene);
 
 				// 3. create a VPL (v_j)
-				vpl v_j(Le_v_0 * throughput, hit.x, hit.ns, to_next_vpl.d, closest);
+				vpl v_j(Le_v_0 * throughput * (1.f/paths), hit.x, hit.ns, to_next_vpl.d, closest);
+				if (v_j.col != v_j.col)
+					cout << "NAN! Le: " << Le_v_0 << ", Tp: " << throughput << endl;
 				vpl_store[i].push_back(v_j);
 				if (export_debug_obj)
 					obj_path.push_vertex(v_j.pos);
@@ -126,6 +128,7 @@ void manylight_algorithm::prepare_frame() {
 		}
 	}
 
+	cout << "Avg path len: " << (1.f*vpls.size()/paths) << endl;
 	cout << "max. VPL storage: " << vpl_store.size()*path_length << endl;
 	vpl_stats(vpls);
 }
@@ -178,12 +181,16 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 			//      -> see chapter 5: bias compensation (final gathering, ...)
 			G = G > 0.1f ? 0.1f : G;
 
-			indirect_radiance += f_x*G*v.col*f_v;	
+			indirect_radiance += f_x*G*v.col*f_v;
 		}
+		//if (x == 0 && y == 0)
+		//	cout << i << " s: " << current_sample_index << endl;
 	}
 	// Scale indirect radiance to sample path
-	float avg_path_length = vpls.size() / paths;
-	indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * avg_path_length;
+	//float avg_path_length = vpls.size() / paths;
+	//indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * avg_path_length;
+	float vpl_size = vpls.size();
+	indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * vpl_size;
 	
 	return radiance + indirect_radiance;
 }
@@ -382,6 +389,8 @@ void vpl_stats(const vector<vpl>& vpls) {
 		col += v.col;
 		pos += v.pos;
 		normal += v.normal;
+		if (col.r != col.r)
+			cout << "NAN: " << v.col << endl;
 	}
 	col /= vpls.size();
 	pos /= vpls.size();

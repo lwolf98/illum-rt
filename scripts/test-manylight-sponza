@@ -4,14 +4,15 @@ up 0 1 0
 load render-data/sponza/sponza.fixed.obj
 
 raytracer embree
-algo manylight paths 32 length 10
-sppx 64
+algo manylight paths 2048 length 10
+#algo direct
+sppx 4096
 resolution 640 360
 outfile out_ml_spo.png
 
 omp on
 
-#skylight load render-data/skylight-sunset.floats 30
+skylight load render-data/skylight-sunset.floats 30
 
 material select vase_round.001
 material emissive 76 60 20

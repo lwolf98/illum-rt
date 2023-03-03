@@ -17,13 +17,13 @@ algo manylight-wf
 #ml-length 20
 #ml-vpls-per-sample 5
 #rr-start 4
-is light
+is light paths 256 length 10 vps 5
 
 sppx 256
 resolution 640 360
 outfile out_wf_spo.png
 
-#skylight load render-data/skylight-sunset.floats 30
+skylight load render-data/skylight-sunset.floats 30
 
 material select vase_round.001
 material emissive 76 60 20

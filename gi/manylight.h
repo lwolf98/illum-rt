@@ -32,7 +32,7 @@ private:
 
 	uint32_t paths;
 	uint32_t path_length;
-	uint32_t vpl_integrations = 8;
+	uint32_t vpl_integrations = 1;
 	std::vector<vpl> vpls;
 
 public:

@@ -466,11 +466,14 @@ tuple<ray, vec3, vec3, float> trianglelight::sample_Le(const vec2 &xis_pos, cons
 	// Sample w:
 	vec3 w_tan = cosine_sample_hemisphere(xis_dir);
 	vec3 w = align(w_tan, n);
-	float cos_theta = cdot(w, n);
+	//float cos_theta = cdot(w, n);
+	float cos_theta = w_tan.z;
 	float pdf_dir = cosine_hemisphere_pdf(cos_theta);
 
 	const material &m = scene.materials[this->material_id];
 	vec3 col = m.emissive;
+	if (pdf_pos*pdf_dir == 0)
+		cout << "WTF!!! " << dot(w, n) << endl;
 
 	return {ray(target, w), col, n, pdf_pos*pdf_dir};
 }
