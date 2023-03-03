@@ -175,6 +175,15 @@ namespace wf::cpu {
 
 	void integrate_vpl_samples::run() {
 		time_this_wf_step;
+		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+			//TODO: better handling for this situation
+			return;
+		}
+		manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+		auto paths = ml->get_paths();
+		float vps = ml->get_vpls_per_sample();
+		float vpl_count = ml->get_vpl_count();
+
 		auto res = rc->resolution();
 		#pragma omp parallel for
 		for (int y = 0; y < res.y; ++y)
@@ -205,6 +214,11 @@ namespace wf::cpu {
 					G = G > 0.1f ? 0.1f : G;
 
 					radiance = f_x*G*v.col*f_v;
+
+					//Scale to part of avg path length
+					float avg_path_len = vpl_count / paths;
+					radiance = radiance * avg_path_len/vps;
+					//cout << "scale: " << avg_path_len/vps << endl;
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 0);
 			}

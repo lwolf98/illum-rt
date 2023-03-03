@@ -84,6 +84,15 @@ namespace wf {
 		uint32_t get_rr_start() const {
 			return rr_start;
 		}
+		uint32_t get_vpls_per_sample() const {
+			return vpls_per_sample;
+		}
+		uint32_t get_vpl_count() const {
+			if (vpls)
+				return vpls->size();
+
+			return 0;
+		}
 	};
 }
 #endif
