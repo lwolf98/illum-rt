@@ -1,17 +1,28 @@
-at 0 0.75 1.75
+at 0 1 2.5
 look 0 0 -1
 up 0 1 0
-load render-data/cornell-mcguire/CornellBox-Sphere.obj
+#load render-data/cornell-mcguire/CornellBox-Sphere.obj
+load render-data/cornell-mcguire/CornellBox-Original.obj
+#load render-data/bunny.obj
 
 raytracer embree
-algo manylight paths 1000 length 10
-#algo pt
-sppx 128
+#algo manylight paths 500 length 10
+#algo direct
+algo pt
+#path len 2
+sppx 1024
 resolution 480 480
 outfile out_ml.png
 
+omp on
+
 material select light
-material emissive 30 30 30
+#material emissive 30 30 30
+material emissive 50 50 50
+
+#material select floor
+#material texture drop
+#material texture render-data/checkerpots/mramor6x6.png
 
 #material select kamen_zid_parapet
 #material albedo  0.73412 0.73059 0.67412

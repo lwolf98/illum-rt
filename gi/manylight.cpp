@@ -61,7 +61,9 @@ void manylight_algorithm::prepare_frame() {
 				triangle_intersection closest = rc->scene.rt->closest_hit(to_next_vpl);
 				if (!closest.valid())
 					break;
+
 				diff_geom hit(closest, rc->scene);
+				flip_normals_to_ray(hit, to_next_vpl);
 
 				// 3. create a VPL (v_j)
 				vpl v_j(Le_v_0 * throughput * (1.f/paths), hit.x, hit.ns, to_next_vpl.d, closest);
@@ -139,7 +141,8 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (!closest.valid())
-		return vec3(0);
+		if (rc->scene.sky) return rc->scene.sky->Le(view_ray);
+		else               return vec3(0);
 
 	diff_geom hit(closest, rc->scene);
 	flip_normals_to_ray(hit, view_ray);
@@ -162,35 +165,42 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	vec3 indirect_radiance(0);
 
 	// indirect illumination by using VPLs
-	for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
-		vpl v = vpls[i];
+	if (vpls.size() != 0) {
+		for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
+			vpl v = vpls[i];
 
-		auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
-		float t = length(v.pos - hit.x);
+			auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+			float t = length(v.pos - hit.x);
 
-		if (!rc->scene.rt->any_hit(shadow_ray)) {
-			vec3 f_x = hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
-			diff_geom v_geometry(v.is, rc->scene);
-			vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
+			if (!rc->scene.rt->any_hit(shadow_ray)) {
+				vec3 f_x = hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
+				diff_geom v_geometry(v.is, rc->scene);
+				vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
 
-			float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
-			float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
-			float G = D_x*D_v/(t*t);
-			//TODO: G cap solves the issue with the bright spots but adds bias.
-			//      In the future include bias compensation
-			//      -> see chapter 5: bias compensation (final gathering, ...)
-			G = G > 0.1f ? 0.1f : G;
+				float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
+				float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
+				//float G = D_x*D_v/(t*t);
+				float r = 1.5f;
+				//float G = D_x*D_v/(t*t+r*r*pi*D_v);
+				float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
+				float G = D_x*D_v*attenuation;
+				//TODO: G cap solves the issue with the bright spots but adds bias.
+				//      In the future include bias compensation
+				//      -> see chapter 5: bias compensation (final gathering, ...)
+				//G = G > 0.1f ? 0.1f : G; //sibenik
+				//G = G > 1.f ? 2.f : G; // Cornell
 
-			indirect_radiance += f_x*G*v.col*f_v;
+				indirect_radiance += f_x*G*v.col*f_v;
+			}
+			//if (x == 0 && y == 0)
+			//	cout << i << " s: " << current_sample_index << endl;
 		}
-		//if (x == 0 && y == 0)
-		//	cout << i << " s: " << current_sample_index << endl;
+		// Scale indirect radiance to sample path
+		//float avg_path_length = vpls.size() / paths;
+		//indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * avg_path_length;
+		float vpl_size = vpls.size();
+		indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * vpl_size;
 	}
-	// Scale indirect radiance to sample path
-	//float avg_path_length = vpls.size() / paths;
-	//indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * avg_path_length;
-	float vpl_size = vpls.size();
-	indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * vpl_size;
 	
 	return radiance + indirect_radiance;
 }
