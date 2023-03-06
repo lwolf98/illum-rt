@@ -141,6 +141,8 @@ namespace wf::cpu {
 		auto paths = ml->get_paths();
 		auto path_length = ml->get_path_length();
 
+		//TODO: check free VPL memory!!!
+		vpls->clear();
 		for (int depth = 0; depth < path_length; ++depth) {
 			for (int path = 0; path < paths; ++path) {
 				vpl v = vpl_store[depth*paths+path];
@@ -149,6 +151,7 @@ namespace wf::cpu {
 			}
 		}
 
+		cout << "Pos.: " << pf->sd->camera.pos << ", Dir.: " << pf->sd->camera.dir << endl;
 		cout << "max. VPL storage: " << paths*path_length << endl;
 		vpl_stats(*vpls);
 	}
@@ -165,7 +168,8 @@ namespace wf::cpu {
 				vpl v = (*vpls)[pos];
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
-				auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+				//auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+				auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, vec2(0));
 				diff_geom v_geom(v.is, *pf->sd);
 
 				shadowrays->rays[y*res.x+x] = shadow_ray;

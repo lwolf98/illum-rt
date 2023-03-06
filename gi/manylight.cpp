@@ -169,7 +169,7 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 		for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
 			vpl v = vpls[i];
 
-			auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
+			auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, vec2(0));
 			float t = length(v.pos - hit.x);
 
 			if (!rc->scene.rt->any_hit(shadow_ray)) {
@@ -179,15 +179,18 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 
 				float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
 				float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
-				//float G = D_x*D_v/(t*t);
+				float G = D_x*D_v/(t*t);
 				float r = 1.5f;
 				//float G = D_x*D_v/(t*t+r*r*pi*D_v);
-				float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
-				float G = D_x*D_v*attenuation;
+
+				//new attenuation factor
+				//float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
+				//float G = D_x*D_v*attenuation;
+
 				//TODO: G cap solves the issue with the bright spots but adds bias.
 				//      In the future include bias compensation
 				//      -> see chapter 5: bias compensation (final gathering, ...)
-				//G = G > 0.1f ? 0.1f : G; //sibenik
+				G = G > 0.1f ? 0.1f : G; //sibenik
 				//G = G > 1.f ? 2.f : G; // Cornell
 
 				indirect_radiance += f_x*G*v.col*f_v;

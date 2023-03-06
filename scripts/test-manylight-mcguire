@@ -6,9 +6,9 @@ load render-data/cornell-mcguire/CornellBox-Original.obj
 #load render-data/bunny.obj
 
 raytracer embree
-#algo manylight paths 500 length 10
+algo manylight paths 131072 length 10
 #algo direct
-algo pt
+#algo pt
 #path len 2
 sppx 1024
 resolution 480 480
