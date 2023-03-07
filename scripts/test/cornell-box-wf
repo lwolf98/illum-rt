@@ -3,35 +3,35 @@
 # ml_wf_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile out.png
+outfile cornell-wf/performance_ml_wf_cor_1024x10_16948v_6vps_g1_1024s.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
-#load render-data/cornell-mcguire/CornellBox-Sphere.obj
-load render-data/cornell-mcguire/CornellBox-Original.obj
+load render-data/cornell-mcguire/CornellBox-Sphere.obj
+#load render-data/cornell-mcguire/CornellBox-Original.obj
 
 # Position original
-at 0 1 2.5
-look 0 0 -1
-up 0 1 0
-
-# Position special
-#at 0 0.75 1.75
+#at 0 1 2.5
 #look 0 0 -1
 #up 0 1 0
 
+# Position special
+at 0 0.75 1.75
+look 0 0 -1
+up 0 1 0
+
 # Parameter
 sppx 1024
-resolution 480 480
-#resolution 640 360
+#resolution 480 480
+resolution 640 360
 
 # Materials: light
 material select light
 material albedo 0.780 0.780 0.780
 material roughness 0.900
 material ior 1.500
-material emissive 10.000 10.000 10.000
-#material emissive 50 50 50
+#material emissive 10.000 10.000 10.000
+material emissive 50 50 50
 
 # Materials: special
 #material select water
@@ -100,7 +100,7 @@ platform cpu
 raytracer embree
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 10 vps 5
+is light paths 1024 length 10 vps 6
 commit
 
 # Run

@@ -215,7 +215,7 @@ namespace wf::cpu {
 					//TODO: G cap solves the issue with the bright spots but adds bias.
 					//      In the future include bias compensation
 					//      -> see chapter 5: bias compensation (final gathering, ...)
-					//G = G > 0.1f ? 0.1f : G; // sibenik
+					G = G > 0.1f ? 0.1f : G; // sibenik
 					//G = G > 1.f ? 1.f : G; // cornell
 
 					radiance = f_x*G*v.col*f_v;

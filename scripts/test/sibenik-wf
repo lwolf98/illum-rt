@@ -3,7 +3,7 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile out.png
+outfile sibenik-wf/performance.png
 
 # obj files
 load render-data/sibenik/sibenik.obj
@@ -19,7 +19,7 @@ up 0 1 0
 #up 0 1 0
 
 # Parameter
-sppx 4096
+sppx 1024
 resolution 640 360
 
 # Materials: special

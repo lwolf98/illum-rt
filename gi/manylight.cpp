@@ -19,6 +19,7 @@ using namespace std;
 static const bool export_debug_obj = false;
 
 void manylight_algorithm::prepare_frame() {
+	time_this_block(ml_preparation);
 	/*
 		Note to steps 1. - 5.:
 		The numbering is set accordingly to the manylight State of The Art Report (STAR):
@@ -136,6 +137,8 @@ void manylight_algorithm::prepare_frame() {
 }
 
 vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
+	time_this_block(ml_integration);
+
 	vec3 radiance(0);
 
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
