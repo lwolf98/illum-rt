@@ -52,7 +52,7 @@ namespace wf {
 	class manylight_algorithm : public direct_light {
 		uint32_t paths = 32;
 		uint32_t path_length = 10;
-		uint32_t vpls_per_sample = 5;
+		uint32_t vpls_per_sample = 6;
 		uint32_t rr_start = 4;
 
 		std::vector<vpl>* vpls = nullptr;
