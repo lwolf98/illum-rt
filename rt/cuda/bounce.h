@@ -3,6 +3,7 @@
 #include "platform.h"
 #include "base.h"
 #include "rng.h"
+#include "preprocessing.h"
 
 #include "gi/direct-steps.h"
 
@@ -25,9 +26,19 @@ namespace wf::cuda {
 		void run() override;
 	};
 
-	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>> {
+	struct sample_light_dir : public wf::wire::sample_light_dir<raydata, per_sample_data<float>, compute_light_distribution, per_sample_data<vec3>> {
+		random_number_generator<float4> rng;
 		void run() override;
 	};
+
+	struct integrate_dir_sample : public wf::wire::integrate_dir_sample<raydata, per_sample_data<float>> {
+		void run() override;
+	};
+
+	struct integrate_light_sample : public wf::wire::integrate_light_sample<raydata, per_sample_data<float>, per_sample_data<vec3>> {
+		void run() override;
+	};
+
 
 
 }

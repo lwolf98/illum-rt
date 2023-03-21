@@ -7,6 +7,7 @@ sppx 32
 sppx 64
 sppx 16
 #sppx 500
+sppx 64
 
 // simple rt version
 raytracer embree
@@ -66,42 +67,30 @@ material emissive 1.9 18.3 2.15
 
 commit
 
-echo  - - - - Running non-WF version - - - - 
-algo direct
-is uniform
-outfile /tmp/test-nonwf.png
-run
-
-echo  - - - - Running WF version - - - - 
-// wf version
-platform cpu
-raytracer embree
-
+platform cuda
+raytracer while-while
 add-scene-step build accel struct
 commit
-
 algo direct-wf
-outfile /tmp/test-wf.png
+is light
+outfile /tmp/wf-test-cuda.png
 run
+stats print
+stats clear
 
 
-echo  - - - - Running WF GPU version - - - - 
-platform opengl glfw
-
-add-scene-step build accel struct
-commit
-
-algo direct-wf
-outfile /tmp/test-wf-gpu.png
-run
-
-echo  - - - - Running WF GPU cos version - - - - 
+platform cuda
+raytracer optix
 #platform opengl glfw
-
+#platform cpu
+#raytracer embree
 add-scene-step build accel struct
 commit
-
 algo direct-wf
-is cosine
-outfile /tmp/test-wf-gpu2.png
+is light
+outfile /tmp/wf-test.png
 run
+stats print
+stats clear
+
+# vim: set syntax=sh :

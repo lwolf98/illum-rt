@@ -5,8 +5,9 @@ uniform layout(rgba32f,binding=0) image2D camrays;
 uniform layout(rgba32f,binding=1) image2D cam_hits;
 uniform layout(rgba32f,binding=2) image2D framebuffer;
 uniform layout(rgba32f,binding=3) image2D shadowrays;
-uniform layout(rgba32f,binding=4) image2D light_hits;
+uniform layout(rgba32f,binding=4) image2D shadow_hits;
 uniform layout(r32f,binding=5) image2D pdf;
+uniform layout(rgba32f,binding=6) image2D light_col;
 
 void add_radiance(uint x, uint y, vec4 result) {
 	vec4 before = imageLoad(framebuffer, ivec2(x, y));
@@ -113,19 +114,15 @@ vec3 layered_gtr2(const vec3 w_o, const vec3 w_i, const vec3 hit_ns, ivec4 tri, 
 void run(uint x, uint y) {
 	uint id = y * w + x;
 	vec4 hit = imageLoad(cam_hits, ivec2(x, y));
-	vec4 light_hit = imageLoad(light_hits, ivec2(x, y));
+	vec4 shadow_hit = imageLoad(shadow_hits, ivec2(x, y));
 	vec3 radiance = vec3(0);
-	vec3 w_i = vec3(0,0,0);
-	vec3 org = vec3(0,0,0);
-	float tmax = -FLT_MAX;
-	if (valid_hit(hit) && valid_hit(light_hit)) {
+	vec4 shadowray_dir = imageLoad(shadowrays, ivec2(x,y+h));
+	if (valid_hit(hit) && shadowray_dir.w > 0 && !valid_hit(shadow_hit)) {
 		// light color
-		ivec4 light_tri = triangles[hit_ref(light_hit)];
-		material light_mat = materials[light_tri.w];
-		vec3 brightness = light_mat.emissive.rgb;
+		vec3 brightness = imageLoad(light_col, ivec2(x,y)).rgb;
 		// brdf
 		vec3 w_o = -imageLoad(camrays, ivec2(x,y+h)).xyz;
-		vec3 w_i = imageLoad(shadowrays, ivec2(x,y+h)).xyz;
+		vec3 w_i = shadowray_dir.xyz;
 		ivec4 tri = triangles[hit_ref(hit)];
 		vec3 ng = hit_ng(hit, tri);
 		material mat = materials[tri.w];
@@ -134,6 +131,7 @@ void run(uint x, uint y) {
 		float cos_theta = clamp(dot(w_i, ng), 0, 1);
 		// combine
 		radiance = brightness * f * cos_theta / imageLoad(pdf, ivec2(x,y)).x;
+		float pdf_val = imageLoad(pdf, ivec2(x,y)).x;
 	}
 	add_radiance(x, y, vec4(radiance,1));
 }

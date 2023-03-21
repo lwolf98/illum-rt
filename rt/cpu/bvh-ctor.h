@@ -7,8 +7,11 @@
 #include "rt/cpu/embree.h"
 #endif
 
+// #define ESC_DEBUG
+
 #ifdef ESC_DEBUG
 #include <iostream>
+#include <glm/gtx/string_cast.hpp>
 #endif
 
 template<bbvh_triangle_layout tr_layout, typename scene_traits>

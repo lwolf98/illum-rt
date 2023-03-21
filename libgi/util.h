@@ -129,7 +129,10 @@ inline float tan_theta(const glm::vec3& N, const glm::vec3& w) {
 inline float tan2_theta(const glm::vec3& N, const glm::vec3& w) {
     return sin2_theta(N, w) / cos2_theta(N, w);
 }
-
+//! angle for given hemispherical elevation
+inline float theta_z(float z) {
+	return z > 1.0f ? 0.0f : acosf(z);
+}
 /*
  *  spherical geometry helpers
  */
@@ -139,7 +142,7 @@ template<typename T> heterogeneous inline bool same_hemisphere(const T &N, const
 }
 
 inline vec2 to_spherical(const vec3 &w) {
-    const float theta = acosf(w.y);
+    const float theta = theta_z(w.y);
     const float phi = atan2f(w.z, w.x);
     return vec2(glm::clamp(theta, 0.f, pi), phi < 0.f ? phi + 2.0f * pi : phi);
 }

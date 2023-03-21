@@ -72,6 +72,10 @@ namespace wf {
 			find_closest_hits();
 		};
 
+		/*! IMPORTANT:
+		 *  This creates a degenerate hitpoint structure where \c valid() returns true, indicating that there was a hit,
+		 *  but with nonsensical hit information as the concrete triangle that was hit is not known.
+		 */
 		struct find_any_hits : public wf::wire::find_any_hits<raydata> {
 			find_any_hits();
 		};

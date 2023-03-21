@@ -36,7 +36,12 @@ namespace wf {
 		virtual ~raydata() {}
 	};
 
-	template<typename T> struct per_sample_data {
+	/*! Manages platform-specific memory with one slot per sample position (i.e. per pixel).
+	 *  Derive from this in your platform and supply the requested c'tor.
+	 *  If your platform types are not compatible with our general structures (vec3, etc), then
+	 *  specialize the template and keep data in your version of T.
+	 */
+	 template<typename T> struct per_sample_data {
 		virtual ~per_sample_data() {}
 	};
 	
@@ -90,7 +95,9 @@ namespace wf {
 		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
 		
 		virtual wf::raydata* allocate_raydata() = 0;
-		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0; // sadly, this cannot be templated...
+		// sadly, these cannot be templated...
+		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
+		virtual wf::per_sample_data<vec3>*  allocate_vec3_per_sample()  = 0;
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
@@ -168,9 +175,6 @@ namespace wf {
 	};
 	struct build_accel_struct : public step {
 		static constexpr char id[] = "build accel struct";
-	};
-	struct compute_light_distribution : public step {
-		static constexpr char id[] = "compute light distribution";
 	};
 
 	struct path_rays {

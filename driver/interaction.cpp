@@ -198,6 +198,8 @@ bool platform_and_algo_aligned() {
 #endif
 }
 
+static map<string,bool> disabled_features;
+
 void eval(const std::string &line) {
 	if (command_history.back() != line)
 		command_history.push_back(line);
@@ -233,6 +235,13 @@ void eval(const std::string &line) {
 		expecting_commands = false;
 	else ifcmd("exit")
 		expecting_commands = false;
+	else ifcmd("disable") {
+		string what;
+		in >> what;
+		check_in_complete("Syntax error, expecting only one feature to disable");
+		cout << "DISABLING " << what << endl;
+		disabled_features[what] = true;
+	}
 	else ifcmd("with") {
 		bool newval = false;
 		string what, rest;
@@ -240,16 +249,22 @@ void eval(const std::string &line) {
 		if (what == "gl") {
 #ifndef HAVE_GL
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else if (what == "cuda") {
 #ifndef HAVE_CUDA
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else if (what == "optix") {
 #ifndef HAVE_OPTIX
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else
@@ -555,15 +570,6 @@ void eval(const std::string &line) {
 		else
 #endif
 			run(rc->algo);
-	}
-	else ifcmd("mesh") {
-		string name, cmd;
-		in >> name;
-		if (in.eof() && name == "list") {
-			for (auto &obj : scene.objects) cout << obj.name << endl;
-			return;
-		}
-		error("Meshes can only be listed in this version");
 	}
 	else ifcmd("material") {
 		string cmd;

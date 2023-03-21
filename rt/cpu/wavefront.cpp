@@ -60,8 +60,12 @@ namespace wf {
 			glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x)
-					rd->intersections[y*res.x+x] = underlying_rt->any_hit(rd->rays[y*res.x+x]);
+				for (int x = 0; x < res.x; ++x) {
+					if (underlying_rt->any_hit(rd->rays[y*res.x+x]))
+						rd->intersections[y*res.x+x].t = rd->intersections[y*res.x+x].ref = -1;
+					else
+						rd->intersections[y*res.x+x].reset();
+				}
 		}
 
 		void batch_rt_adapter::build(cpu::scene *s) {
@@ -150,6 +154,7 @@ namespace wf {
 
 			register_batch_rt("seq",, batch_rt_adapter(new seq_tri_is));
 #ifndef RTGI_SIMPLER_BBVH
+			register_batch_rt("bbvh",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::off>));
 			register_batch_rt("bbvh-esc",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on>));
 			register_batch_rt("bbvh-esc-alpha",, batch_rt_adapter(new binary_bvh_tracer<bbvh_triangle_layout::indexed, bbvh_esc_mode::on, true>));
 
@@ -179,6 +184,9 @@ namespace wf {
 			register_wf_step_by_id(, build_accel_struct);
 			register_wf_step_by_id(, sample_uniform_dir);
 			register_wf_step_by_id(, sample_cos_weighted_dir);
+			register_wf_step_by_id(, integrate_dir_sample);
+			register_wf_step_by_id(, compute_light_distribution);
+			register_wf_step_by_id(, sample_light_dir);
 			register_wf_step_by_id(, integrate_light_sample);
 
 			timer = new wf::cpu::timer;
@@ -192,7 +200,6 @@ namespace wf {
 			if (!rt)
 				rt = dynamic_cast<batch_rt*>(select("default"));
 			sd = scene;
-			scene->compute_light_distribution(); // TODO extract as step
 			for (auto step : scene_steps)
 				step->run();
 		}
@@ -214,6 +221,10 @@ namespace wf {
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
 			return new per_sample_data<float>(rc->resolution());
+		}
+
+		per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
+			return new per_sample_data<vec3>(rc->resolution());
 		}
 
 

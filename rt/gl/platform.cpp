@@ -62,6 +62,9 @@ namespace wf::gl {
 		register_wf_step_by_id(, build_accel_struct);
 		register_wf_step_by_id(, sample_uniform_dir);
 		register_wf_step_by_id(, sample_cos_weighted_dir);
+		register_wf_step_by_id(, compute_light_distribution);
+		register_wf_step_by_id(, sample_light_dir);
+		register_wf_step_by_id(, integrate_dir_sample);
 		register_wf_step_by_id(, integrate_light_sample);
 		register_wf_step_by_id(, copy_to_preview);
 
@@ -79,7 +82,6 @@ namespace wf::gl {
 		pf->sd->upload(scene);
 		if (!rt)
 			rt = dynamic_cast<batch_rt*>(select("default"));
-		scene->compute_light_distribution(); // TODO extract as step
 
 		for (auto step : scene_steps)
 			step->run();
@@ -103,6 +105,10 @@ namespace wf::gl {
 
 	per_sample_data<float>* platform::allocate_float_per_sample() {
 		return new per_sample_data<float>(rc->resolution());
+	}
+
+	per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
+		return new per_sample_data<vec3>(rc->resolution());
 	}
 
 	platform *pf = nullptr;

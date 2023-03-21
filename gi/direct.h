@@ -48,6 +48,7 @@ namespace wf {
 		raydata *camrays = nullptr,
 				*shadowrays = nullptr;
 		per_sample_data<float> *pdf = nullptr;
+		per_sample_data<vec3> *lightcol = nullptr;
 		enum ::direct_light::sampling_mode sampling_mode = ::direct_light::sample_uniform;
 		void regenerate_steps();
 	public:

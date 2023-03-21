@@ -328,6 +328,7 @@ namespace wf {
 	direct_light::direct_light() {
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
+		// TODO: remove those two?
 		frame_preparation_steps.push_back(init_fb);
 		frame_finalization_steps.push_back(download_fb);
 		
@@ -335,35 +336,72 @@ namespace wf {
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
 		
-		init_fb->use(camrays);
-		download_fb->use(camrays);
-		
 		regenerate_steps();
 	}
 	void direct_light::regenerate_steps() {
+		frame_preparation_steps.clear();
+		frame_finalization_steps.clear();
+		
+		auto *init_fb = rc->platform->step<initialize_framebuffer>();
+		auto *download_fb = rc->platform->step<download_framebuffer>();
+		
+		frame_preparation_steps.push_back(init_fb);
+		frame_finalization_steps.push_back(download_fb);
+
+		init_fb->use(camrays);
+		download_fb->use(camrays);
+
 		sampling_steps.clear();
 		
 		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
 		auto *find_hit     = rc->platform->step<find_closest_hits>();
-		auto *find_light   = rc->platform->step<find_closest_hits>("secondary hits");
-		auto *integrate    = rc->platform->step<integrate_light_sample>();
+		step *find_light   = nullptr;
+		step *integrate    = nullptr;
 		step *sample_light = nullptr;
 		if (sampling_mode == ::direct_light::sample_uniform) {
-			auto *sample = rc->platform->step<sample_uniform_dir>();
+			auto *sample  = rc->platform->step<sample_uniform_dir>();
+			auto *trace   = rc->platform->step<find_closest_hits>("secondary hits");
+			auto *contrib = rc->platform->step<integrate_dir_sample>();
+			sample_light  = sample;
+			find_light    = trace;
+			integrate     = contrib;
 			sample->use(camrays, shadowrays, pdf);
-			sample_light = sample;
+			trace->use(shadowrays);
+			contrib->use(camrays, shadowrays, pdf);
+			delete lightcol; lightcol = nullptr;
 		}
 		else if (sampling_mode == ::direct_light::sample_cosine) {
-			auto *sample = rc->platform->step<sample_cos_weighted_dir>();
+			auto *sample  = rc->platform->step<sample_cos_weighted_dir>();
+			auto *trace   = rc->platform->step<find_closest_hits>("secondary hits");
+			auto *contrib = rc->platform->step<integrate_dir_sample>();
+			sample_light  = sample;
+			find_light    = trace;
+			integrate     = contrib;
 			sample->use(camrays, shadowrays, pdf);
-			sample_light = sample;
+			trace->use(shadowrays);
+			contrib->use(camrays, shadowrays, pdf);
+			delete lightcol; lightcol = nullptr;
+		}
+		else if (sampling_mode == ::direct_light::sample_light) {
+			// for this case we also have to compute the light distribution
+			auto *l_dist = rc->platform->step<compute_light_distribution>();
+			data_reset_steps.push_back(l_dist);
+			lightcol = rc->platform->allocate_vec3_per_sample();
+		
+			auto *sample  = rc->platform->step<sample_light_dir>();
+			auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			auto *contrib = rc->platform->step<integrate_light_sample>();
+			sample_light  = sample;
+			find_light    = trace;
+			integrate     = contrib;
+			sample->use(camrays, shadowrays, pdf, l_dist, lightcol);
+			trace->use(shadowrays);
+			contrib->use(camrays, shadowrays, pdf, lightcol);
 		}
 		else throw runtime_error("unsupported importance sampling method for wf/direct");
 
 		sample_cam->use(camrays);
 		find_hit->use(camrays);
-		find_light->use(shadowrays);
-		integrate->use(camrays, shadowrays, pdf);
 
 		sampling_steps.push_back(sample_cam);
 		sampling_steps.push_back(find_hit);

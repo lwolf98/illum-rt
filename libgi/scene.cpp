@@ -181,7 +181,8 @@ glm::vec4 to_glm_vec4(const aiVector3D &from) {
 
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 // Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
-void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 parent_trafo, glm::mat4 model_trafo, unsigned material_offset, scene *rtgi_scene) {
+void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 parent_trafo, glm::mat4 model_trafo, unsigned material_offset, 
+							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
 	glm::mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 	glm::mat4 transform = model_trafo * node_trafo;
 	glm::mat4 normal_transform = transpose(inverse(mat3(transform)));
@@ -191,8 +192,11 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 
 		// load mesh data
 		uint32_t material_id = mesh_ai->mMaterialIndex + material_offset;
 		uint32_t index_offset = rtgi_scene->vertices.size();
-		std::string object_name = mesh_ai->mName.C_Str();
-		rtgi_scene->objects.push_back({object_name, (unsigned)rtgi_scene->triangles.size(), (unsigned)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
+
+		if (rtgi_scene->materials[material_id].emissive != vec3(0)) {
+			light_geom.push_back({(int)rtgi_scene->triangles.size(), (int)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
+			light_prims += mesh_ai->mNumFaces;
+		}
 
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
@@ -223,7 +227,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 
 	}
 
 	for (int i = 0; i < node_ai->mNumChildren; i++)
-		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, rtgi_scene);
+		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene);
 }
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
@@ -293,7 +297,6 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			textures.push_back(material.albedo_tex);
 		}
 
-
 #ifndef RTGI_SKIP_BRDF
 		material.brdf = brdfs["default"];
 #endif
@@ -301,55 +304,49 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		materials.push_back(material);
 	}
 
+	int light_prims = 0;
+	std::vector<std::tuple<int,int,int>> light_geom;
+
     // load meshes
-    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, this);
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, light_geom, light_prims, this);
+
+#ifndef RTGI_SKIP_DIRECT_ILLUM
+	lights.reserve(lights.size()+light_prims);
+	for (auto [start,end,mtl] : light_geom) 
+		for (int i = start; i < end; ++i)
+			lights.push_back(new trianglelight(*this, i));
+#endif
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 void scene::compute_light_distribution() {
-	std::vector<object> light_geom;
-	unsigned prims = 0;
-	for (auto o : objects)
-		if (materials[o.material_id].emissive != vec3(0)) {
-			prims += o.end-o.start;
-			light_geom.push_back(o);
-		}
-
 #ifndef RTGI_SKIP_SKY
-	if (prims == 0 && !sky) {
+	if (lights.size() == 0 && !sky) {
 		std::cerr << "WARNING: There is neither emissive geometry nor a skylight" << std::endl;
 		return;
 	}
 #else
-	if (prims == 0) {
+	if (lights.size() == 0) {
 		std::cerr << "WARNING: There is no emissive geometry" << std::endl;
 		return;
 	}
 #endif
-	if (verbose_scene) cout << "light distribution of " << prims << " triangles" << endl;
-	for (auto l : lights) delete l;
-	lights.clear();
-	int n = prims;
+	if (verbose_scene) cout << "light distribution of " << lights.size() << " triangles" << endl;
+	int n = lights.size();
 #ifndef RTGI_SKIP_SKY
+	// TODO move sky handling outside -> add_sky
 	if (sky) {
 		n++;
 		sky->build_distribution();
 		sky->scene_bounds(scene_bounds);
 	}
 #endif
-	lights.resize(n);
 	std::vector<float> power(n);
-	int l = 0;
-	for (auto g : light_geom) {
-		for (int i = g.start; i < g.end; ++i) {
-			lights[l] = new trianglelight(*this, i);
-			power[l] = luma(lights[l]->power());
-			l++;
-		}
-	}
+	for (int l = 0; l < lights.size(); ++l)
+		power[l] = luma(lights[l]->power());
 #ifndef RTGI_SKIP_SKY
 	if (sky) {
-		lights[n-1] = sky;
+		lights.push_back(sky);
 		power[n-1] = sky->power().x;
 	}
 #endif
@@ -526,7 +523,7 @@ float skylight::pdf_Li(const ray &ray) const {
 
 vec3 skylight::Le(const ray &ray) const {
     float u = atan2f(ray.d.z, ray.d.x) / (2 * M_PI);
-    float v = acosf(ray.d.y) / M_PI;
+    float v = theta_z(ray.d.y) / M_PI;
     assert(std::isfinite(u));
     assert(std::isfinite(v));
     return tex->sample(u, v) * intensity_scale;
