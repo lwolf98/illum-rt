@@ -57,6 +57,12 @@ void manylight_algorithm::prepare_frame() {
 
 			// 1. initialize j and 5. increment j (j:=j+1)
 			// j represents the VPL index, e. g. in the loop j=1: v_1 is calculated
+			float ior_water = 1.330f;
+			float ior_glass = 1.520f;
+			float ior_air = 1.0f;
+			float current_medium_ior = ior_air;
+			bool above_water = true;
+
 			for (int j = 1; j <= path_length; ++j) {
 				// 2. sample the next path vertex
 				triangle_intersection closest = rc->scene.rt->closest_hit(to_next_vpl);
@@ -90,16 +96,97 @@ void manylight_algorithm::prepare_frame() {
 					break;
 
 				// Sample ray to next VPL
-				diff_geom v_j_geometry = hit;
-				auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j_geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+				phong_specular_reflection* spec_surface = dynamic_cast<phong_specular_reflection*>(hit.mat->brdf);
+				if(spec_surface != nullptr) { 
+					float reflection_decision = rc->rng.uniform_float();
+					if (hit.mat->roughness != 0) {
+						float next_ior = 0.0f;
+						if (above_water) {
+							if (current_medium_ior == ior_air) {
+								if (hit.mat->ior == ior_water) {
+									next_ior = ior_water;
+									above_water = false;
+								}
+								else if (hit.mat->ior == ior_glass) {
+									next_ior = ior_glass;
+									above_water = true;
+								}
+							}
+							else if (current_medium_ior == ior_glass) {
+								if (hit.mat->ior == ior_glass) {
+									next_ior = ior_air;
+									above_water = true;
+								}
+								else if (hit.mat->ior == ior_water) {
+									next_ior = ior_water;
+									above_water = false;
+									to_next_vpl = ray(hit.x, to_next_vpl.d);
+									closest = rc->scene.rt->closest_hit(to_next_vpl);
+									if (!closest.valid()) break;
+								}
+							}
+						}
+						else {
+							if (current_medium_ior == ior_water) {
+								if (hit.mat->ior == ior_water) {
+									next_ior = ior_air;
+									above_water = true;
+								}
+								else if (hit.mat->ior == ior_glass) {
+									next_ior = ior_glass;
+									above_water = false;
+								}
+							}
+							else if (current_medium_ior == ior_glass) {
+								if (hit.mat->ior == ior_glass) {
+									next_ior = ior_water;
+									above_water = false;
+								}
+								else if (hit.mat->ior == ior_water) {
+									next_ior = ior_air;
+									above_water = true;
+									to_next_vpl = ray(hit.x, to_next_vpl.d);
+									closest = rc->scene.rt->closest_hit(to_next_vpl);
+									if (!closest.valid()) break;
+								}
+							}
+						}
+						diff_geom new_hit(closest, rc->scene);
+						if (new_hit.mat->emissive != vec3(0)) break;
+						flip_normals_to_ray(new_hit, to_next_vpl);
+						float cos_wi = dot(-to_next_vpl.d, new_hit.ns);
+						vec3 new_dir(2.0f * new_hit.ns * cos_wi + to_next_vpl.d);
 
-				// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
-				float pdf_f = hit.mat->brdf->pdf(v_j_geometry, w_o, -v_j.w_in); //p(w_j)
-				to_next_vpl = ray(v_j.pos, w_o);
+						float reflected_flux = fresnel_dielectric(cos_wi, current_medium_ior, next_ior);
+						if (reflected_flux == 1 || reflection_decision < reflected_flux) {
+							to_next_vpl = ray(new_hit.x, new_dir); 
+						}
+						else {
+							float current_div_next = current_medium_ior/next_ior;
+							vec3 refracted_dir(-current_div_next*((-to_next_vpl.d)-cos_wi*new_hit.ns)-sqrt(1-current_div_next*current_div_next*(1-cos_wi*cos_wi))*new_hit.ns);
 
-				// Setup the throughput for the next VPL
-				float D = cdot(to_next_vpl.d, v_j.normal); //D_v_j(v_j+1)
-				throughput *= D*f/pdf_f; //throughput for v_j+1
+							to_next_vpl = ray(new_hit.x, refracted_dir);
+							current_medium_ior = next_ior;
+						}
+					}
+					else {
+						float cos_wi = dot(-to_next_vpl.d, hit.ns);
+						vec3 new_dir(2.0f * hit.ns * cos_wi + to_next_vpl.d);
+						to_next_vpl = ray(hit.x, new_dir);
+					}
+				}
+				else {
+					diff_geom v_j_geometry = hit;
+					auto [w_o, f, pdf] = hit.mat->brdf->sample(v_j_geometry, -v_j.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
+
+					// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
+					float pdf_f = hit.mat->brdf->pdf(v_j_geometry, w_o, -v_j.w_in); //p(w_j)
+					to_next_vpl = ray(v_j.pos, w_o);
+
+					// Setup the throughput for the next VPL
+					float D = cdot(to_next_vpl.d, v_j.normal); //D_v_j(v_j+1)
+					throughput *= D*f/pdf_f; //throughput for v_j+1
+				}
 			}
 
 			obj_paths[i] = obj_path;
@@ -154,12 +241,113 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	if (hit.mat->emissive != vec3(0))
 		return hit.mat->emissive;
 
+	float ior_water = 1.330f;
+    float ior_glass = 1.520f;
+    float ior_air = 1.0f;
+	float current_medium_ior = ior_air;
+	bool above_water = true;
+
+	lambertian_reflection* diff_surface = dynamic_cast<lambertian_reflection*>(hit.mat->brdf);
+	//if (diff_surface == nullptr) return vec3(0,1,0);
+    while (diff_surface == nullptr || false) {
+        diff_geom spec_hit(closest, rc->scene);
+        flip_normals_to_ray(spec_hit, view_ray);
+        float reflection_decision = rc->rng.uniform_float();
+        if (spec_hit.mat->roughness != 0) {
+            float next_ior = 0.0f;
+            if (above_water) {
+                if (current_medium_ior == ior_air) {
+                    if (spec_hit.mat->ior == ior_water) {
+                        next_ior = ior_water;
+                        above_water = false;
+                    }
+                    else if (spec_hit.mat->ior == ior_glass) {
+                        next_ior = ior_glass;
+                        above_water = true;
+                    }
+                }
+                else if (current_medium_ior == ior_glass) {
+                    if (spec_hit.mat->ior == ior_glass) {
+                        next_ior = ior_air;
+                        above_water = true;
+                    }
+                    else if (spec_hit.mat->ior == ior_water) {
+                        next_ior = ior_water;
+                        above_water = false;
+                        view_ray = ray(spec_hit.x, view_ray.d);
+                        closest = rc->scene.rt->closest_hit(view_ray);
+                        if (!closest.valid()) return vec3(0);
+                    }
+                }
+            }
+            else {
+                if (current_medium_ior == ior_water) {
+                    if (spec_hit.mat->ior == ior_water) {
+                        next_ior = ior_air;
+                        above_water = true;
+                    }
+                    else if (spec_hit.mat->ior == ior_glass) {
+                        next_ior = ior_glass;
+                        above_water = false;
+                    }
+                }
+                else if (current_medium_ior == ior_glass) {
+                    if (spec_hit.mat->ior == ior_glass) {
+                        next_ior = ior_water;
+                        above_water = false;
+                    }
+                    else if (spec_hit.mat->ior == ior_water) {
+                        next_ior = ior_air;
+                        above_water = true;
+                        view_ray = ray(spec_hit.x, view_ray.d);
+                        closest = rc->scene.rt->closest_hit(view_ray);
+                        if (!closest.valid()) return vec3(0);
+                    }
+                }
+            }
+            diff_geom new_hit(closest, rc->scene);
+            if (new_hit.mat->emissive != vec3(0)) {
+			    return new_hit.mat->emissive;
+		    }
+            flip_normals_to_ray(new_hit, view_ray);
+            float cos_wi = dot(-view_ray.d, new_hit.ns);
+            vec3 new_dir(2.0f * new_hit.ns * cos_wi + view_ray.d);
+            
+            float reflected_flux = fresnel_dielectric(cos_wi, current_medium_ior, next_ior);
+            if (reflected_flux == 1 || reflection_decision < reflected_flux) {
+                view_ray = ray(new_hit.x, new_dir); 
+            }
+            else {
+                float current_div_next = current_medium_ior/next_ior;
+                vec3 refracted_dir(-current_div_next*((-view_ray.d)-cos_wi*new_hit.ns)-sqrt(1-current_div_next*current_div_next*(1-cos_wi*cos_wi))*new_hit.ns);
+
+                view_ray = ray(new_hit.x, refracted_dir);
+                current_medium_ior = next_ior;
+            }
+        }
+        else {
+            float cos_wi = dot(-view_ray.d, spec_hit.ns);
+            vec3 new_dir(2.0f * spec_hit.ns * cos_wi + view_ray.d);
+            view_ray = ray(spec_hit.x, new_dir);
+        }
+        closest = rc->scene.rt->closest_hit(view_ray);
+        if (!closest.valid()) return vec3(0);
+        diff_geom hit_cast(closest, rc->scene);
+        if (hit_cast.mat->emissive != vec3(0)) {
+			return hit_cast.mat->emissive;
+		}
+        diff_surface = dynamic_cast<lambertian_reflection*>(hit_cast.mat->brdf);
+    }
+    diff_geom diff_hit(closest, rc->scene);
+    flip_normals_to_ray(diff_hit, view_ray);
+    //ray hit_ray = view_ray;
+
 	// direct illumination
-	if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(hit, view_ray);
-	else if (sampling_mode == sample_light)     radiance += sample_lights(hit, view_ray);
+	if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(diff_hit, view_ray);
+	else if (sampling_mode == sample_light)     radiance += sample_lights(diff_hit, view_ray);
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
-	else if (sampling_mode == sample_cosine)    radiance += sample_cosine_weighted(hit, view_ray);
-	else if (sampling_mode == sample_brdf)      radiance += sample_brdfs(hit, view_ray);
+	else if (sampling_mode == sample_cosine)    radiance += sample_cosine_weighted(diff_hit, view_ray);
+	else if (sampling_mode == sample_brdf)      radiance += sample_brdfs(diff_hit, view_ray);
 #endif
 
 	int block_size = rc->sppx / vpl_integrations;
@@ -172,15 +360,15 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 		for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
 			vpl v = vpls[i];
 
-			auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, vec2(0));
-			float t = length(v.pos - hit.x);
+			auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(diff_hit, vec2(0));
+			float t = length(v.pos - diff_hit.x);
 
 			if (!rc->scene.rt->any_hit(shadow_ray)) {
-				vec3 f_x = hit.mat->brdf->f(hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
+				vec3 f_x = diff_hit.mat->brdf->f(diff_hit, -view_ray.d, shadow_ray.d); // BRDF at x (hit)
 				diff_geom v_geometry(v.is, rc->scene);
 				vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
 
-				float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
+				float D_x = cdot(diff_hit.ns, shadow_ray.d); // D_x(v)
 				float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
 				float G = D_x*D_v/(t*t);
 				float r = 1.5f;
