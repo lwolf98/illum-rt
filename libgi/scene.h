@@ -161,6 +161,7 @@ struct scene {
 	
 	std::vector<std::filesystem::path> modelpaths;
 	void add_modelpath(const std::filesystem::path &p);
+	void remove_modelpath(const std::filesystem::path &p);
 
 	vec3 normal(const triangle &tri) const;
 

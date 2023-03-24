@@ -163,6 +163,17 @@ void scene::add_modelpath(const std::filesystem::path &p) {
 		modelpaths.push_back(p);
 }
 
+void scene::remove_modelpath(const std::filesystem::path &p) {
+	if (p.begin() != p.end() && *p.begin() == "~") {
+		filesystem::path mod = getenv("HOME");
+		for (auto it = ++p.begin(); it != p.end(); ++it)
+			mod /= *it;
+		remove(modelpaths.begin(), modelpaths.end(), p);
+	}
+	else
+		remove(modelpaths.begin(), modelpaths.end(), p);
+}
+
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 glm::mat4x4 to_glm(const aiMatrix4x4 &from) {
 	glm::mat4x4 to;

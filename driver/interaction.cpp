@@ -112,11 +112,13 @@ void repl(istream &infile) {
 void run_repls() {
 	if (cmdline.script != "") {
 		ifstream script(cmdline.script);
-		if(script.fail()){
+		rc->scene.add_modelpath(std::filesystem::path(cmdline.script).parent_path());
+		if (script.fail()){
 			cerr << "Script file not found" << endl;
 			return;
 		}
 		repl(script);
+		rc->scene.remove_modelpath(std::filesystem::path(cmdline.script).parent_path());
 	}
 	if (cmdline.interact)
 		repl(cin);
