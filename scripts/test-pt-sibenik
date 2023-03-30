@@ -6,7 +6,7 @@ load render-data/sibenik/sibenik.obj
 raytracer embree
 #algo simple-pt
 algo pt
-sppx 256
+sppx 1024
 resolution 640 360
 omp on
 outfile out_pt.png

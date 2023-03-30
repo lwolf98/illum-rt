@@ -242,105 +242,105 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 		return hit.mat->emissive;
 
 	float ior_water = 1.330f;
-    float ior_glass = 1.520f;
-    float ior_air = 1.0f;
+	float ior_glass = 1.520f;
+	float ior_air = 1.0f;
 	float current_medium_ior = ior_air;
 	bool above_water = true;
 
 	lambertian_reflection* diff_surface = dynamic_cast<lambertian_reflection*>(hit.mat->brdf);
 	//if (diff_surface == nullptr) return vec3(0,1,0);
-    while (diff_surface == nullptr || false) {
-        diff_geom spec_hit(closest, rc->scene);
-        flip_normals_to_ray(spec_hit, view_ray);
-        float reflection_decision = rc->rng.uniform_float();
-        if (spec_hit.mat->roughness != 0) {
-            float next_ior = 0.0f;
-            if (above_water) {
-                if (current_medium_ior == ior_air) {
-                    if (spec_hit.mat->ior == ior_water) {
-                        next_ior = ior_water;
-                        above_water = false;
-                    }
-                    else if (spec_hit.mat->ior == ior_glass) {
-                        next_ior = ior_glass;
-                        above_water = true;
-                    }
-                }
-                else if (current_medium_ior == ior_glass) {
-                    if (spec_hit.mat->ior == ior_glass) {
-                        next_ior = ior_air;
-                        above_water = true;
-                    }
-                    else if (spec_hit.mat->ior == ior_water) {
-                        next_ior = ior_water;
-                        above_water = false;
-                        view_ray = ray(spec_hit.x, view_ray.d);
-                        closest = rc->scene.rt->closest_hit(view_ray);
-                        if (!closest.valid()) return vec3(0);
-                    }
-                }
-            }
-            else {
-                if (current_medium_ior == ior_water) {
-                    if (spec_hit.mat->ior == ior_water) {
-                        next_ior = ior_air;
-                        above_water = true;
-                    }
-                    else if (spec_hit.mat->ior == ior_glass) {
-                        next_ior = ior_glass;
-                        above_water = false;
-                    }
-                }
-                else if (current_medium_ior == ior_glass) {
-                    if (spec_hit.mat->ior == ior_glass) {
-                        next_ior = ior_water;
-                        above_water = false;
-                    }
-                    else if (spec_hit.mat->ior == ior_water) {
-                        next_ior = ior_air;
-                        above_water = true;
-                        view_ray = ray(spec_hit.x, view_ray.d);
-                        closest = rc->scene.rt->closest_hit(view_ray);
-                        if (!closest.valid()) return vec3(0);
-                    }
-                }
-            }
-            diff_geom new_hit(closest, rc->scene);
-            if (new_hit.mat->emissive != vec3(0)) {
-			    return new_hit.mat->emissive;
-		    }
-            flip_normals_to_ray(new_hit, view_ray);
-            float cos_wi = dot(-view_ray.d, new_hit.ns);
-            vec3 new_dir(2.0f * new_hit.ns * cos_wi + view_ray.d);
-            
-            float reflected_flux = fresnel_dielectric(cos_wi, current_medium_ior, next_ior);
-            if (reflected_flux == 1 || reflection_decision < reflected_flux) {
-                view_ray = ray(new_hit.x, new_dir); 
-            }
-            else {
-                float current_div_next = current_medium_ior/next_ior;
-                vec3 refracted_dir(-current_div_next*((-view_ray.d)-cos_wi*new_hit.ns)-sqrt(1-current_div_next*current_div_next*(1-cos_wi*cos_wi))*new_hit.ns);
+	while (diff_surface == nullptr) { //|| false) {
+		diff_geom spec_hit(closest, rc->scene);
+		flip_normals_to_ray(spec_hit, view_ray);
+		float reflection_decision = rc->rng.uniform_float();
+		if (spec_hit.mat->roughness != 0) {
+			float next_ior = 0.0f;
+			if (above_water) {
+				if (current_medium_ior == ior_air) {
+					if (spec_hit.mat->ior == ior_water) {
+						next_ior = ior_water;
+						above_water = false;
+					}
+					else if (spec_hit.mat->ior == ior_glass) {
+						next_ior = ior_glass;
+						above_water = true;
+					}
+				}
+				else if (current_medium_ior == ior_glass) {
+					if (spec_hit.mat->ior == ior_glass) {
+						next_ior = ior_air;
+						above_water = true;
+					}
+					else if (spec_hit.mat->ior == ior_water) {
+						next_ior = ior_water;
+						above_water = false;
+						view_ray = ray(spec_hit.x, view_ray.d);
+						closest = rc->scene.rt->closest_hit(view_ray);
+						if (!closest.valid()) return vec3(0);
+					}
+				}
+			}
+			else {
+				if (current_medium_ior == ior_water) {
+					if (spec_hit.mat->ior == ior_water) {
+						next_ior = ior_air;
+						above_water = true;
+					}
+					else if (spec_hit.mat->ior == ior_glass) {
+						next_ior = ior_glass;
+						above_water = false;
+					}
+				}
+				else if (current_medium_ior == ior_glass) {
+					if (spec_hit.mat->ior == ior_glass) {
+						next_ior = ior_water;
+						above_water = false;
+					}
+					else if (spec_hit.mat->ior == ior_water) {
+						next_ior = ior_air;
+						above_water = true;
+						view_ray = ray(spec_hit.x, view_ray.d);
+						closest = rc->scene.rt->closest_hit(view_ray);
+						if (!closest.valid()) return vec3(0);
+					}
+				}
+			}
+			diff_geom new_hit(closest, rc->scene);
+			if (new_hit.mat->emissive != vec3(0)) {
+				return new_hit.mat->emissive;
+			}
+			flip_normals_to_ray(new_hit, view_ray);
+			float cos_wi = dot(-view_ray.d, new_hit.ns);
+			vec3 new_dir(2.0f * new_hit.ns * cos_wi + view_ray.d);
+			
+			float reflected_flux = fresnel_dielectric(cos_wi, current_medium_ior, next_ior);
+			if (reflected_flux == 1 || reflection_decision < reflected_flux) {
+				view_ray = ray(new_hit.x, new_dir); 
+			}
+			else {
+				float current_div_next = current_medium_ior/next_ior;
+				vec3 refracted_dir(-current_div_next*((-view_ray.d)-cos_wi*new_hit.ns)-sqrt(1-current_div_next*current_div_next*(1-cos_wi*cos_wi))*new_hit.ns);
 
-                view_ray = ray(new_hit.x, refracted_dir);
-                current_medium_ior = next_ior;
-            }
-        }
-        else {
-            float cos_wi = dot(-view_ray.d, spec_hit.ns);
-            vec3 new_dir(2.0f * spec_hit.ns * cos_wi + view_ray.d);
-            view_ray = ray(spec_hit.x, new_dir);
-        }
-        closest = rc->scene.rt->closest_hit(view_ray);
-        if (!closest.valid()) return vec3(0);
-        diff_geom hit_cast(closest, rc->scene);
-        if (hit_cast.mat->emissive != vec3(0)) {
+				view_ray = ray(new_hit.x, refracted_dir);
+				current_medium_ior = next_ior;
+			}
+		}
+		else {
+			float cos_wi = dot(-view_ray.d, spec_hit.ns);
+			vec3 new_dir(2.0f * spec_hit.ns * cos_wi + view_ray.d);
+			view_ray = ray(spec_hit.x, new_dir);
+		}
+		closest = rc->scene.rt->closest_hit(view_ray);
+		if (!closest.valid()) return vec3(0);
+		diff_geom hit_cast(closest, rc->scene);
+		if (hit_cast.mat->emissive != vec3(0)) {
 			return hit_cast.mat->emissive;
 		}
-        diff_surface = dynamic_cast<lambertian_reflection*>(hit_cast.mat->brdf);
-    }
-    diff_geom diff_hit(closest, rc->scene);
-    flip_normals_to_ray(diff_hit, view_ray);
-    //ray hit_ray = view_ray;
+		diff_surface = dynamic_cast<lambertian_reflection*>(hit_cast.mat->brdf);
+	}
+	diff_geom diff_hit(closest, rc->scene);
+	flip_normals_to_ray(diff_hit, view_ray);
+	//ray hit_ray = view_ray;
 
 	// direct illumination
 	if      (sampling_mode == sample_uniform)   radiance += sample_uniformly(diff_hit, view_ray);
@@ -381,6 +381,8 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//TODO: G cap solves the issue with the bright spots but adds bias.
 				//      In the future include bias compensation
 				//      -> see chapter 5: bias compensation (final gathering, ...)
+				//if (G > 0.0001f) cout << "triggered" << endl;
+				//G = G > 0.00001f ? 0.00001f : G; //sponza
 				G = G > 0.1f ? 0.1f : G; //sibenik
 				//G = G > 1.f ? 2.f : G; // Cornell
 

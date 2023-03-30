@@ -61,8 +61,8 @@ vec3 simple_pt::path(ray ray) {
 	vec3 radiance(0);
 	vec3 throughput(1);
 	for (int i = 0; i < max_path_len; ++i) {
-		#pragma omp critical
-		path_len_sum++;
+		//#pragma omp critical
+		//path_len_sum++;
 		
 		// find hitpoint with scene
 		triangle_intersection closest = rc->scene.rt->closest_hit(ray);
@@ -155,8 +155,8 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 }
 
 void simple_pt::finalize_frame() {
-	float avg_path_len = path_len_sum * (1.f/(rc->sppx*rc->w()*rc->h()));
-	cout << "Avg path len: " << avg_path_len << endl;
+	//float avg_path_len = path_len_sum * (1.f/(rc->sppx*rc->w()*rc->h()));
+	//cout << "Avg path len: " << avg_path_len << endl;
 }
 
 #ifndef RTGI_SKIP_PT
@@ -286,8 +286,8 @@ bool pt_nee::interprete(const std::string &command, std::istringstream &in) {
 }
 
 void pt_nee::finalize_frame() {
-	float avg_path_len = path_len_sum * (1.f/(rc->sppx*rc->w()*rc->h()));
-	cout << "Avg path len: " << avg_path_len << endl;
+	//float avg_path_len = path_len_sum * (1.f/(rc->sppx*rc->w()*rc->h()));
+	//cout << "Avg path len: " << avg_path_len << endl;
 #ifdef WITH_RAY_EXPORT
 	ofstream out(rayfile);
 	for (auto [i,r] : all_rays)
