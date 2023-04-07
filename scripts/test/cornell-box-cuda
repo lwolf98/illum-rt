@@ -97,11 +97,14 @@ material brdf lambert
 #algo photon-mapping-wf
 
 # WF setup ML
-platform cpu
-raytracer embree
+platform cuda
+raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 10 vps 6
+is uniform paths 1024 length 10 vps 6
+#algo direct-wf
+#is light
+#is uniform
 commit
 
 # Run

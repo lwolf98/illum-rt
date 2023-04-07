@@ -154,6 +154,10 @@ namespace wf {
 			}
 		};
 
+		struct vpl : public wf::vpl {
+			//TODO: to be implemented
+		};
+
 		
 		/*! \brief A copy of the scene data kept on the GPU.
 		 *

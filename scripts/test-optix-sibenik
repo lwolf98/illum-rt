@@ -5,18 +5,20 @@ up 0 1 0
 load render-data/sibenik/sibenik.obj
 
 platform cuda
+#raytracer if-if
 raytracer optix
+add-scene-step build accel struct
+
 #algo primary-wf
 algo direct-wf
 is uniform
-
-add-scene-step build accel struct
 
 outfile optix1.png
 
 sppx 1024
 #sppx 4096
-resolution 1920 1080
+#resolution 1920 1080
+resolution 192 108
 
 commit
 

@@ -14,7 +14,8 @@ void vpl_stats(const std::vector<vpl>& vpls);
 void framebuffer_stats();
 
 // virtual point light
-struct vpl : public pointlight {
+struct vpl : public pointlight, public wf::vpl {
+//struct vpl : public pointlight {
 	triangle_intersection is;
 	vec3 normal; //optional with 'is'
 	vec3 w_in;

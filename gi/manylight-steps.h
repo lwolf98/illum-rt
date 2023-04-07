@@ -16,7 +16,7 @@ namespace wf
 	*/
 
 	/* Preparation steps */
-	class sample_v_0s : public step
+	/*class sample_v_0s : public step
 	{
 	public:
 		static constexpr char id[] = "sample v_0 lights";
@@ -179,7 +179,7 @@ namespace wf
 		};
 	}
 
-	/* Integration steps */
+	/* Integration steps * /
 	class sample_vpls : public step
 	{
 	public:
@@ -213,7 +213,7 @@ namespace wf
 				this->sampled_vpls = dynamic_cast<VPL *>(sampled_vpls);
 			}
 		};
-	}
+	}*/
 
 	class integrate_vpl_samples : public step
 	{

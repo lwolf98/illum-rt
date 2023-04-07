@@ -28,6 +28,13 @@ namespace wf::cuda {
 		raydata* allocate_raydata_manually(int w, int h) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		per_sample_data<vec3>* allocate_vec3_per_sample() override;
+		//per_sample_data<float4>* allocate_vec3_per_sample() override;
+
+		/* manylight allocation */
+		virtual vpl* allocate_vpl_store() override;
+		virtual vec3* allocate_light_throughput() override;
+		//virtual vector<vpl>* allocate_vpls() override;
+		virtual vpl* allocate_vpl_per_sample() override;
 
 		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;

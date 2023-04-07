@@ -113,5 +113,49 @@ namespace wf::gl {
 		return new per_sample_data<vec3>(rc->resolution());
 	}
 
+		/* manylight allocation */
+		//TODO: to be implemented
+		vpl* platform::allocate_vpl_store() {
+			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+			auto path_length = ml->get_path_length();
+
+			return new vpl[paths*path_length];*/
+			return nullptr;
+		}
+
+		vec3* platform::allocate_light_throughput() {
+			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			return new vec3[paths];*/
+			return nullptr;
+		}
+
+		/*vector<vpl>* platform::allocate_vpls() {
+			return new vector<vpl>;
+		}*/
+
+		vpl* platform::allocate_vpl_per_sample() {
+			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			glm::ivec2 res = rc->resolution();
+			return new vpl[res.x*res.y];*/
+			return nullptr;
+		}
+
 	platform *pf = nullptr;
 }

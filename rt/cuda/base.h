@@ -359,6 +359,23 @@ namespace wf {
 			float ior, roughness;
 		};
 
+		// virtual point light
+		struct vpl : public wf::vpl {
+			global_memory_buffer<float4> pos;
+
+			float4 pos;
+			float4 col;
+			float4 normal; //optional with 'is'
+			float4 w_in;
+			tri_is is;
+
+			// Constructor for VPLs (v_1 to v_...)
+			vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
+			: pos(pos), col(col), normal(normal), w_in(w_in), is(is) {}
+
+			vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}
+		};
+
 		struct scenedata {
 			int n_vertices = 0, n_triangles = 0;
 			texture_buffer<float4> vertex_pos;

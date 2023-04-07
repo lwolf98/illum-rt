@@ -39,6 +39,10 @@ namespace wf {
 	template<typename T> struct per_sample_data {
 		virtual ~per_sample_data() {}
 	};
+
+	struct vpl {
+		virtual ~vpl() {}
+	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
 	#define register_batch_rt_with_args(N,C,X, ...) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X(__VA_ARGS__); }
@@ -95,6 +99,12 @@ namespace wf {
 		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
 		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample() = 0;
 		//virtual wf::per_sample_data<void>* allocate_data_per_sample(int32_t typesize) = 0;
+
+		/* manylight allocation */
+		virtual vpl* allocate_vpl_store() = 0;
+		virtual vec3* allocate_light_throughput() = 0;
+		//virtual vector<vpl>* allocate_vpls() = 0;
+		virtual vpl* allocate_vpl_per_sample() = 0;
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

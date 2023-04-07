@@ -442,17 +442,42 @@ namespace wf {
 		 * 
 		*/
 
+		//Add prepare frame steps
+		/**
+		 * sample_v_0s
+		 * for (int j = 1; j <= path_length; ++j) //better solutions? buffer will be empty around 40 - 70%
+		 * 		find_closest_hits
+		 * 		create_vpls
+		 * 		russian_roulette
+		 * 		sample_next_vpl
+		 * 
+		 * copy_vpls (not parallel!)
+		 * (debug_write_obj (probably not parallel!))
+		 * 
+		 */
+
+		//Add steps for indirect illumination / integration
+		/**
+		 * > steps from direct_light
+		 * 
+		 * for (int i = 0; i < vpls_per_sample; ++i) 
+		 * 		sample_vpls
+		 * 		find_closest_hits
+		 * 		integrate_vpl_samples
+		*/
+
+		/* memory allocation */
 		vpl_rays = rc->platform->allocate_raydata_manually(paths, 1);
 		//TODO-ML: maybe delete throughput and use data from vpls
-		light_throughput = allocate_light_throughput();
-		le = allocate_light_throughput();
-		vpl_store = allocate_vpl_store();
-		vpls = allocate_vpls();
+		light_throughput = rc->platform->allocate_light_throughput();
+		le = rc->platform->allocate_light_throughput();
+		vpl_store = rc->platform->allocate_vpl_store();
+		//vpls = rc->platform->allocate_vpls();
 		//sampled_vpls =  static_cast<per_sample_data<vpl>*>(rc->platform->allocate_data_per_sample(sizeof(vpl)));
-		sampled_vpls = allocate_vpl_per_sample();
+		sampled_vpls = rc->platform->allocate_vpl_per_sample();
 
 		/* preparation steps */
-		auto *sample_v_0 = rc->platform->step<sample_v_0s>();
+		/*auto *sample_v_0 = rc->platform->step<sample_v_0s>();
 		sample_v_0->use(vpl_rays, light_throughput, le);
 		frame_preparation_steps.push_back(sample_v_0);
 
@@ -487,11 +512,11 @@ namespace wf {
 			// Push one vpl with col=vec3(0) that at least one vpl can be sampled
 			// TODO-ML: test this
 			vpls->push_back(vpl());
-		}
+		}*/
 
 		/* sampling steps */
 		//TODO-ML: handle vpls->size() == 0 in step
-		for (int i = 0; i < vpls_per_sample; ++i) {
+		/*for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
 			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
@@ -504,34 +529,15 @@ namespace wf {
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
 			sampling_steps.push_back(integrate_vpl_sample);
-		}
+		}*/
 
-		//Add prepare frame steps
-		/**
-		 * sample_v_0s
-		 * for (int j = 1; j <= path_length; ++j) //better solutions? buffer will be empty around 40 - 70%
-		 * 		find_closest_hits
-		 * 		create_vpls
-		 * 		russian_roulette
-		 * 		sample_next_vpl
-		 * 
-		 * copy_vpls (not parallel!)
-		 * (debug_write_obj (probably not parallel!))
-		 * 
-		 */
-
-		//Add steps for indirect illumination / integration
-		/**
-		 * > steps from direct_light
-		 * 
-		 * for (int i = 0; i < vpls_per_sample; ++i) 
-		 * 		sample_vpls
-		 * 		find_closest_hits
-		 * 		integrate_vpl_samples
-		*/
+		// Test CUDA
+		auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+		sampling_steps.push_back(integrate_vpl_sample);
 	}
 
-	vpl* manylight_algorithm::allocate_vpl_store() {
+	/*vpl* manylight_algorithm::allocate_vpl_store() {
 		return new vpl[paths*path_length];
 	}
 
@@ -546,7 +552,7 @@ namespace wf {
 	vpl* manylight_algorithm::allocate_vpl_per_sample() {
 		ivec2 res = rc->resolution();
 		return new vpl[res.x*res.y];
-	}
+	}*/
 
 	bool manylight_algorithm::interprete(const std::string &command, std::istringstream &in) {
 		bool result_direct = direct_light::interprete(command, in);

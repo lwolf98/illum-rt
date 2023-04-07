@@ -339,6 +339,9 @@ namespace wf {
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
 		
+		init_fb->use(camrays);
+		download_fb->use(camrays);
+
 		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
 		auto *find_hit     = rc->platform->step<find_closest_hits>();
 		step *find_light   = nullptr;

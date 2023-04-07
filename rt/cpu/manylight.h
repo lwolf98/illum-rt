@@ -1,3 +1,5 @@
+#pragma once
+
 #include "platform.h"
 
 /* 
@@ -7,7 +9,7 @@
 
 namespace wf::cpu {
 
-	struct sample_v_0s : public wf::wire::sample_v_0s<raydata, vec3> {
+	/*struct sample_v_0s : public wf::wire::sample_v_0s<raydata, vec3> {
 		void run() override;
 	};
 
@@ -29,9 +31,9 @@ namespace wf::cpu {
 
 	struct sample_vpls : public wf::wire::sample_vpls<raydata, std::vector<vpl>, vpl> {
 		void run() override;
-	};
+	};*/
 
-	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, vpl> {
+	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, ::vpl> {
 		void run() override;
 	};
 	
