@@ -99,6 +99,8 @@ namespace wf {
 		// sadly, this cannot be templated...
 		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
 		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample() = 0;
+		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample_manually(int size) = 0;
+		virtual wf::per_sample_data<int>* allocate_int_per_sample_manually(int size) = 0;
 		//virtual wf::per_sample_data<void>* allocate_data_per_sample(int32_t typesize) = 0;
 
 		/* manylight allocation */

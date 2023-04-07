@@ -217,12 +217,12 @@ namespace wf {
 			register_wf_step_by_id(, integrate_dir_sample);
 			register_wf_step_by_id(, integrate_light_sample);
 			//manylight steps
-			//register_wf_step_by_id(, sample_v_0s);
-			//register_wf_step_by_id(, create_vpls);
-			//register_wf_step_by_id(, russian_roulette);
-			//register_wf_step_by_id(, sample_next_vpls);
-			//register_wf_step_by_id(, copy_vpls);
-			//register_wf_step_by_id(, sample_vpls);
+			register_wf_step_by_id(, sample_v_0s);
+			register_wf_step_by_id(, create_vpls);
+			register_wf_step_by_id(, russian_roulette);
+			register_wf_step_by_id(, sample_next_vpls);
+			register_wf_step_by_id(, copy_vpls);
+			register_wf_step_by_id(, sample_vpls);
 			register_wf_step_by_id(, integrate_vpl_samples);
 
 			timer = new wf::cpu::timer;
@@ -266,6 +266,14 @@ namespace wf {
 		
 		per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
 			return new per_sample_data<vec3>(rc->resolution());
+		}
+		
+		per_sample_data<vec3>* platform::allocate_vec3_per_sample_manually(int size) {
+			return new per_sample_data<vec3>(glm::ivec2(size, 1), false);
+		}
+		
+		per_sample_data<int>* platform::allocate_int_per_sample_manually(int size) {
+			return new per_sample_data<int>(glm::ivec2(size, 1), false);
 		}
 
 		/*per_sample_data<void>* platform::allocate_data_per_sample(int32_t typesize) {

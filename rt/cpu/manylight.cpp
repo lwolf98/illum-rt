@@ -7,7 +7,7 @@
 using namespace std;
 
 namespace wf::cpu {
-	/*void sample_v_0s::run() {
+	void sample_v_0s::run() {
 		time_this_wf_step;
 		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
 			//TODO: better handling for this situation
@@ -33,8 +33,11 @@ namespace wf::cpu {
 			throughput *= Le_v_0 * D_v_0 / pdf_v_0; //Attention: throughput contains Le value
 
 			light_rays->rays[i] = to_next_vpl;
-			light_throughput[i] = throughput;
-			le[i] = Le_v_0;
+			light_throughput->data[i] = throughput;
+			le->data[i] = Le_v_0;
+
+			//Initialize VPL store offset
+			vpl_store_offset->data[0] = 0;
 		}
 	}
 
@@ -55,12 +58,13 @@ namespace wf::cpu {
 
 			triangle_intersection is = light_rays->intersections[i];
 			diff_geom hit(is, *pf->sd);
-			vec3 col = light_throughput[i];
+			vec3 col = light_throughput->data[i];
 			vec3 pos = hit.x;
 			vec3 normal = hit.ns;
 			vec3 w_in = light_rays->rays[i].d;
 			vpl v(col, pos, normal, w_in, is);
-			vpl_store_lane[i] = v;
+			int offset = vpl_store_offset->data[0];
+			vpl_store->vpls[i+offset] = v;
 		}
 		//cout << "finished: create_vpls" << endl;
 	}
@@ -80,13 +84,13 @@ namespace wf::cpu {
 			if (light_rays->rays[i].d == vec3(0))
 				continue;
 			
-			if (luma(light_throughput[i]) == 0) {
+			if (luma(light_throughput->data[i]) == 0) {
 				light_rays->rays[i].d = vec3(0);
 				continue;
 			}
 
 			float xi = rc->rng.uniform_float();
-			float q = luma(light_throughput[i]/le[i]);
+			float q = luma(light_throughput->data[i]/le->data[i]);
 			//TODO: is this q_j or q_j+1?
 			// -> equals: float q = luma(v_j.col/Le_v_0);
 			
@@ -95,7 +99,7 @@ namespace wf::cpu {
 				continue;
 			}
 
-			light_throughput[i] *= 1.0f/q;
+			light_throughput->data[i] *= 1.0f/q;
 		}
 	}
 
@@ -114,7 +118,8 @@ namespace wf::cpu {
 			if (light_rays->rays[i].d == vec3(0))
 				continue;
 
-			vpl v = vpl_store_lane[i];
+			int offset = vpl_store_offset->data[0];
+			vpl v = vpl_store->vpls[i+offset];
 
 			// Sample ray to next VPL
 			diff_geom v_geometry(v.is, *pf->sd);
@@ -127,8 +132,11 @@ namespace wf::cpu {
 
 			// Setup the throughput for the next VPL
 			float D = cdot(to_next_vpl.d, v_geometry.ns); //v.normal); //D_v_j(v_j+1)
-			light_throughput[i] *= D*f/pdf_f; //throughput for v_j+1
+			light_throughput->data[i] *= D*f/pdf_f; //throughput for v_j+1
 		}
+
+		//TODO-ML: how to uptade the offset in CUDA? won't work this way...
+		vpl_store_offset->data[0] += paths;
 	}
 
 	void copy_vpls::run() {
@@ -141,19 +149,21 @@ namespace wf::cpu {
 		auto paths = ml->get_paths();
 		auto path_length = ml->get_path_length();
 
-		//TODO: check free VPL memory!!!
-		vpls->clear();
+		int vpl_count = 0;
 		for (int depth = 0; depth < path_length; ++depth) {
 			for (int path = 0; path < paths; ++path) {
-				vpl v = vpl_store[depth*paths+path];
-				if (v.col != vec3(0))
-					vpls->push_back(v);
+				vpls->vpls[vpl_count] = vpl();
+				vpl v = vpl_store->vpls[depth*paths+path];
+				if (v.col != vec3(0)) {
+					vpls->vpls[vpl_count] = v; //push_back(v);
+					vpl_count++; //TODO-ML: write back vpl_count?
+				}
 			}
 		}
 
 		cout << "Pos.: " << pf->sd->camera.pos << ", Dir.: " << pf->sd->camera.dir << endl;
 		cout << "max. VPL storage: " << paths*path_length << endl;
-		vpl_stats(*vpls);
+		vpl_stats(vpls->vpls, vpl_count);
 	}
 
 	void sample_vpls::run() {
@@ -164,8 +174,10 @@ namespace wf::cpu {
 			for (int x = 0; x < res.x; ++x) {
 				triangle_intersection is_camray = camrays->intersections[y*res.x+x];
 				diff_geom hit(is_camray, *pf->sd);
+				//TODO-ML: how to work with vpls->size()?
 				int32_t pos = rc->rng.uniform_float() * vpls->size();
-				vpl v = (*vpls)[pos];
+				//TODO-ML: better names: vpls->vpls[pos];
+				vpl v = vpls->vpls[pos];
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
 				//auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
@@ -173,9 +185,9 @@ namespace wf::cpu {
 				diff_geom v_geom(v.is, *pf->sd);
 
 				shadowrays->rays[y*res.x+x] = shadow_ray;
-				sampled_vpls[y*res.x+x] = v;
+				sampled_vpls->vpls[y*res.x+x] = v;
 			}
-	}*/
+	}
 
 	void integrate_vpl_samples::run() {
 		time_this_wf_step;
@@ -193,8 +205,8 @@ namespace wf::cpu {
 		for (int y = 0; y < res.y; ++y)
 			for (int x = 0; x < res.x; ++x) {
 				//TMP: Basic test
-				rc->framebuffer.color(x,y) += vec4(0, 1, 0, 0);
-				continue;
+				/*rc->framebuffer.color(x,y) += vec4(0, 1, 0, 0);
+				continue;*/
 
 				vec3 radiance(0);
 				ray cam_ray = camrays->rays[y*res.x+x];

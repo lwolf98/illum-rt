@@ -469,17 +469,17 @@ namespace wf {
 		/* memory allocation */
 		vpl_rays = rc->platform->allocate_raydata_manually(paths);
 		//TODO-ML: maybe delete throughput and use data from vpls
-		light_throughput = rc->platform->allocate_vec3_per_sample(); //allocate_light_throughput();
-		le = rc->platform->allocate_vec3_per_sample(); //allocate_light_throughput();
+		light_throughput = rc->platform->allocate_vec3_per_sample_manually(paths); //allocate_light_throughput();
+		le = rc->platform->allocate_vec3_per_sample_manually(paths); //allocate_light_throughput();
 		vpl_store = rc->platform->allocate_vpldata_manually(paths*path_length); //allocate_vpl_store();
+		vpl_store_offset = rc->platform->allocate_int_per_sample_manually(1);
 		//TODO-ML: can the size be reduced to the actual valid vpl count?
 		vpls = rc->platform->allocate_vpldata_manually(paths*path_length); //vpls = rc->platform->allocate_vpls();
-		//sampled_vpls =  static_cast<per_sample_data<vpl>*>(rc->platform->allocate_data_per_sample(sizeof(vpl)));
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
 
 		/* preparation steps */
-		/*auto *sample_v_0 = rc->platform->step<sample_v_0s>();
-		sample_v_0->use(vpl_rays, light_throughput, le);
+		auto *sample_v_0 = rc->platform->step<sample_v_0s>();
+		sample_v_0->use(vpl_rays, light_throughput, le, vpl_store_offset);
 		frame_preparation_steps.push_back(sample_v_0);
 
 		for (int depth = 0; depth < path_length; ++depth) {
@@ -487,8 +487,9 @@ namespace wf {
 			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + depth);
 			
 			find_next_hit->use(vpl_rays);
-			vpl* vpl_store_lane = vpl_store+depth*paths;
-			create_vpl->use(vpl_rays, light_throughput, vpl_store_lane);
+			//vpl* vpl_store_lane = vpl_store+depth*paths;
+			//create_vpl->use(vpl_rays, light_throughput, vpl_store_lane);
+			create_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset);
 
 			frame_preparation_steps.push_back(find_next_hit);
 			frame_preparation_steps.push_back(create_vpl);
@@ -500,11 +501,15 @@ namespace wf {
 			}
 
 			auto *sample_next_vpl = rc->platform->step<sample_next_vpls>("sample next vpl d=" + depth);
-			sample_next_vpl->use(vpl_rays, light_throughput, vpl_store_lane);
+			sample_next_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset);
 			frame_preparation_steps.push_back(sample_next_vpl);
 		}
 
-		if (path_length > 0) {
+		auto *copy_vpl = rc->platform->step<copy_vpls>();
+		copy_vpl->use(vpl_store, vpls);
+		frame_preparation_steps.push_back(copy_vpl);
+
+		/*if (path_length > 0) {
 			auto *copy_vpl = rc->platform->step<copy_vpls>();
 			copy_vpl->use(vpl_store, vpls);
 			frame_preparation_steps.push_back(copy_vpl);
@@ -517,7 +522,7 @@ namespace wf {
 
 		/* sampling steps */
 		//TODO-ML: handle vpls->size() == 0 in step
-		/*for (int i = 0; i < vpls_per_sample; ++i) {
+		for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
 			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
@@ -530,12 +535,12 @@ namespace wf {
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
 			sampling_steps.push_back(integrate_vpl_sample);
-		}*/
+		}
 
 		// Test CUDA
-		auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
-		sampling_steps.push_back(integrate_vpl_sample);
+		sampling_steps.push_back(integrate_vpl_sample);*/
 	}
 
 	/*vpl* manylight_algorithm::allocate_vpl_store() {
@@ -610,6 +615,27 @@ void vpl_stats(const vector<vpl>& vpls) {
 	normal /= vpls.size();
 
 	cout << "VPLs: " << vpls.size() << endl;
+	cout << "col: " << col << ", pos: " << pos << ", normal: " << normal << endl;
+}
+
+void vpl_stats(const vpl* vpls, const int size) {
+	vec3 col(0);
+	vec3 pos(0);
+	vec3 normal(0);
+	//for (auto v : vpls) {
+	for (int i = 0; i < size; i++) {
+		vpl v = vpls[i];
+		col += v.col;
+		pos += v.pos;
+		normal += v.normal;
+		if (col.r != col.r)
+			cout << "NAN: " << v.col << endl;
+	}
+	col /= size;
+	pos /= size;
+	normal /= size;
+
+	cout << "VPLs: " << size << endl;
 	cout << "col: " << col << ", pos: " << pos << ", normal: " << normal << endl;
 }
 

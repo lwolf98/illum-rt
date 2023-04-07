@@ -7,10 +7,12 @@
 namespace wf::gl {
 	template<typename T> struct per_sample_data : public wf::per_sample_data<T> {
 		data_texture<T> data;
-		per_sample_data(glm::ivec2 dim) : data("float buffer", dim.x, dim.y, GL_R32F) {
-			rc->call_at_resolution_change[this] = [this](int w, int h) {
-				data.resize(w, h);
-			};
+		per_sample_data(glm::ivec2 dim, bool update_size = true) : data("float buffer", dim.x, dim.y, GL_R32F) {
+			if (update_size) {
+				rc->call_at_resolution_change[this] = [this](int w, int h) {
+					data.resize(w, h);
+				};
+			}
 		}
 		~per_sample_data() {}
 	};
@@ -37,6 +39,8 @@ namespace wf::gl {
 		raydata* allocate_raydata_manually(int size) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		per_sample_data<vec3>* allocate_vec3_per_sample() override;
+		per_sample_data<vec3>* allocate_vec3_per_sample_manually(int size) override;
+		per_sample_data<int>* allocate_int_per_sample_manually(int size) override;
 
 		/* manylight allocation */
 		vpldata* allocate_vpldata() override;

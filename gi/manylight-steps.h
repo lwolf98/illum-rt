@@ -16,35 +16,37 @@ namespace wf
 	*/
 
 	/* Preparation steps */
-	/*class sample_v_0s : public step
+	class sample_v_0s : public step
 	{
 	public:
 		static constexpr char id[] = "sample v_0 lights";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput, vec3 *le) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le, per_sample_data<int> *vpl_store_offset) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename V>
+		template <typename RD, typename VSD, typename INT>
 		class sample_v_0s : public wf::sample_v_0s
 		{
 		public:
 			using wf::sample_v_0s::sample_v_0s;
 			RD *light_rays = nullptr;
-			V *light_throughput = nullptr;
-			V *le = nullptr;
+			VSD *light_throughput = nullptr;
+			VSD *le = nullptr;
+			INT *vpl_store_offset = nullptr;
 
 			bool properly_wired()
 			{
-				return light_rays && light_throughput && le;
+				return light_rays && light_throughput && le && vpl_store_offset;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput, vec3 *le)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le, per_sample_data<int> *vpl_store_offset)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<V *>(light_throughput);
-				this->le = dynamic_cast<V *>(le);
+				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
+				this->le = dynamic_cast<VSD *>(le);
+				this->vpl_store_offset = dynamic_cast<INT *>(vpl_store_offset);
 			}
 		};
 	}
@@ -54,30 +56,32 @@ namespace wf
 	public:
 		static constexpr char id[] = "create vpls";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename LT, typename VL>
+		template <typename RD, typename VSD, typename VD, typename INT>
 		class create_vpls : public wf::create_vpls
 		{
 		public:
 			using wf::create_vpls::create_vpls;
 			RD *light_rays = nullptr;
-			LT *light_throughput = nullptr;
-			VL *vpl_store_lane = nullptr;
+			VSD *light_throughput = nullptr;
+			VD *vpl_store = nullptr;
+			INT *vpl_store_offset = nullptr;
 
 			bool properly_wired()
 			{
-				return light_rays && light_throughput && vpl_store_lane;
+				return light_rays && light_throughput && vpl_store && vpl_store_offset;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<LT *>(light_throughput);
-				this->vpl_store_lane = dynamic_cast<VL *>(vpl_store_lane);
+				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
+				this->vpl_store = dynamic_cast<VD *>(vpl_store);
+				this->vpl_store_offset = dynamic_cast<INT *>(vpl_store_offset);
 			}
 		};
 	}
@@ -87,30 +91,30 @@ namespace wf
 	public:
 		static constexpr char id[] = "russian roulette";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput, vec3 *le) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename V>
+		template <typename RD, typename VSD>
 		class russian_roulette : public wf::russian_roulette
 		{
 		public:
 			using wf::russian_roulette::russian_roulette;
 			RD *light_rays = nullptr;
-			V *light_throughput = nullptr;
-			V *le = nullptr;
+			VSD *light_throughput = nullptr;
+			VSD *le = nullptr;
 
 			bool properly_wired()
 			{
 				return light_rays && light_throughput && le;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput, vec3 *le)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<V *>(light_throughput);
-				this->le = dynamic_cast<V *>(le);
+				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
+				this->le = dynamic_cast<VSD *>(le);
 			}
 		};
 	}
@@ -120,30 +124,32 @@ namespace wf
 	public:
 		static constexpr char id[] = "sample next vpls";
 
-		virtual void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename LT, typename VL>
+		template <typename RD, typename VSD, typename VD, typename INT>
 		class sample_next_vpls : public wf::sample_next_vpls
 		{
 		public:
 			using wf::sample_next_vpls::sample_next_vpls;
 			RD *light_rays = nullptr;
-			LT *light_throughput = nullptr;
-			VL *vpl_store_lane = nullptr;
+			VSD *light_throughput = nullptr;
+			VD *vpl_store = nullptr;
+			INT *vpl_store_offset = nullptr;
 
 			bool properly_wired()
 			{
-				return light_rays && light_throughput && vpl_store_lane;
+				return light_rays && light_throughput && vpl_store && vpl_store_offset;
 			}
 
-			void use(raydata *light_rays, vec3 *light_throughput, vpl *vpl_store_lane)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
-				this->light_throughput = dynamic_cast<LT *>(light_throughput);
-				this->vpl_store_lane = dynamic_cast<VL *>(vpl_store_lane);
+				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
+				this->vpl_store = dynamic_cast<VD *>(vpl_store);
+				this->vpl_store_offset = dynamic_cast<INT *>(vpl_store_offset);
 			}
 		};
 	}
@@ -153,74 +159,73 @@ namespace wf
 	public:
 		static constexpr char id[] = "copy vpls";
 
-		virtual void use(vpl *vpl_store, std::vector<vpl> *vpls) = 0;
+		virtual void use(vpldata *vpl_store, vpldata *vpls) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename VS, typename VEC>
+		template <typename VD>
 		class copy_vpls : public wf::copy_vpls
 		{
 		public:
 			using wf::copy_vpls::copy_vpls;
-			VS *vpl_store = nullptr;
-			VEC *vpls = nullptr;
+			VD *vpl_store = nullptr;
+			VD *vpls = nullptr;
 
 			bool properly_wired()
 			{
 				return vpl_store && vpls;
 			}
 
-			void use(vpl *vpl_store, std::vector<vpl> *vpls)
+			void use(vpldata *vpl_store, vpldata *vpls)
 			{
-				this->vpl_store = dynamic_cast<VS *>(vpl_store);
-				this->vpls = dynamic_cast<VEC *>(vpls);
+				this->vpl_store = dynamic_cast<VD *>(vpl_store);
+				this->vpls = dynamic_cast<VD *>(vpls);
 			}
 		};
 	}
 
-	/* Integration steps * /
+	/* Integration steps */
 	class sample_vpls : public step
 	{
 	public:
 		static constexpr char id[] = "sample vpl rays";
 
-		virtual void use(raydata *camrays, raydata *shadowrays, std::vector<vpl> *vpls, vpl *sampled_vpls) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename VEC, typename VPL>
+		template <typename RD, typename VD>
 		class sample_vpls : public wf::sample_vpls
 		{
 		public:
 			using wf::sample_vpls::sample_vpls;
 			RD *camrays = nullptr;
 			RD *shadowrays = nullptr;
-			VEC *vpls = nullptr;
-			VPL *sampled_vpls = nullptr;
+			VD *vpls = nullptr;
+			VD *sampled_vpls = nullptr;
 
 			bool properly_wired()
 			{
 				return camrays && shadowrays && vpls && sampled_vpls;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, std::vector<vpl> *vpls, vpl *sampled_vpls)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
-				this->vpls = dynamic_cast<VEC *>(vpls);
-				this->sampled_vpls = dynamic_cast<VPL *>(sampled_vpls);
+				this->vpls = dynamic_cast<VD *>(vpls);
+				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
 			}
 		};
-	}*/
+	}
 
 	class integrate_vpl_samples : public step
 	{
 	public:
 		static constexpr char id[] = "integrate vpl samples";
 
-		//TODO-ML: per_sample_data should be used for sampled_vpls...
 		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls) = 0;
 	};
 	namespace wire

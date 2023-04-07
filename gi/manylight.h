@@ -11,6 +11,7 @@
 struct vpl;
 void throughput_stats(const vec3 tp[], const int start, const int size);
 void vpl_stats(const std::vector<vpl>& vpls);
+void vpl_stats(const vpl* vpls, const int size);
 void framebuffer_stats();
 
 // virtual point light
@@ -57,9 +58,11 @@ namespace wf {
 		uint32_t rr_start = 4;
 
 		//std::vector<vpl>* vpls = nullptr;
+		//TODO-ML: maybe remove vpls and only use vpl_store (reorganize it in the copy step)
 		vpldata* vpls = nullptr;
 
 		vpldata* vpl_store = nullptr;
+		per_sample_data<int>* vpl_store_offset = nullptr;
 		raydata* vpl_rays = nullptr;
 		per_sample_data<vec3>* light_throughput = nullptr;
 		per_sample_data<vec3>* le = nullptr;
