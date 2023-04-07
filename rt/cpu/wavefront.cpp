@@ -51,6 +51,29 @@ namespace wf {
 			delete [] intersections;
 		}
 
+		// vpldata
+
+		vpldata::vpldata(int w, int h, bool update_size) : w(w), h(h) {
+			if (w > 0 && h > 0)
+				vpls = new vpl[w*h];
+
+			if (update_size) {
+				rc->call_at_resolution_change[this] = [this](int new_w, int new_h) {
+					delete [] vpls;
+					this->w = new_w;
+					this->h = new_h;
+					vpls = new vpl[this->w*this->h];
+				};
+			}
+		}
+		vpldata::~vpldata() {
+			rc->call_at_resolution_change.erase(this);
+			delete [] vpls;
+		}
+		int vpldata::size() {
+			return w*h;
+		}
+
 		// batch_rt_adapter
 
 		void batch_rt_adapter::compute_closest_hit() {
@@ -233,8 +256,8 @@ namespace wf {
 			return new raydata(rc->resolution());
 		}
 
-		raydata* platform::allocate_raydata_manually(int w, int h) {
-			return new raydata(w, h, false);
+		raydata* platform::allocate_raydata_manually(int size) {
+			return new raydata(size, 1, false);
 		}
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
@@ -250,7 +273,15 @@ namespace wf {
 		}*/
 
 		/* manylight allocation */
-		::vpl* platform::allocate_vpl_store() {
+		vpldata* platform::allocate_vpldata() {
+			return new vpldata(rc->resolution());
+		}
+
+		vpldata* platform::allocate_vpldata_manually(int size) {
+			return new vpldata(size, 1, false);
+		}
+
+		/*::vpl* platform::allocate_vpl_store() {
 			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
 				//TODO: better handling for this situation
 				return nullptr;
@@ -273,9 +304,9 @@ namespace wf {
 			return new vec3[paths];
 		}
 
-		/*vector<::vpl>* platform::allocate_vpls() {
+		vector<::vpl>* platform::allocate_vpls() {
 			return new vector<::vpl>;
-		}*/
+		}
 
 		::vpl* platform::allocate_vpl_per_sample() {
 			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
@@ -287,7 +318,7 @@ namespace wf {
 
 			glm::ivec2 res = rc->resolution();
 			return new ::vpl[res.x*res.y];
-		}
+		}*/
 
 		platform *pf = nullptr;
 	}

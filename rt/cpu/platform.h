@@ -37,16 +37,18 @@ namespace wf::cpu {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
-		raydata* allocate_raydata_manually(int w, int h) override;
+		raydata* allocate_raydata_manually(int size) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		per_sample_data<vec3>* allocate_vec3_per_sample() override;
 		//per_sample_data<void>* allocate_data_per_sample(int32_t typesize);
 		
 		/* manylight allocation */
-		virtual ::vpl* allocate_vpl_store() override;
-		virtual vec3* allocate_light_throughput() override;
+		virtual vpldata* allocate_vpldata() override;
+		virtual vpldata* allocate_vpldata_manually(int size) override;
+		//virtual ::vpl* allocate_vpl_store() override;
+		//virtual vec3* allocate_light_throughput() override;
 		//virtual vector<vpl>* allocate_vpls() override;
-		virtual ::vpl* allocate_vpl_per_sample() override;
+		//virtual ::vpl* allocate_vpl_per_sample() override;
 
 		batch_rt *rt = nullptr;
 		cpu::scene *sd = nullptr;

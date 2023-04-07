@@ -360,20 +360,52 @@ namespace wf {
 		};
 
 		// virtual point light
-		struct vpl : public wf::vpl {
+		struct vpldata : public wf::vpldata {
+			int w, h;
 			global_memory_buffer<float4> pos;
+			global_memory_buffer<float4> col;
+			//global_memory_buffer<float4> normal; //optional with 'is'
+			global_memory_buffer<float4> w_in;
+			global_memory_buffer<tri_is> is;
+			// Constructor for VPLs (v_1 to v_...)
 
-			float4 pos;
+			vpldata(glm::ivec2 dim) : vpldata(dim.x, dim.y) {}
+			vpldata(int w, int h, bool update_size = true) : w(w), h(h),
+			pos("vpl_pos", w*h),
+			col("vpl_col", w*h),
+			//normal("vpl_normals", w*h),
+			w_in("vpl_w_in", w*h),
+			is("vpl_intersections", w*h) {
+				if (update_size) {
+					rc->call_at_resolution_change[this] = [this](int w, int h) {
+						this->w = w;
+						this->h = h;
+						this->pos.resize(w*h);
+						this->col.resize(w*h);
+						this->w_in.resize(w*h);
+						this->is.resize(w*h);
+					};
+				}
+			}
+
+			virtual int size() override {
+				return w*h;
+			}
+
+			//vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
+			//vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}
+
+			/*float4 pos;
 			float4 col;
 			float4 normal; //optional with 'is'
 			float4 w_in;
-			tri_is is;
+			tri_is is;*/
 
 			// Constructor for VPLs (v_1 to v_...)
-			vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
+			/*vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
 			: pos(pos), col(col), normal(normal), w_in(w_in), is(is) {}
 
-			vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}
+			vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}*/
 		};
 
 		struct scenedata {

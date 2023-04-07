@@ -467,14 +467,15 @@ namespace wf {
 		*/
 
 		/* memory allocation */
-		vpl_rays = rc->platform->allocate_raydata_manually(paths, 1);
+		vpl_rays = rc->platform->allocate_raydata_manually(paths);
 		//TODO-ML: maybe delete throughput and use data from vpls
-		light_throughput = rc->platform->allocate_light_throughput();
-		le = rc->platform->allocate_light_throughput();
-		vpl_store = rc->platform->allocate_vpl_store();
-		//vpls = rc->platform->allocate_vpls();
+		light_throughput = rc->platform->allocate_vec3_per_sample(); //allocate_light_throughput();
+		le = rc->platform->allocate_vec3_per_sample(); //allocate_light_throughput();
+		vpl_store = rc->platform->allocate_vpldata_manually(paths*path_length); //allocate_vpl_store();
+		//TODO-ML: can the size be reduced to the actual valid vpl count?
+		vpls = rc->platform->allocate_vpldata_manually(paths*path_length); //vpls = rc->platform->allocate_vpls();
 		//sampled_vpls =  static_cast<per_sample_data<vpl>*>(rc->platform->allocate_data_per_sample(sizeof(vpl)));
-		sampled_vpls = rc->platform->allocate_vpl_per_sample();
+		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
 
 		/* preparation steps */
 		/*auto *sample_v_0 = rc->platform->step<sample_v_0s>();

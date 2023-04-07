@@ -59,7 +59,7 @@ namespace wf::cpu {
 			vec3 pos = hit.x;
 			vec3 normal = hit.ns;
 			vec3 w_in = light_rays->rays[i].d;
-			::vpl v(col, pos, normal, w_in, is);
+			vpl v(col, pos, normal, w_in, is);
 			vpl_store_lane[i] = v;
 		}
 		//cout << "finished: create_vpls" << endl;
@@ -114,7 +114,7 @@ namespace wf::cpu {
 			if (light_rays->rays[i].d == vec3(0))
 				continue;
 
-			::vpl v = vpl_store_lane[i];
+			vpl v = vpl_store_lane[i];
 
 			// Sample ray to next VPL
 			diff_geom v_geometry(v.is, *pf->sd);
@@ -145,7 +145,7 @@ namespace wf::cpu {
 		vpls->clear();
 		for (int depth = 0; depth < path_length; ++depth) {
 			for (int path = 0; path < paths; ++path) {
-				::vpl v = vpl_store[depth*paths+path];
+				vpl v = vpl_store[depth*paths+path];
 				if (v.col != vec3(0))
 					vpls->push_back(v);
 			}
@@ -165,7 +165,7 @@ namespace wf::cpu {
 				triangle_intersection is_camray = camrays->intersections[y*res.x+x];
 				diff_geom hit(is_camray, *pf->sd);
 				int32_t pos = rc->rng.uniform_float() * vpls->size();
-				::vpl v = (*vpls)[pos];
+				vpl v = (*vpls)[pos];
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
 				//auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());
@@ -203,7 +203,7 @@ namespace wf::cpu {
 
 				ray shadow_ray = shadowrays->rays[y*res.x+x];
 				triangle_intersection is_test = shadowrays->intersections[y*res.x+x];
-				::vpl v = sampled_vpls[y*res.x+x];
+				vpl v = sampled_vpls->vpls[y*res.x+x];
 
 				//TODO-ML: Does this need to be checked when using any_hits?
 				//bool valid_shadowray = (shadowrays->rays[y*res.x+x].t_max > 0);

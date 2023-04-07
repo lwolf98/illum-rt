@@ -34,15 +34,17 @@ namespace wf::gl {
 		bool interprete(const std::string &command, std::istringstream &in) override;
 		
 		raydata* allocate_raydata() override;
-		raydata* allocate_raydata_manually(int w, int h) override;
+		raydata* allocate_raydata_manually(int size) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		per_sample_data<vec3>* allocate_vec3_per_sample() override;
 
 		/* manylight allocation */
-		virtual vpl* allocate_vpl_store() override;
+		vpldata* allocate_vpldata() override;
+		vpldata* allocate_vpldata_manually(int size) override;
+		/*virtual vpl* allocate_vpl_store() override;
 		virtual vec3* allocate_light_throughput() override;
 		//virtual vector<vpl>* allocate_vpls() override;
-		virtual vpl* allocate_vpl_per_sample() override;
+		virtual vpl* allocate_vpl_per_sample() override;*/
 		
 		scenedata *sd = nullptr;
 		batch_rt *rt = nullptr;

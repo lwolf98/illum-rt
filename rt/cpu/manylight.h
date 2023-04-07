@@ -33,7 +33,7 @@ namespace wf::cpu {
 		void run() override;
 	};*/
 
-	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, ::vpl> {
+	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, vpldata> {
 		void run() override;
 	};
 	

@@ -101,8 +101,10 @@ namespace wf::gl {
 	    return new raydata(rc->resolution());
 	}
 		
-	raydata* platform::allocate_raydata_manually(int w, int h) {
-	    return new raydata(w, h);
+	raydata* platform::allocate_raydata_manually(int size) {
+		//TODO-ML: to be implemented
+		return nullptr;
+	    //return new raydata(size, 1, false);
 	}
 
 	per_sample_data<float>* platform::allocate_float_per_sample() {
@@ -113,49 +115,17 @@ namespace wf::gl {
 		return new per_sample_data<vec3>(rc->resolution());
 	}
 
-		/* manylight allocation */
-		//TODO: to be implemented
-		vpl* platform::allocate_vpl_store() {
-			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
-				//TODO: better handling for this situation
-				return nullptr;
-			}
-			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
-			auto paths = ml->get_paths();
-			auto path_length = ml->get_path_length();
-
-			return new vpl[paths*path_length];*/
-			return nullptr;
-		}
-
-		vec3* platform::allocate_light_throughput() {
-			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
-				//TODO: better handling for this situation
-				return nullptr;
-			}
-			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
-			auto paths = ml->get_paths();
-
-			return new vec3[paths];*/
-			return nullptr;
-		}
-
-		/*vector<vpl>* platform::allocate_vpls() {
-			return new vector<vpl>;
-		}*/
-
-		vpl* platform::allocate_vpl_per_sample() {
-			/*if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
-				//TODO: better handling for this situation
-				return nullptr;
-			}
-			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
-			auto paths = ml->get_paths();
-
-			glm::ivec2 res = rc->resolution();
-			return new vpl[res.x*res.y];*/
-			return nullptr;
-		}
+	/* manylight allocation */
+	//TODO-ML: to be implemented
+	vpldata* platform::allocate_vpldata() {
+		return nullptr;
+		//return new vpldata(rc->resolution());
+	}
+		
+	vpldata* platform::allocate_vpldata_manually(int size) {
+		return nullptr;
+		//return new vpldata(size, 1);
+	}
 
 	platform *pf = nullptr;
 }

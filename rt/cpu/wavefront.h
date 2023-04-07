@@ -29,6 +29,17 @@ namespace wf {
 			~raydata();
 		};
 
+		struct vpldata : public wf::vpldata {
+			int w, h;
+			vpl *vpls = nullptr;
+
+			vpldata(glm::ivec2 dim) : vpldata(dim.x, dim.y) {}
+			vpldata(int w, int h, bool update_size = true);
+			~vpldata();
+
+			virtual int size() override;
+		};
+
 		struct batch_rt : public batch_ray_tracer {
 			raydata *rd = nullptr;
 			virtual void build(cpu::scene *s) = 0;

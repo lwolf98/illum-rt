@@ -221,30 +221,30 @@ namespace wf
 		static constexpr char id[] = "integrate vpl samples";
 
 		//TODO-ML: per_sample_data should be used for sampled_vpls...
-		virtual void use(raydata *camrays, raydata *shadowrays, vpl *sampled_vpls) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename VPL>
+		template <typename RD, typename VD>
 		class integrate_vpl_samples : public wf::integrate_vpl_samples
 		{
 		public:
 			using wf::integrate_vpl_samples::integrate_vpl_samples;
 			RD *camrays = nullptr;
 			RD *shadowrays = nullptr;
-			VPL *sampled_vpls = nullptr;
+			VD *sampled_vpls = nullptr;
 
 			bool properly_wired()
 			{
 				return camrays && shadowrays && sampled_vpls;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpl *sampled_vpls)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
-				this->sampled_vpls = dynamic_cast<VPL *>(sampled_vpls);
+				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
 			}
 		};
 	}

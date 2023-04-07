@@ -135,8 +135,8 @@ namespace wf {
 			return new raydata(rc->resolution());
 		}
 
-		raydata* platform::allocate_raydata_manually(int w, int h) {
-			return new raydata(w, h, false);
+		raydata* platform::allocate_raydata_manually(int size) {
+			return new raydata(size, 1, false);
 		}
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
@@ -148,8 +148,16 @@ namespace wf {
 		}
 
 		/* manylight allocation */
+		vpldata* platform::allocate_vpldata() {
+			return new vpldata(rc->resolution());
+		}
+
+		vpldata* platform::allocate_vpldata_manually(int size) {
+			return new vpldata(size, 1, false);
+		}
+
 		//TODO: return global_memory_buffer
-		vpl* platform::allocate_vpl_store() {
+		/*vpl* platform::allocate_vpl_store() {
 			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
 				//TODO: better handling for this situation
 				return nullptr;
@@ -172,9 +180,9 @@ namespace wf {
 			return new vec3[paths];
 		}
 
-		/*vector<vpl>* platform::allocate_vpls() {
+		vector<vpl>* platform::allocate_vpls() {
 			return new vector<vpl>;
-		}*/
+		}
 
 		vpl* platform::allocate_vpl_per_sample() {
 			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
@@ -186,7 +194,7 @@ namespace wf {
 
 			glm::ivec2 res = rc->resolution();
 			return new vpl[res.x*res.y];
-		}
+		}*/
 
 		platform *pf = nullptr;
 

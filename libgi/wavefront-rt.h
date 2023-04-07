@@ -40,8 +40,9 @@ namespace wf {
 		virtual ~per_sample_data() {}
 	};
 
-	struct vpl {
-		virtual ~vpl() {}
+	struct vpldata {
+		virtual ~vpldata() {}
+		virtual int size() = 0;
 	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
@@ -94,17 +95,19 @@ namespace wf {
 		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
 		
 		virtual wf::raydata* allocate_raydata() = 0;
-		virtual wf::raydata* allocate_raydata_manually(int w, int h) = 0;
+		virtual wf::raydata* allocate_raydata_manually(int size) = 0;
 		// sadly, this cannot be templated...
 		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
 		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample() = 0;
 		//virtual wf::per_sample_data<void>* allocate_data_per_sample(int32_t typesize) = 0;
 
 		/* manylight allocation */
-		virtual vpl* allocate_vpl_store() = 0;
+		virtual wf::vpldata* allocate_vpldata() = 0;
+		virtual wf::vpldata* allocate_vpldata_manually(int size) = 0;
+		/*virtual vpl* allocate_vpl_store() = 0;
 		virtual vec3* allocate_light_throughput() = 0;
 		//virtual vector<vpl>* allocate_vpls() = 0;
-		virtual vpl* allocate_vpl_per_sample() = 0;
+		virtual vpl* allocate_vpl_per_sample() = 0;*/
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }

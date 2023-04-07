@@ -14,7 +14,7 @@ void vpl_stats(const std::vector<vpl>& vpls);
 void framebuffer_stats();
 
 // virtual point light
-struct vpl : public pointlight, public wf::vpl {
+struct vpl : public pointlight {
 //struct vpl : public pointlight {
 	triangle_intersection is;
 	vec3 normal; //optional with 'is'
@@ -56,20 +56,20 @@ namespace wf {
 		uint32_t vpls_per_sample = 6;
 		uint32_t rr_start = 4;
 
-		std::vector<vpl>* vpls = nullptr;
+		//std::vector<vpl>* vpls = nullptr;
+		vpldata* vpls = nullptr;
 
-		vpl* vpl_store = nullptr;
+		vpldata* vpl_store = nullptr;
 		raydata* vpl_rays = nullptr;
-		vec3* light_throughput = nullptr;
-		vec3* le = nullptr;
-		//per_sample_data<vpl>* sampled_vpls;
-		vpl* sampled_vpls = nullptr;
+		per_sample_data<vec3>* light_throughput = nullptr;
+		per_sample_data<vec3>* le = nullptr;
+		vpldata* sampled_vpls = nullptr;
 
 		void regenerate_steps() override;
-		vpl* allocate_vpl_store();
+		/*vpl* allocate_vpl_store();
 		vec3* allocate_light_throughput();
 		std::vector<vpl>* allocate_vpls();
-		vpl* allocate_vpl_per_sample();
+		vpl* allocate_vpl_per_sample();*/
 
 	public:
 		uint32_t current_depth = 0;

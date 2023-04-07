@@ -154,8 +154,8 @@ namespace wf {
 			}
 		};
 
-		struct vpl : public wf::vpl {
-			//TODO: to be implemented
+		struct vpldata : public wf::vpldata {
+			//TODO-ML: to be implemented
 		};
 
 		
