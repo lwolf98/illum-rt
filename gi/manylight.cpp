@@ -17,6 +17,7 @@ using namespace glm;
 using namespace std;
 
 static const bool export_debug_obj = false;
+static const bool export_vpl_list = false;
 
 void manylight_algorithm::prepare_frame() {
 	time_this_block(ml_preparation);
@@ -215,6 +216,16 @@ void manylight_algorithm::prepare_frame() {
 		for (auto v : vpls) {
 			objdraw::icosphere sphere(v.pos, 0.25f);
 			obj_writer.write_icosphere(sphere);
+		}
+	}
+
+	if (export_vpl_list) {
+		std::stringstream filename_stream;
+		filename_stream << "vpl_list_" << vpls.size() << ".txt";
+		std::ofstream out_vpls(filename_stream.str());
+		out_vpls << "position;flux;normal;incoming light direction" << endl;
+		for (auto v : vpls) {
+			out_vpls << v.pos << ";" << v.col << ";" << v.normal << ";" << v.w_in << endl;
 		}
 	}
 
