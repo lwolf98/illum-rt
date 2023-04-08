@@ -149,21 +149,22 @@ namespace wf::cpu {
 		auto paths = ml->get_paths();
 		auto path_length = ml->get_path_length();
 
-		int vpl_count = 0;
+		int count = 0;
 		for (int depth = 0; depth < path_length; ++depth) {
 			for (int path = 0; path < paths; ++path) {
-				vpls->vpls[vpl_count] = vpl();
+				vpls->vpls[count] = vpl();
 				vpl v = vpl_store->vpls[depth*paths+path];
 				if (v.col != vec3(0)) {
-					vpls->vpls[vpl_count] = v; //push_back(v);
-					vpl_count++; //TODO-ML: write back vpl_count?
+					vpls->vpls[count] = v; //push_back(v);
+					count++;
 				}
 			}
 		}
+		vpl_count->data[0] = count;
 
 		cout << "Pos.: " << pf->sd->camera.pos << ", Dir.: " << pf->sd->camera.dir << endl;
 		cout << "max. VPL storage: " << paths*path_length << endl;
-		vpl_stats(vpls->vpls, vpl_count);
+		vpl_stats(vpls->vpls, count);
 	}
 
 	void sample_vpls::run() {
@@ -175,9 +176,11 @@ namespace wf::cpu {
 				triangle_intersection is_camray = camrays->intersections[y*res.x+x];
 				diff_geom hit(is_camray, *pf->sd);
 				//TODO-ML: how to work with vpls->size()?
-				int32_t pos = rc->rng.uniform_float() * vpls->size();
+				//int32_t pos = rc->rng.uniform_float() * vpls->size();
+				int32_t pos = rc->rng.uniform_float() * vpl_count->data[0];
 				//TODO-ML: better names: vpls->vpls[pos];
 				vpl v = vpls->vpls[pos];
+				//cout << pos << ": " << v.col << " " << v.pos << " " << v.w_in << endl;
 
 				// discard col and pdf; pdf is also wrong because vpl does not override pointlight::sample_Li yet
 				//auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, rc->rng.uniform_float2());

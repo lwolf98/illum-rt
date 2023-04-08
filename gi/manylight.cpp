@@ -475,6 +475,7 @@ namespace wf {
 		vpl_store_offset = rc->platform->allocate_int_per_sample_manually(1);
 		//TODO-ML: can the size be reduced to the actual valid vpl count?
 		vpls = rc->platform->allocate_vpldata_manually(paths*path_length); //vpls = rc->platform->allocate_vpls();
+		vpl_count = rc->platform->allocate_int_per_sample_manually(1);
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
 
 		/* preparation steps */
@@ -506,7 +507,7 @@ namespace wf {
 		}
 
 		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls);
+		copy_vpl->use(vpl_store, vpls, vpl_count);
 		frame_preparation_steps.push_back(copy_vpl);
 
 		/*if (path_length > 0) {
@@ -528,7 +529,7 @@ namespace wf {
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 
-			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls);
+			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count);
 			find_light->use(shadowrays);
 			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
 

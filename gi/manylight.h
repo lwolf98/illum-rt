@@ -25,7 +25,8 @@ struct vpl : public pointlight {
 	vpl(const vec3& col, const vec3& pos, const vec3& normal, const vec3& w_in, const triangle_intersection& is)
 	: pointlight(pos, col), normal(normal), w_in(w_in), is(is) {}
 
-	vpl() : pointlight(vec3(0), vec3(0)) {}
+	//vpl() : pointlight(vec3(0), vec3(0)) {}
+	vpl() : vpl(vec3(0), vec3(0), vec3(0), vec3(0), triangle_intersection()) {}
 };
 
 class manylight_algorithm : public direct_light {
@@ -60,6 +61,7 @@ namespace wf {
 		//std::vector<vpl>* vpls = nullptr;
 		//TODO-ML: maybe remove vpls and only use vpl_store (reorganize it in the copy step)
 		vpldata* vpls = nullptr;
+		per_sample_data<int>* vpl_count = nullptr;
 
 		vpldata* vpl_store = nullptr;
 		per_sample_data<int>* vpl_store_offset = nullptr;

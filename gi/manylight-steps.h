@@ -159,28 +159,30 @@ namespace wf
 	public:
 		static constexpr char id[] = "copy vpls";
 
-		virtual void use(vpldata *vpl_store, vpldata *vpls) = 0;
+		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename VD>
+		template <typename VD, typename INT>
 		class copy_vpls : public wf::copy_vpls
 		{
 		public:
 			using wf::copy_vpls::copy_vpls;
 			VD *vpl_store = nullptr;
 			VD *vpls = nullptr;
+			INT *vpl_count = nullptr;
 
 			bool properly_wired()
 			{
-				return vpl_store && vpls;
+				return vpl_store && vpls && vpl_count;
 			}
 
-			void use(vpldata *vpl_store, vpldata *vpls)
+			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count)
 			{
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpls = dynamic_cast<VD *>(vpls);
+				this->vpl_count = dynamic_cast<INT *>(vpl_count);
 			}
 		};
 	}
@@ -191,12 +193,12 @@ namespace wf
 	public:
 		static constexpr char id[] = "sample vpl rays";
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename VD>
+		template <typename RD, typename VD, typename INT>
 		class sample_vpls : public wf::sample_vpls
 		{
 		public:
@@ -205,18 +207,20 @@ namespace wf
 			RD *shadowrays = nullptr;
 			VD *vpls = nullptr;
 			VD *sampled_vpls = nullptr;
+			INT *vpl_count = nullptr;
 
 			bool properly_wired()
 			{
-				return camrays && shadowrays && vpls && sampled_vpls;
+				return camrays && shadowrays && vpls && sampled_vpls && vpl_count;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
 				this->vpls = dynamic_cast<VD *>(vpls);
 				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
+				this->vpl_count = dynamic_cast<INT *>(vpl_count);
 			}
 		};
 	}

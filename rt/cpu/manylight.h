@@ -25,11 +25,11 @@ namespace wf::cpu {
 		void run() override;
 	};
 
-	struct copy_vpls : public wf::wire::copy_vpls<vpldata> {
+	struct copy_vpls : public wf::wire::copy_vpls<vpldata, per_sample_data<int>> {
 		void run() override;
 	};
 
-	struct sample_vpls : public wf::wire::sample_vpls<raydata, vpldata> {
+	struct sample_vpls : public wf::wire::sample_vpls<raydata, vpldata, per_sample_data<int>> {
 		void run() override;
 	};
 
