@@ -62,7 +62,10 @@ namespace wf::gl {
 		register_wf_step_by_id(, build_accel_struct);
 		register_wf_step_by_id(, sample_uniform_dir);
 		register_wf_step_by_id(, sample_cos_weighted_dir);
+		register_wf_step_by_id(, compute_light_distribution);
+		register_wf_step_by_id(, sample_light_dir);
 		register_wf_step_by_id(, integrate_dir_sample);
+		register_wf_step_by_id(, integrate_light_sample);
 		register_wf_step_by_id(, copy_to_preview);
 
 		timer = new wf::gl::timer;
@@ -79,7 +82,6 @@ namespace wf::gl {
 		pf->sd->upload(scene);
 		if (!rt)
 			rt = dynamic_cast<batch_rt*>(select("default"));
-		scene->compute_light_distribution(); // TODO extract as step
 
 		for (auto step : scene_steps)
 			step->run();

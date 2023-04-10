@@ -489,6 +489,14 @@ namespace wf {
 		vpl_count = rc->platform->allocate_int_per_sample_manually(1);
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
 
+
+		// Test CUDA
+		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+		sampling_steps.push_back(integrate_vpl_sample);
+		return;*/
+		
+
 		/* preparation steps */
 		auto *sample_v_0 = rc->platform->step<sample_v_0s>();
 		sample_v_0->use(vpl_rays, light_throughput, le, vpl_store_offset);
@@ -548,11 +556,6 @@ namespace wf {
 			sampling_steps.push_back(find_light);
 			sampling_steps.push_back(integrate_vpl_sample);
 		}
-
-		// Test CUDA
-		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
-		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
-		sampling_steps.push_back(integrate_vpl_sample);*/
 	}
 
 	/*vpl* manylight_algorithm::allocate_vpl_store() {

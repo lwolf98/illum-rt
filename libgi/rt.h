@@ -55,7 +55,7 @@ struct triangle_intersection {
 	uint ref;
 	triangle_intersection() : t(FLT_MAX), ref(0) {
 	}
-	triangle_intersection(uint t) : t(FLT_MAX), ref(t) {
+	explicit triangle_intersection(uint t) : t(FLT_MAX), ref(t) {
 	}
 	bool valid() const {
 		return t != FLT_MAX;

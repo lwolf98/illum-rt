@@ -252,11 +252,14 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				}
 				else {
 					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
+					// TODO pdf can be zero, if we dont hit a light, then we divide by zero
+					// check other branch as well
 					ray light_ray(dg.x, w_i);
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
+								// Need to document this!!!
 								trianglelight tl(rc->scene, is.ref);
 								#ifndef BAD_MIS
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();
@@ -332,9 +335,10 @@ namespace wf {
 		
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
-		this->frame_preparation_steps.push_back(init_fb);
-		this->frame_finalization_steps.push_back(download_fb);
-
+		// TODO: remove those two?
+		frame_preparation_steps.push_back(init_fb);
+		frame_finalization_steps.push_back(download_fb);
+		
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
@@ -372,6 +376,9 @@ namespace wf {
 			delete lightcol; lightcol = nullptr;
 		}
 		else if (sampling_mode == ::direct_light::sample_light) {
+			// for this case we also have to compute the light distribution
+			auto *l_dist = rc->platform->step<compute_light_distribution>();
+			data_reset_steps.push_back(l_dist);
 			lightcol = rc->platform->allocate_vec3_per_sample();
 		
 			auto *sample  = rc->platform->step<sample_light_dir>();
@@ -380,7 +387,7 @@ namespace wf {
 			sample_light  = sample;
 			find_light    = trace;
 			integrate     = contrib;
-			sample->use(camrays, shadowrays, pdf, lightcol);
+			sample->use(camrays, shadowrays, pdf, l_dist, lightcol);
 			trace->use(shadowrays);
 			contrib->use(camrays, shadowrays, pdf, lightcol);
 		}
@@ -389,11 +396,11 @@ namespace wf {
 		sample_cam->use(camrays);
 		find_hit->use(camrays);
 
-		this->sampling_steps.push_back(sample_cam);
-		this->sampling_steps.push_back(find_hit);
-		this->sampling_steps.push_back(sample_light);
-		this->sampling_steps.push_back(find_light);
-		this->sampling_steps.push_back(integrate);
+		sampling_steps.push_back(sample_cam);
+		sampling_steps.push_back(find_hit);
+		sampling_steps.push_back(sample_light);
+		sampling_steps.push_back(find_light);
+		sampling_steps.push_back(integrate);
 		
 #ifdef HAVE_GL
 		if (preview_window) {

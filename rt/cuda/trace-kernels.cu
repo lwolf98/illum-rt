@@ -1919,10 +1919,10 @@ __forceinline__ __device__ bool intersect_triangle_moeller_trumbore(INTERSECT_TR
     if (hit_gamma < 0.0 || hit_beta + hit_gamma > det)
         return false;
 
-    float tt = dot(edge2, qvec);
+	inv_det = 1.0/det;
+    float tt = dot(edge2, qvec) * inv_det;
 	if (tt > t_min && tt < t_max) {
-		inv_det = 1.0/det;
-		hit_t = tt * inv_det;
+		hit_t = tt;
 		hit_beta *= inv_det;
 		hit_gamma *= inv_det;
 		return true;

@@ -14,13 +14,24 @@ __device__ __inline__ float3& operator*=(float3 &l, const float &r) { l.x*=r, l.
 __device__ __inline__ float3& operator+=(float3 &l, const float3 &r) { l.x+=r.x, l.y+=r.y, l.z+=r.z; return l; }
 
 __device__ __inline__ float3 operator/(const float3 &l, float r) { return { l.x/r, l.y/r, l.z/r }; }
+__device__ __inline__ float3 operator/=(float3 &l, float r) { return { l.x/=r, l.y/=r, l.z/=r }; }
 
 __device__ __inline__ float3 operator+(const float3 &l, const float3 &r) { return { l.x+r.x, l.y+r.y, l.z+r.z }; }
 __device__ __inline__ float3 operator-(const float3 &l, const float3 &r) { return { l.x-r.x, l.y-r.y, l.z-r.z }; }
 __device__ __inline__ float3 operator-(const float3 &l) { return { -l.x, -l.y, -l.z }; }
 
 __device__ __inline__ float4 operator+(const float4 &l, const float4 &r) { return { l.x+r.x, l.y+r.y, l.z+r.z, l.w+r.w }; }
+__device__ __inline__ float4 operator-(const float4 &l, const float4 &r) { return { l.x-r.x, l.y-r.y, l.z-r.z, l.w-r.w }; }
 __device__ __inline__ float4& operator+=(float4 &l, const float4 &r) { l.x+=r.x, l.y+=r.y, l.z+=r.z, l.w+=r.w; return l; }
+
+__device__ __inline__ float4 operator*(float l, const float4 &r) { return { l*r.x, l*r.y, l*r.z, l*r.w }; }
+__device__ __inline__ float4 operator*(const float4 &l, float r) { return { l.x*r, l.y*r, l.z*r, l.w*r }; }
+__device__ __inline__ float4 operator*(const float4 &l, const float4 &r) { return { l.x*r.x, l.y*r.y, l.z*r.z, l.w*r.w }; }
+
+
+__forceinline__ __device__ float length(const float3 &v) {
+	return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
+}
 
 __forceinline__ __device__ void normalize(float3 &v) {
     float inv_len = rsqrtf(v.x*v.x + v.y*v.y + v.z*v.z);

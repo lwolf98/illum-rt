@@ -36,7 +36,12 @@ namespace wf {
 		virtual ~raydata() {}
 	};
 
-	template<typename T> struct per_sample_data {
+	/*! Manages platform-specific memory with one slot per sample position (i.e. per pixel).
+	 *  Derive from this in your platform and supply the requested c'tor.
+	 *  If your platform types are not compatible with our general structures (vec3, etc), then
+	 *  specialize the template and keep data in your version of T.
+	 */
+	 template<typename T> struct per_sample_data {
 		virtual ~per_sample_data() {}
 	};
 
@@ -187,9 +192,6 @@ namespace wf {
 	};
 	struct build_accel_struct : public step {
 		static constexpr char id[] = "build accel struct";
-	};
-	struct compute_light_distribution : public step {
-		static constexpr char id[] = "compute light distribution";
 	};
 
 	struct path_rays {

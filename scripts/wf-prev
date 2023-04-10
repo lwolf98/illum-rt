@@ -2,23 +2,8 @@ up 0 1 0
 at 2 -14 0
 look -1 0 0
 
-#platform cpu
-#raytracer bbvh-esc
-#raytracer embree
-#platform opengl glfw
-#platform cuda
-#raytracer while-while
-
-raytracer embree
-algo primary
-#algo direct
-
-algo direct	
-#algo pt
-#algo primary
-
-sppx 1000
-preview-offset 8
+sppx 16
+resolution 960 544
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik.obj
@@ -67,11 +52,29 @@ material emissive 1.9 18.3 2.15
 #material select staklo_zuto
 #material emissive 37.5 32.2 0.3
 
+echo ---- CPU ----
+platform cpu
+raytracer bbvh
 add-scene-step build accel struct
-
 commit
-
-#algo direct-wf
-#algo primary-wf
-outfile /tmp/test-prev.png
+algo direct-wf
+is light
+outfile /tmp/test-prev-cpu.png
 run
+
+
+echo ---- GL ----
+platform opengl glfw
+add-scene-step build accel struct
+commit
+algo direct-wf
+
+#is uniform
+#outfile /tmp/test-prev-gl-u.png
+#run
+
+is light
+outfile /tmp/test-prev-gl.png
+run
+
+# vim: set syntax=sh :

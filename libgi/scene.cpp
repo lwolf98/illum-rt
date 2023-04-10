@@ -163,6 +163,83 @@ void scene::add_modelpath(const std::filesystem::path &p) {
 		modelpaths.push_back(p);
 }
 
+void scene::remove_modelpath(const std::filesystem::path &p) {
+	if (p.begin() != p.end() && *p.begin() == "~") {
+		filesystem::path mod = getenv("HOME");
+		for (auto it = ++p.begin(); it != p.end(); ++it)
+			mod /= *it;
+		remove(modelpaths.begin(), modelpaths.end(), p);
+	}
+	else
+		remove(modelpaths.begin(), modelpaths.end(), p);
+}
+
+// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
+glm::mat4x4 to_glm(const aiMatrix4x4 &from) {
+	glm::mat4x4 to;
+	
+	to[0][0] = from.a1; to[0][1] = from.b1;  to[0][2] = from.c1; to[0][3] = from.d1;
+	to[1][0] = from.a2; to[1][1] = from.b2;  to[1][2] = from.c2; to[1][3] = from.d2;
+	to[2][0] = from.a3; to[2][1] = from.b3;  to[2][2] = from.c3; to[2][3] = from.d3;
+	to[3][0] = from.a4; to[3][1] = from.b4;  to[3][2] = from.c4; to[3][3] = from.d4;
+
+	return to;
+}
+
+glm::vec4 to_glm_vec4(const aiVector3D &from) {
+	return glm::vec4(from.x, from.y, from.z, 1.0f);
+}
+
+// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
+// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
+void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 parent_trafo, glm::mat4 model_trafo, unsigned material_offset, 
+							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
+	glm::mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
+	glm::mat4 transform = model_trafo * node_trafo;
+	glm::mat4 normal_transform = transpose(inverse(mat3(transform)));
+	for (int i = 0; i < node_ai->mNumMeshes; i++) {
+		aiMesh *mesh_ai = scene_ai->mMeshes[node_ai->mMeshes[i]];
+
+		// load mesh data
+		uint32_t material_id = mesh_ai->mMaterialIndex + material_offset;
+		uint32_t index_offset = rtgi_scene->vertices.size();
+
+		if (rtgi_scene->materials[material_id].emissive != vec3(0)) {
+			light_geom.push_back({(int)rtgi_scene->triangles.size(), (int)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
+			light_prims += mesh_ai->mNumFaces;
+		}
+
+		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
+			vertex vertex;
+			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
+			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+			vertex.norm = glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i]));
+			if (mesh_ai->HasTextureCoords(0))
+				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
+			else
+				vertex.tc = vec2(0,0);
+			rtgi_scene->vertices.push_back(vertex);
+			rtgi_scene->scene_bounds.grow(vertex.pos);
+		}
+
+		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
+			const aiFace &face = mesh_ai->mFaces[i];
+			if (face.mNumIndices == 3) {
+				triangle triangle;
+				triangle.a = face.mIndices[0] + index_offset;
+				triangle.b = face.mIndices[1] + index_offset;
+				triangle.c = face.mIndices[2] + index_offset;
+				triangle.material_id = material_id;
+				rtgi_scene->triangles.push_back(triangle);
+			}
+			else
+				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
+		}
+	}
+
+	for (int i = 0; i < node_ai->mNumChildren; i++)
+		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene);
+}
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
 	// find file
@@ -231,7 +308,6 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 			textures.push_back(material.albedo_tex);
 		}
 
-
 #ifndef RTGI_SKIP_BRDF
 		material.brdf = brdfs["default"];
 #endif
@@ -239,87 +315,49 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		materials.push_back(material);
 	}
 
+	int light_prims = 0;
+	std::vector<std::tuple<int,int,int>> light_geom;
+
     // load meshes
-    for (uint32_t i = 0; i < scene_ai->mNumMeshes; ++i) {
-        const aiMesh *mesh_ai = scene_ai->mMeshes[i];
-		uint32_t material_id = scene_ai->mMeshes[i]->mMaterialIndex + material_offset;
-		uint32_t index_offset = vertices.size();
-		std::string object_name = mesh_ai->mName.C_Str();
-		objects.push_back({object_name, (unsigned)triangles.size(), (unsigned)(triangles.size()+mesh_ai->mNumFaces), material_id});
-		
-		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
-			vertex vertex;
-			vertex.pos = to_glm(mesh_ai->mVertices[i]);
-			vertex.norm = to_glm(mesh_ai->mNormals[i]);
-			if (mesh_ai->HasTextureCoords(0))
-				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
-			else
-				vertex.tc = vec2(0,0);
-			vertices.push_back(vertex);
-			scene_bounds.grow(vertex.pos);
-		}
- 
-		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
-			const aiFace &face = mesh_ai->mFaces[i];
-			if (face.mNumIndices == 3) {
-				triangle triangle;
-				triangle.a = face.mIndices[0] + index_offset;
-				triangle.b = face.mIndices[1] + index_offset;
-				triangle.c = face.mIndices[2] + index_offset;
-				triangle.material_id = material_id;
-				triangles.push_back(triangle);
-			}
-			else
-				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
-		}
-	}
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, light_geom, light_prims, this);
+
+#ifndef RTGI_SKIP_DIRECT_ILLUM
+	lights.reserve(lights.size()+light_prims);
+	for (auto [start,end,mtl] : light_geom) 
+		for (int i = start; i < end; ++i)
+			lights.push_back(new trianglelight(*this, i));
+#endif
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 void scene::compute_light_distribution() {
-	std::vector<object> light_geom;
-	unsigned prims = 0;
-	for (auto o : objects)
-		if (materials[o.material_id].emissive != vec3(0)) {
-			prims += o.end-o.start;
-			light_geom.push_back(o);
-		}
-
 #ifndef RTGI_SKIP_SKY
-	if (prims == 0 && !sky) {
+	if (lights.size() == 0 && !sky) {
 		std::cerr << "WARNING: There is neither emissive geometry nor a skylight" << std::endl;
 		return;
 	}
 #else
-	if (prims == 0) {
+	if (lights.size() == 0) {
 		std::cerr << "WARNING: There is no emissive geometry" << std::endl;
 		return;
 	}
 #endif
-	if (verbose_scene) cout << "light distribution of " << prims << " triangles" << endl;
-	for (auto l : lights) delete l;
-	lights.clear();
-	int n = prims;
+	if (verbose_scene) cout << "light distribution of " << lights.size() << " triangles" << endl;
+	int n = lights.size();
 #ifndef RTGI_SKIP_SKY
+	// TODO move sky handling outside -> add_sky
 	if (sky) {
 		n++;
 		sky->build_distribution();
 		sky->scene_bounds(scene_bounds);
 	}
 #endif
-	lights.resize(n);
 	std::vector<float> power(n);
-	int l = 0;
-	for (auto g : light_geom) {
-		for (int i = g.start; i < g.end; ++i) {
-			lights[l] = new trianglelight(*this, i);
-			power[l] = luma(lights[l]->power());
-			l++;
-		}
-	}
+	for (int l = 0; l < lights.size(); ++l)
+		power[l] = luma(lights[l]->power());
 #ifndef RTGI_SKIP_SKY
 	if (sky) {
-		lights[n-1] = sky;
+		lights.push_back(sky);
 		power[n-1] = sky->power().x;
 	}
 #endif
@@ -530,7 +568,7 @@ float skylight::pdf_Li(const ray &ray) const {
 
 vec3 skylight::Le(const ray &ray) const {
     float u = atan2f(ray.d.z, ray.d.x) / (2 * M_PI);
-    float v = acosf(ray.d.y) / M_PI;
+    float v = theta_z(ray.d.y) / M_PI;
     assert(std::isfinite(u));
     assert(std::isfinite(v));
     return tex->sample(u, v) * intensity_scale;

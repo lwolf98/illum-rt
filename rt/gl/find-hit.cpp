@@ -36,7 +36,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_closest_shader.bind();
 			seq_closest_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_closest_shader.uniform("N", (int) pf->sd->triangles.size);
+			seq_closest_shader.uniform("N", (int)pf->sd->triangles.size);
 			seq_closest_shader.dispatch(res.x, res.y);
 			seq_closest_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -48,7 +48,7 @@ namespace wf {
 			auto res = rc->resolution();
 			seq_any_shader.bind();
 			seq_any_shader.uniform("w", res.x).uniform("h", res.y);
-			seq_any_shader.uniform("N", (int) pf->sd->triangles.size);
+			seq_any_shader.uniform("N", (int)pf->sd->triangles.size);
 			seq_any_shader.dispatch(res.x, res.y);
 			seq_any_shader.unbind();
 			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -74,6 +74,7 @@ namespace wf {
 			}
 		};
 		
+		extern compute_shader bvh_any_shader;
 		extern compute_shader bvh_closest_shader;
 
 		bvh::bvh() : nodes("nodes", BIND_NODE, 0), indices("tri_index", BIND_TIDS, 0) {
@@ -118,8 +119,17 @@ namespace wf {
 		}
 
 		void bvh::compute_any_hit() {
-			throw std::logic_error("OpenGL Any-Hit ist not implemented, yet");
-			// TODO
+			glFinish();
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			
+			bind_texture_as_image bind_r(rd->rays, 0, true, false);
+			bind_texture_as_image bind_i(rd->intersections, 1, false, true);
+			auto res = rc->resolution();
+			bvh_any_shader.bind();
+			bvh_any_shader.uniform("w", res.x).uniform("h", res.y);
+			bvh_any_shader.dispatch(res.x, res.y);
+			bvh_any_shader.unbind();
+			glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		}
 #else
 #warning "GL tracing not supported with tutorial's tracer"

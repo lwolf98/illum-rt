@@ -21,7 +21,7 @@ namespace wf {
 			selected_tracer = it->second;
 		else {
 			if (tracers.count(name) == 0)
-				throw std::logic_error(std::string("No tracer ") + name + " for platform " + name);
+				throw std::logic_error(std::string("No tracer ") + name + " for platform " + this->name);
 			selected_tracer = tracers[name]();
 			generated_tracers[name] = selected_tracer;
 		}

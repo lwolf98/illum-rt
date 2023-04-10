@@ -115,11 +115,13 @@ void repl(istream &infile) {
 void run_repls() {
 	if (cmdline.script != "") {
 		ifstream script(cmdline.script);
-		if(script.fail()){
+		rc->scene.add_modelpath(std::filesystem::path(cmdline.script).parent_path());
+		if (script.fail()){
 			cerr << "Script file not found" << endl;
 			return;
 		}
 		repl(script);
+		rc->scene.remove_modelpath(std::filesystem::path(cmdline.script).parent_path());
 	}
 	if (cmdline.interact)
 		repl(cin);
@@ -185,6 +187,8 @@ struct repl_update_checks {
 static repl_update_checks uc;
 static list<string> command_history;
 
+static mat4 modelmatrix(1);
+
 bool platform_and_algo_aligned() {
 #ifndef RTGI_SKIP_WF
 	bool wf_algo = dynamic_cast<wavefront_algorithm*>(rc->algo);
@@ -198,6 +202,8 @@ bool platform_and_algo_aligned() {
 	return true;
 #endif
 }
+
+static map<string,bool> disabled_features;
 
 void eval(const std::string &line) {
 	if (command_history.back() != line)
@@ -234,6 +240,13 @@ void eval(const std::string &line) {
 		expecting_commands = false;
 	else ifcmd("exit")
 		expecting_commands = false;
+	else ifcmd("disable") {
+		string what;
+		in >> what;
+		check_in_complete("Syntax error, expecting only one feature to disable");
+		cout << "DISABLING " << what << endl;
+		disabled_features[what] = true;
+	}
 	else ifcmd("with") {
 		bool newval = false;
 		string what, rest;
@@ -241,16 +254,22 @@ void eval(const std::string &line) {
 		if (what == "gl") {
 #ifndef HAVE_GL
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else if (what == "cuda") {
 #ifndef HAVE_CUDA
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else if (what == "optix") {
 #ifndef HAVE_OPTIX
 			newval = true;
+#else
+			newval = disabled_features[what];
 #endif
 		}
 		else
@@ -322,13 +341,45 @@ void eval(const std::string &line) {
 		cout << "up "   << scene.up << endl;
 		cout << "up "   << scene.camera.up << endl;
 	}
+	else ifcmd("modelmatrix") {
+		in >> modelmatrix[0][0] >> modelmatrix[0][1] >> modelmatrix[0][2] >> modelmatrix[0][3];
+		in >> modelmatrix[1][0] >> modelmatrix[1][1] >> modelmatrix[1][2] >> modelmatrix[1][3];
+		in >> modelmatrix[2][0] >> modelmatrix[2][1] >> modelmatrix[2][2] >> modelmatrix[2][3];
+		in >> modelmatrix[3][0] >> modelmatrix[3][1] >> modelmatrix[3][2] >> modelmatrix[3][3];
+		check_in_complete("Syntax error in model matrix");
+	}
+	else ifcmd("modeltrafo") {
+		string trafo;
+		in >> trafo;
+		if (trafo == "shift" || trafo == "translate") {
+			vec3 s;
+			in >> s.x >> s.y >> s.z;
+			check_in_complete("Too many components in shift transformation");
+			modelmatrix = translate(modelmatrix, s);
+		}
+		else if (trafo == "rotate") {
+			vec3 axis[3] { vec3(1,0,0), vec3(0,1,0), vec3(0,0,1) };
+			int aid = 0;
+			string a;
+			in >> a;
+			if (a == "x" || a == "X") aid = 0;
+			else if (a == "y" || a == "Y") aid = 1;
+			else if (a == "z" || a == "Z") aid = 2;
+			else error("Invalid axis of rotation; " << a);
+			float deg;
+			in >> deg;
+			check_in_complete("Rotation requires one angle (in degrees)");
+			modelmatrix = rotate(modelmatrix, deg, axis[aid]);
+		}
+		else error("unsupported trafo: " << trafo);
+	}
 	else ifcmd("load") {
 		string file, name;
 		in >> file;
 		if (!in.eof())
 			in >> name;
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name);
+		scene.add(file, name, modelmatrix);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {
@@ -547,15 +598,6 @@ void eval(const std::string &line) {
 		else
 #endif
 			run(rc->algo);
-	}
-	else ifcmd("mesh") {
-		string name, cmd;
-		in >> name;
-		if (in.eof() && name == "list") {
-			for (auto &obj : scene.objects) cout << obj.name << endl;
-			return;
-		}
-		error("Meshes can only be listed in this version");
 	}
 	else ifcmd("material") {
 		string cmd;

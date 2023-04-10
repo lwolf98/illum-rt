@@ -8,6 +8,7 @@
 #include <cstdint>
 
 class distribution_1d {
+public: // TODO this needs to be public as long as wf/gl and wf/cuda need to copy over the computed data.
 	// f holds the discrete function values that the distribution will be built on
 	// cdf holds the cdf of the pdf derived from f
 	std::vector<float> f, cdf;

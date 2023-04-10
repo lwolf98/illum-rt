@@ -13,8 +13,8 @@ EXTRA_DIST += a5-sibenik a5-brdf-test
 EXTRA_DIST += a6-mis
 #elif defined RTGI_CONFIG_A7
 EXTRA_DIST += a7-sibenik a7-sibenik-bounce a7-sibenik-rr a7-sponza a7-sponza-sky1 a7-sponza-sky2
-#elif defined RTGI_CONFIG_A9
-EXTRA_DIST += a9-sibenik a9-sponza a9-sponza-sky1 a9-sponza-sky2
+#elif defined RTGI_CONFIG_A8
+EXTRA_DIST += a8-sibenik a8-sponza a8-sponza-sky1 a8-sponza-sky2
 #else
 EXTRA_DIST += brdf-test mis sibenik sponza
 #endif

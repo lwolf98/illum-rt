@@ -2,6 +2,7 @@
 
 #include "platform.h"
 #include "base.h"
+#include "gi/direct-steps.h"
 
 /* This file holds wavefront-steps that can be run when the scene is committed to the platform.
  * These steps could also make sense in a non-wavefront algorithm.
@@ -11,6 +12,17 @@
 namespace wf::cuda {
 
 	struct build_accel_struct : public wf::build_accel_struct {
+		void run() override;
+	};
+	
+	/* Currently still implemented on CPU. TODO: migrate to CUDA
+	 */
+	struct compute_light_distribution : public wf::compute_light_distribution {
+		compute_light_distribution();
+		global_memory_buffer<float> f, cdf;
+		float integral_1spaced;
+		int n;
+		global_memory_buffer<uint4> tri_lights;
 		void run() override;
 	};
 

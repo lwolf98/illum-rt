@@ -39,16 +39,133 @@ namespace wf {
 		void disable_gl_notifications();
 	
 
+		/*!	\brief Basic OpenGL Buffer abstraction (\see ssbo).
+		 *
+		 * 	Most likely for internal/extension use.
+		 */
+		struct buffer {
+			GLuint id;
+			std::string name;
+			GLuint index;
+			unsigned size;
+
+			buffer(std::string name, GLuint index, unsigned size)
+			: id(0), name(name), index(index), size(size) {
+				glGenBuffers(1, &id);
+			}
+			virtual ~buffer() {
+				glDeleteBuffers(1, &id);
+			}
+			virtual void print() {
+			}
+		};
+
+
+		/*! \brief Chunk of memory on the GPU available to OpenGL Shaders.
+		 *
+		 * 	The upload(onto the grpu)/download(from the gpu to ram) logic might be subject to change as this
+		 * 	implementation can be wasteful in terms of host ram.
+		 *
+		 * 	Buffers are bound to pre-determined indices, but in some cases the buffer backing a specific index
+		 * 	(e.g. ray data) may change (e.g. shadow vs path rays). To make sure the proper buffer is bound,
+		 * 	call `bind()'.
+		 */
+		template<typename T> struct ssbo : public buffer
+		{
+			std::vector<T> org_data;
+
+			ssbo(std::string name, GLuint index, unsigned size)
+			: buffer(name, index, size) {
+				if (size > 0) resize(size);
+			}
+
+			ssbo(std::string name, GLuint index, const std::vector<T> &data)
+			: buffer(name, index, data.size()), org_data(data) {
+				if (size > 0) resize(size, data);
+			}
+
+			void resize(int size) {
+				this->size = size;
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+				glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * size, nullptr, GL_STATIC_READ);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+			}
+
+			void bind() {
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+			}
+			
+			void resize(const std::vector<T> &data) {
+				resize(data.size(), data.data());
+			}
+			void resize(int size, const T *data) {
+				this->size = size;
+				org_data.resize(size);
+				std::copy(data, data + size, org_data.begin());
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+				glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(T) * size, data, GL_STATIC_READ);
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, (GLuint)index, id);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+			}
+			void download() {
+				if (org_data.size() == 0)
+					org_data.resize(size);
+				glBindBuffer(GL_SHADER_STORAGE_BUFFER, id);
+				void *p = glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+				memcpy(org_data.data(), (T*)p, sizeof(T)*size);
+				glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+			}
+		};
+
+		template<typename T> GLenum gl_format() {
+			if      (std::is_same<T,vec4>::value)  return GL_RGBA;
+			else if (std::is_same<T,vec3>::value)  return GL_RGB;
+			else if (std::is_same<T,vec3>::value)  return GL_RG;
+			else if (std::is_same<T,float>::value) return GL_RED;
+			else if (std::is_same<T,int>::value)   return GL_RED_INTEGER;
+			else if (std::is_same<T,ivec4>::value) return GL_RGBA_INTEGER;
+			else throw std::logic_error(std::string("incomplete list of gl formats in ") + __PRETTY_FUNCTION__ + "@" + __FILE__);
+		}
+		template<typename T> GLenum gl_type() {
+			if      (std::is_same<T,vec4>::value)  return GL_FLOAT;
+			else if (std::is_same<T,vec3>::value)  return GL_FLOAT;
+			else if (std::is_same<T,vec3>::value)  return GL_FLOAT;
+			else if (std::is_same<T,float>::value) return GL_FLOAT;
+			else if (std::is_same<T,int>::value)   return GL_INT;
+			else if (std::is_same<T,ivec4>::value) return GL_INT;
+			else throw std::logic_error(std::string("incomplete list of gl types in ") + __PRETTY_FUNCTION__ + "@" + __FILE__);
+		}
+		template<typename T> GLenum gl_internal_format() {
+			if      (std::is_same<T,vec4>::value)  return GL_RGBA32F;
+			else if (std::is_same<T,vec3>::value)  return GL_RGB32F;
+			else if (std::is_same<T,vec3>::value)  return GL_RG32F;
+			else if (std::is_same<T,float>::value) return GL_R32F;
+			else if (std::is_same<T,int>::value)   return GL_R32I;
+			else if (std::is_same<T,ivec4>::value) return GL_RGBA32I;
+			else throw std::logic_error(std::string("incomplete list of internal gl formats in ") + __PRETTY_FUNCTION__ + "@" + __FILE__);
+		}
+
+
 		template<typename T> struct data_texture {
 			GLuint id = 0;
 			int w = 0, h = 0;
 			std::string name;
+			GLenum kind;
 			GLenum internal_format;
 			std::vector<T> org_data;
 
-			data_texture(const std::string &name, int w, int h, GLenum internal_format) : name(name), internal_format(internal_format) {
+			data_texture(const std::string &name, int w, int h, GLenum internal_format)
+			: name(name), kind(GL_TEXTURE_2D), internal_format(internal_format) {
 				glGenTextures(1, &id);
 				resize(w, h);
+			}
+			data_texture(const std::string &name, int w, GLenum internal_format)
+			: h(1), name(name), kind(GL_TEXTURE_1D), internal_format(internal_format) {
+				glGenTextures(1, &id);
+				resize(w);
 			}
 			~data_texture() {
 				glDeleteTextures(1, &id);
@@ -56,31 +173,52 @@ namespace wf {
 			data_texture(const data_texture&) = delete;
 			data_texture* operator=(const data_texture&) = delete;
 			std::pair<GLenum,GLenum> ft_via_T() {
-				GLenum fmt, type;
-				if      (std::is_same<T,vec4>::value)  fmt = GL_RGBA, type = GL_FLOAT;
-				else if (std::is_same<T,vec3>::value)  fmt = GL_RGB,  type = GL_FLOAT;
-				else if (std::is_same<T,float>::value) fmt = GL_RED,  type = GL_FLOAT;
-				else throw std::logic_error(std::string("incomplete list of tex formats in ") + __PRETTY_FUNCTION__ + "@" + __FILE__);
-				return {fmt, type};
+				return {gl_format<T>(), gl_type<T>()};
 			}
 			void resize(int new_w, int new_h) {
+				assert(kind == GL_TEXTURE_2D);
 				auto [fmt,type] = ft_via_T();
-				glBindTexture(GL_TEXTURE_2D, id);
-				glTexImage2D(GL_TEXTURE_2D, 0, internal_format, w=new_w, h=new_h, 0, fmt, type, nullptr);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindTexture(kind, id);
+				glTexImage2D(kind, 0, internal_format, w=new_w, h=new_h, 0, fmt, type, nullptr);
+				glTexParameteri(kind, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				glTexParameteri(kind, GL_TEXTURE_WRAP_T, GL_REPEAT);
+				glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glBindTexture(kind, 0);
 				org_data.clear();
+			}
+			void resize(int new_w) {
+				assert(kind == GL_TEXTURE_1D);
+				auto [fmt,type] = ft_via_T();
+				glBindTexture(kind, id);
+				glTexImage1D(kind, 0, internal_format, w=new_w, 0, fmt, type, nullptr);
+				glTexParameteri(kind, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glBindTexture(kind, 0);
+				org_data.clear();
+			}
+			void resize(int new_w, const T *data) {
+				assert(kind == GL_TEXTURE_1D);
+				auto [fmt,type] = ft_via_T();
+				glBindTexture(kind, id);
+				glTexImage1D(kind, 0, internal_format, w=new_w, 0, fmt, type, data);
+				glTexParameteri(kind, GL_TEXTURE_WRAP_S, GL_REPEAT);
+				glTexParameteri(kind, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				glTexParameteri(kind, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				glBindTexture(kind, 0);
+				org_data.clear();
+			}
+			void resize(const std::vector<T> &data) {
+				resize((int)data.size(), data.data());
 			}
 			void bind(int unit) {
 				glActiveTexture(GL_TEXTURE0+unit);
-				glBindTexture(GL_TEXTURE_2D, id);
+				glBindTexture(kind, id);
 			}
 			void unbind(int unit) {
 				glActiveTexture(GL_TEXTURE0+unit);
-				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindTexture(kind, 0);
 			}
 			void bind_as_image(int unit, bool read, bool write) {
 				GLenum access;
@@ -97,9 +235,9 @@ namespace wf {
 				if (org_data.size() != w*h)
 					org_data.resize(w*h);
 				auto [fmt,type] = ft_via_T();
-				glBindTexture(GL_TEXTURE_2D, id);
-				glGetTexImage(GL_TEXTURE_2D, 0, fmt, type, org_data.data());
-				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindTexture(kind, id);
+				glGetTexImage(kind, 0, fmt, type, org_data.data());
+				glBindTexture(kind, 0);
 			}
 		};
 		// RAII wrapper

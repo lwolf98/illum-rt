@@ -103,17 +103,23 @@ namespace wf
 		};
 	}
 
+	class compute_light_distribution : public step
+	{
+	public:
+		static constexpr char id[] = "compute light distribution";
+	};
+
 	class sample_light_dir : public step
 	{
 	public:
 		static constexpr char id[] = "sample dir according to light distribution";
 
-		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf, per_sample_data<vec3> *light_col) = 0;
+		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf, compute_light_distribution *light_dist, per_sample_data<vec3> *light_col) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename PDF, typename LC>
+		template <typename RD, typename PDF, typename LD, typename LC>
 		class sample_light_dir : public wf::sample_light_dir
 		{
 		public:
@@ -121,18 +127,20 @@ namespace wf
 			RD *camdata = nullptr;
 			RD *bouncedata = nullptr;
 			PDF *pdf = nullptr;
+			LD *light_dist = nullptr;
 			LC *light_col = nullptr;
 
 			bool properly_wired()
 			{
-				return camdata && bouncedata && pdf && light_col;
+				return camdata && bouncedata && pdf && light_dist && light_col;
 			}
 
-			void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf, per_sample_data<vec3> *light_col)
+			void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf, compute_light_distribution *light_dist, per_sample_data<vec3> *light_col)
 			{
 				this->camdata = dynamic_cast<RD *>(camdata);
 				this->bouncedata = dynamic_cast<RD *>(bouncedata);
 				this->pdf = dynamic_cast<PDF *>(pdf);
+				this->light_dist = dynamic_cast<LD *>(light_dist);
 				this->light_col = dynamic_cast<LC *>(light_col);
 			}
 		};
@@ -172,5 +180,4 @@ namespace wf
 			}
 		};
 	}
-
 }

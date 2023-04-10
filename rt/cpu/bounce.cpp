@@ -70,7 +70,7 @@ namespace wf::cpu {
 				bouncedata->rays[y*res.x+x] = shadow_ray;
 			}
 	}
-
+	
 	void sample_light_dir::run() {
 		time_this_wf_step;
 		auto res = rc->resolution();

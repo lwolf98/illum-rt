@@ -6,9 +6,12 @@ glsl_GENSOURCES = ray-setup-glsl.cpp \
 				  seq-closest-glsl.cpp \
 				  seq-any-glsl.cpp \
 				  bvh-closest-glsl.cpp \
+				  bvh-any-glsl.cpp \
 				  clear-framebuffer-glsl.cpp \
 				  add-hitpoint-albedo-glsl.cpp \
+				  sample-light-glsl.cpp \
 				  sample-uniform-glsl.cpp \
+				  integrate-dir-sample-glsl.cpp \
 				  integrate-light-sample-glsl.cpp \
 				  copy-to-preview-glsl.cpp
 

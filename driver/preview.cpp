@@ -229,8 +229,14 @@ void render_preview() {
 	rc->call_at_resolution_change[&preview_window] = [&](int w, int h) {
 		update_res = true;
 	};
-
-	update_resolution(rc->resolution());
+	
+	{
+		glm::ivec2 res = rc->resolution();
+		GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+		glfwSetWindowPos(preview_window, (mode->width-res.x)/2, (mode->height-res.y)/2);
+		update_resolution(res);
+	}
 
 	while (!glfwWindowShouldClose(preview_window)) {
 		if (update_res)

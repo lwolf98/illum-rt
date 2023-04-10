@@ -131,16 +131,10 @@ struct skylight : public light {
  *
  */
 struct scene {
-	struct object {
-		std::string name;
-		unsigned start, end;
-		unsigned material_id;
-	};
 	std::vector<::vertex>    vertices;
 	std::vector<::triangle>  triangles;
 	std::vector<::material>  materials;
 	std::vector<::texture2d<vec4>*>  textures;
-	std::vector<object>      objects;
 #ifndef RTGI_SKIP_BRDF
 	std::map<std::string, brdf*> brdfs;
 #endif
@@ -171,6 +165,7 @@ struct scene {
 	
 	std::vector<std::filesystem::path> modelpaths;
 	void add_modelpath(const std::filesystem::path &p);
+	void remove_modelpath(const std::filesystem::path &p);
 
 	vec3 normal(const triangle &tri) const;
 
