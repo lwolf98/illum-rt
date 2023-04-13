@@ -9,7 +9,7 @@
 
 namespace wf::cpu {
 
-	struct sample_v_0s : public wf::wire::sample_v_0s<raydata, per_sample_data<vec3>, per_sample_data<int>> {
+	struct sample_v_0s : public wf::wire::sample_v_0s<raydata, per_sample_data<vec3>, per_sample_data<int>, compute_light_distribution> {
 		void run() override;
 	};
 

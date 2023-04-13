@@ -76,6 +76,12 @@ namespace wf {
 			register_wf_step_by_id(, integrate_light_sample);
 
 			//manylight steps
+			register_wf_step_by_id(, sample_v_0s);
+			register_wf_step_by_id(, create_vpls);
+			register_wf_step_by_id(, russian_roulette);
+			register_wf_step_by_id(, sample_next_vpls);
+			register_wf_step_by_id(, copy_vpls);
+			register_wf_step_by_id(, sample_vpls);
 			register_wf_step_by_id(, integrate_vpl_samples);
 
 			timer = new wf::cuda::timer;

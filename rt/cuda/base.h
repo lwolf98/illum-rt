@@ -466,8 +466,10 @@ namespace wf {
 			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {
 			}
 			virtual void build(scenedata *scene);
+			virtual void update_res(glm::ivec2 new_res) {} //TODO-ML: override in all raytracers (if required) and remove empty implementation
 			void use(wf::raydata *rays) override { 
-			    rd = dynamic_cast<raydata*>(rays);
+				rd = dynamic_cast<raydata*>(rays);
+				update_res(glm::ivec2(rd->w, rd->h));
 			}
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {

@@ -493,16 +493,46 @@ namespace wf {
 		// Test CUDA
 		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
-		sampling_steps.push_back(integrate_vpl_sample);
-		return;*/
-		
+		sampling_steps.push_back(integrate_vpl_sample);*/
 
 		/* preparation steps */
+		auto *l_dist = rc->platform->step<compute_light_distribution>();
+		//TODO-ML: data_reset_steps.push_back(l_dist); // coordinate with direct lighting depending on light or other sampling method
 		auto *sample_v_0 = rc->platform->step<sample_v_0s>();
-		sample_v_0->use(vpl_rays, light_throughput, le, vpl_store_offset);
+		sample_v_0->use(vpl_rays, light_throughput, le, vpl_store_offset, l_dist);
 		frame_preparation_steps.push_back(sample_v_0);
 
-		for (int depth = 0; depth < path_length; ++depth) {
+		/* testing area */
+			auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
+			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + 0);
+			
+			find_next_hit->use(vpl_rays);
+			create_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset);
+
+			frame_preparation_steps.push_back(find_next_hit);
+			frame_preparation_steps.push_back(create_vpl);
+
+			auto *copy_vpl = rc->platform->step<copy_vpls>();
+			copy_vpl->use(vpl_store, vpls, vpl_count);
+			frame_preparation_steps.push_back(copy_vpl);
+
+			auto *sample_vpl = rc->platform->step<sample_vpls>();
+			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
+			auto *find_light = rc->platform->step<find_any_hits>("any hits");
+			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+
+			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count);
+			find_light->use(shadowrays);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+
+			sampling_steps.push_back(sample_vpl);
+			sampling_steps.push_back(find_light);
+			sampling_steps.push_back(integrate_vpl_sample);
+
+			return;
+		/* end testing area */
+
+		/*for (int depth = 0; depth < path_length; ++depth) {
 			auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
 			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + depth);
 			
@@ -540,7 +570,7 @@ namespace wf {
 			vpls->push_back(vpl());
 		}*/
 
-		/* sampling steps */
+		/* sampling steps * /
 		//TODO-ML: handle vpls->size() == 0 in step
 		for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
@@ -555,7 +585,7 @@ namespace wf {
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
 			sampling_steps.push_back(integrate_vpl_sample);
-		}
+		}*/
 	}
 
 	/*vpl* manylight_algorithm::allocate_vpl_store() {

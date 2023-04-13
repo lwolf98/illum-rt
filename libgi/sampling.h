@@ -47,7 +47,7 @@ template<typename vec3=glm::vec3, typename vec2=glm::vec2> heterogeneous inline 
     const float z = 1 - d.x*d.x - d.y*d.y;
     return vec3{d.x, d.y, z > 0 ? sqrtf(z) : 0.f};
 }
-inline float cosine_hemisphere_pdf(float cos_t) {
+heterogeneous inline float cosine_hemisphere_pdf(float cos_t) {
     return cos_t / pi;
 }
 
