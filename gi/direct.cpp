@@ -25,7 +25,6 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (closest.valid()) {
 		diff_geom dg(closest, rc->scene);
-		flip_normals_to_ray(dg, view_ray);
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 		if (dg.mat->emissive != vec3(0)) {
@@ -228,7 +227,6 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	if (closest.valid()) {
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
 			diff_geom dg(closest, rc->scene);
-			flip_normals_to_ray(dg, view_ray);
 
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;

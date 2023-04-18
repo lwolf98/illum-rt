@@ -53,7 +53,6 @@ vec3 simple_pt::path(ray ray) {
 	// - check if intersected surface is emissive. if so, add correctly weighted radiance and break the loop
 	// - if not, compute a properly sampled reflection ray
 	// Notes
-	// - it might be necessary to call flip_normals_to_ray (see new code in direct.cpp)
 	// - for RR, compute the perceived brightness of the throughput via the luma function to obtain a scalar value
 	return vec3(0);
 #else
@@ -70,7 +69,6 @@ vec3 simple_pt::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc->scene);
-		flip_normals_to_ray(hit, ray);
 		
 		// if it is a light, add the light's contribution
 		if (hit.mat->emissive != vec3(0)) {
@@ -188,7 +186,6 @@ vec3 pt_nee::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc->scene);
-		flip_normals_to_ray(hit, ray);
 
 		// if it is a light AND we have not bounced yet, add the light's contribution
 		if (i == 0 && hit.mat->emissive != vec3(0)) {

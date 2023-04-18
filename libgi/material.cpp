@@ -183,9 +183,9 @@ inline float ggx_pdf(float D, float NdotH, float HdotV) {
 vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 #ifndef RTGI_SKIP_MF_BRDF_IMPL
     if (!same_hemisphere(geom.ng, w_i)) return vec3(0);
-    const float NdotV = cdot(geom.ns, w_o);
-    const float NdotL = cdot(geom.ns, w_i);
-    if (NdotV == 0.f || NdotV == 0.f) return vec3(0);
+    const float NdotV = dot(geom.ns, w_o);
+    const float NdotL = dot(geom.ns, w_i);
+    if (NdotV <= 0.f || NdotV <= 0.f) return vec3(0);
     const vec3 H = normalize(w_o + w_i);
     const float NdotH = cdot(geom.ns, H);
     const float HdotL = cdot(H, w_i);
@@ -217,11 +217,8 @@ brdf::sampling_res gtr2_reflection::sample(const diff_geom &geom, const vec3 &w_
 	// reflect around sampled macro normal w_h
 	const vec3 w_h = align(ggx_sample(xis, geom.mat->roughness), geom.ns);
 	vec3 w_i = 2.0f*w_h*dot(w_h, w_o) - w_o;
-	if (!same_hemisphere(geom.ns, w_i)) return { w_i, vec3(0), 0 };
-	assert(same_hemisphere(w_h, w_i));
-	assert(same_hemisphere(w_o, w_h));
-	assert(same_hemisphere(geom.ns, w_h));
-	assert(same_hemisphere(geom.ns, w_o) || dot(geom.ns,w_o)==0.0f);
+	if (!same_hemisphere(geom.ng, w_i)) return { w_i, vec3(0), 0 };
+	if (!same_hemisphere(geom.ng, w_o)) return { w_i, vec3(0), 0 }; // this breaks two-sided faces (improper 3d geom)
 	float sample_pdf = pdf(geom, w_o, w_i);
 	return { w_i, f(geom, w_o, w_i), sample_pdf };
 }

@@ -7,10 +7,9 @@ using namespace glm;
 diff_geom::diff_geom(const vertex &a, const vertex &b, const vertex &c,
 					 const material *m, const triangle_intersection &is, const scene &scene)
  : x ((1.0f-is.beta-is.gamma)*a.pos  + is.beta*b.pos  + is.gamma*c.pos),
-   ns(normalize(a.norm + b.norm + c.norm)),
+   ns((1.0f-is.beta-is.gamma)*a.norm + is.beta*b.norm + is.gamma*c.norm),
    tc((1.0f-is.beta-is.gamma)*a.tc   + is.beta*b.tc   + is.gamma*c.tc),
-   // ng(normalize(cross(normalize(b.pos-a.pos), normalize(c.pos-a.pos)))),
-   ng(normalize(a.norm + b.norm + c.norm)),
+   ng(normalize(cross(b.pos-a.pos, c.pos-a.pos))),
    tri(is.ref),
    mat(m) {
 }
