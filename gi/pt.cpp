@@ -194,8 +194,11 @@ vec3 pt_nee::path(ray ray) {
 		}
 		// for mis we take the next path vertex to be the brdf sample of the next-event path
 		if (mis && hit.mat->emissive != vec3(0)) {
+		    float a=0, b=0;
 			trianglelight tl(rc->scene, closest.ref);
 			float light_pdf = luma(tl.power()) / rc->scene.light_distribution->integral();
+			a = light_pdf;
+			b = tl.pdf(ray, hit);
 			light_pdf *= tl.pdf(ray, hit);
 			assert_valid_pdf(brdf_pdf);
 			assert_valid_pdf(light_pdf);
