@@ -368,6 +368,12 @@ void eval(const std::string &line) {
 			check_in_complete("Rotation requires one angle (in degrees)");
 			modelmatrix = rotate(modelmatrix, deg, axis[aid]);
 		}
+		else if (trafo == "scale") {
+			vec3 s;
+			in >> s.x >> s.y >> s.z;
+			check_in_complete("Too many components in scale transformation");
+			modelmatrix = scale(modelmatrix, s);
+		}
 		else error("unsupported trafo: " << trafo);
 	}
 	else ifcmd("load") {
