@@ -244,12 +244,15 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
 	// find file
 	filesystem::path modelpath;
-	if (path.is_relative())
+	if (path.is_relative()) {
 		for (auto p : modelpaths)
 			if (exists(p / path)) {
 				modelpath = p / path;
 				break;
 			}
+	}
+	else
+		modelpath = path;
 	if (modelpath == "")
 		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
     // load from disk
