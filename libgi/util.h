@@ -39,6 +39,31 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
 				std::nextafter(from.z, d.z > 0 ? from.z+1 : from.z-1));
 }
 
+inline float int_as_float(int i) { return reinterpret_cast<float&>(i); }
+inline int float_as_int(float f) { return reinterpret_cast<int&>(f); }
+
+template<typename V, typename I3=glm::ivec3> heterogeneous inline V offset_ray(const V &p, const V &ng) {
+	const float origin = 1.0f / 32.0f;
+	const float float_scale = 1.0f / 65536.0f;
+	const float int_scale = 256.0f;
+
+	I3 of_i{int_scale * ng.x,
+	        int_scale * ng.y,
+	        int_scale * ng.z};
+	V p_i{int_as_float(float_as_int(p.x)+((p.x<0) ? -of_i.x : of_i.x)),
+	      int_as_float(float_as_int(p.y)+((p.y<0) ? -of_i.y : of_i.y)),
+	      int_as_float(float_as_int(p.z)+((p.z<0) ? -of_i.z : of_i.z))};
+	return {fabsf(p.x) < origin ? p.x + float_scale*ng.x : p_i.x,
+	        fabsf(p.y) < origin ? p.y + float_scale*ng.y : p_i.y,
+	        fabsf(p.z) < origin ? p.z + float_scale*ng.z : p_i.z};
+}
+
+inline ray offset_ray(const ray &r, const vec3 &ng) {
+	ray new_ray(r);
+	new_ray.t_min = 0;
+	new_ray.o = offset_ray(r.o, ng);
+	return new_ray;
+}
 
 /*
  *  brdf helpers

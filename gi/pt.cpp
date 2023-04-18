@@ -43,6 +43,17 @@ vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 }
 
+#define check_range(X) {\
+		assert(X.x >= 0);assert(std::isfinite(X.x));\
+		assert(X.y >= 0);assert(std::isfinite(X.y));\
+		assert(X.z >= 0);assert(std::isfinite(X.z)); }
+
+#define check_rangef(X) \
+		{assert(X >= 0);assert(std::isfinite(X));}
+
+#define assert_valid_pdf(x) \
+		{assert(x>0); assert(std::isfinite(x));}
+
 vec3 simple_pt::path(ray ray) {
 #ifdef RTGI_SKIP_SIMPLE_PT_IMPL
 	// TODO implement the first variant of the PT algorithm (and later on, add RR)
@@ -78,7 +89,9 @@ vec3 simple_pt::path(ray ray) {
 		
 		// bounce the ray
 		auto [bounced,pdf] = bounce_ray(hit, ray);
+		if (pdf <= 0.0f) break;
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
+		check_range(throughput);
 		ray = bounced;
 		
 		// apply RR
@@ -93,6 +106,7 @@ vec3 simple_pt::path(ray ray) {
 		else if (luma(throughput) == 0)
 			break;
 	}
+	check_range(radiance);
 	return radiance;
 #endif
 }
@@ -151,11 +165,9 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 }
 
 #ifndef RTGI_SKIP_PT
-
 // 
 // ----------------------- pt with next event estimation -----------------------
 //
-#define assert_valid_pdf(x) {assert(x>0); assert(std::isfinite(x));}
 
 vec3 pt_nee::path(ray ray) {
 	vec3 radiance(0);
@@ -196,10 +208,13 @@ vec3 pt_nee::path(ray ray) {
 		if (mis && hit.mat->emissive != vec3(0)) {
 			trianglelight tl(rc->scene, closest.ref);
 			float light_pdf = luma(tl.power()) / rc->scene.light_distribution->integral();
-			light_pdf *= tl.pdf(ray, hit);
-			assert_valid_pdf(brdf_pdf);
-			assert_valid_pdf(light_pdf);
+			light_pdf *= tl.pdf(ray, hit); // no problem if light_pdf is 0
 			radiance += throughput * hit.mat->emissive * brdf_pdf / (light_pdf + brdf_pdf);
+			break;
+		}
+		if (hit.mat->emissive != vec3(0)) {
+			radiance += throughput * hit.mat->emissive;
+			break;
 		}
 
 		// branch off direct lighting path that directly terminates
@@ -211,11 +226,14 @@ vec3 pt_nee::path(ray ray) {
 				assert_valid_pdf(light_pdf);
 				if (mis)
 					divisor += hit.mat->brdf->pdf(hit, -ray.d, shadow_ray.d);
+				check_rangef(divisor);
+				// note: light pdf cancels via balance heuristic, no need to divide by it (and is only part of divisor for non-mis)
 				radiance += throughput
 				            * light_col
 							* hit.mat->brdf->f(hit, -ray.d, shadow_ray.d)
 							* cdot(shadow_ray.d, hit.ns)
 							/ divisor;
+				check_range(radiance);
 			}
 		}
 
@@ -224,7 +242,7 @@ vec3 pt_nee::path(ray ray) {
 		brdf_pdf = pdf;	// for mis in next iteration
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
 		if (pdf <= 0.0f || luma(throughput) <= 0.0f) break;
-		ray = bounced;
+		ray = offset_ray(bounced, hit.ng);
 
 		// apply RR
 		if (i > rr_start) {
@@ -237,6 +255,7 @@ vec3 pt_nee::path(ray ray) {
 		}
 	}
 #endif
+	check_range(radiance);
 	return radiance;
 }
 

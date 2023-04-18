@@ -452,7 +452,7 @@ tuple<ray, vec3, float> trianglelight::sample_Li(const diff_geom &from, const ve
 	const vertex &c = scene.vertices[this->c];
 	vec2 bc     = uniform_sample_triangle(xis);
 	vec3 target = (1.0f-bc.x-bc.y)*a.pos + bc.x*b.pos + bc.y*c.pos;
-	vec3 n      = (1.0f-bc.x-bc.y)*a.norm + bc.x*b.norm + bc.y*c.norm;
+	vec3 n      = normalize((1.0f-bc.x-bc.y)*a.norm + bc.x*b.norm + bc.y*c.norm);
 	vec3 w_i    = target - from.x;
 	
 	float area = 0.5f * length(cross(b.pos-a.pos,c.pos-a.pos));

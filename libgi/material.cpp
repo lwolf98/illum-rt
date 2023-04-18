@@ -185,7 +185,7 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
     if (!same_hemisphere(geom.ng, w_i)) return vec3(0);
     const float NdotV = dot(geom.ns, w_o);
     const float NdotL = dot(geom.ns, w_i);
-    if (NdotV <= 0.f || NdotV <= 0.f) return vec3(0);
+    if (NdotV <= 0.f || NdotL <= 0.f) return vec3(0);
     const vec3 H = normalize(w_o + w_i);
     const float NdotH = cdot(geom.ns, H);
     const float HdotL = cdot(H, w_i);
