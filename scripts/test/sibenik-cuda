@@ -4,7 +4,7 @@
 
 # Outfile
 #outfile sibenik-wf/test_cuda.png
-outfile sibenik-wf/cuda_ind.png
+outfile sibenik-wf/cuda_test.png
 
 # obj files
 load render-data/sibenik/sibenik.obj
@@ -74,7 +74,7 @@ platform cuda
 raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 1 vps 5
+is light paths 1024 length 10 vps 5
 commit
 
 # Run

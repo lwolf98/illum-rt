@@ -58,7 +58,7 @@ namespace wf
 	public:
 		static constexpr char id[] = "create vpls";
 
-		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth) = 0;
 	};
 	namespace wire
 	{
@@ -72,18 +72,20 @@ namespace wf
 			VSD *light_throughput = nullptr;
 			VD *vpl_store = nullptr;
 			INT *vpl_store_offset = nullptr;
+			int depth = 0;
 
 			bool properly_wired()
 			{
 				return light_rays && light_throughput && vpl_store && vpl_store_offset;
 			}
 
-			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
 				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpl_store_offset = dynamic_cast<INT *>(vpl_store_offset);
+				this->depth = depth;
 			}
 		};
 	}
@@ -126,7 +128,7 @@ namespace wf
 	public:
 		static constexpr char id[] = "sample next vpls";
 
-		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset) = 0;
+		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth) = 0;
 	};
 	namespace wire
 	{
@@ -140,18 +142,20 @@ namespace wf
 			VSD *light_throughput = nullptr;
 			VD *vpl_store = nullptr;
 			INT *vpl_store_offset = nullptr;
+			int depth = 0;
 
 			bool properly_wired()
 			{
 				return light_rays && light_throughput && vpl_store && vpl_store_offset;
 			}
 
-			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset)
+			void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth)
 			{
 				this->light_rays = dynamic_cast<RD *>(light_rays);
 				this->light_throughput = dynamic_cast<VSD *>(light_throughput);
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpl_store_offset = dynamic_cast<INT *>(vpl_store_offset);
+				this->depth = depth;
 			}
 		};
 	}
@@ -161,12 +165,12 @@ namespace wf
 	public:
 		static constexpr char id[] = "copy vpls";
 
-		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count) = 0;
+		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int vpls_per_sample) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename VD, typename INT>
+		template <typename VD, typename INT, typename FLOAT>
 		class copy_vpls : public wf::copy_vpls
 		{
 		public:
@@ -174,17 +178,21 @@ namespace wf
 			VD *vpl_store = nullptr;
 			VD *vpls = nullptr;
 			INT *vpl_count = nullptr;
+			FLOAT *scale = nullptr;
+			int vpls_per_sample = 0;
 
 			bool properly_wired()
 			{
-				return vpl_store && vpls && vpl_count;
+				return vpl_store && vpls && vpl_count && scale;
 			}
 
-			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count)
+			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int vpls_per_sample)
 			{
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpls = dynamic_cast<VD *>(vpls);
 				this->vpl_count = dynamic_cast<INT *>(vpl_count);
+				this->scale = dynamic_cast<FLOAT *>(scale);
+				this->vpls_per_sample = vpls_per_sample;
 			}
 		};
 	}
@@ -232,12 +240,12 @@ namespace wf
 	public:
 		static constexpr char id[] = "integrate vpl samples";
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename VD>
+		template <typename RD, typename VD, typename FLOAT>
 		class integrate_vpl_samples : public wf::integrate_vpl_samples
 		{
 		public:
@@ -245,17 +253,19 @@ namespace wf
 			RD *camrays = nullptr;
 			RD *shadowrays = nullptr;
 			VD *sampled_vpls = nullptr;
+			FLOAT *scale = nullptr;
 
 			bool properly_wired()
 			{
-				return camrays && shadowrays && sampled_vpls;
+				return camrays && shadowrays && sampled_vpls && scale;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
 				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
+				this->scale = dynamic_cast<FLOAT *>(scale);
 			}
 		};
 	}

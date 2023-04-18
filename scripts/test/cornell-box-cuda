@@ -5,7 +5,7 @@
 # Outfile
 #outfile cornell-wf/performance_ml_wf_cor_1024x10_16948v_6vps_g1_1024s.png
 #outfile test-ml-cuda.png
-outfile cornell-wf/cuda_ind.png
+outfile cornell-wf/cuda_test.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -102,7 +102,7 @@ platform cuda
 raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 1 vps 6
+is light paths 1024 length 10 vps 6
 #algo direct-wf
 #is light
 #is uniform

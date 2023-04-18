@@ -5,7 +5,7 @@
 # Outfile
 #outfile cornell-wf/performance_ml_wf_cor_1024x10_16948v_6vps_g1_1024s.png
 #outfile test-ml-cuda_WF.png
-outfile cornell-wf/wf_ind.png
+outfile cornell-wf/wf_test.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -102,7 +102,7 @@ platform cpu
 raytracer embree
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 1 vps 6
+is light paths 1024 length 10 vps 6
 commit
 
 # Run

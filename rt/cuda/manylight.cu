@@ -180,17 +180,19 @@ namespace wf::cuda {
 
 			out_pos = target;
 			out_dir = w;
-			out_tmax = FLT_MAX; //TODO-ML: correct?
 			out_normal = n;
+			out_tmax = FLT_MAX; //TODO-ML: correct?
 
 			if (pdf_pos*pdf_dir <= 0) {
 				out_lcol = float3{0,0,0};
 				out_pdf = 0;
+				//out_tmax = -FLT_MAX;
 				return;
 			}
 
 			out_lcol = col;
 			out_pdf = pdf_pos*pdf_dir;
+			//out_tmax = FLT_MAX; //TODO-ML: correct?
 		}
 	}
 
@@ -236,7 +238,7 @@ namespace wf::cuda {
 			le[ray_index] = Le_v_0;
 
 			//Initialize VPL store offset
-			vpl_store_offset[0] = 0;
+			//vpl_store_offset[0] = 0;
 
 			// testing
 			//light_throughput[ray_index] = Le_v_0; //{1.f,0,1.f};
@@ -269,7 +271,7 @@ namespace wf::cuda {
 		static __global__ void create_vpls(int2 res, float4 *light_rays, tri_is *hits,
 										   float3 *light_throughput,
 										   float4 *vpl_col, float4 *vpl_pos, float4 *vpl_w_in, tri_is *vpl_is,
-										   int *vpl_store_offset,
+										   int *vpl_store_offset, int depth,
 										   uint4 *triangles, float4 *vert_norm, material *materials) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -280,26 +282,63 @@ namespace wf::cuda {
 			float4 light_ray_org = light_rays[ray_index*2+0];
 			float4 light_ray_dir = light_rays[ray_index*2+1];
 
+			int offset = depth*res.x;
 			//if (light_ray_dir == make_float4(0, 0, 0, 0)) {
 			if (light_ray_dir.x == 0 && light_ray_dir.y == 0 && light_ray_dir.z == 0) {
+				printf("dir 0 triggered\n");
 				//TODO-ML: invalid VPL handling
+				//vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, 0.f);
+				//vpl_pos[ray_index+offset] = pos;
+				//vpl_w_in[ray_index+offset] = w_in;
+				tri_is invalid_is(FLT_MAX, 0, 0, 0);
+				vpl_is[ray_index+offset] = invalid_is;
+
 				return;
 			}
 
 			tri_is hit = hits[ray_index];
-			//diff_geom hit(is, *pf->sd);
 			float3 col = light_throughput[ray_index];
 			float4 pos = light_ray_org + hit.t * light_ray_dir;
 			//float3 normal = hit.ns; //hit_ng(hit, tri, vert_norm)
 			float4 w_in = light_ray_dir;
 
+			//TODO-ML: testing col = 0 handling
+			//if (col.x == 0 && col.y == 0 && col.z == 0) {
+			if (!hit.valid()) {
+				//printf("Col 0 triggered\n");
+				vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, -1); //make_float4(0, 0, 0, -1);
+				vpl_pos[ray_index+offset] = make_float4(pos.x, pos.y, pos.z, -1);
+				vpl_w_in[ray_index+offset] = make_float4(w_in.x, w_in.y, w_in.z, -1);
+				//vpl_is[ray_index+offset] = hit;
+				tri_is invalid_is(FLT_MAX, 0, 0, 0);
+				vpl_is[ray_index+offset] = invalid_is;
+				//light_rays[ray_index*2+1] = {0,0,0,-1.f};
+
+				if (x < 20)
+				//if (x == 16)
+					printf("CREA:%d:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
+						depth, x,
+						vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z, vpl_col[ray_index+offset].w,
+						vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z, vpl_pos[ray_index+offset].w);
+					//printf("%d:%d:0: VPL col: (%f|%f|%f)\n", depth, x, vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z);
+
+				return;
+			}
+
 			// write VPL data
 			//vpl v(col, pos, normal, w_in, is);
-			int offset = vpl_store_offset[0];
+			//int offset = vpl_store_offset[0];
 			vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, 0.f);
 			vpl_pos[ray_index+offset] = pos;
 			vpl_w_in[ray_index+offset] = w_in;
 			vpl_is[ray_index+offset] = hit;
+			
+			if (x < 20)
+			//if (x == 16)
+				printf("CREA:%d:%d:1: VPL col: (%f|%f|%f), VPL pos: (%f|%f|%f)\n",
+					depth, x,
+					vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z,
+					vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z);
 		}
 	}
 
@@ -314,6 +353,7 @@ namespace wf::cuda {
 										  vpl_store->w_in.device_memory,
 										  vpl_store->is.device_memory,
 										  vpl_store_offset->data.device_memory,
+										  depth,
 										  pf->sd->triangles.device_memory,
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->materials.device_memory);
@@ -380,7 +420,7 @@ namespace wf::cuda {
 		static __global__ void sample_next_vpls(int2 res, float4 *light_rays, tri_is *hits,
 										   float3 *light_throughput,
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
-										   int *vpl_store_offset,
+										   int *vpl_store_offset, int depth,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
 										   float2 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -394,7 +434,10 @@ namespace wf::cuda {
 			if (light_ray_dir.x == 0 && light_ray_dir.y == 0 && light_ray_dir.z == 0)
 				return;
 
-			int offset = vpl_store_offset[0];
+			//int offset = vpl_store_offset[0];
+			int offset = depth*res.x;
+			//if (x == 0)
+			//	printf("Offset: %d\n", offset);
 			float4 vpl_col = vpls_col[ray_index+offset];
 			float4 vpl_pos = vpls_pos[ray_index+offset];
 			float4 vpl_w_in = vpls_w_in[ray_index+offset];
@@ -409,7 +452,9 @@ namespace wf::cuda {
 			float2 xi = random[ray_index];
 			//auto [w_o, f, pdf] = v_geometry.mat->brdf->sample(v_geometry, -f3(vpl_w_in), xi); //f(v_j-1->v_j->v_j+1)
 			// extracted from lambertian reflection
+			flip_normals_to_ray(vpl_ng, -f3(vpl_w_in));
 			float3 w_o = align(cosine_sample_hemisphere<float3>(xi), vpl_ng);
+			//flip_normals_to_ray(vpl_ng, w_o);
 			//TODO-ML: handle this case
 			//if (!same_hemisphere(w_o, vpl_ng))
 			//	return { w_i, vec3(0), 0 };
@@ -423,7 +468,8 @@ namespace wf::cuda {
 
 			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
 			//float pdf_f = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
-			light_rays[ray_index*2+0] = vpl_pos;
+			light_rays[ray_index*2+0] = make_float4(vpl_pos.x, vpl_pos.y, vpl_pos.z, 0);
+			//light_rays[ray_index*2+0] = vpl_pos;
 			float t_max = FLT_MAX; //TODO-ML: correct?
 			light_rays[ray_index*2+1] = make_float4(w_o.x, w_o.y, w_o.z, t_max);
 
@@ -431,6 +477,19 @@ namespace wf::cuda {
 			float D = cdot(w_o, vpl_ng); //D_v_j(v_j+1)
 			//TODO-ML: does this calculation work properly? (float3 * float3)
 			light_throughput[ray_index] = light_throughput[ray_index] * D*f/pdf_f; //throughput for v_j+1
+
+			//if (x < 20) {
+			if (x == 16) {
+				/*printf("%d:%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
+						depth, x,
+						light_throughput[ray_index].x, light_throughput[ray_index].y, light_throughput[ray_index].z,
+						pdf_f, vpl_is.valid(), D,
+						f.x, f.y, f.z);*/
+				printf("SAMP:%d:%d: pos(%f|%f|%f|%f), dir(%f|%f|%f|%f)\n",
+						depth, x,
+						light_rays[ray_index*2+0].x, light_rays[ray_index*2+0].y, light_rays[ray_index*2+0].z, light_rays[ray_index*2+0].w,
+						light_rays[ray_index*2+1].x, light_rays[ray_index*2+1].y, light_rays[ray_index*2+1].z, light_rays[ray_index*2+1].w);
+			}
 		}
 	}
 
@@ -446,6 +505,7 @@ namespace wf::cuda {
 										  vpl_store->w_in.device_memory,
 										  vpl_store->is.device_memory,
 										  vpl_store_offset->data.device_memory,
+										  depth,
 										  pf->sd->triangles.device_memory,
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->vertex_tc.device_memory,
@@ -454,13 +514,40 @@ namespace wf::cuda {
 	}
 
 	namespace k {
-		struct valid_vpl {
+		struct valid_vpl_f {
+			float compare;
+			__host__ inline valid_vpl_f(float compare) : compare(compare) {}
+			__host__ inline valid_vpl_f() : compare(0) {}
+			
+			__device__ inline bool operator()(const float &a) const {
+				return a >= compare;
+			}
+		};
+		struct valid_vpl_f3 {
 			float3 compare;
-			//CUB_RUNTIME_FUNCTION __forceinline__
-			__device__ inline valid_vpl(float3 compare) : compare(compare) {}
-			//CUB_RUNTIME_FUNCTION __forceinline__
+			__host__ inline valid_vpl_f3(float3 compare) : compare(compare) {}
+			
 			__device__ inline bool operator()(const float3 &a) const {
-				return (a.x == compare.x && a.y == compare.y && a.z == compare.z);
+				return (!(a.x == compare.x && a.y == compare.y && a.z == compare.z));
+			}
+		};
+		struct valid_vpl_f4 {
+			float compare;
+			__host__ inline valid_vpl_f4(float compare) : compare(compare) {}
+			__host__ inline valid_vpl_f4() : compare(0) {}
+			
+			__device__ inline bool operator()(const float4 &a) const {
+				return a.w >= compare;
+			}
+		};
+		struct valid_vpl_tri_is {
+			float compare;
+			__host__ inline valid_vpl_tri_is(float compare) : compare(compare) {}
+			__host__ inline valid_vpl_tri_is() : compare(FLT_MAX) {}
+
+			__device__ inline bool operator()(const tri_is &a) const {
+				//return a.t != compare;
+				return a.valid();
 			}
 		};
 
@@ -468,7 +555,8 @@ namespace wf::cuda {
 										   float4 *store_col, float4 *store_pos, float4 *store_w_in, tri_is *store_is,
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
 										   int *vpl_count,
-										   uint4 *triangles, float4 *vert_norm, material *materials) {
+										   uint4 *triangles, float4 *vert_norm, material *materials,
+										   float *scale, int vpls_per_sample) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -478,20 +566,118 @@ namespace wf::cuda {
 			//cub::DeviceSelect::If()
 
 			// testing area
-			vpls_col[ray_index] = store_col[ray_index];
+			/*vpls_col[ray_index] = store_col[ray_index];
 			vpls_pos[ray_index] = store_pos[ray_index];
 			vpls_w_in[ray_index] = store_w_in[ray_index];
-			vpls_is[ray_index] = store_is[ray_index];
+			vpls_is[ray_index] = store_is[ray_index];*/
 
-			vpl_count[0] = res.x*res.y;
+			//TODO-ML: how do you do this generally?
+			if (x == 0) {
+				//TODO-ML: calculate actual size
+				//vpl_count[0] = res.x*res.y;
+				printf("Count: %d\n", vpl_count[0]);
+
+				//Calculate scaling factor
+				float avg_path_len = vpl_count[0] * (1.f/res.x);
+				//scale[0] = avg_path_len/vpls_per_sample;
+				scale[0] = res.y * (1.f/vpls_per_sample);
+				printf("AVG len: %f, scale: %f\n", avg_path_len, scale[0]);
+			}
+
+			if (x < 20)
+			//if (x == 16)
+				printf("COPY:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
+					x,
+					store_col[ray_index].x, store_col[ray_index].y, store_col[ray_index].z, store_col[ray_index].w,
+					store_pos[ray_index].x, store_pos[ray_index].y, store_pos[ray_index].z, store_pos[ray_index].w);
+
+			/*if (x < 10) {
+				printf("%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
+						x,
+						light_throughput[ray_index].x, light_throughput[ray_index].y, light_throughput[ray_index].z,
+						pdf_f, vpl_is.valid(), D,
+						f.x, f.y, f.z);
+			}*/
 		}
 	}
 
+	void copy_inplace(float3 *device_data, int data_size, int *device_selected_out, const float3 &compare_value, global_memory_buffer<char> &temp_storage) {
+		size_t required_temp_storage_size;
+		
+		cub::DeviceSelect::If(nullptr, required_temp_storage_size, device_data, device_selected_out, data_size, k::valid_vpl_f3(compare_value));
+		if (required_temp_storage_size > temp_storage.size) {
+			temp_storage.resize(required_temp_storage_size);
+		}
+
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_storage.device_memory, required_temp_storage_size, device_data, device_selected_out, data_size, k::valid_vpl_f3(compare_value)), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+	}
+
 	void copy_vpls::run() {
+		std::vector<float3> data;
+		global_memory_buffer<float3> device_data("test_select", 0);
+		for (int i = 0; i < 10; i++)
+			data.push_back(i%2?float3{1.f, 2.f, 3.f}:float3{0,0,0});
+
+		device_data.upload(data);
+		//global_memory_buffer<int> num_out("num_out", 1);
+		global_memory_buffer<char> temp_memory("temp_mem", 0);
+		
+		vpl_count->data.download();
+		std::cout << "Valid test: " << vpl_count->data.host_data[0] << std::endl;
+
+		copy_inplace(device_data.device_memory, device_data.size, vpl_count->data.device_memory, float3{0,0,0}, temp_memory);
+		device_data.download();
+		vpl_count->data.download();
+		std::cout << "Valid test: " << vpl_count->data.host_data[0] << std::endl;
+		for (int i = 0; i < vpl_count->data.host_data[0]; i++)
+			std::cout << device_data.host_data[i].x << " " << device_data.host_data[i].y << " " << device_data.host_data[i].z << std::endl;
+
 		//TODO-ML: get store size as res...
-		//int2 res = {light_rays->w, light_rays->h};
-		int2 res = {vpl_store->w,1};
-		//int2 res = {1,1};
+		int2 res = {vpl_store->w, vpl_store->h};
+		int data_size = res.x*res.y;
+		size_t required_temp_memory_size;
+		//int2 res = {vpl_store->w,1};
+		//int2 res = {10,1};
+		// Select valid vpls
+
+		// col | TODO-ML: check if rex.x*res.y == vpls->col.size
+		//copy_inplace(vpls->col.device_memory, res.x*res.y, num_out.device_memory, FLT_MAX, temp_memory);
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid col: " << vpl_count->data.host_data[0] << std::endl;
+
+		// pos
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid pos: " << vpl_count->data.host_data[0] << std::endl;
+
+		// w_in
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid w_in: " << vpl_count->data.host_data[0] << std::endl;
+
+		// intersection
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid is: " << vpl_count->data.host_data[0] << std::endl;
+
 		k::copy_vpls<<<launch_config>>>(res,
 										  vpl_store->col.device_memory,
 										  vpl_store->pos.device_memory,
@@ -504,7 +690,9 @@ namespace wf::cuda {
 										  vpl_count->data.device_memory,
 										  pf->sd->triangles.device_memory,
 										  pf->sd->vertex_norm.device_memory,
-										  pf->sd->materials.device_memory);
+										  pf->sd->materials.device_memory,
+										  scale->data.device_memory,
+										  vpls_per_sample);
 	}
 
 	/* integration */
@@ -527,12 +715,20 @@ namespace wf::cuda {
 
 			tri_is hit = hits[ray_index];
 
-			//int pos = random[ray_index] * vpl_count[0];
-			int pos = 110;
+			int pos = random[ray_index] * vpl_count[0];
+			//int pos = random[ray_index] * 1063;
+			//TODO-ML: proper handling for this case
+			if (pos == vpl_count[0]) pos--;
+			//pos = 110;
 			float4 vpl_col = vpls_col[pos];
 			float4 vpl_pos = vpls_pos[pos];
 			float4 vpl_w_in = vpls_w_in[pos];
 			tri_is vpl_is = vpls_is[pos];
+			/*if (x == 10 && y == 20) {
+				printf("%d: VPL col: (%f|%f|%f)\n", x, vpls_col[1061].x, vpls_col[1061].y, vpls_col[1061].z);
+				printf("%d: VPL col: (%f|%f|%f)\n", x, vpls_col[1062].x, vpls_col[1062].y, vpls_col[1062].z);
+				printf("%d: VPL col: (%f|%f|%f)\n", x, vpls_col[1063].x, vpls_col[1063].y, vpls_col[1063].z);
+			}*/
 
 			//auto [shadow_ray, col_delete, pdf_delete] = v.sample_Li(hit, vec2(0));
 			//float3 to_light = pos - from.x;
@@ -542,6 +738,7 @@ namespace wf::cuda {
 			
 			float tmax = length(to_light);
 			to_light /= tmax;
+			tmax -= eps;
 			float4 ray_org = make_float4(from.x, from.y, from.z, 0.0001);
 			float4 ray_dir = make_float4(to_light.x, to_light.y, to_light.z, tmax);
 
@@ -555,6 +752,13 @@ namespace wf::cuda {
 
 			// testing
 			//framebuffer[ray_index] = make_float4(vpl_count[0], 0, 0, 1.0);
+
+			/*if (x < 20)
+			//if (x == 16)
+				printf("ISMP:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
+					x,
+					vpls_col[ray_index].x, vpls_col[ray_index].y, vpls_col[ray_index].z, vpls_col[ray_index].w,
+					vpls_pos[ray_index].x, vpls_pos[ray_index].y, vpls_pos[ray_index].z, vpls_pos[ray_index].w);*/
 		}
 	}
 
@@ -587,7 +791,8 @@ namespace wf::cuda {
 										   float4 *shadowrays, tri_is *shadow_hits,
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
-										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is) {
+										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
+										   float *scale) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -597,17 +802,31 @@ namespace wf::cuda {
 			/*float3 radiance_test {0,1.f,0};
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance_test.x, radiance_test.y, radiance_test.z, 1.0);
 			return;*/
+			
+			/*if (x < 20)
+			//if (x == 16)
+				printf("SMP1:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
+					x,
+					sampled_vpls_col[ray_index].x, sampled_vpls_col[ray_index].y, sampled_vpls_col[ray_index].z, sampled_vpls_col[ray_index].w,
+					sampled_vpls_pos[ray_index].x, sampled_vpls_pos[ray_index].y, sampled_vpls_pos[ray_index].z, sampled_vpls_pos[ray_index].w);*/
 
 			tri_is hit = cam_hits[ray_index];
 			tri_is shadow_hit = shadow_hits[ray_index];
+			tri_is vpl_is = sampled_vpls_is[ray_index];
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
-			//if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
 
 			float3 test_normal {0,0,0};
 			float3 test_entered {0,0,0};
 			float3 test_ref {0,0,0};
-			if (hit.valid() && !shadow_hit.valid()) {
+			float3 test_is {0,0,0};
+			//if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
+			if (hit.valid() && !shadow_hit.valid() && vpl_is.valid()) {
+					/*if (x < 20)
+					printf("SMP2:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
+						x,
+						sampled_vpls_col[ray_index].x, sampled_vpls_col[ray_index].y, sampled_vpls_col[ray_index].z, sampled_vpls_col[ray_index].w,
+						sampled_vpls_pos[ray_index].x, sampled_vpls_pos[ray_index].y, sampled_vpls_pos[ray_index].z, sampled_vpls_pos[ray_index].w);*/
 				// VPL color
 				float3 vpl_col = f3(sampled_vpls_col[ray_index]);
 				
@@ -625,44 +844,47 @@ namespace wf::cuda {
 				// brdf at vpl (v)
 				float3 vpl_w_o = -f3(shadowray_dir);
 				float3 vpl_w_i = -f3(sampled_vpls_w_in[ray_index]);
-				uint4 vpl_tri = triangles[shadow_hit.ref];
-				//float3 vpl_ng  = hit_ng(shadow_hit, vpl_tri, vert_norm);
-				float3 vpl_ng  = {0,0,1.f};
+				uint4 vpl_tri = triangles[vpl_is.ref];
+				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
+				//float3 vpl_ng  = {0,0,1.f};
 				//flip_normals_to_ray(vpl_ng, f3(shadowray_dir));
 				material vpl_mat = materials[vpl_tri.w];
 				float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
 
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
-				float G = D_x*G/(t*t);
+				float G = D_x*D_v/(t*t);
 				//G = G > 0.1f ? 0.1f : G; // sibenik
-				//G = G > 1.f ? 1.f : G; // cornell
+				G = G > 1.f ? 1.f : G; // cornell
 
 				radiance = f_x*G*vpl_col*f_v;
 
 				//Scale to part of avg path length
 				//TODO-ML: implement scaling...
-				//float avg_path_len = vpl_count / paths;
-				//radiance = radiance * avg_path_len/vps;
+				radiance *= scale[0];
 
 				// testing
-				//radiance = vpl_col;
+				//radiance = vpl_col*f_x*G*f_v*scale[0];
 				//radiance = f_x*vpl_col*f_v;
 				//radiance = {t,t,t};
 				//radiance = vpl_w_i;
 				//radiance = x_w_o;
 				test_normal = vpl_ng;
 				if (test_normal.x < 0) test_normal.x = test_normal.x * -1.f;
-				if (test_normal.y < 0) test_normal.x = test_normal.y * -1.f;
-				if (test_normal.z < 0) test_normal.x = test_normal.z * -1.f;
+				if (test_normal.y < 0) test_normal.y = test_normal.y * -1.f;
+				if (test_normal.z < 0) test_normal.z = test_normal.z * -1.f;
 				test_entered = {0,0,1.f};
-				test_ref = {hit.ref*0.01f,hit.ref*0.01f,hit.ref*0.01f};
-				//test_ref = {shadow_hit.ref*0.01f,shadow_hit.ref*0.01f,shadow_hit.ref*0.01f};
+				//test_ref = {hit.ref*0.01f,hit.ref*0.01f,hit.ref*0.01f};
+				test_ref = {vpl_is.ref*0.01f,vpl_is.ref*0.01f,vpl_is.ref*0.01f};
+				test_is = {0,1,0};
 			}
-			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 0);
+
+			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 0);
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(test_normal.x, test_normal.y, test_normal.z, 0);
 			//framebuffer[ray_index] = make_float4(radiance.x, radiance.y, radiance.z, 1.f);
-			framebuffer[ray_index] = make_float4(test_ref.x, test_ref.y, test_ref.z, 1.f);
+			//framebuffer[ray_index] = make_float4(radiance.x, radiance.y, radiance.z, 0.125f);
+			//framebuffer[ray_index] = make_float4(test_ref.x, test_ref.y, test_ref.z, 1.f);
+			//framebuffer[ray_index] = make_float4(test_is.x, test_is.y, test_is.z, 1.f);
 			//framebuffer[ray_index] = make_float4(test_normal.x, test_normal.y, test_normal.z, 1.f);
 			//framebuffer[ray_index] = make_float4(test_entered.x, test_entered.y, test_entered.z, 1.f);
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(test_entered.x, test_entered.y, test_entered.z, 0);
@@ -684,7 +906,8 @@ namespace wf::cuda {
 										  sampled_vpls->col.device_memory,
 										  sampled_vpls->pos.device_memory,
 										  sampled_vpls->w_in.device_memory,
-										  sampled_vpls->is.device_memory);
+										  sampled_vpls->is.device_memory,
+										  scale->data.device_memory);
 	}
 
 }

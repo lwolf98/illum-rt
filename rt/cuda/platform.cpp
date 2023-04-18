@@ -156,6 +156,10 @@ namespace wf {
 			return new per_sample_data<vec3>(rc->resolution());
 		}
 		
+		per_sample_data<float>* platform::allocate_float_per_sample_manually(int size) {
+			return new per_sample_data<float>(glm::ivec2(size, 1), false);
+		}
+		
 		per_sample_data<vec3>* platform::allocate_vec3_per_sample_manually(int size) {
 			return new per_sample_data<vec3>(glm::ivec2(size, 1), false);
 		}

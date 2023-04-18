@@ -3,7 +3,7 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile sibenik-wf/wf_ind.png
+outfile sibenik-wf/wf_test.png
 #outfile sibenik-wf/test_cuda_di.png
 
 # obj files
@@ -76,7 +76,7 @@ raytracer embree
 #raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 1 vps 5
+is light paths 1024 length 10 vps 5
 #algo direct-wf
 #is light
 commit

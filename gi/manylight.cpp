@@ -487,9 +487,9 @@ namespace wf {
 		//TODO-ML: can the size be reduced to the actual valid vpl count?
 		vpls = rc->platform->allocate_vpldata_manually(paths*path_length); //vpls = rc->platform->allocate_vpls();
 		vpl_count = rc->platform->allocate_int_per_sample_manually(1);
+		scale = rc->platform->allocate_float_per_sample_manually(1);
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
-
-
+		
 		// Test CUDA
 		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 		integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
@@ -502,7 +502,7 @@ namespace wf {
 		sample_v_0->use(vpl_rays, light_throughput, le, vpl_store_offset, l_dist);
 		frame_preparation_steps.push_back(sample_v_0);
 
-		/* testing area */
+		/* testing area * /
 			auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
 			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + 0);
 			
@@ -513,50 +513,49 @@ namespace wf {
 			frame_preparation_steps.push_back(create_vpl);
 
 			auto *copy_vpl = rc->platform->step<copy_vpls>();
-			copy_vpl->use(vpl_store, vpls, vpl_count);
+			copy_vpl->use(vpl_store, vpls, vpl_count, scale, vpls_per_sample);
 			frame_preparation_steps.push_back(copy_vpl);
 
-			auto *sample_vpl = rc->platform->step<sample_vpls>();
+			/*auto *sample_vpl = rc->platform->step<sample_vpls>();
 			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 
 			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
-			sampling_steps.push_back(integrate_vpl_sample);
+			sampling_steps.push_back(integrate_vpl_sample);* /
 
-			return;
-		/* end testing area */
+		/ * end testing area */
 
-		/*for (int depth = 0; depth < path_length; ++depth) {
+		for (int depth = 0; depth < path_length; ++depth) {
 			auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
 			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + depth);
 			
 			find_next_hit->use(vpl_rays);
 			//vpl* vpl_store_lane = vpl_store+depth*paths;
 			//create_vpl->use(vpl_rays, light_throughput, vpl_store_lane);
-			create_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset);
+			create_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset, depth);
 
 			frame_preparation_steps.push_back(find_next_hit);
 			frame_preparation_steps.push_back(create_vpl);
 			
-			if (depth >= (rr_start-1)) {
+			/*if (depth >= (rr_start-1)) {
 				auto *roulette = rc->platform->step<russian_roulette>();
 				roulette->use(vpl_rays, light_throughput, le);
 				frame_preparation_steps.push_back(roulette);
-			}
+			}*/
 
 			auto *sample_next_vpl = rc->platform->step<sample_next_vpls>("sample next vpl d=" + depth);
-			sample_next_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset);
+			sample_next_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset, depth);
 			frame_preparation_steps.push_back(sample_next_vpl);
 		}
 
 		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls, vpl_count);
+		copy_vpl->use(vpl_store, vpls, vpl_count, scale, vpls_per_sample);
 		frame_preparation_steps.push_back(copy_vpl);
 
 		/*if (path_length > 0) {
@@ -570,7 +569,7 @@ namespace wf {
 			vpls->push_back(vpl());
 		}*/
 
-		/* sampling steps * /
+		/* sampling steps */
 		//TODO-ML: handle vpls->size() == 0 in step
 		for (int i = 0; i < vpls_per_sample; ++i) {
 			auto *sample_vpl = rc->platform->step<sample_vpls>();
@@ -578,14 +577,14 @@ namespace wf {
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
 
-			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count);
+			sample_vpl->use(camrays, shadowrays, vpl_store, sampled_vpls, vpl_count);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
 			sampling_steps.push_back(integrate_vpl_sample);
-		}*/
+		}
 	}
 
 	/*vpl* manylight_algorithm::allocate_vpl_store() {

@@ -37,7 +37,7 @@ namespace wf {
 
 			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
 			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
-			__device__ __inline__ bool valid() { return t != FLT_MAX; }
+			__device__ __inline__ bool valid() const { return t != FLT_MAX; }
 		};
 
 		struct __align__(16) simple_bvh_node /*: public node*/ {

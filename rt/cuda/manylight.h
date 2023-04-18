@@ -38,7 +38,7 @@ namespace wf::cuda {
 		void run() override;
 	};
 
-	struct copy_vpls : public wf::wire::copy_vpls<vpldata, per_sample_data<int>> {
+	struct copy_vpls : public wf::wire::copy_vpls<vpldata, per_sample_data<int>, per_sample_data<float>> {
 		void run() override;
 	};
 
@@ -47,7 +47,7 @@ namespace wf::cuda {
 		void run() override;
 	};
 
-	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, vpldata> {
+	struct integrate_vpl_samples : public wf::wire::integrate_vpl_samples<raydata, vpldata, per_sample_data<float>> {
 		void run() override;
 	};
 	

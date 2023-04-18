@@ -69,6 +69,7 @@ namespace wf {
 		per_sample_data<vec3>* light_throughput = nullptr;
 		per_sample_data<vec3>* le = nullptr;
 		vpldata* sampled_vpls = nullptr;
+		per_sample_data<float>* scale = nullptr;
 
 		void regenerate_steps() override;
 		/*vpl* allocate_vpl_store();

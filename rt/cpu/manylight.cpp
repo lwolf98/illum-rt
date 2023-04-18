@@ -63,7 +63,8 @@ namespace wf::cpu {
 			vec3 normal = hit.ns;
 			vec3 w_in = light_rays->rays[i].d;
 			vpl v(col, pos, normal, w_in, is);
-			int offset = vpl_store_offset->data[0];
+			//int offset = vpl_store_offset->data[0];
+			int offset = depth*paths;
 			vpl_store->vpls[i+offset] = v;
 		}
 		//cout << "finished: create_vpls" << endl;
@@ -118,7 +119,8 @@ namespace wf::cpu {
 			if (light_rays->rays[i].d == vec3(0))
 				continue;
 
-			int offset = vpl_store_offset->data[0];
+			//int offset = vpl_store_offset->data[0];
+			int offset = depth*paths;
 			vpl v = vpl_store->vpls[i+offset];
 
 			// Sample ray to next VPL
@@ -154,8 +156,9 @@ namespace wf::cpu {
 			for (int path = 0; path < paths; ++path) {
 				vpls->vpls[count] = vpl();
 				vpl v = vpl_store->vpls[depth*paths+path];
-				if (v.col != vec3(0)) {
-					vpls->vpls[count] = v; //push_back(v);
+				if (v.col != vec3(0) && v.is.valid()) {
+					//vpls->vpls[count] = v; //push_back(v);
+					vpl_store->vpls[count] = v;
 					count++;
 				}
 			}
@@ -178,6 +181,7 @@ namespace wf::cpu {
 				//TODO-ML: how to work with vpls->size()?
 				//int32_t pos = rc->rng.uniform_float() * vpls->size();
 				int32_t pos = rc->rng.uniform_float() * vpl_count->data[0];
+				//pos = 2;
 				//TODO-ML: better names: vpls->vpls[pos];
 				vpl v = vpls->vpls[pos];
 				//cout << pos << ": " << v.col << " " << v.pos << " " << v.w_in << endl;
@@ -234,8 +238,8 @@ namespace wf::cpu {
 					//TODO: G cap solves the issue with the bright spots but adds bias.
 					//      In the future include bias compensation
 					//      -> see chapter 5: bias compensation (final gathering, ...)
-					G = G > 0.1f ? 0.1f : G; // sibenik
-					//G = G > 1.f ? 1.f : G; // cornell
+					//G = G > 0.1f ? 0.1f : G; // sibenik
+					G = G > 1.f ? 1.f : G; // cornell
 
 					radiance = f_x*G*v.col*f_v;
 
@@ -245,6 +249,7 @@ namespace wf::cpu {
 					//cout << "scale: " << avg_path_len/vps << endl;
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 0);
+				//rc->framebuffer.color(x,y) = vec4(radiance, 1.f);
 			}
 	}
 }
