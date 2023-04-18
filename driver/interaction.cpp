@@ -529,6 +529,9 @@ void eval(const std::string &line) {
 			error("Invalid platform");
 		if (scene.vertices.empty())
 			error("There is no scene data to work with");
+#ifndef RTGI_SKIP_DIRECT_ILLUM
+		scene.find_light_geometry();
+#endif
 		if (rc->algo)
 			rc->algo->data_reset_required = true;
 #ifndef RTGI_SKIP_WF

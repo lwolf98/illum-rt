@@ -138,6 +138,7 @@ struct scene {
 	std::vector<light*>      lights;
 #endif
 #ifndef RTGI_SKIP_DIRECT_ILLUM
+	void find_light_geometry();
 	void compute_light_distribution();
 #endif
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

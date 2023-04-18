@@ -323,16 +323,15 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 
     // load meshes
     mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, light_geom, light_prims, this);
-
-#ifndef RTGI_SKIP_DIRECT_ILLUM
-	lights.reserve(lights.size()+light_prims);
-	for (auto [start,end,mtl] : light_geom) 
-		for (int i = start; i < end; ++i)
-			lights.push_back(new trianglelight(*this, i));
-#endif
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
+void scene::find_light_geometry() {
+	for (int i = 0; i < triangles.size(); ++i)
+		if (auto mat = materials[triangles[i].material_id]; mat.emissive != vec3(0))
+			lights.push_back(new trianglelight(*this, i));
+}
+
 void scene::compute_light_distribution() {
 #ifndef RTGI_SKIP_SKY
 	if (lights.size() == 0 && !sky) {
