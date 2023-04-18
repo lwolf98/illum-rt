@@ -5,8 +5,6 @@
 #include "sampling.h"
 #endif
 
-using namespace glm;
-
 #ifndef RTGI_SKIP_BRDF
 #ifndef RTGI_SKIP_LAYERED_BRDF
 vec3 layered_brdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
@@ -195,7 +193,7 @@ vec3 gtr2_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i)
     const float F = fresnel_dielectric(HdotL, 1.f, geom.mat->ior);
     const float D = ggx_d(NdotH, roughness);
     const float G = ggx_g1(NdotV, roughness) * ggx_g1(NdotL, roughness);
-    const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
+    const float microfacet = (F * D * G) / (4 * glm::abs(NdotV) * glm::abs(NdotL));
     return coat ? vec3(microfacet) : geom.albedo() * microfacet;
 #else
 	// todo full TR Microfacet BRDF, use ggx_d and ggx_g1
