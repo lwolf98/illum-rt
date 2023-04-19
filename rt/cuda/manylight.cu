@@ -312,7 +312,7 @@ namespace wf::cuda {
 
 			int offset = depth*res.x;
 			//if (light_ray_dir == make_float4(0, 0, 0, 0)) {
-			if (light_ray_dir.x == 0 && light_ray_dir.y == 0 && light_ray_dir.z == 0) {
+			/*if (light_ray_dir.x == 0 && light_ray_dir.y == 0 && light_ray_dir.z == 0) {
 				printf("dir 0 triggered\n");
 				//TODO-ML: invalid VPL handling
 				//vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, 0.f);
@@ -322,7 +322,7 @@ namespace wf::cuda {
 				vpl_is[ray_index+offset] = invalid_is;
 
 				return;
-			}
+			}*/
 
 			tri_is hit = hits[ray_index];
 			float3 col = light_throughput[ray_index];
@@ -332,7 +332,7 @@ namespace wf::cuda {
 
 			//TODO-ML: testing col = 0 handling
 			//if (col.x == 0 && col.y == 0 && col.z == 0) {
-			if (!hit.valid()) {
+			if (!hit.valid() || col.x == 0.f && col.y == 0.f && col.z == 0.f) {
 				//printf("Col 0 triggered\n");
 				vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, -1); //make_float4(0, 0, 0, -1);
 				vpl_pos[ray_index+offset] = make_float4(pos.x, pos.y, pos.z, -1);
@@ -342,12 +342,12 @@ namespace wf::cuda {
 				vpl_is[ray_index+offset] = invalid_is;
 				//light_rays[ray_index*2+1] = {0,0,0,-1.f};
 
-				/*if (x < 20)
+				if (x < 20)
 				//if (x == 16)
 					printf("CREA:%d:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
 						depth, x,
 						vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z, vpl_col[ray_index+offset].w,
-						vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z, vpl_pos[ray_index+offset].w);*/
+						vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z, vpl_pos[ray_index+offset].w);
 					//printf("%d:%d:0: VPL col: (%f|%f|%f)\n", depth, x, vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z);
 
 				return;
@@ -462,6 +462,60 @@ namespace wf::cuda {
 			if (light_ray_dir.x == 0 && light_ray_dir.y == 0 && light_ray_dir.z == 0)
 				return;
 
+			int offset = depth*res.x;
+			float4 vpl_col = vpls_col[ray_index+offset];
+			float4 vpl_pos = vpls_pos[ray_index+offset];
+			float4 vpl_w_in = vpls_w_in[ray_index+offset];
+			tri_is vpl_is = vpls_is[ray_index+offset];
+
+			float3 w_o { 0,0,0 };
+			float3 org { 0,0,0 };
+			float t_max = -FLT_MAX;
+			float pdf = one_over_pi;
+			float3 throughput { 0,0,0 };
+			if (vpl_is.valid()) {
+				uint4 vpl_tri = triangles[vpl_is.ref];
+				material vpl_mat = materials[vpl_tri.w];
+
+				float2 xi = random[(ray_index+1)%res.x];
+				float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
+				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
+				flip_normals_to_ray(vpl_ng, f3(vpl_w_in));
+				w_o = align(sampled_dir, vpl_ng);
+				org = f3(vpl_pos);
+				t_max = FLT_MAX;
+
+				pdf *= cdot(w_o, vpl_ng);
+				float3 f = lambertian_reflection(w_o, -f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
+
+				// Setup the throughput for the next VPL
+				float D = cdot(w_o, vpl_ng); //D_v_j(v_j+1)
+				throughput = light_throughput[ray_index] * D*f/pdf; //throughput for v_j+1
+
+				if (x < 20) {
+					printf("scalar w_o: %f\n", dot(w_o, vpl_ng));
+					printf("scalar w_in: %f\n", dot(-f3(vpl_w_in), vpl_ng));
+					printf("normal(%f|%f|%f)\n", vpl_ng.x, vpl_ng.y, vpl_ng.z);
+					printf("w_in(%f|%f|%f)\n", vpl_w_in.x, vpl_w_in.y, vpl_w_in.z);
+					printf("w_out(%f|%f|%f)\n", w_o.x, w_o.y, w_o.z);
+					printf("random: %f\n", random[ray_index]);
+				}
+
+				if (x < 20)
+				//if (x == 16)
+					printf("%d:%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
+							depth, x,
+							throughput.x, throughput.y, throughput.z,
+							pdf, vpl_is.valid(), D,
+							f.x, f.y, f.z);
+			}
+			light_rays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0);
+			light_rays[ray_index*2+1] = make_float4(w_o.x, w_o.y, w_o.z, t_max);
+			light_throughput[ray_index] = throughput;
+
+			return;
+
+			/*
 			//int offset = vpl_store_offset[0];
 			int offset = depth*res.x;
 			//if (x == 0)
@@ -480,8 +534,14 @@ namespace wf::cuda {
 			float2 xi = random[ray_index];
 			//auto [w_o, f, pdf] = v_geometry.mat->brdf->sample(v_geometry, -f3(vpl_w_in), xi); //f(v_j-1->v_j->v_j+1)
 			// extracted from lambertian reflection
-			flip_normals_to_ray(vpl_ng, -f3(vpl_w_in));
+			//flip_normals_to_ray(vpl_ng, -f3(vpl_w_in));
 			float3 w_o = align(cosine_sample_hemisphere<float3>(xi), vpl_ng);
+			if (x < 20) {
+				printf("scalar w_o: %f\n", dot(w_o, vpl_ng));
+				printf("scalar w_in: %f\n", dot(-f3(vpl_w_in), vpl_ng));
+				printf("normal(%f|%f|%f)\n", vpl_ng);
+			}
+
 			//flip_normals_to_ray(vpl_ng, w_o);
 			//TODO-ML: handle this case
 			//if (!same_hemisphere(w_o, vpl_ng))
@@ -489,10 +549,11 @@ namespace wf::cuda {
 			
 			//TODO-ML: which method is correct now? :/
 			//float pdf_f = absdot(vpl_ng, w_o) * one_over_pi; //p(w_j)
-			float pdf_f = absdot(vpl_ng, -f3(vpl_w_in)) * one_over_pi; //p(w_j)
+			float pdf_f = absdot(vpl_ng, f3(vpl_w_in)) * one_over_pi; //p(w_j)
 			assert(std::isfinite(pdf_f));
 			//return { w_i, f(geom, w_o, w_i), pdf_val };
-			float3 f = layered_gtr2(w_o, -f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
+			//float3 f = layered_gtr2(w_o, f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
+			float3 f = lambertian_reflection(w_o, f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
 
 			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
 			//float pdf_f = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
@@ -506,18 +567,18 @@ namespace wf::cuda {
 			//TODO-ML: does this calculation work properly? (float3 * float3)
 			light_throughput[ray_index] = light_throughput[ray_index] * D*f/pdf_f; //throughput for v_j+1
 
-			//if (x < 20) {
-			/*if (x == 16) {
-				/*printf("%d:%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
+			if (x < 20)
+			//if (x == 16) {
+				printf("%d:%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
 						depth, x,
 						light_throughput[ray_index].x, light_throughput[ray_index].y, light_throughput[ray_index].z,
 						pdf_f, vpl_is.valid(), D,
-						f.x, f.y, f.z);* /
-				printf("SAMP:%d:%d: pos(%f|%f|%f|%f), dir(%f|%f|%f|%f)\n",
+						f.x, f.y, f.z);
+				/*printf("SAMP:%d:%d: pos(%f|%f|%f|%f), dir(%f|%f|%f|%f)\n",
 						depth, x,
 						light_rays[ray_index*2+0].x, light_rays[ray_index*2+0].y, light_rays[ray_index*2+0].z, light_rays[ray_index*2+0].w,
 						light_rays[ray_index*2+1].x, light_rays[ray_index*2+1].y, light_rays[ray_index*2+1].z, light_rays[ray_index*2+1].w);
-			}*/
+			*/
 		}
 	}
 
@@ -914,7 +975,7 @@ namespace wf::cuda {
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
 				float G = D_x*D_v/(t*t);
-				//G = G > 0.1f ? 0.1f : G; // sibenik
+				G = G > 0.1f ? 0.1f : G; // sibenik
 				//G = G > 1.f ? 1.f : G; // cornell
 
 				radiance = f_x*G*vpl_col*f_v;

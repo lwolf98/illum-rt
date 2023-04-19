@@ -401,7 +401,7 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//      -> see chapter 5: bias compensation (final gathering, ...)
 				//if (G > 0.0001f) cout << "triggered" << endl;
 				//G = G > 0.00001f ? 0.00001f : G; //sponza
-				//G = G > 0.1f ? 0.1f : G; //sibenik
+				G = G > 0.1f ? 0.1f : G; //sibenik
 				//G = G > 1.f ? 2.f : G; // Cornell
 
 				indirect_radiance += f_x*G*v.col*f_v;
