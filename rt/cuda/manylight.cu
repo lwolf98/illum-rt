@@ -314,12 +314,12 @@ namespace wf::cuda {
 				vpl_is[ray_index+offset] = invalid_is;
 				//light_rays[ray_index*2+1] = {0,0,0,-1.f};
 
-				if (x < 20)
+				/*if (x < 20)
 				//if (x == 16)
 					printf("CREA:%d:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
 						depth, x,
 						vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z, vpl_col[ray_index+offset].w,
-						vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z, vpl_pos[ray_index+offset].w);
+						vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z, vpl_pos[ray_index+offset].w);*/
 					//printf("%d:%d:0: VPL col: (%f|%f|%f)\n", depth, x, vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z);
 
 				return;
@@ -333,12 +333,12 @@ namespace wf::cuda {
 			vpl_w_in[ray_index+offset] = w_in;
 			vpl_is[ray_index+offset] = hit;
 			
-			if (x < 20)
+			/*if (x < 20)
 			//if (x == 16)
 				printf("CREA:%d:%d:1: VPL col: (%f|%f|%f), VPL pos: (%f|%f|%f)\n",
 					depth, x,
 					vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z,
-					vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z);
+					vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z);*/
 		}
 	}
 
@@ -479,17 +479,17 @@ namespace wf::cuda {
 			light_throughput[ray_index] = light_throughput[ray_index] * D*f/pdf_f; //throughput for v_j+1
 
 			//if (x < 20) {
-			if (x == 16) {
+			/*if (x == 16) {
 				/*printf("%d:%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
 						depth, x,
 						light_throughput[ray_index].x, light_throughput[ray_index].y, light_throughput[ray_index].z,
 						pdf_f, vpl_is.valid(), D,
-						f.x, f.y, f.z);*/
+						f.x, f.y, f.z);* /
 				printf("SAMP:%d:%d: pos(%f|%f|%f|%f), dir(%f|%f|%f|%f)\n",
 						depth, x,
 						light_rays[ray_index*2+0].x, light_rays[ray_index*2+0].y, light_rays[ray_index*2+0].z, light_rays[ray_index*2+0].w,
 						light_rays[ray_index*2+1].x, light_rays[ray_index*2+1].y, light_rays[ray_index*2+1].z, light_rays[ray_index*2+1].w);
-			}
+			}*/
 		}
 	}
 
@@ -579,17 +579,17 @@ namespace wf::cuda {
 
 				//Calculate scaling factor
 				float avg_path_len = vpl_count[0] * (1.f/res.x);
-				//scale[0] = avg_path_len/vpls_per_sample;
-				scale[0] = res.y * (1.f/vpls_per_sample);
+				scale[0] = avg_path_len/vpls_per_sample;
+				//scale[0] = res.y * (1.f/vpls_per_sample);
 				printf("AVG len: %f, scale: %f\n", avg_path_len, scale[0]);
 			}
 
-			if (x < 20)
+			/*if (x < 20)
 			//if (x == 16)
 				printf("COPY:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
 					x,
 					store_col[ray_index].x, store_col[ray_index].y, store_col[ray_index].z, store_col[ray_index].w,
-					store_pos[ray_index].x, store_pos[ray_index].y, store_pos[ray_index].z, store_pos[ray_index].w);
+					store_pos[ray_index].x, store_pos[ray_index].y, store_pos[ray_index].z, store_pos[ray_index].w);*/
 
 			/*if (x < 10) {
 				printf("%d: throughput: (%f|%f|%f)\tpdf: %f\tvalid: %d\tD: %f\tf: (%f|%f|%f)\n",
@@ -639,11 +639,20 @@ namespace wf::cuda {
 		size_t required_temp_memory_size;
 		//int2 res = {vpl_store->w,1};
 		//int2 res = {10,1};
-		// Select valid vpls
 
+		// only count valid vpls
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->col.device_memory, vpls->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->col.device_memory, vpls->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid vpls (by col): " << vpl_count->data.host_data[0] << std::endl;
+
+		// Select valid vpls
 		// col | TODO-ML: check if rex.x*res.y == vpls->col.size
 		//copy_inplace(vpls->col.device_memory, res.x*res.y, num_out.device_memory, FLT_MAX, temp_memory);
-		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		/*cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
 		if (required_temp_memory_size > temp_memory.size)
 			temp_memory.resize(required_temp_memory_size);
 		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
@@ -676,7 +685,7 @@ namespace wf::cuda {
 		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is()), "");
 		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		vpl_count->data.download();
-		std::cout << "Valid is: " << vpl_count->data.host_data[0] << std::endl;
+		std::cout << "Valid is: " << vpl_count->data.host_data[0] << std::endl;*/
 
 		k::copy_vpls<<<launch_config>>>(res,
 										  vpl_store->col.device_memory,
@@ -703,7 +712,7 @@ namespace wf::cuda {
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
 										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
 										   int *vpl_count,
-										   float *random) {
+										   int *current_sample, int vpls_per_sample, int vpl_offset) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -715,11 +724,13 @@ namespace wf::cuda {
 
 			tri_is hit = hits[ray_index];
 
-			int pos = random[ray_index] * vpl_count[0];
+			//int pos = random[ray_index] * vpl_count[0];
 			//int pos = random[ray_index] * 1063;
 			//TODO-ML: proper handling for this case
-			if (pos == vpl_count[0]) pos--;
+			//if (pos == vpl_count[0]) pos--;
 			//pos = 110;
+			//int pos = current_sample[0] * vpls_per_sample[0] + vpl_offset[0];
+			int pos = current_sample[0] * vpls_per_sample + vpl_offset;
 			float4 vpl_col = vpls_col[pos];
 			float4 vpl_pos = vpls_pos[pos];
 			float4 vpl_w_in = vpls_w_in[pos];
@@ -782,7 +793,9 @@ namespace wf::cuda {
 										  sampled_vpls->w_in.device_memory,
 										  sampled_vpls->is.device_memory,
 										  vpl_count->data.device_memory,
-										  rng.random_numbers);
+										  sample_index->data.device_memory,
+										  vpls_per_sample,
+										  vpl_offset);
 	}
 
 	namespace k {
@@ -792,7 +805,7 @@ namespace wf::cuda {
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
 										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
-										   float *scale) {
+										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -888,6 +901,11 @@ namespace wf::cuda {
 			//framebuffer[ray_index] = make_float4(test_normal.x, test_normal.y, test_normal.z, 1.f);
 			//framebuffer[ray_index] = make_float4(test_entered.x, test_entered.y, test_entered.z, 1.f);
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(test_entered.x, test_entered.y, test_entered.z, 0);
+
+			if (ray_index == 0 && vpl_offset == vpls_per_sample-1) {
+				current_sample[0]++;
+				printf("current_sample incremented: %d\n", current_sample[0]);
+			}
 		}
 	}
 
@@ -907,7 +925,10 @@ namespace wf::cuda {
 										  sampled_vpls->pos.device_memory,
 										  sampled_vpls->w_in.device_memory,
 										  sampled_vpls->is.device_memory,
-										  scale->data.device_memory);
+										  scale->data.device_memory,
+										  sample_index->data.device_memory,
+										  vpls_per_sample,
+										  vpl_offset);
 	}
 
 }

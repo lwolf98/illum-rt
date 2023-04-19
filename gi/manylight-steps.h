@@ -203,7 +203,8 @@ namespace wf
 	public:
 		static constexpr char id[] = "sample vpl rays";
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count,
+						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest) = 0;
 	};
 	namespace wire
 	{
@@ -219,18 +220,26 @@ namespace wf
 			VD *sampled_vpls = nullptr;
 			INT *vpl_count = nullptr;
 
+			INT *sample_index = nullptr;
+			int vpls_per_sample = 0;
+			int vpl_offset = 0;
+
 			bool properly_wired()
 			{
-				return camrays && shadowrays && vpls && sampled_vpls && vpl_count;
+				return camrays && shadowrays && vpls && sampled_vpls && vpl_count && sample_index;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count,
+			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
 				this->vpls = dynamic_cast<VD *>(vpls);
 				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
 				this->vpl_count = dynamic_cast<INT *>(vpl_count);
+				this->sample_index = dynamic_cast<INT *>(sample_index);
+				this->vpls_per_sample = vpls_per_sample;
+				this->vpl_offset = vpl_offest;
 			}
 		};
 	}
@@ -240,12 +249,13 @@ namespace wf
 	public:
 		static constexpr char id[] = "integrate vpl samples";
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
+						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest) = 0;
 	};
 	namespace wire
 	{
 
-		template <typename RD, typename VD, typename FLOAT>
+		template <typename RD, typename VD, typename FLOAT, typename INT>
 		class integrate_vpl_samples : public wf::integrate_vpl_samples
 		{
 		public:
@@ -255,17 +265,25 @@ namespace wf
 			VD *sampled_vpls = nullptr;
 			FLOAT *scale = nullptr;
 
+			INT *sample_index = nullptr;
+			int vpls_per_sample = 0;
+			int vpl_offset = 0;
+
 			bool properly_wired()
 			{
-				return camrays && shadowrays && sampled_vpls && scale;
+				return camrays && shadowrays && sampled_vpls && scale && sample_index;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
+			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
 				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
 				this->scale = dynamic_cast<FLOAT *>(scale);
+				this->sample_index = dynamic_cast<INT *>(sample_index);
+				this->vpls_per_sample = vpls_per_sample;
+				this->vpl_offset = vpl_offest;
 			}
 		};
 	}

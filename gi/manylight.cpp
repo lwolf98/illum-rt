@@ -477,6 +477,9 @@ namespace wf {
 		 * 		integrate_vpl_samples
 		*/
 
+		// calculate vpls per sample for strided loop (instead of configuring)
+		int max_vpls_per_sample = paths*path_length/rc->sppx;
+
 		/* memory allocation */
 		vpl_rays = rc->platform->allocate_raydata_manually(paths);
 		//TODO-ML: maybe delete throughput and use data from vpls
@@ -489,6 +492,8 @@ namespace wf {
 		vpl_count = rc->platform->allocate_int_per_sample_manually(1);
 		scale = rc->platform->allocate_float_per_sample_manually(1);
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
+
+		sample_index = rc->platform->allocate_int_per_sample_manually(1);
 		
 		// Test CUDA
 		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
@@ -533,7 +538,7 @@ namespace wf {
 
 		for (int depth = 0; depth < path_length; ++depth) {
 			auto *find_next_hit  = rc->platform->step<find_closest_hits>("v_j hits");
-			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + depth);
+			auto *create_vpl = rc->platform->step<create_vpls>("create vpls d=" + to_string(depth));
 			
 			find_next_hit->use(vpl_rays);
 			//vpl* vpl_store_lane = vpl_store+depth*paths;
@@ -549,13 +554,13 @@ namespace wf {
 				frame_preparation_steps.push_back(roulette);
 			}*/
 
-			auto *sample_next_vpl = rc->platform->step<sample_next_vpls>("sample next vpl d=" + depth);
+			auto *sample_next_vpl = rc->platform->step<sample_next_vpls>("sample next vpl d=" + to_string(depth));
 			sample_next_vpl->use(vpl_rays, light_throughput, vpl_store, vpl_store_offset, depth);
 			frame_preparation_steps.push_back(sample_next_vpl);
 		}
 
 		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls, vpl_count, scale, vpls_per_sample);
+		copy_vpl->use(vpl_store, vpls, vpl_count, scale, max_vpls_per_sample);
 		frame_preparation_steps.push_back(copy_vpl);
 
 		/*if (path_length > 0) {
@@ -571,15 +576,15 @@ namespace wf {
 
 		/* sampling steps */
 		//TODO-ML: handle vpls->size() == 0 in step
-		for (int i = 0; i < vpls_per_sample; ++i) {
-			auto *sample_vpl = rc->platform->step<sample_vpls>();
+		for (int i = 0; i < max_vpls_per_sample; ++i) {
+			auto *sample_vpl = rc->platform->step<sample_vpls>("prepare vpl=" + to_string(i));
 			//auto *find_light = rc->platform->step<find_closest_hits>("secondary hits");
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
-			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
+			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>("integrate vpl=" + to_string(i));
 
-			sample_vpl->use(camrays, shadowrays, vpl_store, sampled_vpls, vpl_count);
+			sample_vpl->use(camrays, shadowrays, vpl_store, sampled_vpls, vpl_count, sample_index, max_vpls_per_sample, i);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
