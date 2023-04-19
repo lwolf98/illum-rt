@@ -82,7 +82,7 @@ void manylight_algorithm::prepare_frame() {
 					obj_path.push_vertex(v_j.pos);
 
 				// 4. Terminate path (apply RR)
-				if (j >= rr_start) {
+				/*if (j >= rr_start) {
 					float xi = uniform_float();
 					float q = luma(throughput);
 					//TODO: is this q_j or q_j+1?
@@ -94,7 +94,7 @@ void manylight_algorithm::prepare_frame() {
 					throughput *= 1.0f/q;
 				}
 				else if (luma(throughput) == 0)
-					break;
+					break;*/
 
 				// Sample ray to next VPL
 				phong_specular_reflection* spec_surface = dynamic_cast<phong_specular_reflection*>(hit.mat->brdf);
@@ -231,6 +231,13 @@ void manylight_algorithm::prepare_frame() {
 
 	cout << "Avg path len: " << (1.f*vpls.size()/paths) << endl;
 	cout << "max. VPL storage: " << vpl_store.size()*path_length << endl;
+	int block_size = rc->sppx / vpl_integrations;
+	float vpls_per_sample = vpls.size() * (1.f/block_size);
+	cout << "Scale: " << (1.f/vpls_per_sample) * vpls.size() << endl;
+
+	vpls_per_sample = vpls.size() * (1.f/rc->sppx);
+	cout << "VPS: " << vpls_per_sample << endl;
+	cout << "Scale alternative: " << vpls.size() * (1.f/vpls_per_sample) << endl;
 	vpl_stats(vpls);
 }
 
@@ -394,7 +401,7 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//      -> see chapter 5: bias compensation (final gathering, ...)
 				//if (G > 0.0001f) cout << "triggered" << endl;
 				//G = G > 0.00001f ? 0.00001f : G; //sponza
-				G = G > 0.1f ? 0.1f : G; //sibenik
+				//G = G > 0.1f ? 0.1f : G; //sibenik
 				//G = G > 1.f ? 2.f : G; // Cornell
 
 				indirect_radiance += f_x*G*v.col*f_v;
@@ -479,6 +486,10 @@ namespace wf {
 
 		// calculate vpls per sample for strided loop (instead of configuring)
 		int max_vpls_per_sample = paths*path_length/rc->sppx;
+		cout << "paths: " << paths << endl;
+		cout << "len: " << path_length << endl;
+		cout << "SPPX: " << rc->sppx << endl;
+		cout << "VPS: " << max_vpls_per_sample << endl;
 
 		/* memory allocation */
 		vpl_rays = rc->platform->allocate_raydata_manually(paths);
@@ -560,7 +571,7 @@ namespace wf {
 		}
 
 		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls, vpl_count, scale, max_vpls_per_sample);
+		copy_vpl->use(vpl_store, vpls, vpl_count, scale, rc->sppx);
 		frame_preparation_steps.push_back(copy_vpl);
 
 		/*if (path_length > 0) {

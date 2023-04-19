@@ -3,7 +3,8 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile sibenik/performance_ml_sib_p1_1024x10_v_g01_1024s.png
+#outfile sibenik/performance_ml_sib_p1_1024x10_v_g01_1024s.png
+outfile sibenik/test.png
 #outfile sibenik/pt_p4_1024s.png
 
 # obj files

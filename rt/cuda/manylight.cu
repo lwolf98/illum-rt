@@ -10,6 +10,34 @@
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
+	void vpl_stats(const vpldata *vpls, const int size) {
+		vec4 col(0);
+		vec4 pos(0);
+		//vec3 normal(0);
+		//for (auto v : vpls) {
+		for (int i = 0; i < size; i++) {
+			col.x += vpls->col.host_data[i].x;
+			col.y += vpls->col.host_data[i].y;
+			col.z += vpls->col.host_data[i].z;
+			col.w += vpls->col.host_data[i].w;
+			pos.x += vpls->pos.host_data[i].x;
+			pos.y += vpls->pos.host_data[i].y;
+			pos.z += vpls->pos.host_data[i].z;
+			pos.w += vpls->pos.host_data[i].w;
+			//normal += v.normal;
+			//if (col.r != col.r)
+			//	std::cout << "NAN: " << v.col << std::endl;
+		}
+		col = col * (1.f/size);
+		pos = pos * (1.f/size);
+		//normal /= size;
+
+		std::cout << "VPLs: " << size << std::endl;
+		//std::cout << "col: " << col << ", pos: " << pos << ", normal: " << normal << std::endl;
+		std::cout << "col: " << col.x << "|" << col.y << "|" << col.z << 
+					", pos: " << pos.x << "|" << pos.y << "|" << pos.z <<  std::endl;
+	}
+
 	/* util functions (copied from bounce.cu)*/
 	//TODO-ML: use util functions centralized; (frame_res copied from bounce.cu)
 	const float eps = 1e-4f; // see rt.h
@@ -328,7 +356,7 @@ namespace wf::cuda {
 			// write VPL data
 			//vpl v(col, pos, normal, w_in, is);
 			//int offset = vpl_store_offset[0];
-			vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, 0.f);
+			vpl_col[ray_index+offset] = make_float4(col.x/res.x, col.y/res.x, col.z/res.x, 0.f);
 			vpl_pos[ray_index+offset] = pos;
 			vpl_w_in[ray_index+offset] = w_in;
 			vpl_is[ray_index+offset] = hit;
@@ -461,10 +489,10 @@ namespace wf::cuda {
 			
 			//TODO-ML: which method is correct now? :/
 			//float pdf_f = absdot(vpl_ng, w_o) * one_over_pi; //p(w_j)
-			float pdf_f = absdot(vpl_ng, f3(vpl_w_in)) * one_over_pi; //p(w_j)
+			float pdf_f = absdot(vpl_ng, -f3(vpl_w_in)) * one_over_pi; //p(w_j)
 			assert(std::isfinite(pdf_f));
 			//return { w_i, f(geom, w_o, w_i), pdf_val };
-			float3 f = layered_gtr2(w_o, f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
+			float3 f = layered_gtr2(w_o, -f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
 
 			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
 			//float pdf_f = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
@@ -556,7 +584,7 @@ namespace wf::cuda {
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
 										   int *vpl_count,
 										   uint4 *triangles, float4 *vert_norm, material *materials,
-										   float *scale, int vpls_per_sample) {
+										   float *scale, int sppx) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -572,16 +600,21 @@ namespace wf::cuda {
 			vpls_is[ray_index] = store_is[ray_index];*/
 
 			//TODO-ML: how do you do this generally?
-			if (x == 0) {
+			if (ray_index == 0) {
 				//TODO-ML: calculate actual size
 				//vpl_count[0] = res.x*res.y;
 				printf("Count: %d\n", vpl_count[0]);
 
 				//Calculate scaling factor
 				float avg_path_len = vpl_count[0] * (1.f/res.x);
-				scale[0] = avg_path_len/vpls_per_sample;
+				//scale[0] = avg_path_len/vpls_per_sample;
+				float vpls_per_sample = vpl_count[0] * (1.f/sppx);
+				scale[0] = vpl_count[0] * (1.f/vpls_per_sample);
+
 				//scale[0] = res.y * (1.f/vpls_per_sample);
 				printf("AVG len: %f, scale: %f\n", avg_path_len, scale[0]);
+				printf("Count: %d, VPLs p. samp.: %d\n", vpl_count[0], vpls_per_sample);
+				printf("Count: %d, VPLs p. samp.: %d, AVG len: %f, scale: %f\n", vpl_count[0], vpls_per_sample, avg_path_len, scale[0]);
 			}
 
 			/*if (x < 20)
@@ -601,7 +634,7 @@ namespace wf::cuda {
 		}
 	}
 
-	void copy_inplace(float3 *device_data, int data_size, int *device_selected_out, const float3 &compare_value, global_memory_buffer<char> &temp_storage) {
+	/*void copy_inplace(float3 *device_data, int data_size, int *device_selected_out, const float3 &compare_value, global_memory_buffer<char> &temp_storage) {
 		size_t required_temp_storage_size;
 		
 		cub::DeviceSelect::If(nullptr, required_temp_storage_size, device_data, device_selected_out, data_size, k::valid_vpl_f3(compare_value));
@@ -611,27 +644,29 @@ namespace wf::cuda {
 
 		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_storage.device_memory, required_temp_storage_size, device_data, device_selected_out, data_size, k::valid_vpl_f3(compare_value)), "");
 		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-	}
+	}*/
 
 	void copy_vpls::run() {
-		std::vector<float3> data;
+		global_memory_buffer<char> temp_memory("temp_mem", 0);
+		// testing area
+		/*std::vector<float3> data;
 		global_memory_buffer<float3> device_data("test_select", 0);
 		for (int i = 0; i < 10; i++)
 			data.push_back(i%2?float3{1.f, 2.f, 3.f}:float3{0,0,0});
 
 		device_data.upload(data);
 		//global_memory_buffer<int> num_out("num_out", 1);
-		global_memory_buffer<char> temp_memory("temp_mem", 0);
 		
 		vpl_count->data.download();
 		std::cout << "Valid test: " << vpl_count->data.host_data[0] << std::endl;
 
-		copy_inplace(device_data.device_memory, device_data.size, vpl_count->data.device_memory, float3{0,0,0}, temp_memory);
+		//copy_inplace(device_data.device_memory, device_data.size, vpl_count->data.device_memory, float3{0,0,0}, temp_memory);
 		device_data.download();
 		vpl_count->data.download();
 		std::cout << "Valid test: " << vpl_count->data.host_data[0] << std::endl;
 		for (int i = 0; i < vpl_count->data.host_data[0]; i++)
-			std::cout << device_data.host_data[i].x << " " << device_data.host_data[i].y << " " << device_data.host_data[i].z << std::endl;
+			std::cout << device_data.host_data[i].x << " " << device_data.host_data[i].y << " " << device_data.host_data[i].z << std::endl;*/
+		// end testing area
 
 		//TODO-ML: get store size as res...
 		int2 res = {vpl_store->w, vpl_store->h};
@@ -648,6 +683,18 @@ namespace wf::cuda {
 		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 		vpl_count->data.download();
 		std::cout << "Valid vpls (by col): " << vpl_count->data.host_data[0] << std::endl;
+
+		cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
+		if (required_temp_memory_size > temp_memory.size)
+			temp_memory.resize(required_temp_memory_size);
+		CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		vpl_count->data.download();
+		std::cout << "Valid vpls (by pos): " << vpl_count->data.host_data[0] << std::endl;
+
+		vpls->col.download();
+		vpls->pos.download();
+		vpl_stats(vpls, vpl_count->data.host_data[0]);
 
 		// Select valid vpls
 		// col | TODO-ML: check if rex.x*res.y == vpls->col.size
@@ -701,7 +748,7 @@ namespace wf::cuda {
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->materials.device_memory,
 										  scale->data.device_memory,
-										  vpls_per_sample);
+										  sppx);
 	}
 
 	/* integration */
@@ -868,7 +915,7 @@ namespace wf::cuda {
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
 				float G = D_x*D_v/(t*t);
 				//G = G > 0.1f ? 0.1f : G; // sibenik
-				G = G > 1.f ? 1.f : G; // cornell
+				//G = G > 1.f ? 1.f : G; // cornell
 
 				radiance = f_x*G*vpl_col*f_v;
 
@@ -904,7 +951,7 @@ namespace wf::cuda {
 
 			if (ray_index == 0 && vpl_offset == vpls_per_sample-1) {
 				current_sample[0]++;
-				printf("current_sample incremented: %d\n", current_sample[0]);
+				//printf("current_sample incremented: %d\n", current_sample[0]);
 			}
 		}
 	}

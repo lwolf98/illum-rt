@@ -165,7 +165,7 @@ namespace wf
 	public:
 		static constexpr char id[] = "copy vpls";
 
-		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int vpls_per_sample) = 0;
+		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx) = 0;
 	};
 	namespace wire
 	{
@@ -179,20 +179,20 @@ namespace wf
 			VD *vpls = nullptr;
 			INT *vpl_count = nullptr;
 			FLOAT *scale = nullptr;
-			int vpls_per_sample = 0;
+			int sppx = 0;
 
 			bool properly_wired()
 			{
 				return vpl_store && vpls && vpl_count && scale;
 			}
 
-			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int vpls_per_sample)
+			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx)
 			{
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpls = dynamic_cast<VD *>(vpls);
 				this->vpl_count = dynamic_cast<INT *>(vpl_count);
 				this->scale = dynamic_cast<FLOAT *>(scale);
-				this->vpls_per_sample = vpls_per_sample;
+				this->sppx = sppx;
 			}
 		};
 	}
