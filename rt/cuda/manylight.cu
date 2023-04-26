@@ -5,14 +5,19 @@
 //#include "bounce.h"
 #include "libgi/util.h"
 #include "libgi/sampling.h"
+#include "libgi/objdraw.h"
 
 #include "cuda-operators.h"
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
-	void vpl_stats(const vpldata *vpls, const int size) {
+	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
+	static __device__ float3 f3(const float4 &v);
+
+	static void vpl_stats(const vpldata *vpls, const int size) {
 		vec4 col(0);
 		vec4 pos(0);
+		vec3 normal(0);
 		//vec3 normal(0);
 		//for (auto v : vpls) {
 		for (int i = 0; i < size; i++) {
@@ -37,6 +42,40 @@ namespace wf::cuda {
 		std::cout << "col: " << col.x << "|" << col.y << "|" << col.z << 
 					", pos: " << pos.x << "|" << pos.y << "|" << pos.z <<  std::endl;
 	}
+
+	static __device__ void vpl_stats_device(const tri_is *vpl_is, const float4 *vpl_w_in, const int max_size, const uint4 *tris, const float4 *vert_normals) {
+		float3 normal {0,0,0};
+		float3 normal_flipped {0,0,0};
+		//vec3 normal(0);
+		//for (auto v : vpls) {
+		int count = 0;
+		for (int i = 0; i < max_size; i++) {
+			if (!vpl_is[i].valid()) continue;
+			uint4 tri = tris[vpl_is[i].ref];
+			float3 cur_normal = hit_ng(vpl_is[i], tri, vert_normals);
+			//printf("cur_normal: %f|%f|%f\n", cur_normal.x, cur_normal.y, cur_normal.z);
+			//printf("w_in: %f|%f|%f\n", vpl_w_in[i].x, vpl_w_in[i].y, vpl_w_in[i].z);
+			normal.x += cur_normal.x;
+			normal.y += cur_normal.y;
+			normal.z += cur_normal.z;
+
+			flip_normals_to_ray(cur_normal, f3(vpl_w_in[i]));
+			normal_flipped.x += cur_normal.x;
+			normal_flipped.y += cur_normal.y;
+			normal_flipped.z += cur_normal.z;
+
+			count++;
+		}
+		normal = normal * (1.f/count);
+		normal_flipped = normal_flipped * (1.f/count);
+
+		//std::cout << "VPLs: " << size << std::endl;
+		//std::cout << "normal: " << normal.x << "|" << normal.y << "|" << normal.z <<  std::endl;
+		printf("Count in vpl_ststs_device: %d\n", count);
+		printf("normal: %f|%f|%f\n", normal.x, normal.y, normal.z);
+		printf("normal_flipped: %f|%f|%f\n", normal_flipped.x, normal_flipped.y, normal_flipped.z);
+	}
+	
 
 	/* util functions (copied from bounce.cu)*/
 	//TODO-ML: use util functions centralized; (frame_res copied from bounce.cu)
@@ -260,7 +299,7 @@ namespace wf::cuda {
 			//throughput *= Le_v_0 * D_v_0 / pdf_v_0; //Attention: throughput contains Le value
 			float3 throughput = Le_v_0 * D_v_0 / pdf_v_0; //Attention: throughput contains Le value
 
-			light_rays[ray_index*2+0] = make_float4(r_o.x, r_o.y, r_o.z, 0); //TODO-ML: What is that 0.0001?
+			light_rays[ray_index*2+0] = make_float4(r_o.x, r_o.y, r_o.z, 0.0001f); //TODO-ML: What is that 0.0001?
 			light_rays[ray_index*2+1] = make_float4(r_d.x, r_d.y, r_d.z, r_tm);
 			light_throughput[ray_index] = throughput;
 			le[ray_index] = Le_v_0;
@@ -326,7 +365,10 @@ namespace wf::cuda {
 
 			tri_is hit = hits[ray_index];
 			float3 col = light_throughput[ray_index];
+			//float3 normalized_dir = f3(light_ray_dir);
+			//normalize(normalized_dir);
 			float4 pos = light_ray_org + hit.t * light_ray_dir;
+			//float4 pos = light_ray_org + hit.t * make_float4(normalized_dir.x, normalized_dir.y, normalized_dir.z, 0.f);
 			//float3 normal = hit.ns; //hit_ng(hit, tri, vert_norm)
 			float4 w_in = light_ray_dir;
 
@@ -357,16 +399,16 @@ namespace wf::cuda {
 			//vpl v(col, pos, normal, w_in, is);
 			//int offset = vpl_store_offset[0];
 			vpl_col[ray_index+offset] = make_float4(col.x/res.x, col.y/res.x, col.z/res.x, 0.f);
-			vpl_pos[ray_index+offset] = pos;
+			vpl_pos[ray_index+offset] = make_float4(pos.x, pos.y, pos.z, 0.f);
 			vpl_w_in[ray_index+offset] = w_in;
 			vpl_is[ray_index+offset] = hit;
 			
-			/*if (x < 20)
+			if (x < 20)
 			//if (x == 16)
 				printf("CREA:%d:%d:1: VPL col: (%f|%f|%f), VPL pos: (%f|%f|%f)\n",
 					depth, x,
 					vpl_col[ray_index+offset].x, vpl_col[ray_index+offset].y, vpl_col[ray_index+offset].z,
-					vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z);*/
+					vpl_pos[ray_index+offset].x, vpl_pos[ray_index+offset].y, vpl_pos[ray_index+offset].z);
 		}
 	}
 
@@ -509,7 +551,7 @@ namespace wf::cuda {
 							pdf, vpl_is.valid(), D,
 							f.x, f.y, f.z);
 			}
-			light_rays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0);
+			light_rays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001f);
 			light_rays[ray_index*2+1] = make_float4(w_o.x, w_o.y, w_o.z, t_max);
 			light_throughput[ray_index] = throughput;
 
@@ -675,7 +717,13 @@ namespace wf::cuda {
 				//scale[0] = res.y * (1.f/vpls_per_sample);
 				printf("AVG len: %f, scale: %f\n", avg_path_len, scale[0]);
 				printf("Count: %d, VPLs p. samp.: %d\n", vpl_count[0], vpls_per_sample);
-				printf("Count: %d, VPLs p. samp.: %d, AVG len: %f, scale: %f\n", vpl_count[0], vpls_per_sample, avg_path_len, scale[0]);
+				printf("Count: %d, VPLs p. samp.: %f, AVG len: %f, scale: %f\n", vpl_count[0], vpls_per_sample, avg_path_len, scale[0]);
+
+				float3 cur_normal = hit_ng(vpls_is[0], triangles[vpls_is[0].ref], vert_norm);
+				flip_normals_to_ray(cur_normal, f3(vpls_w_in[0]));
+				vpl_stats_device(store_is, store_w_in, vpl_count[0], triangles, vert_norm);
+				//printf("cur_normal: %f|%f|%f\n", cur_normal.x, cur_normal.y, cur_normal.z);
+				//printf("w_in: %f|%f|%f\n", store_w_in[0].x, store_w_in[0].y, store_w_in[0].z);
 			}
 
 			/*if (x < 20)
@@ -755,6 +803,8 @@ namespace wf::cuda {
 
 		vpls->col.download();
 		vpls->pos.download();
+		vpls->w_in.download();
+		vpls->is.download();
 		vpl_stats(vpls, vpl_count->data.host_data[0]);
 
 		// Select valid vpls
@@ -810,6 +860,31 @@ namespace wf::cuda {
 										  pf->sd->materials.device_memory,
 										  scale->data.device_memory,
 										  sppx);
+
+
+		// debug
+		bool export_debug_obj = false;
+		if (export_debug_obj) {
+			// begin writing paths.obj
+			objdraw::obj_writer obj_writer("paths_cuda.obj");
+
+			//for (auto& p : obj_paths)
+			//	obj_writer.write_path(p);
+
+			// draw path vertices in paths.obj as icospheres
+			/*for (auto v_0 : obj_v_0_samples) {
+				objdraw::icosphere sphere(v_0, 0.01f);
+				obj_writer.write_icosphere(sphere);
+			}*/
+			//for (int i = 0; i < 10; i++) {
+			for (int i = 0; i < res.x*res.y; i++) {
+				if (vpls->is.host_data[i].t == FLT_MAX) continue;
+
+				float4 v = vpls->pos.host_data[i];
+				objdraw::icosphere sphere(vec3(v.x, v.y, v.z), 0.02f);
+				obj_writer.write_icosphere(sphere);
+			}
+		}
 	}
 
 	/* integration */
@@ -878,6 +953,9 @@ namespace wf::cuda {
 					x,
 					vpls_col[ray_index].x, vpls_col[ray_index].y, vpls_col[ray_index].z, vpls_col[ray_index].w,
 					vpls_pos[ray_index].x, vpls_pos[ray_index].y, vpls_pos[ray_index].z, vpls_pos[ray_index].w);*/
+
+			//if (ray_index == 111)
+			//	printf("ISMP: VPL index: %d\n", pos);
 		}
 	}
 
@@ -913,7 +991,8 @@ namespace wf::cuda {
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
 										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
-										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset) {
+										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset,
+										   int *cnt_integrated) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -998,7 +1077,31 @@ namespace wf::cuda {
 				//test_ref = {hit.ref*0.01f,hit.ref*0.01f,hit.ref*0.01f};
 				test_ref = {vpl_is.ref*0.01f,vpl_is.ref*0.01f,vpl_is.ref*0.01f};
 				test_is = {0,1,0};
+
+				if (x == 153 && y == 230) {
+					//printf("integrated VPL!\n");
+					cnt_integrated[0]++;
+
+					//printf("cur_normal: %f|%f|%f\n", vpl_ng.x, vpl_ng.y, vpl_ng.z);
+				}
 			}
+
+			/*if (ray_index == 111)
+				printf("R value before: %f\n", framebuffer[ray_index].x);
+			// remove direct illumination for testing
+			if (current_sample[0] == 0) {
+				framebuffer[ray_index] = make_float4(0,0,0,1.f);
+				if (ray_index == 111)
+					printf("to 0!!!\n");
+			}
+			if (ray_index == 111)
+				printf("R value after: %f\n", framebuffer[ray_index].x);*/
+
+			/*if (x == 153 && y == 230) {
+				framebuffer[ray_index] = make_float4(1.f,1.f,1.f,1.f);
+				printf("Integrated VPLs: %d\n", cnt_integrated[0]);
+				return;
+			}*/
 
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 0);
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(test_normal.x, test_normal.y, test_normal.z, 0);
@@ -1014,6 +1117,13 @@ namespace wf::cuda {
 				current_sample[0]++;
 				//printf("current_sample incremented: %d\n", current_sample[0]);
 			}
+
+			/*if (ray_index == 111)
+				if (vpl_is.valid())
+					printf("INTG: sampled\n");*/
+
+			//if (x == 153 && y == 230)
+			//	printf("Integrated VPLs: ", cnt_integrated[0]);
 		}
 	}
 
@@ -1036,7 +1146,8 @@ namespace wf::cuda {
 										  scale->data.device_memory,
 										  sample_index->data.device_memory,
 										  vpls_per_sample,
-										  vpl_offset);
+										  vpl_offset,
+										  cnt_debug->data.device_memory);
 	}
 
 }

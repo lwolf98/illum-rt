@@ -405,6 +405,7 @@ namespace wf::cuda {
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
 			}
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(0,0,0, 1.0);
 		}
 	}
 

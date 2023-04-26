@@ -210,11 +210,11 @@ void manylight_algorithm::prepare_frame() {
 
 		// draw path vertices in paths.obj as icospheres
 		for (auto v_0 : obj_v_0_samples) {
-			objdraw::icosphere sphere(v_0, 0.15f);
+			objdraw::icosphere sphere(v_0, 0.01f);
 			obj_writer.write_icosphere(sphere);
 		}
 		for (auto v : vpls) {
-			objdraw::icosphere sphere(v.pos, 0.25f);
+			objdraw::icosphere sphere(v.pos, 0.02f);
 			obj_writer.write_icosphere(sphere);
 		}
 	}
@@ -373,6 +373,8 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	int vpl_index = (current_sample_index % block_size) * vpls_per_sample;
 	vec3 indirect_radiance(0);
 
+	int cnt_integrated = 0;
+
 	// indirect illumination by using VPLs
 	if (vpls.size() != 0) {
 		for (int i = vpl_index; i < vpl_index+vpls_per_sample; ++i) {
@@ -402,9 +404,12 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//if (G > 0.0001f) cout << "triggered" << endl;
 				//G = G > 0.00001f ? 0.00001f : G; //sponza
 				G = G > 0.1f ? 0.1f : G; //sibenik
-				//G = G > 1.f ? 2.f : G; // Cornell
+				//G = G > 1.f ? 1.f : G; // Cornell
 
 				indirect_radiance += f_x*G*v.col*f_v;
+
+				// testing
+				cnt_integrated++;
 			}
 			//if (x == 0 && y == 0)
 			//	cout << i << " s: " << current_sample_index << endl;
@@ -416,7 +421,15 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 		indirect_radiance = indirect_radiance * (1.f/vpls_per_sample) * vpl_size;
 	}
 	
+	/*if (x == 153 && y == 230) {
+		cout << "integrated VPLs: " << cnt_integrated << "/" << vpls.size() << endl;
+		cout << "Percentage integrated VPLs: " << cnt_integrated * (1.f/vpls.size()) << endl;
+		//return vec3(1.f);
+	}*/
+
+	//return vec3(0);
 	return radiance + indirect_radiance;
+	//return indirect_radiance;
 }
 
 #ifndef RTGI_SKIP_WF
@@ -505,6 +518,7 @@ namespace wf {
 		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
 
 		sample_index = rc->platform->allocate_int_per_sample_manually(1);
+		dbg_cnt = rc->platform->allocate_int_per_sample_manually(1);
 		
 		// Test CUDA
 		/*auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>();
@@ -595,7 +609,7 @@ namespace wf {
 
 			sample_vpl->use(camrays, shadowrays, vpl_store, sampled_vpls, vpl_count, sample_index, max_vpls_per_sample, i);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i, dbg_cnt);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);

@@ -72,6 +72,7 @@ namespace wf {
 		per_sample_data<float>* scale = nullptr;
 
 		per_sample_data<int>* sample_index = nullptr;
+		per_sample_data<int>* dbg_cnt = nullptr;
 
 		void regenerate_steps() override;
 		/*vpl* allocate_vpl_store();
