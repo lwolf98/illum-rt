@@ -13,7 +13,7 @@ resolution 960 540
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik-nostaklo.obj
-load render-data/sibenik/spotlight.obj
+load render-data/sibenik/spotlight2.obj
 
 material select pod
 material roughness 0.004
@@ -71,21 +71,21 @@ look -1 0 0
 
 algo direct/mis
 outfile a8-sibenik-00-500-direct.png
-#run
+run
 
 algo simple-pt
 path bounce brdf
 path len 8
 path rr-start 4
 outfile a8-sibenik-01-500-simplept.png
-#run
+run
 
 algo pt
 path bounce brdf
 path len 8
 path rr-start 4
 outfile a8-sibenik-02-500-pt-nee.png
-#run
+run
 
 algo pt
 path bounce brdf

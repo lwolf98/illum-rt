@@ -62,11 +62,11 @@ algo direct
 
 is light
 outfile mis-2500-1-light.png
-#run
+run
 
 is brdf
 outfile mis-2500-3-brdf.png
-#run
+run
 
 algo direct/mis
 
@@ -79,11 +79,11 @@ algo direct
 sppx 100
 is light
 outfile mis-100-1-light.png
-#run
+run
 
 is brdf
 outfile mis-100-3-brdf.png
-#run
+run
 
 algo direct/mis
 

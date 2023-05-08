@@ -31,6 +31,8 @@ at -1250 650 300
 look 1 0 -0.4
 
 sppx 1000
+sppx 5000
+#sppx 100
 
 ### center
 ##at -516 300 0
@@ -47,6 +49,8 @@ sppx 1000
 # use this to test on sponza with complex/hard-to-reach area lights
 # feel free to compare to direct lighting
 # note that each image takes around a minute to compute on the gralab hardware
+
+preview-offset 8
 
 echo ====== Rendering Center =====
 at -516 300 0
@@ -68,8 +72,12 @@ run
 
 echo ----- PT/NEE/MIS -----
 path mis on
+path rr-start 3
+path bounce brdf
 outfile a8-sponza-center-3-nee-mis.png
 run
+
+#exit
 
 # corridor
 #at 200 180 400
