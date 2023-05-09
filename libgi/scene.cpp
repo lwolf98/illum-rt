@@ -92,17 +92,32 @@ texture2d<vec4>* load_image4f(const std::filesystem::path &path, const std::file
 	tex->w = MagickGetImageWidth(img);
 	tex->h = MagickGetImageHeight(img);
 	tex->texel = new vec4[tex->w*tex->h];
-		
+	
 	MagickBooleanType has_alpha_channel = MagickGetImageAlphaChannel(img);
+	ColorspaceType colorspace = MagickGetImageColorspace(img);
 	MagickExportImagePixels(img, 0, 0, tex->w, tex->h, "RGBA", FloatPixel, (void*)tex->texel);
-	#pragma omp parallel for
-	for (int i = 0; i < tex->w*tex->h; ++i) {
-		tex->texel[i].x = pow(tex->texel[i].x, 2.2f);
-		tex->texel[i].y = pow(tex->texel[i].y, 2.2f);
-		tex->texel[i].z = pow(tex->texel[i].z, 2.2f);
-		
-		if (!has_alpha_channel) tex->texel[i].w = 1;
+	if (colorspace == RGBColorspace) {
+		#pragma omp parallel for
+		for (int i = 0; i < tex->w*tex->h; ++i) {
+			tex->texel[i].x = pow(tex->texel[i].x, 2.2f);
+			tex->texel[i].y = pow(tex->texel[i].y, 2.2f);
+			tex->texel[i].z = pow(tex->texel[i].z, 2.2f);
+
+			if (!has_alpha_channel) tex->texel[i].w = 1;
+		}
 	}
+	else if (colorspace == sRGBColorspace) {
+		#pragma omp parallel for
+		for (int i = 0; i < tex->w*tex->h; ++i) {
+			tex->texel[i].x = tex->texel[i].x;
+			tex->texel[i].y = tex->texel[i].y;
+			tex->texel[i].z = tex->texel[i].z;
+
+			if (!has_alpha_channel) tex->texel[i].w = 1;
+		}
+	}
+	else
+		throw std::logic_error(std::string("Unsupported colorspace in texture ") + path.string());
 	
 	if (!has_alpha_channel && mask_path) {
 		MagickWand *mask_image = NewMagickWand();
