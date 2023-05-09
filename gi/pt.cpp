@@ -92,7 +92,7 @@ vec3 simple_pt::path(ray ray) {
 		if (pdf <= 0.0f) break;
 		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
 		check_range(throughput);
-		ray = bounced;
+		ray = offset_ray(bounced, hit.ng);
 		
 		// apply RR
 		if (i > rr_start) {
@@ -192,6 +192,7 @@ vec3 pt_nee::path(ray ray) {
 				if (!mis || i==0)
 					radiance += throughput * rc->scene.sky->Le(ray);
 				else {
+					// TODO misses light distrib
 					float light_pdf = rc->scene.sky->pdf_Li(ray);
 					radiance += throughput * rc->scene.sky->Le(ray) * brdf_pdf / (light_pdf+brdf_pdf);
 				}
