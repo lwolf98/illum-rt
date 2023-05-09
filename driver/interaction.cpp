@@ -485,6 +485,7 @@ void eval(const std::string &line) {
 #ifdef HAVE_LIBEMBREE3
 #ifndef RTGI_SIMPLER_BBVH
 		else if (name == "embree") scene.use(new embree_tracer);
+		else if (name == "embree-alpha") scene.use(new embree_tracer<true>);
 #endif
 #endif
 #endif
