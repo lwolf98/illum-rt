@@ -58,6 +58,14 @@ struct lambertian_reflection : public brdf {
 #endif
 };
 
+struct perfectly_specular_reflection : public specular_brdf {
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+#endif
+};
+
 struct phong_specular_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING

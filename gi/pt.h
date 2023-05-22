@@ -11,7 +11,6 @@ protected:
 	enum class bounce { uniform, cosine, brdf } bounce = bounce::brdf;
 
 	virtual vec3 path(ray view_ray);
-	std::tuple<ray,float> bounce_ray(const diff_geom &dg, const ray &to_hit);
 public:
 	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;

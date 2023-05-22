@@ -3,18 +3,28 @@ at -13 -12 0
 #at 1 -12.5 1
 look 1 0 0
 up 0 1 0
-load render-data/sibenik/sibenik.obj
-load render-data/sibenik/sibenbunny.obj
-raytracer bbvh
-algo direct
-sppx 64
-#pointlight pos 0 -4 0 col 35 30 26
-resolution 1280 720
-#resolution 640 360
+
 brdf layered-gtr2
-#is mis
-is uniform
-bvh om
+
+load render-data/sibenik/sibenik.obj
+
+modeltrafo shift -3 -12 0
+modeltrafo scale 0.025 0.025 0.025
+load render-data/teapot-tc.obj
+
+preview-offset 4
+
+raytracer embree
+#algo direct
+#sppx 64
+#resolution 1280 720
+##is mis
+#is uniform
+#is brdf
+algo pt
+path bounce brdf
+path mis on
+path len 5
 outfile out.png
 
 material select pod
@@ -58,6 +68,10 @@ material emissive 1.9 18.3 2.15
         
 #material select staklo_zuto
 #material emissive 37.5 32.2 0.3
+#
+material select teapot-tc
+material albedo 1 0 0
+material brdf mirror
 
 commit
 

@@ -8,10 +8,10 @@ at -3.5638 1.8637 -4.8895
 #camup 0.52233 0.85264 -0.013184
 
 load render-data/checkerpots/checkerpots.obj
-raytracer bbvh
+raytracer embree
 
 #skylight render-data/skylight-blue.floats .25
-skylight render-data/skylight-day.floats .25
+skylight load render-data/skylight-day.floats .25
 
 commit
 algo direct

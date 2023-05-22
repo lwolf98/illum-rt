@@ -81,6 +81,22 @@ brdf::sampling_res lambertian_reflection::sample(const diff_geom &geom, const ve
 
 // specular_reflection
 
+vec3 perfectly_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
+	return vec3(0);
+}
+
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
+float perfectly_specular_reflection::pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
+	return 0;
+}
+
+brdf::sampling_res perfectly_specular_reflection::sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) {
+	vec3 w_i = 2.0f*geom.ns*dot(geom.ns,w_o) - w_o;
+	if (!same_hemisphere(w_i, geom.ng)) return { w_i, vec3(0), 0 };
+	return { w_i, vec3(1), 1 };
+}
+#endif
+
 vec3 phong_specular_reflection::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
 	if (!same_hemisphere(w_i, geom.ng)) return vec3(0);
 #ifndef RTGI_SKIP_BRDF_IMPL
@@ -231,6 +247,8 @@ brdf *new_brdf(const std::string name, scene &scene) {
 		brdf *f = nullptr;
 		if (name == "lambert")
 			f = new lambertian_reflection;
+		else if (name == "mirror" || name == "specular")
+			f = new perfectly_specular_reflection;
 		else if (name == "phong")
 			f = new phong_specular_reflection;
 		else if (name == "layered-phong") {

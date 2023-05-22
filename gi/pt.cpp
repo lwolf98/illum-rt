@@ -88,9 +88,10 @@ vec3 simple_pt::path(ray ray) {
 		}
 		
 		// bounce the ray
-		auto [bounced,pdf] = bounce_ray(hit, ray);
+		auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
+		::ray bounced(hit.x, w_i);
 		if (pdf <= 0.0f) break;
-		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
+		throughput *= f * cdot(bounced.d, hit.ns) / pdf;
 		check_range(throughput);
 		ray = offset_ray(bounced, hit.ng);
 		
@@ -108,21 +109,6 @@ vec3 simple_pt::path(ray ray) {
 	}
 	check_range(radiance);
 	return radiance;
-#endif
-}
-
-std::tuple<ray,float> simple_pt::bounce_ray(const diff_geom &hit, const ray &to_hit) {
-#ifdef RTGI_SKIP_SIMPLE_PT_IMPL
-	// TODO the reference implementation uses this function to switch between different sampling strategies
-	// you can also do this in the function above, already, if you prefer
-	return {ray({0,0,0},{0,0,0}), 0};
-#else
-	if (bounce == bounce::uniform)
-		return sample_uniform_direction(hit);
-	else if (bounce == bounce::cosine)
-		return sample_cosine_distributed_direction(hit);
-	else
-		return sample_brdf_distributed_direction(hit, to_hit);
 #endif
 }
 
@@ -240,9 +226,10 @@ vec3 pt_nee::path(ray ray) {
 		}
 
 		// bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
-		auto [bounced,pdf] = bounce_ray(hit, ray);
+		auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
+		::ray bounced(hit.x, w_i);
 		brdf_pdf = pdf;	// for mis in next iteration
-		throughput *= hit.mat->brdf->f(hit, -ray.d, bounced.d) * cdot(bounced.d, hit.ns) / pdf;
+		throughput *= f * cdot(bounced.d, hit.ns) / pdf;
 		if (pdf <= 0.0f || luma(throughput) <= 0.0f) break;
 		ray = offset_ray(bounced, hit.ng);
 
