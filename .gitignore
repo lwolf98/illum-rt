@@ -21,3 +21,6 @@ test.obj
 render-data/sponza/
 render-data/dragon/
 *.a
+*.png
+rtgi-202*tar.gz
+rtgi-202*tar.bz2
