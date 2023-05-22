@@ -42,7 +42,7 @@ public:
 #endif
 
 #ifndef RTGI_SKIP_WF
-#include "direct-steps.h"
+#include "gi/direct-steps.h"
 namespace wf {
 	class direct_light : public simple_algorithm {
 		raydata *camrays = nullptr,

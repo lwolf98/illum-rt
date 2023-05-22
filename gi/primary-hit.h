@@ -27,7 +27,7 @@ public:
 #endif
 
 #ifndef RTGI_SKIP_WF
-#include "primary-steps.h"
+#include "gi/primary-steps.h"
 namespace wf {
 	class primary_hit_display : public simple_algorithm  {
 		raydata *rd = nullptr;
