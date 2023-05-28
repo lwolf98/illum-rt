@@ -137,6 +137,7 @@ AC_CONFIG_FILES([Makefile
 				 rt/Makefile
 				 rt/cpu/Makefile
 				 gi/Makefile
+				 debug/Makefile
 				 scripts/Makefile
 				 render-data/Makefile
 				])
