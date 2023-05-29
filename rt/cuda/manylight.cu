@@ -1039,7 +1039,8 @@ namespace wf::cuda {
 				uint4  x_tri = triangles[hit.ref];
 				float3 x_ng  = hit_ng(hit, x_tri, vert_norm);
 				material x_mat = materials[x_tri.w];
-				float3 f_x = layered_gtr2(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
+				//float3 f_x = layered_gtr2(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
+				float3 f_x = lambertian_reflection(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
 
 				// brdf at vpl (v)
 				float3 vpl_w_o = -f3(shadowray_dir);
@@ -1049,7 +1050,8 @@ namespace wf::cuda {
 				//float3 vpl_ng  = {0,0,1.f};
 				//flip_normals_to_ray(vpl_ng, f3(shadowray_dir));
 				material vpl_mat = materials[vpl_tri.w];
-				float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
+				//float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
+				float3 f_v = lambertian_reflection(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
 
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)

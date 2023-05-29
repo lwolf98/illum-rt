@@ -364,7 +364,8 @@ namespace wf::cuda {
 				uint4  tri = triangles[hit.ref];
 				float3 ng = hit_ng(hit, tri, vert_norm);
 				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				//float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = lambertian_reflection(w_o, w_i, ng, tri, hit, mat, vertex_tc);
 				// dot
 				float cos_theta = cdot(w_i, ng);
 				// combine
@@ -398,7 +399,8 @@ namespace wf::cuda {
 				uint4  tri = triangles[hit.ref];
 				float3 ng  = hit_ng(hit, tri, vert_norm);
 				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				//float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = lambertian_reflection(w_o, w_i, ng, tri, hit, mat, vertex_tc);
 				// dot
 				float cos_theta = cdot(w_i, ng);
 				// combine
