@@ -31,3 +31,5 @@ if have_cuda
 rtgi_LDADD += ../rt/cuda/libcudaraytracing.a
 endif
 #endif
+
+rtgi_LDADD += ../debug/libdebug.a
