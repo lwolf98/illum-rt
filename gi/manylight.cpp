@@ -18,7 +18,7 @@ using namespace std;
 
 static const bool export_debug_obj = false;
 static const bool export_vpl_list = false;
-static const bool debugging = false;
+static const bool debugging = true;
 
 void manylight_algorithm::prepare_frame() {
 	if (!rc->ml_cpu_preparation) time_this_block(ml_preparation);
@@ -248,7 +248,6 @@ void manylight_algorithm::prepare_frame() {
 	}
 }
 
-static int next_index[480*480];
 vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	time_this_block(ml_integration);
 
@@ -383,7 +382,7 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 	int vpl_index = next_index[y * rc->resolution().x + x];
 	vec3 indirect_radiance(0);
 	if (x == 44 && y == 55 && debugging)
-		cout << "VPS: " << vpls_per_sample << ", Sample: " << current_sample_index << endl;
+		cout << "VPS: " << vpls_per_sample << ", Sample: " << current_sample_index << ", Start index: " << vpl_index << endl;
 	//int cmp_index = next_index[y * rc->resolution().x + x];
 
 	int cnt_integrated = 0;

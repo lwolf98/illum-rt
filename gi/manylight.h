@@ -3,6 +3,8 @@
 #include "libgi/algorithm.h"
 #include "libgi/material.h"
 #include "libgi/scene.h"
+#include "libgi/context.h"
+#include "libgi/global-context.h"
 #include "gi/direct.h"
 #include <vector>
 
@@ -37,9 +39,13 @@ private:
 	uint32_t path_length;
 	uint32_t vpl_integrations = 1;
 	std::vector<vpl> vpls;
+	int *next_index;
 
 public:
-	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {}
+	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {
+		int size = rc->resolution().x * rc->resolution().y;
+		next_index = new int[size]();
+	}
 
 	/* Generate VPLs */
 	void prepare_frame() override;
