@@ -599,6 +599,24 @@ void eval(const std::string &line) {
 #endif
 			run(rc->algo);
 	}
+#ifndef RTGI_SKIP_MANYLIGHT
+	else ifcmd("vplcalc") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
+		if (!platform_and_algo_aligned())
+			error("Incompatible algorithm form platform");
+		if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || rc->algo == nullptr)
+			error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
+		if (uc.accel_touched_at < uc.tracer_touched_at)
+			error("The current tracer does (might?) not have an up-to-date acceleration structure");
+		if (uc.accel_touched_at < uc.scene_touched_at)
+			error("The current acceleration structure is out-dated");
+
+		rc->ml_cpu_preparation = true;
+		rc->algo->prepare_frame();
+		std::cout << "FINISHED VPL PREP!!!" << std::endl;
+	}
+#endif
 	else ifcmd("material") {
 		string cmd;
 		in >> cmd;

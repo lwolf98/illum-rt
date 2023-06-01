@@ -4,7 +4,7 @@
 
 # Outfile
 #outfile sibenik/performance_ml_sib_p1_1024x10_v_g01_1024s.png
-outfile sibenik/test.png
+outfile sibenik-test/test.png
 #outfile sibenik/pt_p4_1024s.png
 
 # obj files
@@ -33,10 +33,10 @@ up 0 1 0
 # Parameter
 raytracer embree
 #algo photon-mapping
-algo manylight paths 1024 length 10
+algo manylight paths 4096 length 10
 #algo pt
 #algo direct
-sppx 1024
+sppx 2048
 resolution 640 360
 #resolution 1920 1080
 #resolution 220 360

@@ -6,6 +6,8 @@
 
 #include <functional>
 #include <map>
+//#include "gi/manylight.h"
+struct vpl;
 
 struct gi_algorithm;
 
@@ -24,6 +26,11 @@ struct render_context {
 	unsigned int sppx = 1;
 	unsigned int preview_offset = 1;
 	wf::platform *platform = nullptr;
+
+	/* global VPL data */
+	std::vector<vpl> *vpls;
+	bool ml_cpu_preparation = false;
+
 	render_context() : framebuffer(scene.camera.w, scene.camera.h) {
 		call_at_resolution_change[&framebuffer] = [this](int w, int h) { framebuffer.resize(w, h); };
 		call_at_resolution_change[&scene] = [this](int w, int h) { scene.camera.update_frustum(scene.camera.fovy, w, h); };

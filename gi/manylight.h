@@ -46,6 +46,10 @@ public:
 
 	/* Integration via the previously generated VPLs */
 	vec3 sample_pixel(uint32_t x, uint32_t y) override;
+
+	std::vector<vpl> get_vpls() {
+		return vpls;
+	}
 };
 
 #ifndef RTGI_SKIP_WF

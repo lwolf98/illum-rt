@@ -5,7 +5,7 @@
 # Outfile
 #outfile specular_test_1024.png
 #outfile cornell-test/test_1024x1_1s.png
-outfile cornell-test/test.png
+outfile cornell-test/test_cpu_prep.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -95,4 +95,18 @@ material brdf lambert
 
 # Run
 commit
+vplcalc
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths 20000 length 10 vps 1
+#algo direct-wf
+#is light
+#is uniform
+commit
+
+# Run
 run
