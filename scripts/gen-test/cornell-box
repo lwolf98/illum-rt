@@ -1,34 +1,28 @@
+
 # Format:
 # pm_cor_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
 # ml_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-#outfile specular_test_1024.png
-#outfile cornell-test/test_1024x1_1s.png
-outfile cornell-test/test.png
+#outfile cornell-box/[ALGO]_[SCENE]_prep_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
+outfile cornell-box/test_cpu_prep.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
 #load render-data/cornell-mcguire/CornellBox-Sphere.obj
 load render-data/cornell-mcguire/CornellBox-Original.obj
 
-# Position original
+# Position
 at 0 1 2.5
 look 0 0 -1
 up 0 1 0
 
-# Position special
-#at 0 0.75 1.75
-#look 0 0 -1
-#up 0 1 0
-
 # Parameter
+resolution 480 480
 raytracer embree
 #algo photon-mapping
-algo manylight paths 512 length 10
-sppx 256
-resolution 480 480
-#resolution 640 360
+algo manylight paths 1024 length 10
+sppx 10
 
 # Materials: light
 material select light
@@ -93,6 +87,20 @@ material roughness 0.900
 material ior 1.450
 material brdf lambert
 
-# Run
+# calculate VPLs
 commit
+vplcalc
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths 1024 length 10 vps 1
+#algo direct-wf
+#is light
+#is uniform
+commit
+
+# Run
 run

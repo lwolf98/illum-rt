@@ -3,17 +3,20 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-#outfile sibenik/performance_ml_sib_p1_1024x10_v_g01_1024s.png
-outfile sibenik-test/test.png
-#outfile sibenik/pt_p4_1024s.png
+outfile sibenik/[ALGO]_[SCENE]_prep_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
 
 # obj files
 load render-data/sibenik/sibenik.obj
 
-# Position 1
-at -13 -12 0
-look 1 0 0
+# Position
+at [AT]
+look [LOOK]
 up 0 1 0
+
+# Position 1
+#at -13 -12 0
+#look 1 0 0
+#up 0 1 0
 
 # Position 2
 #at -13 -12 0
@@ -31,15 +34,13 @@ up 0 1 0
 #up 0 1 0
 
 # Parameter
+resolution [RES_W] [RES_H]
 raytracer embree
 #algo photon-mapping
-algo manylight paths 10 length 10
+algo manylight paths [PATHS] length [LEN]
 #algo pt
 #algo direct
-sppx 1024
-resolution 640 360
-#resolution 1920 1080
-#resolution 220 360
+sppx [SPPX]
 
 # Materials: special
 material select pod
@@ -79,6 +80,17 @@ material emissive 1.61177 2.82549 16.9216
 material select staklo_zeleno
 material emissive 1.9 18.3 2.15
 
-# Run
+# Calculate VPLs
 commit
+vplcalc
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths [PATHS] length [LEN]
+commit
+
+# Run
 run

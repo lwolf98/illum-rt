@@ -18,7 +18,7 @@ using namespace std;
 
 static const bool export_debug_obj = false;
 static const bool export_vpl_list = false;
-static const bool debugging = true;
+static const bool debugging = false;
 
 void manylight_algorithm::prepare_frame() {
 	if (!rc->ml_cpu_preparation) time_this_block(ml_preparation);

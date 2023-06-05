@@ -1,34 +1,24 @@
 # Format:
-# pm_cor_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
-# ml_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
+# pm_wf_cor_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
+# ml_wf_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-#outfile specular_test_1024.png
-#outfile cornell-test/test_1024x1_1s.png
-outfile cornell-test/test.png
+#outfile cornell-box/[ALGO]_[SCENE]_cuda_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
+outfile cornell-box/test_cuda.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
 #load render-data/cornell-mcguire/CornellBox-Sphere.obj
 load render-data/cornell-mcguire/CornellBox-Original.obj
 
-# Position original
-at 0 1 2.5
-look 0 0 -1
+# Position
+at [AT]
+look [LOOK]
 up 0 1 0
 
-# Position special
-#at 0 0.75 1.75
-#look 0 0 -1
-#up 0 1 0
-
 # Parameter
-raytracer embree
-#algo photon-mapping
-algo manylight paths 512 length 10
-sppx 256
-resolution 480 480
-#resolution 640 360
+resolution [RES_W] [RES_H]
+sppx [SPPX]
 
 # Materials: light
 material select light
@@ -44,15 +34,15 @@ material emissive 50 50 50
 #material roughness 0.553
 #material ior 1.330
 #material brdf phong
-
-#perfect mirror sphere
+#
+##perfect mirror sphere
 #material select leftSphere
 #material albedo 0.010 0.010 0.010
-#material roughness 0.001
+#material roughness 0.000
 #material ior 1.450
 #material brdf phong
-
-#glass sphere
+#
+##glass sphere
 #material select rightSphere
 #material albedo 0.010 0.010 0.010
 #material roughness 0.553
@@ -81,8 +71,6 @@ material brdf lambert
 
 material select rightWall
 material albedo 0.161 0.133 0.427
-#material albedo 0.683 0.689 0.427
-#material albedo 0.000 1.000 0.000
 material roughness 0.900
 material ior 1.450
 material brdf lambert
@@ -93,6 +81,25 @@ material roughness 0.900
 material ior 1.450
 material brdf lambert
 
-# Run
+# WF setup PM
+#raytracer embree
+#commit
+#
+#platform cpu
+#add-scene-step build accel struct
+#commit
+#algo photon-mapping-wf
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths [PATHS] length [LEN] vps 1
+#algo direct-wf
+#is light
+#is uniform
 commit
+
+# Run
 run

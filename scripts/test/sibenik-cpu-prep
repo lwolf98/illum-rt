@@ -37,7 +37,8 @@ algo manylight paths 4096 length 10
 #algo pt
 #algo direct
 sppx 2048
-resolution 640 360
+#resolution 640 360
+resolution 960 540
 #resolution 1920 1080
 #resolution 220 360
 

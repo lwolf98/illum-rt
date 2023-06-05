@@ -5,7 +5,7 @@
 # Outfile
 #outfile specular_test_1024.png
 #outfile cornell-test/test_1024x1_1s.png
-outfile cornell-test/test.png
+outfile cornell-test/test-pt.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -25,8 +25,8 @@ up 0 1 0
 # Parameter
 raytracer embree
 #algo photon-mapping
-algo manylight paths 512 length 10
-sppx 256
+algo pt
+sppx 1024
 resolution 480 480
 #resolution 640 360
 

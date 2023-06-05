@@ -307,7 +307,8 @@ namespace wf::cuda {
 			float4 pos = light_ray_org + hit.t * light_ray_dir;
 			float4 w_in = light_ray_dir;
 
-			if (!hit.valid() || col.x == 0.f && col.y == 0.f && col.z == 0.f) {
+			//if (!hit.valid() || col.x == 0.f && col.y == 0.f && col.z == 0.f) {
+			if (!hit.valid()) {
 				vpl_col[ray_index+offset] = make_float4(col.x, col.y, col.z, -1); //make_float4(0, 0, 0, -1);
 				vpl_pos[ray_index+offset] = make_float4(pos.x, pos.y, pos.z, -1);
 				vpl_w_in[ray_index+offset] = make_float4(w_in.x, w_in.y, w_in.z, -1);
@@ -594,7 +595,7 @@ namespace wf::cuda {
 
 					float3 cur_normal = hit_ng(vpls_is[0], triangles[vpls_is[0].ref], vert_norm);
 					flip_normals_to_ray(cur_normal, f3(vpls_w_in[0]));
-					vpl_stats_device(store_is, store_w_in, vpl_count[0], triangles, vert_norm);
+					vpl_stats_device(vpls_is, vpls_w_in, vpl_count[0], triangles, vert_norm);
 				}
 			}
 
@@ -730,6 +731,8 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->col.device_memory, vpls->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+			vpl_count->data.download();
+			int col_count = vpl_count->data.host_data[0];
 
 			// pos
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
@@ -737,6 +740,8 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+			vpl_count->data.download();
+			int pos_count = vpl_count->data.host_data[0];
 
 			// w_in
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->w_in.device_memory, vpls->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
@@ -744,6 +749,8 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->w_in.device_memory, vpls->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+			vpl_count->data.download();
+			int w_in_count = vpl_count->data.host_data[0];
 
 			// intersection
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->is.device_memory, vpls->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is());
@@ -751,17 +758,15 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->is.device_memory, vpls->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-		}
+			vpl_count->data.download();
+			int is_count = vpl_count->data.host_data[0];
 
-		if (debugging) {
-			vpl_count->data.download();
-			std::cout << "Valid col: " << vpl_count->data.host_data[0] << std::endl;
-			vpl_count->data.download();
-			std::cout << "Valid pos: " << vpl_count->data.host_data[0] << std::endl;
-			vpl_count->data.download();
-			std::cout << "Valid w_in: " << vpl_count->data.host_data[0] << std::endl;
-			vpl_count->data.download();
-			std::cout << "Valid is: " << vpl_count->data.host_data[0] << std::endl;
+			if (debugging) {
+				std::cout << "Valid col: " << col_count << std::endl;
+				std::cout << "Valid pos: " << pos_count << std::endl;
+				std::cout << "Valid w_in: " << w_in_count << std::endl;
+				std::cout << "Valid is: " << is_count << std::endl;
+			}
 		}
 
 		if (print_stats) {
@@ -831,6 +836,9 @@ namespace wf::cuda {
 			int ray_index = y*res.x + x;
 			if (x >= res.x || y >= res.y)
 				return;
+
+			//if (x == 0 && y == 0 && current_sample[0] >= 2048)
+			//	current_sample[0] = 0;
 
 			tri_is hit = hits[ray_index];
 
