@@ -420,8 +420,9 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//      -> see chapter 5: bias compensation (final gathering, ...)
 				//if (G > 0.0001f) cout << "triggered" << endl;
 				//G = G > 0.00001f ? 0.00001f : G; //sponza
-				G = G > 0.1f ? 0.1f : G; // sibenik
+				//G = G > 0.1f ? 0.1f : G; // sibenik
 				//G = G > 1.f ? 1.f : G; // cornell
+				G = G > G_max ? G_max : G;
 
 				indirect_radiance += f_x*G*v.col*f_v;
 
@@ -590,7 +591,7 @@ namespace wf {
 
 			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count, sample_index, max_vpls_per_sample, i);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i, dbg_cnt);
+			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i, dbg_cnt, G_max);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);
@@ -611,6 +612,15 @@ namespace wf {
 
 			if (cmd == "length") {
 				in >> path_length;
+				executed = true;
+			}
+
+			float G_max_in;
+			if (cmd == "g") {
+				in >> G_max_in;
+				if (G_max_in != -1)
+					G_max = G_max_in;
+
 				executed = true;
 			}
 

@@ -5,8 +5,8 @@
 # Outfile
 #outfile specular_test_1024.png
 #outfile cornell-test/test_1024x1_1s.png
-#outfile cornell-box/[ALGO]_[SCENE]_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
-outfile cornell-box/test.png
+outfile cornell-box/[ALGO]_[SCENE]_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
+#outfile cornell-box/test.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -22,7 +22,7 @@ up 0 1 0
 resolution [RES_W] [RES_H]
 raytracer embree
 #algo photon-mapping
-algo manylight paths [PATHS] length [LEN]
+algo manylight paths [PATHS] length [LEN] g [G_MAX]
 sppx [SPPX]
 
 # Materials: light

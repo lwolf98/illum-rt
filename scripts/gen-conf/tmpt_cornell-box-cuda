@@ -3,8 +3,8 @@
 # ml_wf_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-#outfile cornell-box/[ALGO]_[SCENE]_cuda_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
-outfile cornell-box/test_cuda.png
+outfile cornell-box/[ALGO]_[SCENE]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
+#outfile cornell-box/test_cuda.png
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
@@ -95,7 +95,7 @@ platform cuda
 raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths [PATHS] length [LEN] vps 1
+is light paths [PATHS] length [LEN] g [G_MAX] vps 1
 #algo direct-wf
 #is light
 #is uniform

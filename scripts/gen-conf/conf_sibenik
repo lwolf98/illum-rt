@@ -3,14 +3,14 @@ OUTFILE	rtgi-code/scripts/gen-test/sibenik
 
 ALGO	ml
 SCENE	sib
-PATHS	10000
+PATHS	1024
 LEN		10
-SPPX	2048
+SPPX	512
 
-#RES_W	640
-#RES_H	360
-RES_W	1920
-RES_H	1080
+RES_W	640
+RES_H	360
+#RES_W	1920
+#RES_H	1080
 
 POS		1
 AT		-13 -12 0
@@ -24,5 +24,15 @@ LOOK	1 0 0
 #AT		-5.05737 -11.9261 -0.341317
 #LOOK	-0.652178 0.074354 0.75441
 
+#none
+#G_MAX	-1
+#only direct illumination
+#G_MAX	0
+#sibenik
+G_MAX	0.1
+#cornell
+#G_MAX	1
+#sponza
+#G_MAX	0.00001
 
 <<END CONFIG>>

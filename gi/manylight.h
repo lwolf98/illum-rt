@@ -37,12 +37,16 @@ private:
 
 	uint32_t paths;
 	uint32_t path_length;
+	float G_max;
 	uint32_t vpl_integrations = 1;
 	std::vector<vpl> vpls;
 	int *next_index;
 
 public:
-	manylight_algorithm(uint32_t paths, uint32_t path_length) : paths(paths), path_length(path_length) {
+	manylight_algorithm(uint32_t paths, uint32_t path_length, float G_max) : paths(paths), path_length(path_length), G_max(FLT_MAX) {
+		if (G_max != -1.f)
+			this->G_max = G_max;
+
 		int size = rc->resolution().x * rc->resolution().y;
 		next_index = new int[size]();
 	}
@@ -66,6 +70,7 @@ namespace wf {
 		uint32_t paths = 32;
 		uint32_t path_length = 10;
 		uint32_t vpls_per_sample = 6;
+		float G_max = FLT_MAX;
 		uint32_t rr_start = 4;
 
 		//std::vector<vpl>* vpls = nullptr;

@@ -22,5 +22,15 @@ LOOK	0 0 -1
 #AT		0 0.75 1.75
 #LOOK	0 0 -1
 
+#none
+G_MAX	-1
+#only direct illumination
+#G_MAX	0
+#sibenik
+#G_MAX	0.1
+#cornell
+#G_MAX	1
+#sponza
+#G_MAX	0.00001
 
 <<END CONFIG>>

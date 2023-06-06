@@ -432,21 +432,28 @@ void eval(const std::string &line) {
 #ifndef RTGI_SKIP_MANYLIGHT
 		else if (name == "manylight") {
 			uint32_t paths, length;
+			float G_max;
 			string cmd;
 			in >> cmd;
 			check_in("Command incomplete");
 			if (cmd == "paths")
 				in >> paths;
-			else error("Syntax error: algo manylight paths n length m");
-			check_in("Syntax error: algo manylight paths n length m");
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in("Syntax error: algo manylight paths n length m g f");
 			in >> cmd;
 			check_in("Command incomplete");
 			if (cmd == "length")
 				in >> length;
-			else error("Syntax error: algo manylight paths n length m");
-			check_in_complete("Syntax error: algo manylight paths n length m");
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in("Syntax error: algo manylight paths n length m g f");
+			in >> cmd;
+			check_in("Command incomplete");
+			if (cmd == "g")
+				in >> G_max;
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in_complete("Syntax error: algo manylight paths n length m g f");
 
-			a = new manylight_algorithm(paths, length);
+			a = new manylight_algorithm(paths, length, G_max);
 		}
 #endif
 		else error("There is no gi algorithm called '" << name << "'");

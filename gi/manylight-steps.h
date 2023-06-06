@@ -250,7 +250,7 @@ namespace wf
 		static constexpr char id[] = "integrate vpl samples";
 
 		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
-						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug) = 0;
+						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug, float G_max) = 0;
 	};
 	namespace wire
 	{
@@ -268,6 +268,7 @@ namespace wf
 			INT *sample_index = nullptr;
 			int vpls_per_sample = 0;
 			int vpl_offset = 0;
+			float G_max = FLT_MAX;
 
 			INT *cnt_debug = nullptr;
 
@@ -277,7 +278,7 @@ namespace wf
 			}
 
 			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
-			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug)
+			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug, float G_max)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
@@ -286,6 +287,7 @@ namespace wf
 				this->sample_index = dynamic_cast<INT *>(sample_index);
 				this->vpls_per_sample = vpls_per_sample;
 				this->vpl_offset = vpl_offest;
+				this->G_max = G_max;
 
 				this->cnt_debug = dynamic_cast<INT *>(cnt_debug);
 			}

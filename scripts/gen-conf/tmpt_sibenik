@@ -3,7 +3,7 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile sibenik/[ALGO]_[SCENE]_p[POS]_[PATHS]x[LEN]_v_g01_[SPPX]s.png
+outfile sibenik/[ALGO]_[SCENE]_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
 
 # obj files
 load render-data/sibenik/sibenik.obj
@@ -37,7 +37,7 @@ up 0 1 0
 resolution [RES_W] [RES_H]
 raytracer embree
 #algo photon-mapping
-algo manylight paths [PATHS] length [LEN]
+algo manylight paths [PATHS] length [LEN] g [G_MAX]
 #algo pt
 #algo direct
 sppx [SPPX]

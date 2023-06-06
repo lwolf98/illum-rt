@@ -917,7 +917,7 @@ namespace wf::cuda {
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
 										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
-										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset,
+										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset, float G_max,
 										   int *cnt_integrated, bool debugging) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -977,8 +977,9 @@ namespace wf::cuda {
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
 				float G = D_x*D_v/(t*t);
-				G = G > 0.1f ? 0.1f : G; // sibenik
+				//G = G > 0.1f ? 0.1f : G; // sibenik
 				//G = G > 1.f ? 1.f : G; // cornell
+				G = G > G_max ? G_max : G;
 
 				radiance = f_x*G*vpl_col*f_v;
 				if (x == 44 && y == 55 && debugging)
@@ -1076,6 +1077,7 @@ namespace wf::cuda {
 										  sample_index->data.device_memory,
 										  vpls_per_sample,
 										  vpl_offset,
+										  G_max,
 										  cnt_debug->data.device_memory,
 										  debugging);
 
