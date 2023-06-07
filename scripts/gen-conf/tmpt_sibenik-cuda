@@ -3,7 +3,7 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile sibenik/[ALGO]_[SCENE]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
+outfile sibenik/[ALGO]_[SCENE]_[RES_W]x[RES_H]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s[EXT]
 
 # obj files
 load render-data/sibenik/sibenik.obj

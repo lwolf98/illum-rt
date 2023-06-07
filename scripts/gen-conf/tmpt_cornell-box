@@ -5,7 +5,7 @@
 # Outfile
 #outfile specular_test_1024.png
 #outfile cornell-test/test_1024x1_1s.png
-outfile cornell-box/[ALGO]_[SCENE]_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
+outfile cornell-box/[ALGO]_[SCENE]_[RES_W]x[RES_H]_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
 #outfile cornell-box/test.png
 
 # obj files

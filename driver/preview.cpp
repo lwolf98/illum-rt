@@ -18,6 +18,9 @@
 #include <glm/gtx/rotate_vector.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#include<string>
+#include <regex>
+
 #define GLM_ENABLE_EXPERIMENTAL
 
 using namespace gl;
@@ -54,8 +57,12 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 	if (key == GLFW_KEY_P && action == GLFW_PRESS)
 		if(!preview_finalized)
 			std::cerr << "WARNING: Wait for frame to finalize before saving" << std::endl;
-		else
-			rc->framebuffer.png().write(cmdline.outfile);
+		else {
+			std::string out_name = cmdline.outfile;
+			if (rc->vpl_count >= 0)
+				out_name = std::regex_replace(out_name, std::regex(".png"), "_v" + std::to_string(rc->vpl_count) + ".png");
+			rc->framebuffer.png().write(out_name);
+		}
 }
 
 static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {

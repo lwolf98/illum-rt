@@ -14,8 +14,9 @@ namespace wf::cuda {
 	static const bool print_stats = true;
 	static const bool export_debug_obj = false;
 	static const bool debugging = false;
-	static const bool synchronize = false;
+	static const bool synchronize = true;
 	static const bool cpu_calculation = true;
+	static const bool pointlight_attenuation = false;
 
 	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
 	static __device__ float3 f3(const float4 &v);
@@ -261,7 +262,8 @@ namespace wf::cuda {
 	}
 
 	void sample_v_0s::run() {
-		time_this_block(sample_v0s);
+		//time_this_block(sample_v0s);
+		time_this_wf_step;
 		rng_light.compute();
 		rng_dir.compute();
 		int2 res = {light_rays->w, light_rays->h};
@@ -342,7 +344,8 @@ namespace wf::cuda {
 	}
 
 	void create_vpls::run() {
-		time_this_block(create_vpls);
+		//time_this_block(create_vpls);
+		time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		k::create_vpls<<<launch_config>>>(res,
 										  light_rays->rays.device_memory,
@@ -405,7 +408,8 @@ namespace wf::cuda {
 	}
 
 	void russian_roulette::run() {
-		time_this_block(russian_roulette);
+		//time_this_block(russian_roulette);
+		time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		rng.compute();
 		k::russian_roulette<<<launch_config>>>(res,
@@ -492,7 +496,8 @@ namespace wf::cuda {
 	}
 
 	void sample_next_vpls::run() {
-		time_this_block(sample_next_vpls);
+		//time_this_block(sample_next_vpls);
+		time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		rng.compute();
 		k::sample_next_vpls<<<launch_config>>>(res,
@@ -629,7 +634,8 @@ namespace wf::cuda {
 	}*/
 
 	void copy_vpls::run() {
-		time_this_block(copy_vpls);
+		//time_this_block(copy_vpls);
+		time_this_wf_step;
 
 		global_memory_buffer<char> temp_memory("temp_mem", 0);
 
@@ -776,6 +782,8 @@ namespace wf::cuda {
 			vpls->w_in.download();
 			vpls->is.download();
 			vpl_stats(vpls, vpl_count->data.host_data[0]);
+
+			rc->vpl_count = vpl_count->data.host_data[0];
 		}
 
 		k::copy_vpls<<<launch_config>>>(res,
@@ -882,7 +890,8 @@ namespace wf::cuda {
 	}
 
 	void sample_vpls::run() {
-		time_this_block(INTEGR_sample_vpls);
+		//time_this_block(INTEGR_sample_vpls);
+		time_this_wf_step;
 		int2 res = frame_res();
 		rng.compute();
 		k::sample_vpls<<<launch_config>>>(res,
@@ -918,7 +927,7 @@ namespace wf::cuda {
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
 										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
 										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset, float G_max,
-										   int *cnt_integrated, bool debugging) {
+										   int *cnt_integrated, bool debugging, bool pointlight_attenuation) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -976,10 +985,18 @@ namespace wf::cuda {
 
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
-				float G = D_x*D_v/(t*t);
-				//G = G > 0.1f ? 0.1f : G; // sibenik
-				//G = G > 1.f ? 1.f : G; // cornell
-				G = G > G_max ? G_max : G;
+
+				float G;
+				if (pointlight_attenuation) {
+					float r = G_max;
+					//attenuation factor
+					float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
+					G = D_x*D_v*attenuation;
+				}
+				else {
+					G = D_x*D_v/(t*t);
+					G = G > G_max ? G_max : G;
+				}
 
 				radiance = f_x*G*vpl_col*f_v;
 				if (x == 44 && y == 55 && debugging)
@@ -1057,7 +1074,8 @@ namespace wf::cuda {
 	}
 
 	void integrate_vpl_samples::run() {
-		time_this_block(INTEGR_integrate_vpls);
+		//time_this_block(INTEGR_integrate_vpls);
+		time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_vpl_samples<<<launch_config>>>(res,
 										  camrays->rays.device_memory,
@@ -1079,7 +1097,8 @@ namespace wf::cuda {
 										  vpl_offset,
 										  G_max,
 										  cnt_debug->data.device_memory,
-										  debugging);
+										  debugging,
+										  pointlight_attenuation);
 
 		if (synchronize) CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
 	}

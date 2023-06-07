@@ -68,7 +68,8 @@ namespace wf::cuda {
 	int2 frame_res() { auto r = rc->resolution(); return {r.x,r.y}; }
 
 	void sample_uniform_dir::run() {
-		time_this_block(sample_uniform_dir);
+		//time_this_block(sample_uniform_dir);
+		time_this_wf_step;
 		rng.compute();
 
 		int2 res = frame_res();
@@ -127,7 +128,8 @@ namespace wf::cuda {
 	}
 
 	void sample_cos_weighted_dir::run() {
-		time_this_block(sample_cos_dir);
+		time_this_wf_step;
+		//time_this_block(sample_cos_dir);
 		rng.compute();
 
 		int2 res = frame_res();
@@ -257,7 +259,8 @@ namespace wf::cuda {
 
 	
 	void sample_light_dir::run() {
-		time_this_block(sample_light_dir);
+		//time_this_block(sample_light_dir);
+		time_this_wf_step;
 		rng.compute();
 		int2 res = frame_res();
 		k::sample_light<<<launch_config>>>(res,
@@ -415,7 +418,8 @@ namespace wf::cuda {
 	}
 
 	void integrate_dir_sample::run() {
-		time_this_block(integr_dir_sample);
+		//time_this_block(integr_dir_sample);
+		time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_dir<<<launch_config>>>(res,
 											camrays->rays.device_memory,
@@ -431,7 +435,8 @@ namespace wf::cuda {
 	}
 	
 	void integrate_light_sample::run() {
-		time_this_block(integr_light_sample);
+		//time_this_block(integr_light_sample);
+		time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_light<<<launch_config>>>(res,
 											  camrays->rays.device_memory,

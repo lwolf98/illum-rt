@@ -19,6 +19,7 @@ using namespace std;
 static const bool export_debug_obj = false;
 static const bool export_vpl_list = false;
 static const bool debugging = false;
+static const bool pointlight_attenuation = false;
 
 void manylight_algorithm::prepare_frame() {
 	if (!rc->ml_cpu_preparation) time_this_block(ml_preparation);
@@ -242,6 +243,8 @@ void manylight_algorithm::prepare_frame() {
 	cout << "Scale alternative: " << vpls.size() * (1.f/vpls_per_sample) << endl;
 	vpl_stats(vpls);
 
+	rc->vpl_count = vpls.size();
+	//string out_file = rc->cmdline.outfile;
 	if (rc->ml_cpu_preparation) {
 		//rc->vpls = new std::vector<vpl>();
 		rc->vpls = new std::vector(vpls);
@@ -407,8 +410,20 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 
 				float D_x = cdot(diff_hit.ns, shadow_ray.d); // D_x(v)
 				float D_v = cdot(v.normal, -shadow_ray.d); // D_v(x)
-				float G = D_x*D_v/(t*t);
-				float r = 1.5f;
+
+				float G;
+				if (pointlight_attenuation) {
+					float r = G_max;
+					//attenuation factor
+					float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
+					G = D_x*D_v*attenuation;
+				}
+				else {
+					G = D_x*D_v/(t*t);
+					G = G > G_max ? G_max : G;
+				}
+				//float G = D_x*D_v/(t*t);
+				//float r = G_max;
 				//float G = D_x*D_v/(t*t+r*r*pi*D_v);
 
 				//new attenuation factor
@@ -422,7 +437,8 @@ vec3 manylight_algorithm::sample_pixel(uint32_t x, uint32_t y) {
 				//G = G > 0.00001f ? 0.00001f : G; //sponza
 				//G = G > 0.1f ? 0.1f : G; // sibenik
 				//G = G > 1.f ? 1.f : G; // cornell
-				G = G > G_max ? G_max : G;
+
+				//G = G > G_max ? G_max : G;
 
 				indirect_radiance += f_x*G*v.col*f_v;
 

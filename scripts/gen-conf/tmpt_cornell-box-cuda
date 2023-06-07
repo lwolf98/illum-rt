@@ -3,7 +3,7 @@
 # ml_wf_cor_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile cornell-box/[ALGO]_[SCENE]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
+outfile cornell-box/[ALGO]_[SCENE]_[RES_W]x[RES_H]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s.png
 #outfile cornell-box/test_cuda.png
 
 # obj files

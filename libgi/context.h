@@ -30,6 +30,7 @@ struct render_context {
 	/* global VPL data */
 	std::vector<vpl> *vpls;
 	bool ml_cpu_preparation = false;
+	int vpl_count = -1;
 
 	render_context() : framebuffer(scene.camera.w, scene.camera.h) {
 		call_at_resolution_change[&framebuffer] = [this](int w, int h) { framebuffer.resize(w, h); };
