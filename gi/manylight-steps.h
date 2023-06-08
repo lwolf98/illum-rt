@@ -20,6 +20,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample v_0 lights";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le, per_sample_data<int> *vpl_store_offset, compute_light_distribution *light_dist) = 0;
 	};
@@ -57,6 +58,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "create vpls";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth) = 0;
 	};
@@ -94,6 +96,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "russian roulette";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, per_sample_data<vec3> *le) = 0;
 	};
@@ -127,6 +130,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample next vpls";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *light_rays, per_sample_data<vec3> *light_throughput, vpldata *vpl_store, per_sample_data<int> *vpl_store_offset, int depth) = 0;
 	};
@@ -164,8 +168,10 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "copy vpls";
+		std::string get_id() override { return id; }
 
-		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx) = 0;
+		virtual void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx,
+							per_sample_data<int> *sample_index, per_sample_data<int> *vpl_index) = 0;
 	};
 	namespace wire
 	{
@@ -181,18 +187,25 @@ namespace wf
 			FLOAT *scale = nullptr;
 			int sppx = 0;
 
+			INT *sample_index = nullptr;
+			INT *vpl_index = nullptr;
+
 			bool properly_wired()
 			{
-				return vpl_store && vpls && vpl_count && scale;
+				return vpl_store && vpls && vpl_count && scale && sample_index && vpl_index;
 			}
 
-			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx)
+			void use(vpldata *vpl_store, vpldata *vpls, per_sample_data<int> *vpl_count, per_sample_data<float> *scale, int sppx,
+							per_sample_data<int> *sample_index, per_sample_data<int> *vpl_index)
 			{
 				this->vpl_store = dynamic_cast<VD *>(vpl_store);
 				this->vpls = dynamic_cast<VD *>(vpls);
 				this->vpl_count = dynamic_cast<INT *>(vpl_count);
 				this->scale = dynamic_cast<FLOAT *>(scale);
 				this->sppx = sppx;
+
+				this->sample_index = dynamic_cast<INT *>(sample_index);
+				this->vpl_index = dynamic_cast<INT *>(vpl_index);
 			}
 		};
 	}
@@ -202,9 +215,10 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample vpl rays";
+		std::string get_id() override { return id; }
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count,
-						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, per_sample_data<int> *sampled_vpl_indices, per_sample_data<int> *vpl_count,
+						per_sample_data<int> *sample_index, per_sample_data<int> *vpl_index, int vpls_per_sample, int vpl_offest) = 0;
 	};
 	namespace wire
 	{
@@ -217,27 +231,29 @@ namespace wf
 			RD *camrays = nullptr;
 			RD *shadowrays = nullptr;
 			VD *vpls = nullptr;
-			VD *sampled_vpls = nullptr;
+			INT *sampled_vpl_indices = nullptr;
 			INT *vpl_count = nullptr;
 
 			INT *sample_index = nullptr;
+			INT *vpl_index = nullptr;
 			int vpls_per_sample = 0;
 			int vpl_offset = 0;
 
 			bool properly_wired()
 			{
-				return camrays && shadowrays && vpls && sampled_vpls && vpl_count && sample_index;
+				return camrays && shadowrays && vpls && sampled_vpl_indices && vpl_count && sample_index && vpl_index;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, vpldata *sampled_vpls, per_sample_data<int> *vpl_count,
-			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, per_sample_data<int> *sampled_vpl_indices, per_sample_data<int> *vpl_count,
+			per_sample_data<int> *sample_index, per_sample_data<int> *vpl_index, int vpls_per_sample, int vpl_offest)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
 				this->vpls = dynamic_cast<VD *>(vpls);
-				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
+				this->sampled_vpl_indices = dynamic_cast<INT *>(sampled_vpl_indices);
 				this->vpl_count = dynamic_cast<INT *>(vpl_count);
 				this->sample_index = dynamic_cast<INT *>(sample_index);
+				this->vpl_index = dynamic_cast<INT *>(vpl_index);
 				this->vpls_per_sample = vpls_per_sample;
 				this->vpl_offset = vpl_offest;
 			}
@@ -248,9 +264,10 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "integrate vpl samples";
+		std::string get_id() override { return id; }
 
-		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
-						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug, float G_max) = 0;
+		virtual void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, per_sample_data<int> *sampled_vpl_indices, per_sample_data<float> *scale,
+						per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *vpl_index, float G_max) = 0;
 	};
 	namespace wire
 	{
@@ -262,7 +279,8 @@ namespace wf
 			using wf::integrate_vpl_samples::integrate_vpl_samples;
 			RD *camrays = nullptr;
 			RD *shadowrays = nullptr;
-			VD *sampled_vpls = nullptr;
+			VD *vpls = nullptr;
+			INT *sampled_vpl_indices = nullptr;
 			FLOAT *scale = nullptr;
 
 			INT *sample_index = nullptr;
@@ -270,26 +288,27 @@ namespace wf
 			int vpl_offset = 0;
 			float G_max = FLT_MAX;
 
-			INT *cnt_debug = nullptr;
+			INT *vpl_index = nullptr;
 
 			bool properly_wired()
 			{
-				return camrays && shadowrays && sampled_vpls && scale && sample_index && cnt_debug;
+				return camrays && shadowrays && vpls && sampled_vpl_indices && scale && sample_index && vpl_index;
 			}
 
-			void use(raydata *camrays, raydata *shadowrays, vpldata *sampled_vpls, per_sample_data<float> *scale,
-			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *cnt_debug, float G_max)
+			void use(raydata *camrays, raydata *shadowrays, vpldata *vpls, per_sample_data<int> *sampled_vpl_indices, per_sample_data<float> *scale,
+			per_sample_data<int> *sample_index, int vpls_per_sample, int vpl_offest, per_sample_data<int> *vpl_index, float G_max)
 			{
 				this->camrays = dynamic_cast<RD *>(camrays);
 				this->shadowrays = dynamic_cast<RD *>(shadowrays);
-				this->sampled_vpls = dynamic_cast<VD *>(sampled_vpls);
+				this->vpls = dynamic_cast<VD *>(vpls);
+				this->sampled_vpl_indices = dynamic_cast<INT *>(sampled_vpl_indices);
 				this->scale = dynamic_cast<FLOAT *>(scale);
 				this->sample_index = dynamic_cast<INT *>(sample_index);
 				this->vpls_per_sample = vpls_per_sample;
 				this->vpl_offset = vpl_offest;
 				this->G_max = G_max;
 
-				this->cnt_debug = dynamic_cast<INT *>(cnt_debug);
+				this->vpl_index = dynamic_cast<INT *>(vpl_index);
 			}
 		};
 	}

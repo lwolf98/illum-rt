@@ -19,11 +19,11 @@ up 0 1 0
 #up 0 1 0
 
 # Parameter
+resolution 640 360
 raytracer embree
 #algo photon-mapping
-algo manylight paths 256 length 10
-sppx 256
-resolution 640 360
+algo manylight paths 4096 length 10 g 0.00001
+sppx 8192
 
 # Skylight
 skylight load render-data/skylight-sunset.floats 30

@@ -14,7 +14,7 @@ namespace wf::cuda {
 	static const bool print_stats = true;
 	static const bool export_debug_obj = false;
 	static const bool debugging = false;
-	static const bool synchronize = true;
+	static const bool synchronize = false;
 	static const bool cpu_calculation = true;
 	static const bool pointlight_attenuation = false;
 
@@ -263,7 +263,7 @@ namespace wf::cuda {
 
 	void sample_v_0s::run() {
 		//time_this_block(sample_v0s);
-		time_this_wf_step;
+		//time_this_wf_step;
 		rng_light.compute();
 		rng_dir.compute();
 		int2 res = {light_rays->w, light_rays->h};
@@ -345,7 +345,7 @@ namespace wf::cuda {
 
 	void create_vpls::run() {
 		//time_this_block(create_vpls);
-		time_this_wf_step;
+		//time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		k::create_vpls<<<launch_config>>>(res,
 										  light_rays->rays.device_memory,
@@ -409,7 +409,7 @@ namespace wf::cuda {
 
 	void russian_roulette::run() {
 		//time_this_block(russian_roulette);
-		time_this_wf_step;
+		//time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		rng.compute();
 		k::russian_roulette<<<launch_config>>>(res,
@@ -497,7 +497,7 @@ namespace wf::cuda {
 
 	void sample_next_vpls::run() {
 		//time_this_block(sample_next_vpls);
-		time_this_wf_step;
+		//time_this_wf_step;
 		int2 res = {light_rays->w, light_rays->h};
 		rng.compute();
 		k::sample_next_vpls<<<launch_config>>>(res,
@@ -570,7 +570,7 @@ namespace wf::cuda {
 		static __global__ void copy_vpls(int2 res,
 										   float4 *store_col, float4 *store_pos, float4 *store_w_in, tri_is *store_is,
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
-										   int *vpl_count,
+										   int *vpl_count, int *current_sample, int *cur_vpl_index,
 										   uint4 *triangles, float4 *vert_norm, material *materials,
 										   float *scale, int sppx, bool print_stats) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -589,6 +589,8 @@ namespace wf::cuda {
 				//Calculate scaling factor
 				float vpls_per_sample = vpl_count[0] * (1.f/sppx);
 				scale[0] = vpl_count[0] * (1.f/vpls_per_sample);
+				current_sample[0] = 0;
+				cur_vpl_index[0] = 0;
 				printf("SCALE calculated: %f\n", scale[0]);
 
 				if (print_stats) {
@@ -635,7 +637,7 @@ namespace wf::cuda {
 
 	void copy_vpls::run() {
 		//time_this_block(copy_vpls);
-		time_this_wf_step;
+		//time_this_wf_step;
 
 		global_memory_buffer<char> temp_memory("temp_mem", 0);
 
@@ -796,6 +798,8 @@ namespace wf::cuda {
 										vpls->w_in.device_memory,
 										vpls->is.device_memory,
 										vpl_count->data.device_memory,
+										sample_index->data.device_memory,
+										vpl_index->data.device_memory,
 										pf->sd->triangles.device_memory,
 										pf->sd->vertex_norm.device_memory,
 										pf->sd->materials.device_memory,
@@ -835,9 +839,10 @@ namespace wf::cuda {
 										   float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, material *materials,
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
-										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
+										   //float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
+										   int *vpl_indices,
 										   int *vpl_count,
-										   int *current_sample, int vpls_per_sample, int vpl_offset,
+										   int *current_sample, int *cur_vpl_index, int vpls_per_sample, int vpl_offset,
 										   bool debugging) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -845,22 +850,30 @@ namespace wf::cuda {
 			if (x >= res.x || y >= res.y)
 				return;
 
+			if (cur_vpl_index[0] >= vpl_count[0]) {
+				if (ray_index == 0)
+					cur_vpl_index[0] = -1;
+
+				return;
+			}
+
 			//if (x == 0 && y == 0 && current_sample[0] >= 2048)
 			//	current_sample[0] = 0;
 
 			tri_is hit = hits[ray_index];
 
-			int pos = current_sample[0] * vpls_per_sample + vpl_offset;
+			//int pos = current_sample[0] * vpls_per_sample + vpl_offset;
+			int pos = cur_vpl_index[0];
 			if (x == 44 && y == 55 && debugging)
 				printf("VPS: %d, SAMPLE: %d, POSITION: %d\n", vpls_per_sample, current_sample[0], pos);
 
-			float4 vpl_col = vpls_col[pos];
+			/*float4 vpl_col = vpls_col[pos];
 			float4 vpl_pos = vpls_pos[pos];
 			float4 vpl_w_in = vpls_w_in[pos];
-			tri_is vpl_is = vpls_is[pos];
+			tri_is vpl_is = vpls_is[pos];*/
 
 			float3 from   = f3(camrays[ray_index*2+0]) + hit.t * f3(camrays[ray_index*2+1]);
-			float3 target = f3(vpl_pos);
+			float3 target = f3(vpls_pos[pos]);
 			float3 to_light = target - from;
 			
 			float tmax = length(to_light);
@@ -872,10 +885,12 @@ namespace wf::cuda {
 			shadowrays[ray_index*2+0] = ray_org;
 			shadowrays[ray_index*2+1] = ray_dir;
 
-			sampled_vpls_col[ray_index] = vpl_col;
+			vpl_indices[ray_index] = pos;
+
+			/*sampled_vpls_col[ray_index] = vpl_col;
 			sampled_vpls_pos[ray_index] = vpl_pos;
 			sampled_vpls_w_in[ray_index] = vpl_w_in;
-			sampled_vpls_is[ray_index] = vpl_is;
+			sampled_vpls_is[ray_index] = vpl_is;*/
 
 			/*if (x < 20)
 			//if (x == 16)
@@ -889,9 +904,10 @@ namespace wf::cuda {
 		}
 	}
 
+	random_number_generator<float> sample_vpls::rng = random_number_generator<float>(2222);
 	void sample_vpls::run() {
 		//time_this_block(INTEGR_sample_vpls);
-		time_this_wf_step;
+		//time_this_wf_step;
 		int2 res = frame_res();
 		rng.compute();
 		k::sample_vpls<<<launch_config>>>(res,
@@ -906,12 +922,10 @@ namespace wf::cuda {
 										  vpls->pos.device_memory,
 										  vpls->w_in.device_memory,
 										  vpls->is.device_memory,
-										  sampled_vpls->col.device_memory,
-										  sampled_vpls->pos.device_memory,
-										  sampled_vpls->w_in.device_memory,
-										  sampled_vpls->is.device_memory,
+										  sampled_vpl_indices->data.device_memory,
 										  vpl_count->data.device_memory,
 										  sample_index->data.device_memory,
+										  vpl_index->data.device_memory,
 										  vpls_per_sample,
 										  vpl_offset,
 										  debugging);
@@ -925,13 +939,18 @@ namespace wf::cuda {
 										   float4 *shadowrays, tri_is *shadow_hits,
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
-										   float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
+										   //float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
+										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
+										   int *vpl_indices,
 										   float *scale, int *current_sample, int vpls_per_sample, int vpl_offset, float G_max,
-										   int *cnt_integrated, bool debugging, bool pointlight_attenuation) {
+										   int *cur_vpl_index, bool debugging, bool pointlight_attenuation) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
 			if (x >= res.x || y >= res.y)
+				return;
+
+			if (cur_vpl_index[0] < 0)
 				return;
 			
 			/*if (x < 20)
@@ -943,7 +962,7 @@ namespace wf::cuda {
 
 			tri_is hit = cam_hits[ray_index];
 			tri_is shadow_hit = shadow_hits[ray_index];
-			tri_is vpl_is = sampled_vpls_is[ray_index];
+			tri_is vpl_is = vpls_is[vpl_indices[ray_index]];
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
 
@@ -959,7 +978,7 @@ namespace wf::cuda {
 					sampled_vpls_pos[ray_index].x, sampled_vpls_pos[ray_index].y, sampled_vpls_pos[ray_index].z, sampled_vpls_pos[ray_index].w);*/
 				
 				// VPL color
-				float3 vpl_col = f3(sampled_vpls_col[ray_index]);
+				float3 vpl_col = f3(vpls_col[vpl_indices[ray_index]]);
 
 				// brdf at hit (x)
 				float3 x_w_o = -f3(camrays[2*ray_index+1]);
@@ -972,7 +991,7 @@ namespace wf::cuda {
 
 				// brdf at vpl (v)
 				float3 vpl_w_o = -f3(shadowray_dir);
-				float3 vpl_w_i = -f3(sampled_vpls_w_in[ray_index]);
+				float3 vpl_w_i = -f3(vpls_w_in[vpl_indices[ray_index]]);
 				uint4 vpl_tri = triangles[vpl_is.ref];
 				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
 				material vpl_mat = materials[vpl_tri.w];
@@ -981,7 +1000,7 @@ namespace wf::cuda {
 
 				//float t = shadowray_dir.w;
 				float3 from = f3(camrays[ray_index*2+0]) + hit.t * -x_w_o;
-				float t = length(f3(sampled_vpls_pos[ray_index]) - from);
+				float t = length(f3(vpls_pos[vpl_indices[ray_index]]) - from);
 
 				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
 				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
@@ -1059,9 +1078,14 @@ namespace wf::cuda {
 			//framebuffer[ray_index] = make_float4(test_entered.x, test_entered.y, test_entered.z, 1.f);
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(test_entered.x, test_entered.y, test_entered.z, 0);
 
-			if (ray_index == 0 && vpl_offset == vpls_per_sample-1) {
-				current_sample[0]++;
-				//printf("current_sample incremented: %d\n", current_sample[0]);
+			if (ray_index == 0) {
+				cur_vpl_index[0]++;
+				if (vpl_offset == vpls_per_sample-1) {
+					current_sample[0]++;
+					if (true) printf("current_sample incremented: %d\n", current_sample[0]);
+				}
+
+				if (true) printf("current vpl index incremented: %d\n", cur_vpl_index[0]);
 			}
 
 			/*if (ray_index == 111)
@@ -1075,7 +1099,7 @@ namespace wf::cuda {
 
 	void integrate_vpl_samples::run() {
 		//time_this_block(INTEGR_integrate_vpls);
-		time_this_wf_step;
+		//time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_vpl_samples<<<launch_config>>>(res,
 										  camrays->rays.device_memory,
@@ -1087,16 +1111,17 @@ namespace wf::cuda {
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->vertex_tc.device_memory,
 										  pf->sd->materials.device_memory,
-										  sampled_vpls->col.device_memory,
-										  sampled_vpls->pos.device_memory,
-										  sampled_vpls->w_in.device_memory,
-										  sampled_vpls->is.device_memory,
+										  vpls->col.device_memory,
+										  vpls->pos.device_memory,
+										  vpls->w_in.device_memory,
+										  vpls->is.device_memory,
+										  sampled_vpl_indices->data.device_memory,
 										  scale->data.device_memory,
 										  sample_index->data.device_memory,
 										  vpls_per_sample,
 										  vpl_offset,
 										  G_max,
-										  cnt_debug->data.device_memory,
+										  vpl_index->data.device_memory,
 										  debugging,
 										  pointlight_attenuation);
 

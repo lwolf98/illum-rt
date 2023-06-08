@@ -49,7 +49,7 @@ platform cuda
 raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 10 vps 5
+is light paths 1024 length 10 g 0.00001
 commit
 
 # Run

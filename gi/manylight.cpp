@@ -247,6 +247,9 @@ void manylight_algorithm::prepare_frame() {
 	//string out_file = rc->cmdline.outfile;
 	if (rc->ml_cpu_preparation) {
 		//rc->vpls = new std::vector<vpl>();
+		//if (rc->vpls)
+		//	delete rc->vpls; //TODO: does this work correctly
+
 		rc->vpls = new std::vector(vpls);
 	}
 }
@@ -557,10 +560,11 @@ namespace wf {
 		vpls = rc->platform->allocate_vpldata_manually(paths*path_length); //vpls = rc->platform->allocate_vpls();
 		vpl_count = rc->platform->allocate_int_per_sample_manually(1);
 		scale = rc->platform->allocate_float_per_sample_manually(1);
-		sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
+		//sampled_vpls = rc->platform->allocate_vpldata(); //allocate_vpl_per_sample();
+		sampled_vpls = rc->platform->allocate_int_per_sample();
 
 		sample_index = rc->platform->allocate_int_per_sample_manually(1);
-		dbg_cnt = rc->platform->allocate_int_per_sample_manually(1);
+		vpl_index = rc->platform->allocate_int_per_sample_manually(1);
 
 		/* preparation steps */
 		if (!rc->ml_cpu_preparation) {
@@ -595,7 +599,7 @@ namespace wf {
 		}
 
 		auto *copy_vpl = rc->platform->step<copy_vpls>();
-		copy_vpl->use(vpl_store, vpls, vpl_count, scale, rc->sppx);
+		copy_vpl->use(vpl_store, vpls, vpl_count, scale, rc->sppx, sample_index, vpl_index);
 		frame_preparation_steps.push_back(copy_vpl);
 
 		/* sampling steps */
@@ -605,9 +609,9 @@ namespace wf {
 			auto *find_light = rc->platform->step<find_any_hits>("any hits");
 			auto *integrate_vpl_sample = rc->platform->step<integrate_vpl_samples>("integrate vpl=" + to_string(i));
 
-			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count, sample_index, max_vpls_per_sample, i);
+			sample_vpl->use(camrays, shadowrays, vpls, sampled_vpls, vpl_count, sample_index, vpl_index, max_vpls_per_sample, i);
 			find_light->use(shadowrays);
-			integrate_vpl_sample->use(camrays, shadowrays, sampled_vpls, scale, sample_index, max_vpls_per_sample, i, dbg_cnt, G_max);
+			integrate_vpl_sample->use(camrays, shadowrays, vpls, sampled_vpls, scale, sample_index, max_vpls_per_sample, i, vpl_index, G_max);
 
 			sampling_steps.push_back(sample_vpl);
 			sampling_steps.push_back(find_light);

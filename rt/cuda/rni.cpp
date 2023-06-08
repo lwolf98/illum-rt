@@ -29,7 +29,7 @@ namespace wf {
 		}
 
 		void batch_cam_ray_setup::run() {
-			time_this_wf_step;
+			//time_this_wf_step;
 
 			int2 resolution{rc->resolution().x, rc->resolution().y};
 
@@ -124,7 +124,7 @@ namespace wf {
 		}
 		
 		void add_hitpoint_albedo_to_fb::run() {
-			time_this_wf_step;
+			//time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 
 			launch_add_hitpoint_albedo(res,
@@ -138,14 +138,14 @@ namespace wf {
 		}
 	
 		void initialize_framebuffer::run() {
-			time_this_wf_step;
+			//time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 
 			launch_initialize_framebuffer_data(res, rd->framebuffer.device_memory);
 		}
 			
 		void download_framebuffer::run() {
-			time_this_wf_step;
+			//time_this_wf_step;
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 			rd->framebuffer.download();
 			float4 *fb = rd->framebuffer.host_data.data();
@@ -162,7 +162,7 @@ namespace wf {
 #ifdef HAVE_GL
 			if (!preview_window) return;
 
-			time_this_wf_step;
+			//time_this_wf_step;
 			glfwMakeContextCurrent(render_window);
 
 			struct cudaGraphicsResource *buffer_CUDA;

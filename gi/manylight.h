@@ -83,11 +83,12 @@ namespace wf {
 		raydata* vpl_rays = nullptr;
 		per_sample_data<vec3>* light_throughput = nullptr;
 		per_sample_data<vec3>* le = nullptr;
-		vpldata* sampled_vpls = nullptr;
+		//vpldata* sampled_vpls = nullptr;
+		per_sample_data<int>* sampled_vpls = nullptr;
 		per_sample_data<float>* scale = nullptr;
 
 		per_sample_data<int>* sample_index = nullptr;
-		per_sample_data<int>* dbg_cnt = nullptr;
+		per_sample_data<int>* vpl_index = nullptr;
 
 		void regenerate_steps() override;
 		/*vpl* allocate_vpl_store();

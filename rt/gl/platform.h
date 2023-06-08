@@ -50,6 +50,7 @@ namespace wf::gl {
 		raydata* allocate_raydata_manually(int size) override;
 		per_sample_data<float>* allocate_float_per_sample() override;
 		per_sample_data<vec3>*  allocate_vec3_per_sample() override;
+		per_sample_data<int>*   allocate_int_per_sample() override;
 		per_sample_data<float>*   allocate_float_per_sample_manually(int size) override;
 		per_sample_data<vec3>*  allocate_vec3_per_sample_manually(int size) override;
 		per_sample_data<int>*   allocate_int_per_sample_manually(int size) override;

@@ -192,7 +192,8 @@ namespace wf::cpu {
 				diff_geom v_geom(v.is, *pf->sd);
 
 				shadowrays->rays[y*res.x+x] = shadow_ray;
-				sampled_vpls->vpls[y*res.x+x] = v;
+				//sampled_vpls->vpls[y*res.x+x] = v;
+				sampled_vpl_indices->data[y*res.x+x] = pos;
 			}
 	}
 
@@ -222,7 +223,9 @@ namespace wf::cpu {
 
 				ray shadow_ray = shadowrays->rays[y*res.x+x];
 				triangle_intersection is_test = shadowrays->intersections[y*res.x+x];
-				vpl v = sampled_vpls->vpls[y*res.x+x];
+				//vpl v = sampled_vpls->vpls[y*res.x+x];
+				int32_t vpl_index = sampled_vpl_indices->data[y*res.x+x];
+				vpl v = vpls->vpls[vpl_index];
 
 				//TODO-ML: Does this need to be checked when using any_hits?
 				//bool valid_shadowray = (shadowrays->rays[y*res.x+x].t_max > 0);

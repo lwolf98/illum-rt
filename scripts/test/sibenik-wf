@@ -20,7 +20,7 @@ up 0 1 0
 #up 0 1 0
 
 # Parameter
-sppx 1024
+sppx 128
 resolution 640 360
 
 # Materials: special
@@ -76,7 +76,7 @@ raytracer embree
 #raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 1024 length 10 vps 5
+is light paths 256 length 10 vps 5
 #algo direct-wf
 #is light
 commit

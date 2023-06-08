@@ -44,7 +44,7 @@ namespace wf::cuda {
 	};
 
 	struct sample_vpls : public wf::wire::sample_vpls<raydata, vpldata, per_sample_data<int>> {
-		random_number_generator<float> rng = random_number_generator<float>(seed++);
+		static random_number_generator<float> rng; //= random_number_generator<float>(2222);
 		void run() override;
 	};
 
