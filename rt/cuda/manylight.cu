@@ -1082,10 +1082,10 @@ namespace wf::cuda {
 				cur_vpl_index[0]++;
 				if (vpl_offset == vpls_per_sample-1) {
 					current_sample[0]++;
-					if (true) printf("current_sample incremented: %d\n", current_sample[0]);
+					if (debugging) printf("current_sample incremented: %d\n", current_sample[0]);
 				}
 
-				if (true) printf("current vpl index incremented: %d\n", cur_vpl_index[0]);
+				if (debugging) printf("current vpl index incremented: %d\n", cur_vpl_index[0]);
 			}
 
 			/*if (ray_index == 111)

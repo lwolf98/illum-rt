@@ -4,44 +4,19 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile sibenik/ml_sib_prep_p1_10000x10_v_g01_2048s.png
+outfile sibenik/manylight-wf_sib_640x360_cuda_p3_4096x10_v_g0.1_1024s.png
 
 # obj files
 load render-data/sibenik/sibenik.obj
 
 # Position
-at -13 -12 0
-look 1 0 0
+at -5.05737 -11.9261 -0.341317
+look -0.652178 0.074354 0.75441
 up 0 1 0
 
-# Position 1
-#at -13 -12 0
-#look 1 0 0
-#up 0 1 0
-
-# Position 2
-#at -13 -12 0
-#look 1 0 0
-#up 0 1 0
-
-# Position 3
-#at -5.05737 -11.9261 -0.341317
-#look -0.652178 0.074354 0.75441
-#up 0 1 0
-
-# Position 4
-#at -10.5903 -11.965 -3.1869
-#look 0.93 0.235517 0.282192
-#up 0 1 0
-
 # Parameter
-resolution 1920 1080
-raytracer embree
-#algo photon-mapping
-algo manylight paths 10000 length 10
-#algo pt
-#algo direct
-sppx 2048
+sppx 1024
+resolution 640 360
 
 # Materials: special
 material select pod
@@ -57,7 +32,6 @@ material select kamen_zid_parapet
 material albedo  0.73412 0.73059 0.67412
 material ior  1.3
 material roughness  0.50372
-
 
 material select pod_tepih
 material albedo  0.54627 0.21961 0.18392
@@ -81,16 +55,21 @@ material emissive 1.61177 2.82549 16.9216
 material select staklo_zeleno
 material emissive 1.9 18.3 2.15
 
-# Calculate VPLs
-commit
-vplcalc
+# WF setup PM
+#raytracer embree
+#commit
+#
+#platform cpu
+#add-scene-step build accel struct
+#commit
+#algo photon-mapping-wf
 
 # WF setup ML
 platform cuda
 raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
-is light paths 10000 length 10
+is light paths 4096 length 10 g 0.1 vps 1
 commit
 
 # Run

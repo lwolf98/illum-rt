@@ -1,0 +1,235 @@
+# Format:
+# pm_sib_p[pos]_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
+# ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
+
+# Outfile
+outfile output/[ALGO_SHORT]_[SCENE]_[RES_W]x[RES_H]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s[EXT]
+
+# Position
+at [AT]
+look [LOOK]
+up 0 1 0
+
+# Parameter
+sppx [SPPX]
+resolution [RES_W] [RES_H]
+
+load render-data/sibenik/sibenik.obj
+
+# obj files
+[SIB] load [SIBENIKPATH]
+[SIB]
+[SIB]# Materials: special
+[SIB]material select pod
+[SIB]material ior  2.289
+[SIB]material roughness  0.055
+[SIB]material albedo  0.73412 0.70941 0.67412
+[SIB]# colored floor
+[SIB]#material albedo  0 0 1.0
+[SIB]#material texture drop
+[SIB]
+[SIB]# Materials
+[SIB]material select kamen_zid_parapet
+[SIB]material albedo  0.73412 0.73059 0.67412
+[SIB]material ior  1.3
+[SIB]material roughness  0.50372
+[SIB]
+[SIB]material select pod_tepih
+[SIB]material albedo  0.54627 0.21961 0.18392
+[SIB]material ior 1.3
+[SIB]material roughness  0.50372
+[SIB]        
+[SIB]material select sprljci
+[SIB]material albedo  0.78431 0.78431 0.78431
+[SIB]material ior 1.3
+[SIB]material roughness  0.50372
+[SIB]
+[SIB]material select staklo
+[SIB]material emissive 7.8431 7.8431 7.8431
+[SIB]        
+[SIB]material select staklo_crveno
+[SIB]material emissive 50.118 8.392 0.562
+[SIB]        
+[SIB]material select staklo_plavo
+[SIB]material emissive 1.61177 2.82549 16.9216
+[SIB]        
+[SIB]material select staklo_zeleno
+[SIB]material emissive 1.9 18.3 2.15
+###################################################################
+
+[CORB]load [CORNELLORIGINAL]
+[CORB]
+[CORB]# Materials: light
+[CORB]material select light
+[CORB]material albedo 0.780 0.780 0.780
+[CORB]material roughness 0.900
+[CORB]material ior 1.500
+[CORB]#material emissive 10.000 10.000 10.000
+[CORB]material emissive 50 50 50
+[CORB]
+[CORB]# Materials: default
+[CORB]material select floor
+[CORB]material albedo 0.725 0.710 0.680
+[CORB]material roughness 0.900
+[CORB]material ior 1.500
+[CORB]material brdf lambert
+[CORB]
+[CORB]material select ceiling
+[CORB]material albedo 0.725 0.710 0.680
+[CORB]material roughness 0.900
+[CORB]material ior 1.500
+[CORB]material brdf lambert
+[CORB]
+[CORB]material select backWall
+[CORB]material albedo 0.725 0.710 0.680
+[CORB]material roughness 0.900
+[CORB]material ior 1.500
+[CORB]material brdf lambert
+[CORB]
+[CORB]material select rightWall
+[CORB]material albedo 0.161 0.133 0.427
+[CORB]material roughness 0.900
+[CORB]material ior 1.450
+[CORB]material brdf lambert
+[CORB]
+[CORB]material select leftWall
+[CORB]material albedo 0.630 0.065 0.050
+[CORB]material roughness 0.900
+[CORB]material ior 1.450
+[CORB]material brdf lambert
+
+###################################################################
+[CORS]load [CORNELLSPHEREPATH]
+[CORS]
+[CORS]# Materials: light
+[CORS]material select light
+[CORS]material albedo 0.780 0.780 0.780
+[CORS]material roughness 0.900
+[CORS]material ior 1.500
+[CORS]material emissive 10.000 10.000 10.000
+[CORS]#material emissive 50 50 50
+[CORS]
+[CORS][NOSPECULAR]# Materials: special
+[CORS][NOSPECULAR]# perfect mirror sphere
+[CORS][NOSPECULAR]material select leftSphere
+[CORS][NOSPECULAR]material albedo 0.010 0.010 0.010
+[CORS][NOSPECULAR]material roughness 0.000
+[CORS][NOSPECULAR]material ior 1.450
+[CORS][NOSPECULAR]material brdf phong
+[CORS][NOSPECULAR]
+[CORS][NOSPECULAR]# glass sphere
+[CORS][NOSPECULAR]material select rightSphere
+[CORS][NOSPECULAR]material albedo 0.010 0.010 0.010
+[CORS][NOSPECULAR]material roughness 0.553
+[CORS][NOSPECULAR]#material ior 2.500
+[CORS][NOSPECULAR]material ior 1.520
+[CORS][NOSPECULAR]material brdf phong
+[CORS]
+[CORS]# Materials: default
+[CORS]material select floor
+[CORS]material albedo 0.725 0.710 0.680
+[CORS]material roughness 0.900
+[CORS]material ior 1.500
+[CORS]material brdf lambert
+[CORS]
+[CORS]material select ceiling
+[CORS]material albedo 0.725 0.710 0.680
+[CORS]material roughness 0.900
+[CORS]material ior 1.500
+[CORS]material brdf lambert
+[CORS]
+[CORS]material select backWall
+[CORS]material albedo 0.725 0.710 0.680
+[CORS]material roughness 0.900
+[CORS]material ior 1.500
+[CORS]material brdf lambert
+[CORS]
+[CORS]material select rightWall
+[CORS]material albedo 0.161 0.133 0.427
+[CORS]material roughness 0.900
+[CORS]material ior 1.450
+[CORS]material brdf lambert
+[CORS]
+[CORS]material select leftWall
+[CORS]material albedo 0.630 0.065 0.050
+[CORS]material roughness 0.900
+[CORS]material ior 1.450
+[CORS]material brdf lambert
+###################################################################
+[CORW]load [CORNELLWATERPATH]
+[CORW]
+[CORW]# Materials: light
+[CORW]material select light
+[CORW]material albedo 0.780 0.780 0.780
+[CORW]material roughness 0.900
+[CORW]material ior 1.500
+[CORW]material emissive 10.000 10.000 10.000
+[CORW]#material emissive 50 50 50
+[CORW]
+[CORW][NOSPECULAR]# Materials: special
+[CORW][NOSPECULAR]material select water
+[CORW][NOSPECULAR]material albedo 0.010 0.010 0.010
+[CORW][NOSPECULAR]material roughness 0.553
+[CORW][NOSPECULAR]material ior 1.330
+[CORW][NOSPECULAR]material brdf phong
+[CORW][NOSPECULAR]
+[CORW][NOSPECULAR]# perfect mirror sphere
+[CORW][NOSPECULAR]material select leftSphere
+[CORW][NOSPECULAR]material albedo 0.010 0.010 0.010
+[CORW][NOSPECULAR]material roughness 0.000
+[CORW][NOSPECULAR]material ior 1.450
+[CORW][NOSPECULAR]material brdf phong
+[CORW][NOSPECULAR]
+[CORW][NOSPECULAR]# glass sphere
+[CORW][NOSPECULAR]material select rightSphere
+[CORW][NOSPECULAR]material albedo 0.010 0.010 0.010
+[CORW][NOSPECULAR]material roughness 0.553
+[CORW][NOSPECULAR]material ior 2.500
+[CORW][NOSPECULAR]material ior 1.520
+[CORW][NOSPECULAR]material brdf phong
+[CORW]
+[CORW]# Materials: default
+[CORW]material select floor
+[CORW]material albedo 0.725 0.710 0.680
+[CORW]material roughness 0.900
+[CORW]material ior 1.500
+[CORW]material brdf lambert
+[CORW]
+[CORW]material select ceiling
+[CORW]material albedo 0.725 0.710 0.680
+[CORW]material roughness 0.900
+[CORW]material ior 1.500
+[CORW]material brdf lambert
+[CORW]
+[CORW]material select backWall
+[CORW]material albedo 0.725 0.710 0.680
+[CORW]material roughness 0.900
+[CORW]material ior 1.500
+[CORW]material brdf lambert
+[CORW]
+[CORW]material select rightWall
+[CORW]material albedo 0.161 0.133 0.427
+[CORW]material roughness 0.900
+[CORW]material ior 1.450
+[CORW]material brdf lambert
+[CORW]
+[CORW]material select leftWall
+[CORW]material albedo 0.630 0.065 0.050
+[CORW]material roughness 0.900
+[CORW]material ior 1.450
+[CORW]material brdf lambert
+###################################################################
+
+[MCN]
+###################################################################
+
+# Setup
+[WF]platform [PLATFORM]
+raytracer [RAYTRACER]
+[WF]add-scene-step build accel struct
+algo [ALGO]
+[WF]is light paths [PATHS] length [LEN] g [G_MAX] vps 1
+
+# Run
+commit
+run

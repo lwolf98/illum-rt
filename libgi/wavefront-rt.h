@@ -146,7 +146,6 @@ namespace wf {
 		}
 		void prepare_frame() override {
 			wavefront_algorithm::prepare_frame();
-			int i = 0;
 			for (auto *s : frame_preparation_steps) {
 				raii_timer raii_timer__test_timer("p_fr_" + s->get_id(), stats_timer);
 				s->run();
@@ -155,12 +154,20 @@ namespace wf {
 		bool compute_sample() override {
 			if (current_sample_index >= rc->sppx) return false;
 			current_sample_index++;
-			int i = 0;
 			for (auto *step : sampling_steps) {
 				raii_timer raii_timer__test_timer("intg_" + step->get_id(), stats_timer);
 				step->run();
 			}
 			rc->platform->timer->synchronize();
+			//std::cout << "end compute sample" << std::endl;
+			if (frame_preparation_steps.size() > 2) {
+				auto *tmp1 = frame_preparation_steps[0];
+				auto *tmp2 = frame_preparation_steps[frame_preparation_steps.size()-1];
+				frame_preparation_steps.clear();
+				frame_preparation_steps.push_back(tmp1);
+				frame_preparation_steps.push_back(tmp2);
+				std::cout << "removed init steps" << std::endl;
+			}
 			return current_sample_index < rc->sppx;	
 		}
 		void compute_samples() override {
@@ -168,7 +175,7 @@ namespace wf {
 				run = compute_sample();
 		}
 		void finalize_frame() override {
-			int i = 0;
+			std::cout << "finalize frame!!!" << std::endl;
 			for (auto *s : frame_finalization_steps) {
 				raii_timer raii_timer__test_timer("finl_" + s->get_id(), stats_timer);
 				s->run();
