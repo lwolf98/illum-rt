@@ -544,6 +544,10 @@ namespace wf {
 
 		// calculate vpls per sample for strided loop (instead of configuring)
 		int max_vpls_per_sample = paths*path_length/rc->sppx;
+		if (vpls_per_sample != -1) {
+			cout << "Set to: " << vpls_per_sample << ", instead of: " << max_vpls_per_sample << endl;
+			max_vpls_per_sample = vpls_per_sample;
+		}
 		/*cout << "paths: " << paths << endl;
 		cout << "len: " << path_length << endl;
 		cout << "SPPX: " << rc->sppx << endl;
@@ -696,8 +700,8 @@ void vpl_stats(const vpl* vpls, const int size) {
 		col += v.col;
 		pos += v.pos;
 		normal += v.normal;
-		if (col.r != col.r)
-			cout << "NAN: " << v.col << endl;
+		if (col.r != col.r || col.g != col.g || col.b != col.b)
+			cout << "NAN (i=" << i << "): " << v.col << endl;
 	}
 	col /= size;
 	pos /= size;

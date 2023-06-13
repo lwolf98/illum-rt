@@ -6,6 +6,8 @@
 #include <iostream>
 using namespace std;
 
+static bool pointlight_attenuation = false;
+
 namespace wf::cpu {
 	void sample_v_0s::run() {
 		time_this_wf_step;
@@ -57,12 +59,17 @@ namespace wf::cpu {
 				continue;
 
 			triangle_intersection is = light_rays->intersections[i];
+			if (!is.valid())
+				continue;
+
 			diff_geom hit(is, *pf->sd);
 			vec3 col = light_throughput->data[i];
+
 			vec3 pos = hit.x;
 			vec3 normal = hit.ns;
 			vec3 w_in = light_rays->rays[i].d;
-			vpl v(col, pos, normal, w_in, is);
+			vpl v(col*(1.f/paths), pos, normal, w_in, is);
+			//cout << "VPL: " << col << endl;
 			//int offset = vpl_store_offset->data[0];
 			int offset = depth*paths;
 			vpl_store->vpls[i+offset] = v;
@@ -115,32 +122,38 @@ namespace wf::cpu {
 
 		#pragma omp parallel for
 		for (int i = 0; i < paths; ++i) {
-			// check if light ray is valid else continue
+			// check if path has terminated
 			if (light_rays->rays[i].d == vec3(0))
 				continue;
 
 			//int offset = vpl_store_offset->data[0];
 			int offset = depth*paths;
 			vpl v = vpl_store->vpls[i+offset];
+			// check if light ray is valid else continue
+			if (!v.is.valid()) {
+				light_rays->rays[i].d = vec3(0);
+				continue;
+			}
 
 			// Sample ray to next VPL
 			diff_geom v_geometry(v.is, *pf->sd);
 			auto [w_o, f, pdf] = v_geometry.mat->brdf->sample(v_geometry, -v.w_in, rc->rng.uniform_float2()); //f(v_j-1->v_j->v_j+1)
 
 			// Note: 'pdf_f' does not equal 'pdf' (returned from 'sample')
-			float pdf_f = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
+			//pdf = v_geometry.mat->brdf->pdf(v_geometry, w_o, -v.w_in); //p(w_j)
 			ray to_next_vpl(v.pos, w_o);
 			light_rays->rays[i] = to_next_vpl;
 
 			// Setup the throughput for the next VPL
 			float D = cdot(to_next_vpl.d, v_geometry.ns); //v.normal); //D_v_j(v_j+1)
-			light_throughput->data[i] *= D*f/pdf_f; //throughput for v_j+1
+			light_throughput->data[i] *= D*f/pdf; //throughput for v_j+1
 		}
 
 		//TODO-ML: how to uptade the offset in CUDA? won't work this way...
 		vpl_store_offset->data[0] += paths;
 	}
 
+	static distribution_1d *vpl_dist;
 	void copy_vpls::run() {
 		time_this_wf_step;
 		if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
@@ -154,22 +167,39 @@ namespace wf::cpu {
 		int count = 0;
 		for (int depth = 0; depth < path_length; ++depth) {
 			for (int path = 0; path < paths; ++path) {
-				vpls->vpls[count] = vpl();
+				//vpls->vpls[count] = vpl();
 				vpl v = vpl_store->vpls[depth*paths+path];
+				vpl_store->vpls[depth*paths+path] = vpl();
 				if (v.col != vec3(0) && v.is.valid()) {
 					//vpls->vpls[count] = v; //push_back(v);
 					vpl_store->vpls[count] = v;
+					vpls->vpls[count] = v;
 					count++;
 				}
 			}
 		}
 		vpl_count->data[0] = count;
+		scale->data[0] = count;
+		rc->vpl_count = count;
+
+		// build vpl distribution
+		cout << "build distribution" << endl;
+		vector<float> power;
+		for (int i = 0; i < count; i++) {
+			//cout << "Add power: " << luma(vpls->vpls[i].power()) << endl;
+			power.push_back(luma(vpls->vpls[i].col));
+		}
+
+		cout << "distribution finished" << endl;
+		vpl_dist = new distribution_1d(power);
 
 		cout << "Pos.: " << pf->sd->camera.pos << ", Dir.: " << pf->sd->camera.dir << endl;
 		cout << "max. VPL storage: " << paths*path_length << endl;
 		vpl_stats(vpls->vpls, count);
 	}
 
+	static float tmp_pdf[1000000];
+	int index = 0;
 	void sample_vpls::run() {
 		time_this_wf_step;
 		auto res = rc->resolution();
@@ -180,7 +210,11 @@ namespace wf::cpu {
 				diff_geom hit(is_camray, *pf->sd);
 				//TODO-ML: how to work with vpls->size()?
 				//int32_t pos = rc->rng.uniform_float() * vpls->size();
-				int32_t pos = rc->rng.uniform_float() * vpl_count->data[0];
+				//int32_t pos = rc->rng.uniform_float() * vpl_count->data[0];
+				//int32_t pos = index;
+				auto [pos, pos_pdf] = vpl_dist->sample_index(rc->rng.uniform_float());
+				//cout << "PDF: " << pos_pdf << endl;
+				//tmp_pdf[y*res.x+x] = pos_pdf;
 				//pos = 2;
 				//TODO-ML: better names: vpls->vpls[pos];
 				vpl v = vpls->vpls[pos];
@@ -206,7 +240,9 @@ namespace wf::cpu {
 		manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
 		auto paths = ml->get_paths();
 		float vps = ml->get_vpls_per_sample();
-		float vpl_count = ml->get_vpl_count();
+		//float vpl_count = ml->get_vpl_count();
+		float vpl_count = scale->data[0];
+		index++;
 
 		auto res = rc->resolution();
 		#pragma omp parallel for
@@ -237,18 +273,33 @@ namespace wf::cpu {
 					vec3 f_v = v_geometry.mat->brdf->f(v_geometry, -shadow_ray.d, -v.w_in); // BRDF at v
 					float D_x = cdot(hit.ns, shadow_ray.d); // D_x(v)
 					float D_v = cdot(v_geometry.ns, -shadow_ray.d); // D_v(x)
-					float G = D_x*D_v/(t*t);
+					//float G = D_x*D_v/(t*t);
 					//TODO: G cap solves the issue with the bright spots but adds bias.
 					//      In the future include bias compensation
 					//      -> see chapter 5: bias compensation (final gathering, ...)
 					//G = G > 0.1f ? 0.1f : G; // sibenik
-					G = G > 1.f ? 1.f : G; // cornell
+					//G = G > 1.f ? 1.f : G; // cornell
+					float G;
+					if (pointlight_attenuation) {
+						float r = G_max;
+						//attenuation factor
+						float attenuation = (2/(r*r)) * (1 - t/(sqrtf(t*t+r*r)));
+						G = D_x*D_v*attenuation;
+					}
+					else {
+						G = D_x*D_v/(t*t);
+						G = G > G_max ? G_max : G;
+					}
 
 					radiance = f_x*G*v.col*f_v;
 
 					//Scale to part of avg path length
-					float avg_path_len = vpl_count / paths;
+					//float avg_path_len = vpl_count / paths;
+					float avg_path_len = vpl_count; //TODO-ML: revert to line above
 					radiance = radiance * avg_path_len/vps;
+					//radiance = radiance * scale->data[0];
+					//cout << "count: " << avg_path_len << ", vps: " << vps << endl;
+					//radiance = radiance / tmp_pdf[y*res.x+x];
 					//cout << "scale: " << avg_path_len/vps << endl;
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 0);

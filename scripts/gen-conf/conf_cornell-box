@@ -3,9 +3,9 @@ OUTFILE	rtgi-code/scripts/gen-test/cornell-box
 
 ALGO	ml
 SCENE	cor
-PATHS	1024
+PATHS	512
 LEN		10
-SPPX	10
+SPPX	1024
 
 RES_W	480
 RES_H	480
@@ -23,13 +23,13 @@ LOOK	0 0 -1
 #LOOK	0 0 -1
 
 #none
-G_MAX	-1
+#G_MAX	-1
 #only direct illumination
 #G_MAX	0
 #sibenik
 #G_MAX	0.1
 #cornell
-#G_MAX	1
+G_MAX	1
 #sponza
 #G_MAX	0.00001
 

@@ -14,8 +14,6 @@ up 0 1 0
 sppx [SPPX]
 resolution [RES_W] [RES_H]
 
-load render-data/sibenik/sibenik.obj
-
 # obj files
 [SIB] load [SIBENIKPATH]
 [SIB]

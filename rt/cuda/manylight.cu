@@ -16,7 +16,7 @@ namespace wf::cuda {
 	static const bool debugging = false;
 	static const bool synchronize = false;
 	static const bool cpu_calculation = true;
-	static const bool pointlight_attenuation = false;
+	static const bool pointlight_attenuation = true;
 
 	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
 	static __device__ float3 f3(const float4 &v);
@@ -783,6 +783,7 @@ namespace wf::cuda {
 			vpls->pos.download();
 			vpls->w_in.download();
 			vpls->is.download();
+			std::cout << "Pos.: " << rc->scene.camera.pos << ", Dir.: " << rc->scene.camera.dir << std::endl;
 			vpl_stats(vpls, vpl_count->data.host_data[0]);
 
 			rc->vpl_count = vpl_count->data.host_data[0];

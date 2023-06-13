@@ -3,19 +3,22 @@ OUTFILE	rtgi-code/scripts/gen-test/script
 
 # Scene
 SIB		\#
-CORB	\$
-CORS	\#
+#SCENE	sib
+CORB	\#
+#SCENE	corb
+CORS	\$
+SCENE	cors
 CORW	\#
+#SCENE	corw
 MCN		\#
 
 # For CornellBox with Spheres or Water
 NOSPECULAR	\$
 
 ALGO_SHORT	ml
-SCENE	sib
-PATHS	4096
+PATHS	128
 LEN		10
-SPPX	1024
+SPPX	128
 
 #RES_W	640
 #RES_H	360
@@ -53,15 +56,15 @@ LOOK	0 0 -1
 G_MAX	0.1
 #G_MAX	1.5
 
-PLATFORM	cuda
-RAYTRACER	optix
-#PLATFORM	cpu
-#RAYTRACER	embree
-ALGO	manylight-wf
-#ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
+#PLATFORM	cuda
+#RAYTRACER	optix
+PLATFORM	cpu
+RAYTRACER	embree
+#ALGO	manylight-wf
+ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
 #ALGO	photon-mapping-wf
 #ALGO	photon-mapping
-WF	\$
+WF	\#
 
 SIBENIKPATH			render-data/sibenik/sibenik.obj
 CORNELLORIGINAL		render-data/cornell-mcguire/CornellBox-Original.obj

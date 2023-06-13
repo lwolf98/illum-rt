@@ -60,6 +60,7 @@ std::string timer::format(double ms_elapsed, double ms_total) {
 	     << std::setw(2) << std::to_string(elapsed_seconds) << "s, "
 	     << std::setw(3) << std::to_string(uint64_t(ms_elapsed) % 1000) << "ms";
     time << std::fixed << std::right << std::setw(5) << " [" << std::setw(5) << ms_elapsed / ms_total * 100 << "%]";
+	time << std::fixed << std::right << std::setw(10) << "(" << ms_elapsed * 1000000 << "ns)";
     return time.str();
 }
 

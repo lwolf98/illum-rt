@@ -6,7 +6,7 @@
 # Outfile
 #outfile specular_test_1024.png
 #outfile cornell-test/test_1024x1_1s.png
-outfile cornell-box/ml_cor_p1_1024x10_v_g0_10s.png
+outfile cornell-box/ml_cor_480x480_p1_512x10_v_g1_1024s.png
 #outfile cornell-box/test.png
 
 # obj files
@@ -23,8 +23,8 @@ up 0 1 0
 resolution 480 480
 raytracer embree
 #algo photon-mapping
-algo manylight paths 1024 length 10 g 0
-sppx 10
+algo manylight paths 512 length 10 g 1
+sppx 1024
 
 # Materials: light
 material select light
