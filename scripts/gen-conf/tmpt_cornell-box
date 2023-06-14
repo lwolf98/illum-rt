@@ -10,8 +10,8 @@ outfile cornell-box/[ALGO]_[SCENE]_[RES_W]x[RES_H]_p[POS]_[PATHS]x[LEN]_v_g[G_MA
 
 # obj files
 #load render-data/cornell-mcguire/CornellBox-Water.obj
-#load render-data/cornell-mcguire/CornellBox-Sphere.obj
-load render-data/cornell-mcguire/CornellBox-Original.obj
+load render-data/cornell-mcguire/CornellBox-Sphere.obj
+#load render-data/cornell-mcguire/CornellBox-Original.obj
 
 # Position
 at [AT]
@@ -30,8 +30,8 @@ material select light
 material albedo 0.780 0.780 0.780
 material roughness 0.900
 material ior 1.500
-#material emissive 10.000 10.000 10.000
-material emissive 50 50 50
+material emissive 10.000 10.000 10.000
+#material emissive 50 50 50
 
 # Materials: special
 #material select water
@@ -41,19 +41,19 @@ material emissive 50 50 50
 #material brdf phong
 
 #perfect mirror sphere
-#material select leftSphere
-#material albedo 0.010 0.010 0.010
-#material roughness 0.001
-#material ior 1.450
-#material brdf phong
+material select leftSphere
+material albedo 0.010 0.010 0.010
+material roughness 0.001
+material ior 1.450
+material brdf phong
 
 #glass sphere
-#material select rightSphere
-#material albedo 0.010 0.010 0.010
-#material roughness 0.553
-##material ior 2.500
-#material ior 1.520
-#material brdf phong
+material select rightSphere
+material albedo 0.010 0.010 0.010
+material roughness 0.553
+#material ior 2.500
+material ior 1.520
+material brdf phong
 
 # Materials: default
 material select floor

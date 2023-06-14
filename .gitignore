@@ -26,7 +26,6 @@ render-data/dragon/
 config.h.in
 configure~
 INSTALL
-*.obj
 san_miguel
 render-data/sibenik
 render-data/sponza

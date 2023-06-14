@@ -2,37 +2,37 @@
 OUTFILE	rtgi-code/scripts/gen-test/script
 
 # Scene
-SIB		\#
-#SCENE	sib
+SIB		\$
+SCENE	sib
 CORB	\#
 #SCENE	corb
-CORS	\$
-SCENE	cors
+CORS	\#
+#SCENE	cors
 CORW	\#
 #SCENE	corw
 MCN		\#
 
 # For CornellBox with Spheres or Water
-NOSPECULAR	\$
+NOSPECULAR	\#
 
 ALGO_SHORT	ml
-PATHS	128
+PATHS	1024
 LEN		10
-SPPX	128
+SPPX	1024
 
-#RES_W	640
-#RES_H	360
+RES_W	640
+RES_H	360
 #RES_W	1920
 #RES_H	1080
-RES_W	480
-RES_H	480
+#RES_W	480
+#RES_H	480
 
 EXT		.png
 
 # Sibenik
-#POS		1
-#AT		-13 -12 0
-#LOOK	1 0 0
+POS		1
+AT		-13 -12 0
+LOOK	1 0 0
 
 #POS		2
 #AT		2 -14 0
@@ -44,33 +44,46 @@ EXT		.png
 
 # Cornell box
 #Position original
-POS		1
-AT		0 1 2.5
-LOOK	0 0 -1
+#POS		1
+#AT		0 1 2.5
+#LOOK	0 0 -1
+
+#POS		2
+#AT		0 0.75 1.75
+#LOOK	0 0 -1
 
 #none
 #G_MAX	-1
 #only direct illumination
 #G_MAX	0
+#cornell
+#G_MAX	1
 #sibenik
 G_MAX	0.1
 #G_MAX	1.5
 
-#PLATFORM	cuda
-#RAYTRACER	optix
-PLATFORM	cpu
-RAYTRACER	embree
-#ALGO	manylight-wf
-ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
+VPS		4
+
+#PLATFORM	basic
+#RAYTRACER	embree
+#ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
+WF	\$
+PLATFORM	cuda
+RAYTRACER	optix
+ALGO	manylight-wf
+#PLATFORM	cpu
+#RAYTRACER	embree
+
 #ALGO	photon-mapping-wf
 #ALGO	photon-mapping
-WF	\#
+
+FLOOR			\#
+FLOOR_COLOR		0 0 1.0
 
 SIBENIKPATH			render-data/sibenik/sibenik.obj
 CORNELLORIGINAL		render-data/cornell-mcguire/CornellBox-Original.obj
 CORNELLSPHEREPATH	render-data/cornell-mcguire/CornellBox-Sphere.obj
-CORNELLWATERPATH	render-data/cornell-mcguire/CornellBox-Water.obj
+CORNELLWATERPATH	render-data/cornell-mcguire/CornellBox-Water-Fixed2.obj
 SPONZAPATH			\#
-MCNPATH				\#
 
 <<END CONFIG>>

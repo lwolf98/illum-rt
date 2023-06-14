@@ -16,7 +16,7 @@ namespace wf::cuda {
 	static const bool debugging = false;
 	static const bool synchronize = false;
 	static const bool cpu_calculation = true;
-	static const bool pointlight_attenuation = true;
+	static const bool pointlight_attenuation = false;
 
 	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
 	static __device__ float3 f3(const float4 &v);

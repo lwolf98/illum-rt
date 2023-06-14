@@ -3,7 +3,7 @@ OUTFILE	rtgi-code/scripts/gen-test/cornell-box
 
 ALGO	ml
 SCENE	cor
-PATHS	512
+PATHS	1024
 LEN		10
 SPPX	1024
 

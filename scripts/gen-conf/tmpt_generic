@@ -3,7 +3,7 @@
 # ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
 
 # Outfile
-outfile output/[ALGO_SHORT]_[SCENE]_[RES_W]x[RES_H]_cuda_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s[EXT]
+outfile output/[ALGO_SHORT]_[SCENE]_[RES_W]x[RES_H]_[PLATFORM]_p[POS]_[PATHS]x[LEN]_v_g[G_MAX]_[SPPX]s[EXT]
 
 # Position
 at [AT]
@@ -23,8 +23,8 @@ resolution [RES_W] [RES_H]
 [SIB]material roughness  0.055
 [SIB]material albedo  0.73412 0.70941 0.67412
 [SIB]# colored floor
-[SIB]#material albedo  0 0 1.0
-[SIB]#material texture drop
+[SIB][FLOOR]material albedo  [FLOOR_COLOR]
+[SIB][FLOOR]material texture drop
 [SIB]
 [SIB]# Materials
 [SIB]material select kamen_zid_parapet
@@ -111,7 +111,7 @@ resolution [RES_W] [RES_H]
 [CORS][NOSPECULAR]# perfect mirror sphere
 [CORS][NOSPECULAR]material select leftSphere
 [CORS][NOSPECULAR]material albedo 0.010 0.010 0.010
-[CORS][NOSPECULAR]material roughness 0.000
+[CORS][NOSPECULAR]material roughness 0.001
 [CORS][NOSPECULAR]material ior 1.450
 [CORS][NOSPECULAR]material brdf phong
 [CORS][NOSPECULAR]
@@ -174,7 +174,7 @@ resolution [RES_W] [RES_H]
 [CORW][NOSPECULAR]# perfect mirror sphere
 [CORW][NOSPECULAR]material select leftSphere
 [CORW][NOSPECULAR]material albedo 0.010 0.010 0.010
-[CORW][NOSPECULAR]material roughness 0.000
+[CORW][NOSPECULAR]material roughness 0.001
 [CORW][NOSPECULAR]material ior 1.450
 [CORW][NOSPECULAR]material brdf phong
 [CORW][NOSPECULAR]
@@ -218,15 +218,12 @@ resolution [RES_W] [RES_H]
 [CORW]material brdf lambert
 ###################################################################
 
-[MCN]
-###################################################################
-
 # Setup
 [WF]platform [PLATFORM]
 raytracer [RAYTRACER]
 [WF]add-scene-step build accel struct
 algo [ALGO]
-[WF]is light paths [PATHS] length [LEN] g [G_MAX] vps 1
+[WF]is light paths [PATHS] length [LEN] g [G_MAX] vps [VPS]
 
 # Run
 commit
