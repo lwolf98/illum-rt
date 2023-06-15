@@ -1,9 +1,5 @@
-# Format:
-# pm_sib_p[pos]_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
-# ml_sib_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
-
 # Outfile
-outfile output/[ALGO_SHORT]_[SCENE]_[RES_W]x[RES_H]_[PLATFORM][PLATEXT]_p[POS]_[PATHS]x[LEN]_g[G_MAX]_[SPPX]s[EXT]
+outfile output/[ALGO_SHORT]_[SCENE]_[RES_W]x[RES_H]_[PLATFORM]_p[POS]_[MAP]map_[SEARCH]search_[SPPX]sppx[EXTENSION]
 
 # Position
 at [AT]
@@ -62,8 +58,8 @@ resolution [RES_W] [RES_H]
 [CORB]material albedo 0.780 0.780 0.780
 [CORB]material roughness 0.900
 [CORB]material ior 1.500
-[CORB]#material emissive 10.000 10.000 10.000
-[CORB]material emissive 50 50 50
+[CORB]material emissive 10.000 10.000 10.000
+[CORB]#material emissive 50 50 50
 [CORB]
 [CORB]# Materials: default
 [CORB]material select floor
@@ -95,8 +91,8 @@ resolution [RES_W] [RES_H]
 [CORB]material roughness 0.900
 [CORB]material ior 1.450
 [CORB]material brdf lambert
-
 ###################################################################
+
 [CORS]load [CORNELLSPHEREPATH]
 [CORS]
 [CORS]# Materials: light
@@ -111,7 +107,7 @@ resolution [RES_W] [RES_H]
 [CORS][NOSPECULAR]# perfect mirror sphere
 [CORS][NOSPECULAR]material select leftSphere
 [CORS][NOSPECULAR]material albedo 0.010 0.010 0.010
-[CORS][NOSPECULAR]material roughness 0.001
+[CORS][NOSPECULAR]material roughness 0.000
 [CORS][NOSPECULAR]material ior 1.450
 [CORS][NOSPECULAR]material brdf phong
 [CORS][NOSPECULAR]
@@ -154,6 +150,7 @@ resolution [RES_W] [RES_H]
 [CORS]material ior 1.450
 [CORS]material brdf lambert
 ###################################################################
+
 [CORW]load [CORNELLWATERPATH]
 [CORW]
 [CORW]# Materials: light
@@ -174,7 +171,7 @@ resolution [RES_W] [RES_H]
 [CORW][NOSPECULAR]# perfect mirror sphere
 [CORW][NOSPECULAR]material select leftSphere
 [CORW][NOSPECULAR]material albedo 0.010 0.010 0.010
-[CORW][NOSPECULAR]material roughness 0.001
+[CORW][NOSPECULAR]material roughness 0.000
 [CORW][NOSPECULAR]material ior 1.450
 [CORW][NOSPECULAR]material brdf phong
 [CORW][NOSPECULAR]
@@ -217,25 +214,12 @@ resolution [RES_W] [RES_H]
 [CORW]material ior 1.450
 [CORW]material brdf lambert
 ###################################################################
-[SMIG]load [SANMIGUELPATH]
-[SMIG]
-[SMIG]# Skylight
-[SMIG]skylight load render-data/skylight-sunset.floats 30
-###################################################################
-
-[CPUPREP]raytracer embree
-[CPUPREP]algo manylight paths [PATHS] length [LEN] g [G_MAX]
-[CPUPREP]commit
-[CPUPREP]vplcalc
 
 # Setup
 [WF]platform [PLATFORM]
 raytracer [RAYTRACER]
 [WF]add-scene-step build accel struct
 algo [ALGO]
-[WF]is light paths [PATHS] length [LEN] g [G_MAX] vps [VPS]
-
-[NOOMP]omp off
 
 # Run
 commit

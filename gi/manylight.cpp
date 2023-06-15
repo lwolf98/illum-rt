@@ -22,7 +22,8 @@ static const bool debugging = false;
 static const bool pointlight_attenuation = false;
 
 void manylight_algorithm::prepare_frame() {
-	if (!rc->ml_cpu_preparation) time_this_block(ml_preparation);
+	//if (!rc->ml_cpu_preparation) time_this_block(ml_preparation);
+	time_this_block(ml_preparation);
 	/*
 		Note to steps 1. - 5.:
 		The numbering is set accordingly to the manylight State of The Art Report (STAR):
@@ -38,7 +39,7 @@ void manylight_algorithm::prepare_frame() {
 	int rr_start = 4; // start RR after this many unrestricted bounces
 
 	{
-		if (!rc->ml_cpu_preparation) time_this_block(ml_prepare_vpls);
+		//if (!rc->ml_cpu_preparation) time_this_block(ml_prepare_vpls);
 		bool terminated = false;
 
 		#pragma omp parallel for
@@ -198,7 +199,7 @@ void manylight_algorithm::prepare_frame() {
 	}
 
 	{
-		if (!rc->ml_cpu_preparation) time_this_block(ml_prepare_copying);
+		//if (!rc->ml_cpu_preparation) time_this_block(ml_prepare_copying);
 		for (auto path : vpl_store)
 			for (auto v : path)
 				vpls.push_back(v);

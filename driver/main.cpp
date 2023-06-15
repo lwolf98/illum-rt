@@ -90,6 +90,8 @@ void run(gi_algorithm *algo) {
 	string out_name = cmdline.outfile;
 	if (rc->vpl_count >= 0)
 		out_name = std::regex_replace(out_name, std::regex(".png"), "_v" + std::to_string(rc->vpl_count) + ".png");
+
+	std::cout << out_name << std::endl;
 	rc->framebuffer.png().write(out_name);
 }
 

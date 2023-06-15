@@ -9,8 +9,8 @@ CORB	\#
 CORS	\#
 #SCENE	cors
 CORW	\#
-#SCENE	corw
-MCN		\#
+#SCENE	smig
+SMIG	\#
 
 # For CornellBox with Spheres or Water
 NOSPECULAR	\#
@@ -20,10 +20,10 @@ PATHS	1024
 LEN		10
 SPPX	1024
 
-RES_W	640
-RES_H	360
-#RES_W	1920
-#RES_H	1080
+#RES_W	640
+#RES_H	360
+RES_W	1920
+RES_H	1080
 #RES_W	480
 #RES_H	480
 
@@ -52,6 +52,11 @@ LOOK	1 0 0
 #AT		0 0.75 1.75
 #LOOK	0 0 -1
 
+# San Miguel
+#POS		3
+#AT		7 2 6
+#LOOK	0.6 0 -0.4
+
 #none
 #G_MAX	-1
 #only direct illumination
@@ -62,7 +67,11 @@ LOOK	1 0 0
 G_MAX	0.1
 #G_MAX	1.5
 
-VPS		4
+# ignore VPS
+VPS		-1
+
+# VPS for WF CPU variant
+#VPS		6
 
 #PLATFORM	basic
 #RAYTRACER	embree
@@ -74,8 +83,14 @@ ALGO	manylight-wf
 #PLATFORM	cpu
 #RAYTRACER	embree
 
+PLATEXT		\$
+#PLATEXT	_cpuprep
+CPUPREP		\#
+
 #ALGO	photon-mapping-wf
 #ALGO	photon-mapping
+
+NOOMP	\#
 
 FLOOR			\#
 FLOOR_COLOR		0 0 1.0
@@ -85,5 +100,6 @@ CORNELLORIGINAL		render-data/cornell-mcguire/CornellBox-Original.obj
 CORNELLSPHEREPATH	render-data/cornell-mcguire/CornellBox-Sphere.obj
 CORNELLWATERPATH	render-data/cornell-mcguire/CornellBox-Water-Fixed2.obj
 SPONZAPATH			\#
+SANMIGUELPATH		render-data/san_miguel/san-miguel.obj
 
 <<END CONFIG>>
