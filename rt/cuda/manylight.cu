@@ -11,7 +11,7 @@
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
-	static const bool print_stats = true;
+	static const bool print_stats = false;
 	static const bool export_debug_obj = false;
 	static const bool debugging = false;
 	static const bool synchronize = false;
@@ -739,8 +739,11 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->col.device_memory, vpls->col.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-			vpl_count->data.download();
-			int col_count = vpl_count->data.host_data[0];
+			if (debugging) {
+				vpl_count->data.download();
+				int col_count = vpl_count->data.host_data[0];
+				std::cout << "Valid col: " << col_count << std::endl;
+			}
 
 			// pos
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
@@ -748,8 +751,11 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->pos.device_memory, vpls->pos.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-			vpl_count->data.download();
-			int pos_count = vpl_count->data.host_data[0];
+			if (debugging) {
+				vpl_count->data.download();
+				int pos_count = vpl_count->data.host_data[0];
+				std::cout << "Valid pos: " << pos_count << std::endl;
+			}
 
 			// w_in
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->w_in.device_memory, vpls->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4());
@@ -757,8 +763,11 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->w_in.device_memory, vpls->w_in.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_f4()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-			vpl_count->data.download();
-			int w_in_count = vpl_count->data.host_data[0];
+			if (debugging) {
+				vpl_count->data.download();
+				int w_in_count = vpl_count->data.host_data[0];
+				std::cout << "Valid w_in: " << w_in_count << std::endl;
+			}
 
 			// intersection
 			cub::DeviceSelect::If(nullptr, required_temp_memory_size, vpl_store->is.device_memory, vpls->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is());
@@ -766,13 +775,9 @@ namespace wf::cuda {
 				temp_memory.resize(required_temp_memory_size);
 			CHECK_CUDA_ERROR(cub::DeviceSelect::If(temp_memory.device_memory, required_temp_memory_size, vpl_store->is.device_memory, vpls->is.device_memory, vpl_count->data.device_memory, data_size, k::valid_vpl_tri_is()), "");
 			CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-			vpl_count->data.download();
-			int is_count = vpl_count->data.host_data[0];
-
 			if (debugging) {
-				std::cout << "Valid col: " << col_count << std::endl;
-				std::cout << "Valid pos: " << pos_count << std::endl;
-				std::cout << "Valid w_in: " << w_in_count << std::endl;
+				vpl_count->data.download();
+				int is_count = vpl_count->data.host_data[0];
 				std::cout << "Valid is: " << is_count << std::endl;
 			}
 		}

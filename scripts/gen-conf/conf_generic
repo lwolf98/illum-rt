@@ -20,10 +20,10 @@ PATHS	1024
 LEN		10
 SPPX	1024
 
-#RES_W	640
-#RES_H	360
-RES_W	1920
-RES_H	1080
+RES_W	640
+RES_H	360
+#RES_W	1920
+#RES_H	1080
 #RES_W	480
 #RES_H	480
 
@@ -99,7 +99,7 @@ SIBENIKPATH			render-data/sibenik/sibenik.obj
 CORNELLORIGINAL		render-data/cornell-mcguire/CornellBox-Original.obj
 CORNELLSPHEREPATH	render-data/cornell-mcguire/CornellBox-Sphere.obj
 CORNELLWATERPATH	render-data/cornell-mcguire/CornellBox-Water-Fixed2.obj
-SPONZAPATH			\#
+SPONZAPATH			render-data/sponza/sponza.fixed.obj
 SANMIGUELPATH		render-data/san_miguel/san-miguel.obj
 
 <<END CONFIG>>

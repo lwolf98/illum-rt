@@ -250,6 +250,8 @@ void manylight_algorithm::prepare_frame() {
 		//rc->vpls = new std::vector<vpl>();
 		//if (rc->vpls)
 		//	delete rc->vpls; //TODO: does this work correctly
+		if (rc->vpls)
+			delete rc->vpls;
 
 		rc->vpls = new std::vector(vpls);
 	}
