@@ -210,7 +210,12 @@ namespace wf {
 		batch_ray_tracer *rt;
 	public:
 		static constexpr char id[] = "find any hit";
-		std::string get_id() override { return id; }
+		std::string get_id() override {
+			const void *address = static_cast<const void*>(this);
+			std::stringstream ss;
+			ss << address;
+			return id + ss.str();
+		}
 		find_any_hits(batch_ray_tracer *rt) : rt(rt) {}
 		virtual void use(raydata*) = 0;
 		void run() override {

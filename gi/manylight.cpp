@@ -247,11 +247,12 @@ void manylight_algorithm::prepare_frame() {
 	rc->vpl_count = vpls.size();
 	//string out_file = rc->cmdline.outfile;
 	if (rc->ml_cpu_preparation) {
+		//TODO-ML: proper memory handling, especially when using the preview
 		//rc->vpls = new std::vector<vpl>();
 		//if (rc->vpls)
 		//	delete rc->vpls; //TODO: does this work correctly
-		if (rc->vpls)
-			delete rc->vpls;
+		//if (rc->vpls)
+		//	delete rc->vpls;
 
 		rc->vpls = new std::vector(vpls);
 	}

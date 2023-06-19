@@ -16,23 +16,28 @@ SMIG	\#
 NOSPECULAR	\#
 
 ALGO_SHORT	ml
-PATHS	1024
+PATHS	2048
 LEN		10
-SPPX	1024
+SPPX	2048
 
-RES_W	640
-RES_H	360
+#RES_W	640
+#RES_H	360
 #RES_W	1920
 #RES_H	1080
 #RES_W	480
 #RES_H	480
 
+#RES_W	220
+#RES_H	360
+RES_W	660
+RES_H	1080
+
 EXT		.png
 
 # Sibenik
-POS		1
-AT		-13 -12 0
-LOOK	1 0 0
+#POS		1
+#AT		-13 -12 0
+#LOOK	1 0 0
 
 #POS		2
 #AT		2 -14 0
@@ -41,6 +46,10 @@ LOOK	1 0 0
 #POS		3
 #AT		-5.05737 -11.9261 -0.341317
 #LOOK	-0.652178 0.074354 0.75441
+
+POS		4
+AT		-10.5903 -11.965 -3.1869
+LOOK	0.93 0.235517 0.282192
 
 # Cornell box
 #Position original
@@ -68,18 +77,17 @@ G_MAX	0.1
 #G_MAX	1.5
 
 # ignore VPS
-VPS		-1
-
+#VPS		-1
 # VPS for WF CPU variant
-#VPS		6
+VPS		4
 
-#PLATFORM	basic
-#RAYTRACER	embree
-#ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
-WF	\$
-PLATFORM	cuda
-RAYTRACER	optix
-ALGO	manylight-wf
+PLATFORM	basic
+RAYTRACER	embree
+ALGO	manylight paths [PATHS] length [LEN] g [G_MAX]
+WF	\#
+#PLATFORM	cuda
+#RAYTRACER	optix
+#ALGO	manylight-wf
 #PLATFORM	cpu
 #RAYTRACER	embree
 

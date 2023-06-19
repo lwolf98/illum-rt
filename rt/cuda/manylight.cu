@@ -11,10 +11,10 @@
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
-	static const bool print_stats = false;
+	static const bool print_stats = true;
 	static const bool export_debug_obj = false;
 	static const bool debugging = false;
-	static const bool synchronize = false;
+	static const bool synchronize = true;
 	static const bool cpu_calculation = true;
 	static const bool pointlight_attenuation = false;
 
