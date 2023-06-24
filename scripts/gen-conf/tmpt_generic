@@ -217,6 +217,15 @@ resolution [RES_W] [RES_H]
 [CORW]material ior 1.450
 [CORW]material brdf lambert
 ###################################################################
+[SPO]load [SPONZAPATH]
+[SPO]
+[SPO]# Skylight
+[SPO]skylight load render-data/skylight-sunset.floats 30
+[SPO]# Materials: light
+[SPO]material select vase_round.001
+[SPO]#material emissive 76 60 20
+[SPO]material emissive 0 0 0
+###################################################################
 [SMIG]load [SANMIGUELPATH]
 [SMIG]
 [SMIG]# Skylight

@@ -2,13 +2,15 @@
 OUTFILE	rtgi-code/scripts/gen-test/script
 
 # Scene
-SIB		\$
-SCENE	sib
+SIB		\#
+#SCENE	sib
 CORB	\#
 #SCENE	corb
 CORS	\#
 #SCENE	cors
 CORW	\#
+SCENE	spo
+SPO		\$
 #SCENE	smig
 SMIG	\#
 
@@ -16,21 +18,23 @@ SMIG	\#
 NOSPECULAR	\#
 
 ALGO_SHORT	ml
-PATHS	2048
+PATHS	65536
 LEN		10
-SPPX	2048
+SPPX	8192
 
 #RES_W	640
 #RES_H	360
-#RES_W	1920
-#RES_H	1080
+RES_W	1920
+RES_H	1080
+#RES_W	1280
+#RES_H	720
 #RES_W	480
 #RES_H	480
 
 #RES_W	220
 #RES_H	360
-RES_W	660
-RES_H	1080
+#RES_W	660
+#RES_H	1080
 
 EXT		.png
 
@@ -47,9 +51,19 @@ EXT		.png
 #AT		-5.05737 -11.9261 -0.341317
 #LOOK	-0.652178 0.074354 0.75441
 
-POS		4
-AT		-10.5903 -11.965 -3.1869
-LOOK	0.93 0.235517 0.282192
+#POS		4
+#AT		-10.5903 -11.965 -3.1869
+#LOOK	0.93 0.235517 0.282192
+
+# look to entrance
+#POS		5
+#AT		10.6862 -11.2444 -1.00029
+#LOOK	-0.986636 -0.014439 0.162297
+
+# look from above
+#POS		6
+#AT		-8.73803 -10.8489 2.77012
+#LOOK	0.875438 0.111294 -0.470342
 
 # Cornell box
 #Position original
@@ -60,6 +74,11 @@ LOOK	0.93 0.235517 0.282192
 #POS		2
 #AT		0 0.75 1.75
 #LOOK	0 0 -1
+
+# Sponza
+POS		1
+AT		-516 300 0
+LOOK	1 0 0
 
 # San Miguel
 #POS		3
@@ -73,13 +92,16 @@ LOOK	0.93 0.235517 0.282192
 #cornell
 #G_MAX	1
 #sibenik
-G_MAX	0.1
+#G_MAX	0.1
+#sponza
+G_MAX	0.00001
+#radius
 #G_MAX	1.5
 
 # ignore VPS
-#VPS		-1
+VPS		-1
 # VPS for WF CPU variant
-VPS		4
+#VPS		4
 
 PLATFORM	basic
 RAYTRACER	embree
@@ -95,6 +117,7 @@ PLATEXT		\$
 #PLATEXT	_cpuprep
 CPUPREP		\#
 
+#ALGO	direct-wf
 #ALGO	photon-mapping-wf
 #ALGO	photon-mapping
 
