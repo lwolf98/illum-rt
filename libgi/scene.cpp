@@ -96,7 +96,7 @@ texture2d<vec4>* load_image4f(const std::filesystem::path &path, const std::file
 	MagickBooleanType has_alpha_channel = MagickGetImageAlphaChannel(img);
 	ColorspaceType colorspace = MagickGetImageColorspace(img);
 	MagickExportImagePixels(img, 0, 0, tex->w, tex->h, "RGBA", FloatPixel, (void*)tex->texel);
-	if (colorspace == RGBColorspace) {
+	if (colorspace == RGBColorspace || colorspace == GRAYColorspace) {
 		#pragma omp parallel for
 		for (int i = 0; i < tex->w*tex->h; ++i) {
 			tex->texel[i].x = pow(tex->texel[i].x, 2.2f);
