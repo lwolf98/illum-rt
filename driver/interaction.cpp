@@ -787,7 +787,7 @@ void eval(const std::string &line) {
 	else ifcmd("echo") {
 		string text;
 		getline(in, text);
-		cout << text << endl;
+		cout << text.substr(1) << endl;
 	}
 	else if (command == "") ;
 	else if (command[0] == '#') ;
