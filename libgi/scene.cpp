@@ -22,6 +22,8 @@
 #include <assimp/mesh.h>
 #include <assimp/material.h>
 
+#include <glm/gtx/matrix_transform_2d.hpp>
+
 // debug
 // #include <png++/png.hpp>
 
@@ -31,7 +33,7 @@
 #include <wand/MagickWand.h>
 #endif
 
-using namespace glm;
+using glm::mat3, glm::mat4;
 using namespace std;
 
 inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
@@ -190,8 +192,8 @@ void scene::remove_modelpath(const std::filesystem::path &p) {
 }
 
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
-glm::mat4x4 to_glm(const aiMatrix4x4 &from) {
-	glm::mat4x4 to;
+mat4 to_glm(const aiMatrix4x4 &from) {
+	mat4 to;
 	
 	to[0][0] = from.a1; to[0][1] = from.b1;  to[0][2] = from.c1; to[0][3] = from.d1;
 	to[1][0] = from.a2; to[1][1] = from.b2;  to[1][2] = from.c2; to[1][3] = from.d2;
@@ -207,36 +209,42 @@ glm::vec4 to_glm_vec4(const aiVector3D &from) {
 
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 // Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
-void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 parent_trafo, glm::mat4 model_trafo, unsigned material_offset, 
+void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
 							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
-	glm::mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
-	glm::mat4 transform = model_trafo * node_trafo;
-	glm::mat4 normal_transform = transpose(inverse(mat3(transform)));
+	mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
+	mat4 transform = model_trafo * node_trafo;
+	mat4 normal_transform = transpose(inverse(mat3(transform)));
 	for (int i = 0; i < node_ai->mNumMeshes; i++) {
 		aiMesh *mesh_ai = scene_ai->mMeshes[node_ai->mMeshes[i]];
-
+		
 		// load mesh data
 		uint32_t material_id = mesh_ai->mMaterialIndex + material_offset;
 		uint32_t index_offset = rtgi_scene->vertices.size();
-
+		
 		if (rtgi_scene->materials[material_id].emissive != vec3(0)) {
 			light_geom.push_back({(int)rtgi_scene->triangles.size(), (int)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
 			light_prims += mesh_ai->mNumFaces;
 		}
 
+		auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
+		aiUVTransform uvt;
+		glm::mat3 uv_trafo(1);
+		if (mat_ai->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_BASE_COLOR, 0), uvt) == AI_SUCCESS)
+			uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
+		
 		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 			vertex vertex;
 			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
 			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
 			vertex.norm = glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i]));
 			if (mesh_ai->HasTextureCoords(0))
-				vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
+				vertex.tc = glm::vec2(uv_trafo * to_glm(mesh_ai->mTextureCoords[0][i]));
 			else
 				vertex.tc = vec2(0,0);
 			rtgi_scene->vertices.push_back(vertex);
 			rtgi_scene->scene_bounds.grow(vertex.pos);
 		}
-
+		
 		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
 			const aiFace &face = mesh_ai->mFaces[i];
 			if (face.mNumIndices == 3) {
@@ -251,7 +259,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, glm::mat4 
 				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
 		}
 	}
-
+	
 	for (int i = 0; i < node_ai->mNumChildren; i++)
 		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene);
 }
@@ -337,7 +345,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	std::vector<std::tuple<int,int,int>> light_geom;
 
     // load meshes
-    mesh_load_process_node(scene_ai->mRootNode, scene_ai, glm::mat4x4(1.0f), trafo, material_offset, light_geom, light_prims, this);
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, this);
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
