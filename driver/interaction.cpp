@@ -85,6 +85,7 @@ const char *prompt = "rtgi > ";
 
 void run(gi_algorithm *algo);
 #ifdef HAVE_GL
+extern float speed_factor;
 void run_sample(gi_algorithm *algo);
 #endif
 
@@ -764,6 +765,16 @@ void eval(const std::string &line) {
 			error("No platform selected, steps are available only in wavefront mode")
 	}
 #endif
+	else ifcmd("move-speed") {
+#ifdef HAVE_GL
+		float speed;
+		in >> speed;
+		if (speed <= 0) error("Invalid speed!");
+		speed_factor = speed;
+#else
+		error("Without GL support there is no preview");
+#endif
+	}
 	else ifcmd("omp") {
 		string sub;
 		in >> sub;

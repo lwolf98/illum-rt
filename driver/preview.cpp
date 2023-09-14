@@ -31,7 +31,7 @@ double delta_time = 0;
 static render_shader *preview_shader;
 static bool update_res = true, alternative_display_mode = true;
 static double old_xpos, old_ypos;
-static float speed_factor = 0.02f;
+float speed_factor = 0.02f;
 
 static void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
 	if (window != preview_window) return;
@@ -59,7 +59,10 @@ static void key_callback(GLFWwindow *window, int key, int scancode, int action, 
 }
 
 static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-	speed_factor = std::max((float) yoffset * 0.005 + speed_factor, 0.001);
+	float factor = 1.125f;
+	if (yoffset < 0) factor = 0.88888888888f;
+	
+	speed_factor = std::max(speed_factor*factor, 0.000001f);
 }
 
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
