@@ -2,11 +2,11 @@ AM_CPPFLAGS = -I$(top_srcdir)
 
 #ifndef RTGI_SKIP_WF
 if have_cmera
-BUILT_SOURCES = primary-steps.h direct-steps.h
+BUILT_SOURCES = direct-steps.h primary-steps.h
 
-primary-steps.h: primary-steps.lisp
+$(srcdir)/primary-steps.h: primary-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
-direct-steps.h: direct-steps.lisp
+$(srcdir)/direct-steps.h: direct-steps.lisp primary-steps.h
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 endif
 #endif
