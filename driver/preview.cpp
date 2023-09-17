@@ -5,6 +5,8 @@
 #include "libgi/global-context.h"
 #include "libgi/gl/shader.h"
 
+#include "debug/pixel.h"
+
 #include "interaction.h"
 #include "cmdline.h"
 
@@ -109,6 +111,29 @@ static void move_view(){
 
 		if (delta_x || delta_y) new_dir = glm::normalize(new_dir);
 	}
+	
+	static bool right_pressed = false;
+	if (glfwGetMouseButton(preview_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+		right_pressed = true;
+
+	if (glfwGetMouseButton(preview_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_RELEASE && right_pressed) {
+		right_pressed = false;
+		if (debug_pixel_x == -1) {
+			auto res = rc->resolution();
+			debug_pixel_x = xpos;
+			debug_pixel_y = res.y - ypos - 1;
+			debug_pixel_single_run_pending = true;
+			std::cout << "Debug pixel set at " << debug_pixel_x << ", " << debug_pixel_y << std::endl;
+			preview_update_in_progress = true;
+			queue_command("run", remove_prev_same_commands);
+		}
+		else {
+			debug_pixel_x = debug_pixel_y = -1;
+			debug_pixel_single_run_pending = false;
+			std::cout << "Debug pixel deactivated" << std::endl;
+		}
+	}
+
 
 	if (new_pos != pos) queue_command("at "   + std::to_string(new_pos.x) + " " + std::to_string(new_pos.y) + " " + std::to_string(new_pos.z));
 	if (new_dir != dir) queue_command("look " + std::to_string(new_dir.x) + " " + std::to_string(new_dir.y) + " " + std::to_string(new_dir.z));
@@ -157,6 +182,7 @@ void preview_render_setup() {
 		uniform int alternative_display_mode;
 
 		uniform ivec2 render_offset;
+		uniform ivec2 debug_pixel;
 		void main()
 		{
 			int x = int(tex_coord.x * w);
@@ -167,6 +193,10 @@ void preview_render_setup() {
 				y = y / offset * offset;
 			}
 
+			if (debug_pixel == ivec2(x,y)) {
+				color = vec4(1,0,0,1);
+				return;
+			}
 			int pos = y * w + x;
 			color =  framebuffer[pos] / framebuffer[pos].w;
 		}
@@ -252,7 +282,8 @@ void render_preview() {
 		}
 
 		move_view();
-
+		
+		preview_shader->uniform("debug_pixel", debug_pixel_x, debug_pixel_y);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 		glfwSwapBuffers(preview_window);
