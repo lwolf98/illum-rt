@@ -102,6 +102,21 @@ heterogeneous inline float fresnel_dielectric(float cos_wi, float ior_medium, fl
 }
 #endif
 
+template<typename V=vec3> heterogeneous pair<V,bool> refract(const V &w_i, V n, float eta) {
+	float cos_theta_i = dot(w_i, n);
+	if (cos_theta_i < 0) {
+		eta = 1.0f/eta;
+		cos_theta_i = -cos_theta_i;
+		n = -n;
+	}
+	float sin2_theta_i = fmaxf(0, 1.0f - cos_theta_i*cos_theta_i);
+	float sin2_theta_t = sin2_theta_i / (eta * eta);
+	if (sin2_theta_t >= 1)
+		return {{0,0,0}, false};
+	float cos_theta_t = sqrt(1.0f - sin2_theta_t);
+	V w_t = -w_i/eta + (cos_theta_i/eta - cos_theta_t) * n;
+	return {w_t, true};
+}
 
 /* 
  * trigonometric helper functions

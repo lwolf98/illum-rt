@@ -35,11 +35,11 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 // #define SIGNIFICANT_RAY_COUNT
 
 vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
+	vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
 #ifdef SIGNIFICANT_RAY_COUNT
-		vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
-		return r==vec3(0) ? vec3(0) : vec3(1);
+	return r==vec3(0) ? vec3(0) : vec3(1);
 #else
-		return path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
+	return r;
 #endif
 }
 
@@ -88,13 +88,15 @@ vec3 simple_pt::path(ray ray) {
 		}
 		
 		// bounce the ray
-		auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
+		auto [w_i, f, pdf, ia] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
 		::ray bounced(hit.x, w_i);
-		if (pdf <= 0.0f) break;
-		throughput *= f * cdot(bounced.d, hit.ns) / pdf;
+		if (pdf <= 0.0f)  break;
+		throughput *= f * absdot(bounced.d, hit.ns) / pdf;
 		check_range(throughput);
-		ray = offset_ray(bounced, hit.ng);
-		
+		if (reflection(ia))            ray = offset_ray(bounced, hit.ng);
+		else if (transmission_out(ia)) ray = offset_ray(bounced, hit.ng);
+		else                           ray = offset_ray(bounced, -hit.ng);
+
 		// apply RR
 		if (i > rr_start) {
 			float xi = uniform_float();
@@ -226,12 +228,14 @@ vec3 pt_nee::path(ray ray) {
 		}
 
 		// bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
-		auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
+		auto [w_i, f, pdf, ia] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
 		::ray bounced(hit.x, w_i);
 		brdf_pdf = pdf;	// for mis in next iteration
-		throughput *= f * cdot(bounced.d, hit.ns) / pdf;
+		throughput *= f * absdot(bounced.d, hit.ns) / pdf;
 		if (pdf <= 0.0f || luma(throughput) <= 0.0f) break;
-		ray = offset_ray(bounced, hit.ng);
+		if (reflection(ia))            ray = offset_ray(bounced, hit.ng);
+		else if (transmission_out(ia)) ray = offset_ray(bounced, hit.ng);
+		else                           ray = offset_ray(bounced, -hit.ng);
 
 		// apply RR
 		if (i > rr_start) {

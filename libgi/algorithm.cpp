@@ -50,7 +50,7 @@ std::tuple<ray,float> gi_algorithm::sample_cosine_distributed_direction(const di
 }
 
 std::tuple<ray,float> gi_algorithm::sample_brdf_distributed_direction(const diff_geom &hit, const ray &to_hit) const {
-	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -to_hit.d, rc->rng.uniform_float2());
+	auto [w_i, f, pdf, t] = hit.mat->brdf->sample(hit, -to_hit.d, rc->rng.uniform_float2());
 	ray sample_ray(hit.x, w_i);
 	return {sample_ray, pdf};
 }

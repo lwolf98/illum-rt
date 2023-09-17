@@ -18,10 +18,44 @@ inline float exponent_from_roughness(float roughness) {
 
 #ifndef RTGI_SKIP_BRDF
 
+struct interaction_type {
+	enum T {
+		undefined = 0,
+		// lobe
+		diffuse  = 0b0001,
+		specular = 0b0010,
+		glossy   = 0b0100,
+		// direction
+		reflection       = 0b0001'0000,
+		transmission_in  = 0b0010'0000,
+		transmission_out = 0b0100'0000,
+		// combinations
+		diffuse_reflection    = diffuse  | reflection,
+		specular_reflection   = specular | reflection,
+		glossy_reflection     = glossy   | reflection,
+		any_transmission      = transmission_out | transmission_in,
+	};
+	unsigned int t;
+	interaction_type(unsigned int t) : t(t) {}
+	friend std::ostream& operator<<(std::ostream &o, interaction_type ia) {
+		bool one = false;
+		#define V(X) if (ia.t & X) { if (one) o << " "; one = true; o << #X; }
+		V(diffuse); V(specular); V(glossy);
+		V(reflection);
+		V(transmission_in); V(transmission_out);
+		#undef V
+		return o;
+	}
+};
+inline bool reflection(interaction_type t) { return t.t & interaction_type::reflection; }
+inline bool transmission(interaction_type t) { return t.t & interaction_type::any_transmission; }
+inline bool transmission_in(interaction_type t) { return t.t & interaction_type::transmission_in; }
+inline bool transmission_out(interaction_type t) { return t.t & interaction_type::transmission_out; }
+
 struct brdf {
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 	//          w_i,f(w_i),pdf(w_i)
-	typedef tuple<vec3,vec3,float> sampling_res;
+	typedef tuple<vec3,vec3,float,interaction_type> sampling_res;
 #endif
 	
 	virtual vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) = 0;
@@ -59,6 +93,24 @@ struct lambertian_reflection : public brdf {
 };
 
 struct perfectly_specular_reflection : public specular_brdf {
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+#endif
+};
+
+struct dielectric_specular_bsdf : public specular_brdf {
+	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+#ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
+	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
+	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
+#endif
+protected:
+	sampling_res sample_r(const diff_geom &geom, const vec3 &w_o, const vec2 &xis, float R);
+};
+
+struct thin_dielectric_specular_bsdf : public dielectric_specular_bsdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 	float pdf(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;

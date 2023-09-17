@@ -9,6 +9,9 @@
 
 #include "libgi/global-context.h"
 
+#include "debug/pixel.h"
+#include "debug/obj_writer.h"
+
 #include "config.h"
 
 #ifdef HAVE_GL
@@ -18,39 +21,87 @@
 using namespace glm;
 using namespace std;
 
+#ifdef WITH_OBJ_DEBUG
+def_obj_debug;
+#endif
+
+/*! Find the closest non-perfectly-specular hitpoint in a given direction.
+ *
+ *  It can happen that sampling the BRDF yields an unreasonable direction
+ *  (due to shading vs geometry normals, eg) and in this cases we terminate
+ *  the specular path and return (via the last tuple element) that the path
+ *  is useless.
+ */
+std::tuple<triangle_intersection,vec3,bool> find_closest_nonspecular(ray &ray, int max_bounces = 8) {
+	auto is = rc->scene.rt->closest_hit(ray);
+	vec3 throughput(1);
+	bool valid_path = true;
+#ifdef WITH_OBJ_DEBUG
+	if (debug)
+		std::cout << "path" << std::endl;
+#endif
+	while (is.valid()) {
+		if (--max_bounces == 0) { throughput = vec3(0); break; }
+		diff_geom hit(is, rc->scene);
+		if (dynamic_cast<specular_brdf*>(hit.mat->brdf)) {
+#ifdef WITH_OBJ_DEBUG
+			if (debug)
+				*ow << obj::line(ray.o, hit.x);
+#endif
+			auto xis = rc->rng.uniform_float2();
+			auto [w_i, f, pdf, _] = hit.mat->brdf->sample(hit, -ray.d, xis);
+			if (pdf == 0) {
+				valid_path = false;
+				break;
+			}
+			throughput *= f / pdf;
+			ray = ::ray(hit.x, w_i);
+			is = rc->scene.rt->closest_hit(ray);
+		}
+		else break;
+	}
+	return {is, throughput, valid_path };
+}
+
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
+#ifdef WITH_OBJ_DEBUG
+	start_obj_debug(x, y, "/tmp/debug.obj");
+	if (debug)
+		*ow << obj::object("path");
+#endif
+
 	vec3 radiance(0,0,0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
-	if (closest.valid()) {
-		diff_geom dg(closest, rc->scene);
-
+	auto [closest,tp,valid] = find_closest_nonspecular(view_ray);
+	if (valid)
+		if (closest.valid()) {
+			diff_geom dg(closest, rc->scene);
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
-		if (dg.mat->emissive != vec3(0)) {
-			radiance = dg.mat->emissive;
-		}
-		else {
-			brdf *brdf = dg.mat->brdf;
-			//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
-			if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(dg, view_ray);
-			else if (sampling_mode == sample_light)     radiance = sample_lights(dg, view_ray);
+			if (dg.mat->emissive != vec3(0)) {
+				radiance = dg.mat->emissive;
+			}
+			else {
+				brdf *brdf = dg.mat->brdf;
+				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
+				if      (sampling_mode == sample_uniform)   radiance = sample_uniformly(dg, view_ray);
+				else if (sampling_mode == sample_light)     radiance = sample_lights(dg, view_ray);
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
-			else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(dg, view_ray);
-			else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(dg, view_ray);
+				else if (sampling_mode == sample_cosine)    radiance = sample_cosine_weighted(dg, view_ray);
+				else if (sampling_mode == sample_brdf)      radiance = sample_brdfs(dg, view_ray);
+#endif
+			}
+#else
+			// todo: compute direct lighting contribution.
+			// delegate to sample_uniformly or sample_lights to implement the actual sampling,
 #endif
 		}
-#else
-		// todo: compute direct lighting contribution.
-		// delegate to sample_uniformly or sample_lights to implement the actual sampling,
-#endif
-	}
 #ifndef RTGI_SKIP_SKY
-	else
-		if (rc->scene.sky)
-			radiance = rc->scene.sky->Le(view_ray);
+		else
+			if (rc->scene.sky)
+				radiance = rc->scene.sky->Le(view_ray);
 #endif
-	return radiance;
+	return radiance*tp;
 }
 
 vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
@@ -80,7 +131,8 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	auto [closest,tp,ok] = find_closest_nonspecular(sample_ray);
+	if (!ok) return vec3(0,0,0);
 	if (closest.valid()) {
 		diff_geom dg(closest, rc->scene);
 		brightness = dg.mat->emissive;
@@ -90,7 +142,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 		brightness = rc->scene.sky->Le(sample_ray);
 #endif
 	// evaluate reflectance
-	return 2*pi * brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * cdot(sample_ray.d, hit.ns);
+	return 2*pi * brightness * tp * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * cdot(sample_ray.d, hit.ns);
 #endif
 }
 
@@ -104,7 +156,8 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 
 	// find intersection and store brightness if it is a light
 	vec3 brightness(0);
-	triangle_intersection closest = rc->scene.rt->closest_hit(sample_ray);
+	auto [closest,tp,ok] = find_closest_nonspecular(sample_ray);
+	if (!ok) return vec3(0,0,0); // NOTE: this introduces bias as we accumulate a black sample!
 	if (closest.valid()) {
 		diff_geom dg(closest, rc->scene);
 		brightness = dg.mat->emissive;
@@ -115,7 +168,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 #endif
 
 	// evaluate reflectance
-	return brightness * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
+	return brightness * tp * hit.mat->brdf->f(hit, -view_ray.d, sample_ray.d) * pi;
 #else
 	// todo: implement importance sampling on the cosine-term
 	return vec3(0);
@@ -182,11 +235,19 @@ vec3 direct_light::sample_lights(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
 vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING_IMPL
-	auto [w_i, f, pdf] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
+	auto [w_i, f, pdf, _] = hit.mat->brdf->sample(hit, -view_ray.d, rc->rng.uniform_float2());
 	ray light_ray(hit.x, w_i);
-	if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
-		if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
-			return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
+	if (f != vec3(0)) {
+		if (auto [is,tp,ok] = find_closest_nonspecular(light_ray); ok)
+			if (is.valid()) {
+				if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
+					return tp * f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
+			}
+#ifndef RTGI_SKIP_SKY
+			else if (rc->scene.sky)
+				return tp * f * rc->scene.sky->Le(light_ray) / pdf;
+#endif
+	}
 	return vec3(0);
 #else
 	// todo: implement importance sampling of the BRDF-term
@@ -223,8 +284,8 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
-	if (closest.valid()) {
+	auto [closest,tp,valid] = find_closest_nonspecular(view_ray);
+	if (valid && closest.valid()) {
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
 			diff_geom dg(closest, rc->scene);
 
@@ -245,17 +306,16 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
 					#endif
 					if (l_col != vec3(0))
-						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max)
+						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max) // TODO why is this not anyhit?
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
 				}
 				else {
-					auto [w_i, f, pdf] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
-					// TODO pdf can be zero, if we dont hit a light, then we divide by zero
-					// check other branch as well
+					auto [w_i, f, pdf, _] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
+					if (pdf == 0 && f == vec3(0)) break; // this will loop forever as balance will become 0 (in case pdf==0 originates from geometry (shading normals))
 					ray light_ray(dg.x, w_i);
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
-						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
+						if (auto [is,tp,ok] = find_closest_nonspecular(light_ray); ok && is.valid())
 							if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								// Need to document this!!!
 								trianglelight tl(rc->scene, is.ref);
@@ -263,7 +323,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 								pdf_light = luma(tl.power()) / rc->scene.light_distribution->integral();
 								pdf_light *= tl.pdf(light_ray, hit_geom);
 								#endif
-								radiance = f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
+								radiance = tp * f * hit_geom.mat->emissive * cdot(dg.ns, w_i);
 							}
 				}
 				// make sure to really be on the safest side possible ;)
@@ -292,7 +352,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 		if (rc->scene.sky)
 			radiance = rc->scene.sky->Le(view_ray);
 #endif
-	return radiance;
+	return radiance*tp;
 #else
 	/* todo: implement MIS for light and brdf sampling.
 	 * the outline is the same as for the non-mis variant, the sampling part differs.
