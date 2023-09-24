@@ -40,6 +40,37 @@ inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
 static bool verbose_scene = false;
 
+void scene::add_modelpath(const std::filesystem::path &p) {
+	if (p.begin() != p.end() && *p.begin() == "~") {
+		filesystem::path mod = getenv("HOME");
+		for (auto it = ++p.begin(); it != p.end(); ++it)
+			mod /= *it;
+		modelpaths.push_back(mod);
+	}
+	else
+		modelpaths.push_back(p);
+}
+
+void scene::remove_modelpath(const std::filesystem::path &p) {
+	if (p.begin() != p.end() && *p.begin() == "~") {
+		filesystem::path mod = getenv("HOME");
+		for (auto it = ++p.begin(); it != p.end(); ++it)
+			mod /= *it;
+		remove(modelpaths.begin(), modelpaths.end(), p);
+	}
+	else
+		remove(modelpaths.begin(), modelpaths.end(), p);
+}
+
+static filesystem::path find_model(const filesystem::path &path) {
+	if (path.is_relative()) {
+		for (auto p : rc->scene.modelpaths)
+			if (exists(p / path))
+				return p / path;
+	}
+	return path;
+}
+
 void magickwand_error(MagickWand *wand, bool crash) {
 	char *description;
 	ExceptionType severity;
@@ -151,7 +182,8 @@ texture2d<vec4>* load_image4f(const std::filesystem::path &path, const std::file
 
 
 
-texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &path) {
+texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &given_path) {
+	auto path = find_model(given_path);
 	cout << "loading hdr texture from floats-file " << path << endl;
 	ifstream in;
 	in.open(path, ios::in | ios::binary);
@@ -169,28 +201,6 @@ texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &path) {
 	return tex;
 }
 	
-void scene::add_modelpath(const std::filesystem::path &p) {
-	if (p.begin() != p.end() && *p.begin() == "~") {
-		filesystem::path mod = getenv("HOME");
-		for (auto it = ++p.begin(); it != p.end(); ++it)
-			mod /= *it;
-		modelpaths.push_back(mod);
-	}
-	else
-		modelpaths.push_back(p);
-}
-
-void scene::remove_modelpath(const std::filesystem::path &p) {
-	if (p.begin() != p.end() && *p.begin() == "~") {
-		filesystem::path mod = getenv("HOME");
-		for (auto it = ++p.begin(); it != p.end(); ++it)
-			mod /= *it;
-		remove(modelpaths.begin(), modelpaths.end(), p);
-	}
-	else
-		remove(modelpaths.begin(), modelpaths.end(), p);
-}
-
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 mat4 to_glm(const aiMatrix4x4 &from) {
 	mat4 to;
@@ -266,16 +276,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 
 void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
 	// find file
-	filesystem::path modelpath;
-	if (path.is_relative()) {
-		for (auto p : modelpaths)
-			if (exists(p / path)) {
-				modelpath = p / path;
-				break;
-			}
-	}
-	else
-		modelpath = path;
+	filesystem::path modelpath = find_model(path);
 	if (modelpath == "")
 		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
     // load from disk
