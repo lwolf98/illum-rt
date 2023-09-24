@@ -223,7 +223,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
 	mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 	mat4 transform = model_trafo * node_trafo;
-	mat4 normal_transform = transpose(inverse(mat3(transform)));
+	mat3 normal_transform = transpose(inverse(mat3(transform)));
 	for (int i = 0; i < node_ai->mNumMeshes; i++) {
 		aiMesh *mesh_ai = scene_ai->mMeshes[node_ai->mMeshes[i]];
 		
@@ -246,7 +246,7 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 			vertex vertex;
 			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
 			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-			vertex.norm = glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i]));
+			vertex.norm = normalize(glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i])));
 			if (mesh_ai->HasTextureCoords(0))
 				vertex.tc = glm::vec2(uv_trafo * to_glm(mesh_ai->mTextureCoords[0][i]));
 			else
@@ -262,6 +262,14 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 				triangle.a = face.mIndices[0] + index_offset;
 				triangle.b = face.mIndices[1] + index_offset;
 				triangle.c = face.mIndices[2] + index_offset;
+				// test if geom normal agrees with shading normals
+				// if not, flip winding order
+				auto a = rtgi_scene->vertices[triangle.a];
+				auto b = rtgi_scene->vertices[triangle.b];
+				auto c = rtgi_scene->vertices[triangle.c];
+				if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+					std::swap(triangle.b, triangle.c);
+				// append
 				triangle.material_id = material_id;
 				rtgi_scene->triangles.push_back(triangle);
 			}
