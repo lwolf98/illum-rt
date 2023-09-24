@@ -436,6 +436,46 @@ void scene::use(individual_ray_tracer *new_rt) {
 	rt = new_rt;
 }
 
+void scene::print_memory_stats() {
+	uint64_t mesh = 0;
+	mesh += sizeof(vertex)*vertices.size();
+	mesh += sizeof(triangle)*triangles.size();
+	mesh += sizeof(::material)*materials.size();
+	uint64_t mesh_r = 0;
+	mesh_r += sizeof(vertex)*vertices.capacity();
+	mesh_r += sizeof(triangle)*triangles.capacity();
+	mesh_r += sizeof(::material)*materials.capacity();
+	uint64_t texs = 0;
+	for (auto &m : materials)
+		if (m.albedo_tex)
+			texs += m.albedo_tex->size_in_bytes();
+	uint64_t lights = 0, lights_r = 0;
+	if (sky) {
+		lights += sky->tex->size_in_bytes();
+		lights_r += sky->tex->size_in_bytes();
+		auto [s,c] = sky->distribution->size_in_bytes();
+		lights += s;
+		lights_r += c;
+	}
+	lights += this->lights.size() * (sizeof(light) + sizeof(light*));
+	lights_r += this->lights.capacity() * (sizeof(light) + sizeof(light*));
+
+	auto format = [](uint64_t mem) {
+		vector<string> suffixes = { "", "K", "M", "G" };
+		int s = 0;
+		while (mem > 10'000) {
+			mem /= 1024;
+			s++;
+			if (s == suffixes.size()-1) break;
+		}
+		ostringstream oss; oss << mem << " " << suffixes[s];
+		return oss.str();
+	};
+	cout << "Scene memory consumption" << endl;
+	cout << "    meshes:   " << setw(10) << format(mesh) << " (" << format(mesh_r) << ")" << endl;
+	cout << "    textures: " << setw(10) << format(texs) << endl;
+	cout << "    lights:   " << setw(10) << format(lights) << " (" << format(lights_r) << ")" << endl;
+}
 
 
 #ifndef RTGI_SKIP_BRDF

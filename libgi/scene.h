@@ -49,6 +49,9 @@ struct texture2d {
 	const T& operator[](glm::uvec2 xy) const {
 		return value(xy.x, xy.y);
 	}
+	uint32_t size_in_bytes() {
+		return w*h*sizeof(T);
+	}
 };
 
 texture2d<vec3>* load_image3f(const std::filesystem::path &path, bool crash_on_error = true);
@@ -174,6 +177,7 @@ struct scene {
 	//! The scene takes ownership of the RT, deletes it upon destruction and when taking ownership of a new RT.
 	void release_rt();
 	void use(individual_ray_tracer *new_rt);
+	void print_memory_stats();
 };
 
 // std::vector<triangle> scene_triangles();

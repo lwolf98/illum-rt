@@ -795,6 +795,9 @@ void eval(const std::string &line) {
 		else
 			error("No such stats subcommand");
 	}
+	else ifcmd("mem-stats") {
+		scene.print_memory_stats();
+	}
 	else ifcmd("echo") {
 		string text;
 		getline(in, text);

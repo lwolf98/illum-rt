@@ -28,6 +28,10 @@ public:
 
 	float value_at(int index) const { return f[index]; }
 	int size() const { return f.size(); }
+	std::pair<uint32_t,uint32_t> size_in_bytes() const {
+		return {(f.size()+cdf.size()) * sizeof(float),
+			    (f.capacity()+cdf.capacity()) * sizeof(float)};
+	}
 	
 #ifndef RTGI_SKIP_SKY
 	struct linearly_interpolated_01 {
@@ -61,5 +65,19 @@ public:
 	float integral() const { assert(marginal); return marginal->integral(); }
 	float unit_integral() const { assert(marginal); return marginal->integral() / (w*h); }
 	void debug_out(const std::string &p, int n) const;
+
+	std::pair<uint32_t,uint32_t> size_in_bytes() {
+		uint32_t size = conditional.size()*sizeof(distribution_1d),
+				 cap = conditional.capacity()*sizeof(distribution_1d);
+		for (const auto &c : conditional) {
+			auto [sz,cp] = c.size_in_bytes();
+			size += sz;
+			cap += cp;
+		}
+		auto [sz,cp] = marginal->size_in_bytes();
+		size += sz;
+		cap += cp;
+		return {size, cap};
+	}
 };
 #endif
