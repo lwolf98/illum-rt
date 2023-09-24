@@ -120,9 +120,9 @@ public:
 };
 
 
-static inline std::ostream& operator<<(std::ostream &o, const vec2 &v) { o << v.x << ", " << v.y; return o; }
-static inline std::ostream& operator<<(std::ostream &o, const vec3 &v) { o << v.x << ", " << v.y << ", " << v.z; return o; }
-static inline std::ostream& operator<<(std::ostream &o, const vec4 &v) { o << v.x << ", " << v.y << ", " << v.z << ", " << v.w; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec2 &v) { o << v.x << " " << v.y; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec3 &v) { o << v.x << " " << v.y << " " << v.z; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec4 &v) { o << v.x << " " << v.y << " " << v.z << " " << v.w; return o; }
 
-static inline std::ostream& operator<<(std::ostream &o, const glm::ivec2 &v) { o << v.x << ", " << v.y; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const glm::ivec2 &v) { o << v.x << " " << v.y; return o; }
 

@@ -67,13 +67,20 @@
 #endif
 #include <glm/gtx/string_cast.hpp>
 
-inline std::istream& operator>>(std::istream &in, vec3 &x) {
+using namespace glm;
+using namespace std;
+
+inline istream& operator>>(istream &in, vec3 &x) {
 	in >> x.x >> x.y >> x.z;
 	return in;
 }
 
-using namespace glm;
-using namespace std;
+static string remove_surrounding_space(const std::string &str) {
+	string s = str;
+    s.erase(s.find_last_not_of("\t ") + 1, string::npos);
+    s.erase(0, std::min(s.find_first_not_of("\t "), str.size() - 1));
+	return s;
+}
 
 const char *prompt = "rtgi > ";
 
@@ -595,8 +602,8 @@ void eval(const std::string &line) {
 		command = cmd;
 		ifcmd("select") {
 			string name;
-			in >> name;
-			check_in_complete("Only a single string (no whitespace) accepted");
+			getline(in, name);
+			name = remove_surrounding_space(name);
 			material *m = nullptr; for (auto &mtl : scene.materials) if (mtl.name == name) { m = &mtl; break; }
 			if (!m) error("No material called '" << name << "'");
 			selected_mat = m;
