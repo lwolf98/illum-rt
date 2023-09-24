@@ -384,6 +384,8 @@ void scene::compute_light_distribution() {
 		n++;
 		sky->build_distribution();
 		sky->scene_bounds(scene_bounds);
+		if (verbose_scene)
+			std::cout << "Skylight power " << sky->power() << std::endl;
 	}
 #endif
 	std::vector<float> power(n);
@@ -575,7 +577,7 @@ vec3 skylight::Le(const ray &ray) const {
 }
 
 vec3 skylight::power() const {
-	return vec3(pi * scene_radius * scene_radius * distribution->unit_integral());
+	return vec3(pi * scene_radius * scene_radius * distribution->unit_integral() * intensity_scale);
 }
 
 
