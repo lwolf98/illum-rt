@@ -5,6 +5,7 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 #include "libgi/timer.h"
+#include "libgi/denoise.h"
 
 #include "libgi/global-context.h"
 
@@ -64,6 +65,15 @@ void run_sample(gi_algorithm *algo) {
 		
 		preview_finalized = true;
 		algo->finalize_frame();
+		if (rc->enable_denoising) {
+			if (cmdline.verbose)
+				std::cout << "INFO: Frame denoised" << std::endl;
+			denoise(rc->framebuffer.color.w, rc->framebuffer.color.h, rc->framebuffer.color.data, rc->albedo_valid ? rc->framebuffer_albedo.color.data : nullptr, rc->normal_valid ? rc->framebuffer_normal.color.data : nullptr, true);
+			if (preview_window) {
+				preview_framebuffer->resize(rc->resolution().x * rc->resolution().y, rc->framebuffer.color.data);
+				glFinish();
+			}
+		}
 	}
 
 	auto end = chrono::high_resolution_clock::now();
@@ -81,9 +91,18 @@ void run(gi_algorithm *algo) {
 	algo->prepare_frame();
 	test_camrays(rc->scene.camera);
 	rc->framebuffer.clear();
+	rc->framebuffer_albedo.clear();
+	rc->framebuffer_normal.clear();
 
 	algo->compute_samples();
 	algo->finalize_frame();
+
+	if (rc->enable_denoising) {
+		auto begin = std::chrono::high_resolution_clock::now();
+		denoise(rc->framebuffer.color.w, rc->framebuffer.color.h, rc->framebuffer.color.data, rc->albedo_valid ? rc->framebuffer_albedo.color.data : nullptr, rc->normal_valid ? rc->framebuffer_normal.color.data : nullptr, true);
+		auto end = std::chrono::high_resolution_clock::now();
+		std::cout << "Denoising took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+	}
 
 	rc->framebuffer.png().write(cmdline.outfile);
 }

@@ -19,6 +19,6 @@ endif
 #endif
 
 #ifndef RTGI_SKIP_WF
-libcputracing_a_SOURCES += bounce.cpp preprocessing.cpp wavefront.cpp
-noinst_HEADERS += bounce.h platform.h preprocessing.h wavefront.h
+libcputracing_a_SOURCES += bounce.cpp denoise.cpp preprocessing.cpp wavefront.cpp
+noinst_HEADERS += bounce.h denoise.h platform.h preprocessing.h wavefront.h
 #endif

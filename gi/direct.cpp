@@ -77,6 +77,13 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 	if (valid)
 		if (closest.valid()) {
 			diff_geom dg(closest, rc->scene);
+
+			// denoising example
+			if (rc->enable_denoising) {
+				rc->framebuffer_normal.add(x, y, dg.ns);
+				rc->framebuffer_albedo.add(x, y, dg.albedo());
+			}
+
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
@@ -258,6 +265,19 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 }
 #endif
 
+void direct_light::finalize_frame() {
+	if (rc->enable_denoising) {
+		rc->framebuffer_albedo.color.for_each([](unsigned int x, unsigned int y) {
+			rc->framebuffer_albedo.color.data[y * rc->framebuffer_albedo.color.w + x] /= rc->sppx;
+		});
+		rc->albedo_valid = true;
+		rc->framebuffer_normal.color.for_each([](unsigned int x, unsigned int y) {
+			rc->framebuffer_normal.color.data[y * rc->framebuffer_normal.color.w + x] /= rc->sppx;
+		});
+		rc->normal_valid = true;
+	}
+}
+
 bool direct_light::interprete(const std::string &command, std::istringstream &in) {
 	string value;
 	if (command == "is") {
@@ -288,7 +308,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	if (valid && closest.valid()) {
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
 			diff_geom dg(closest, rc->scene);
-
+			
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.mat->emissive;
 			}
@@ -343,6 +363,11 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				#else
 				radiance /= (pdf_brdf + pdf_light); // only one will be != 0 here
 				#endif
+			}
+			
+			if (rc->enable_denoising) {
+				rc->framebuffer_normal.add(x, y, dg.ns);
+				rc->framebuffer_albedo.add(x, y, dg.albedo());
 			}
 			break;
 		}
@@ -467,6 +492,14 @@ namespace wf {
 		sampling_steps.push_back(find_light);
 		sampling_steps.push_back(integrate);
 
+		// For denoising
+		auto *hit_albedo = rc->platform->step<add_hitpoint_albedo_to_framebuffer>();
+		auto *hit_normal = rc->platform->step<add_hitpoint_normal_to_framebuffer>();
+		hit_albedo->use(camrays);
+		hit_normal->use(camrays);
+		sampling_steps.push_back(hit_albedo);
+		sampling_steps.push_back(hit_normal);
+		
 #ifdef HAVE_GL
 		if (preview_window) {
 			auto *copy_prev = rc->platform->step<copy_to_preview>();

@@ -30,6 +30,7 @@ namespace wf
 			}
 		};
 	}
+	//This should be combined with the initialize_framebuffer step
 
 	class download_framebuffer : public step
 	{
@@ -133,6 +134,65 @@ namespace wf
 		{
 		public:
 			using wf::add_hitpoint_albedo::add_hitpoint_albedo;
+			RD *sample_rays = nullptr;
+
+			bool properly_wired()
+			{
+				return sample_rays;
+			}
+
+			void use(raydata *sample_rays)
+			{
+				this->sample_rays = dynamic_cast<RD *>(sample_rays);
+			}
+		};
+	}
+	//This should be combined with the add_hitpoint_albedo step
+
+	class add_hitpoint_albedo_to_framebuffer : public step
+	{
+	public:
+		static constexpr char id[] = "add hitpoint albedo secondary";
+
+		virtual void use(raydata *sample_rays) = 0;
+	};
+	namespace wire
+	{
+
+		template <typename RD>
+		class add_hitpoint_albedo_to_framebuffer : public wf::add_hitpoint_albedo_to_framebuffer
+		{
+		public:
+			using wf::add_hitpoint_albedo_to_framebuffer::add_hitpoint_albedo_to_framebuffer;
+			RD *sample_rays = nullptr;
+
+			bool properly_wired()
+			{
+				return sample_rays;
+			}
+
+			void use(raydata *sample_rays)
+			{
+				this->sample_rays = dynamic_cast<RD *>(sample_rays);
+			}
+		};
+	}
+
+	class add_hitpoint_normal_to_framebuffer : public step
+	{
+	public:
+		static constexpr char id[] = "add hitpoint normal secondary";
+
+		virtual void use(raydata *sample_rays) = 0;
+	};
+	namespace wire
+	{
+
+		template <typename RD>
+		class add_hitpoint_normal_to_framebuffer : public wf::add_hitpoint_normal_to_framebuffer
+		{
+		public:
+			using wf::add_hitpoint_normal_to_framebuffer::add_hitpoint_normal_to_framebuffer;
 			RD *sample_rays = nullptr;
 
 			bool properly_wired()
