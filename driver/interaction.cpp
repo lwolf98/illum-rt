@@ -559,6 +559,25 @@ void eval(const std::string &line) {
 #endif
 		uc.accel_touched_at = uc.cmdid;
 	}
+	else ifcmd("denoise") {
+		string option;
+		in >> option;
+		if (option == "on") {
+#ifdef HAVE_LIBOPENIMAGEDENOISE
+			rc->enable_denoising = true;
+#else
+			std::cout << "Denoising not available: OpenImageDenoise library not found" << std::endl;
+#endif
+		}
+		else if (option == "off") {
+			rc->enable_denoising = false;
+			rc->albedo_valid = false;
+			rc->normal_valid = false;
+		}
+		else
+			error("Invalid option for denoise, valid are on/off");
+	}
+
 	else ifcmd("sppx") {
 		int sppx;
 		in >> sppx;

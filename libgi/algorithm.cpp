@@ -148,6 +148,8 @@ void recursive_algorithm::next_preview_offset() {
 
 void recursive_algorithm::prepare_frame() {
 	rc->framebuffer.clear();
+	rc->framebuffer_albedo.clear();
+	rc->framebuffer_normal.clear();
 	current_preview_offset = glm::ivec2(0);
 	gi_algorithm::prepare_frame();
 	assert(rc->scene.rt != nullptr);

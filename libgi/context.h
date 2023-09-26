@@ -24,9 +24,20 @@ struct render_context {
 	unsigned int sppx = 1;
 	unsigned int preview_offset = 1;
 	wf::platform *platform = nullptr;
-	render_context() : framebuffer(scene.camera.w, scene.camera.h) {
+
+	bool enable_denoising = false;
+	// Store albedo information for denoising. Values need to be in the range of [0, 1]. Don't forget to set albedo_valid if used.
+	::framebuffer framebuffer_albedo;
+	bool albedo_valid = false;
+	// Store normal information for denoising. Values need to be in the range of [-1, 1]. The vectors can be of arbitrary length, world-space or view-space-aligned. Don't forget to set normal_valid if used.
+	::framebuffer framebuffer_normal;
+	bool normal_valid = false;
+
+	render_context() : framebuffer(scene.camera.w, scene.camera.h), framebuffer_albedo(scene.camera.w, scene.camera.h), framebuffer_normal(scene.camera.w, scene.camera.h) {
 		call_at_resolution_change[&framebuffer] = [this](int w, int h) { framebuffer.resize(w, h); };
 		call_at_resolution_change[&scene] = [this](int w, int h) { scene.camera.update_frustum(scene.camera.fovy, w, h); };
+		call_at_resolution_change[&framebuffer_albedo] = [this](int w, int h) { framebuffer_albedo.resize(w, h); };
+		call_at_resolution_change[&framebuffer_normal] = [this](int w, int h) { framebuffer_normal.resize(w, h); };
 	}
 
 	glm::ivec2 resolution() const {

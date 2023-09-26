@@ -10,7 +10,7 @@ protected:
 	int rr_start = 2;  // start RR after this many unrestricted bounces
 	enum class bounce { uniform, cosine, brdf } bounce = bounce::brdf;
 
-	virtual vec3 path(ray view_ray);
+	virtual vec3 path(ray view_ray, int x, int y);
 public:
 	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
 	bool interprete(const std::string &command, std::istringstream &in) override;
@@ -18,7 +18,7 @@ public:
 
 #ifndef RTGI_SKIP_PT
 class pt_nee : public simple_pt {
-	vec3 path(ray view_ray) override;
+	vec3 path(ray view_ray, int x, int y) override;
 	std::tuple<ray,vec3,float> sample_light(const diff_geom &hit);
 // 	bool mis = true;
 	bool mis = false;

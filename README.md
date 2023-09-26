@@ -116,3 +116,34 @@ Dieser Zweig im Code ist für die Vorlesung ausmaskiert und primär für Examens
 
 Die verwendeten AABBs (bisher nur für Binary BVHs) können mit dem Kommando `bvh export TIEFE DATEINAME.obj` als OBJ-Datei exportiert, und in Blender zur Veranschaulichung importiert werden.
 Hierbei muss das export Kommando nach dem `commit` stehen. Wenn beim Import in Blender die Einstellungen `Split by Group` gesetzt wird, ist es möglich die verschiedenen Tiefen/Level der BVH ein- und auszublenden. Mit `Z` kann in Blender zwischen Solid und Wireframe Ansicht gewechselt werden.
+
+## Denoising
+
+Mit OpenImageDenoise können Bilder und Live-Previews nochmal entrauscht werden. Dazu kann im Skript "denoise on/off" verwendet werden. Um gute Bilder zu erzeugen sollten aber zusätzlich Albedo- und Normalendaten erstellt werden, die dann beim Denoising verwendet werden. Dazu muss folgendes in den Algorithmus eingebaut werden
+
+1. Albedo- und Normalenbuffers beim Rendern befüllen:
+
+    ```cpp
+        if(rc->enable_denoising) {
+            rc->framebuffer_albedo.add(x, y, dg.ns);
+            rc->framebuffer_normal.add(x, y, dg.albedo());
+        }
+    ```
+
+2. In der finalize_frame() die Framebuffer normalisieren und für das Denoising als bereit markieren
+
+    ```cpp
+        if (rc->enable_denoising) {
+            rc->framebuffer_albedo.color.for_each([](unsigned int x, unsigned int y) {
+                rc->framebuffer_albedo.color.data[y * rc->framebuffer_albedo.color.w + x] /= rc->sppx;
+            });
+            rc->albedo_valid = true;
+            rc->framebuffer_normal.color.for_each([](unsigned int x, unsigned int y) {
+                rc->framebuffer_normal.color.data[y * rc->framebuffer_normal.color.w + x] /= rc->sppx;
+            });
+            rc->normal_valid = true;
+        }
+    ```
+
+Für die Algos "direct" und "direct-wf" ist das Denoising schon implementiert, gerne mal in gi/direct.cpp nachschauen und ausprobieren.
+Für Wavefront-Algos gibt es zwei Hilfssteps, die das befüllen der Framebuffer für einen erledigen, in der Regel sollte das jedoch nicht in eigenen Steps sondern während dem Shading in den eigenen Steps passieren.

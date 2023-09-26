@@ -93,6 +93,10 @@ AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
 AS_IF([test x$have_embree = xyes], [], [AC_MSG_WARN([Compiling without Embree support: CPU tracing will be slow])])
 #endif
 
+have_oidn=yes
+AC_CHECK_LIB([OpenImageDenoise], [main], [], [have_oidn=no])
+AM_CONDITIONAL([have_oidn], [test x$have_oidn = xyes])
+
 ## 
 ## More libs and tools
 ## 

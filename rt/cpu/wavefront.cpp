@@ -2,6 +2,7 @@
 #include "platform.h"
 #include "preprocessing.h"
 #include "bounce.h"
+#include "denoise.h"
 #include "libgi/util.h"
 #include "libgi/timer.h"
 
@@ -79,8 +80,13 @@ namespace wf {
 			auto res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x)
+				for (int x = 0; x < res.x; ++x) {
 					rc->framebuffer.color(x,y) = vec4(0,0,0,0);
+					if (rc->enable_denoising) {
+						rc->framebuffer_albedo.color(x,y) = vec4(0,0,0,0);
+						rc->framebuffer_normal.color(x,y) = vec4(0,0,0,0);
+					}
+				}
 		}
 
 		void batch_cam_ray_setup_cpu::run() {
@@ -117,8 +123,15 @@ namespace wf {
 			auto res = rc->resolution();
 			#pragma omp parallel for
 			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x)
+				for (int x = 0; x < res.x; ++x) {
 					rc->framebuffer.color(x,y) /= rc->framebuffer.color(x,y).w;
+					if (rc->enable_denoising) {
+						rc->framebuffer_albedo.color(x,y) /= rc->framebuffer_albedo.color(x,y).w;
+						rc->albedo_valid = true;
+						rc->framebuffer_normal.color(x,y) /= rc->framebuffer_normal.color(x,y).w;
+						rc->normal_valid = true;
+					}
+				}
 		}
 
 		void copy_to_preview::run() {
@@ -188,6 +201,8 @@ namespace wf {
 			register_wf_step_by_id(, compute_light_distribution);
 			register_wf_step_by_id(, sample_light_dir);
 			register_wf_step_by_id(, integrate_light_sample);
+			register_wf_step_by_id(, add_hitpoint_albedo_to_framebuffer);
+			register_wf_step_by_id(, add_hitpoint_normal_to_framebuffer);
 
 			timer = new wf::cpu::timer;
 		}

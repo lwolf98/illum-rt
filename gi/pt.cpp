@@ -35,7 +35,7 @@ static void record_ray(int bounce_and_kind, const ray &ray) {}
 // #define SIGNIFICANT_RAY_COUNT
 
 vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
-	vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)));
+	vec3 r = path(cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f)), x, y);
 #ifdef SIGNIFICANT_RAY_COUNT
 	return r==vec3(0) ? vec3(0) : vec3(1);
 #else
@@ -54,7 +54,7 @@ vec3 simple_pt::sample_pixel(uint32_t x, uint32_t y) {
 #define assert_valid_pdf(x) \
 		{assert(x>0); assert(std::isfinite(x));}
 
-vec3 simple_pt::path(ray ray) {
+vec3 simple_pt::path(ray ray, int x, int y) {
 #ifdef RTGI_SKIP_SIMPLE_PT_IMPL
 	// TODO implement the first variant of the PT algorithm (and later on, add RR)
 	// Layout:
@@ -80,7 +80,11 @@ vec3 simple_pt::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc->scene);
-		
+		if (rc->enable_denoising) {
+			rc->framebuffer_normal.add(x, y, hit.ns);
+			rc->framebuffer_albedo.add(x, y, hit.albedo());
+		}
+	
 		// if it is a light, add the light's contribution
 		if (hit.mat->emissive != vec3(0)) {
 			radiance = throughput * hit.mat->emissive;
@@ -157,7 +161,7 @@ bool simple_pt::interprete(const std::string &command, std::istringstream &in) {
 // ----------------------- pt with next event estimation -----------------------
 //
 
-vec3 pt_nee::path(ray ray) {
+vec3 pt_nee::path(ray ray, int x, int y) {
 	vec3 radiance(0);
 #ifdef RTGI_SKIP_PT_IMPL
 	// Start by implementing PT with NEE
@@ -187,7 +191,11 @@ vec3 pt_nee::path(ray ray) {
 			break;
 		}
 		diff_geom hit(closest, rc->scene);
-
+		if (rc->enable_denoising) {
+			rc->framebuffer_normal.add(x, y, hit.ns);
+			rc->framebuffer_albedo.add(x, y, hit.albedo());
+		}
+	
 		// if it is a light AND we have not bounced yet, add the light's contribution
 		if (i == 0 && hit.mat->emissive != vec3(0)) {
 			radiance += throughput * hit.mat->emissive;
