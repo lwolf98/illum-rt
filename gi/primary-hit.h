@@ -26,6 +26,13 @@ public:
 };
 #endif
 
+#ifndef RTGI_SKIP_DEBUGALGO
+class info_display : public recursive_algorithm {
+public:
+	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
+};
+#endif
+
 #ifndef RTGI_SKIP_WF
 #include "gi/primary-steps.h"
 namespace wf {

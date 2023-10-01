@@ -14,6 +14,8 @@
 
 #include "libgi/global-context.h"
 
+#include "debug/pixel.h"
+
 using namespace glm;
 using namespace std;
 
@@ -58,6 +60,22 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 		// todo: implement local illumination via the BRDF
 		radiance = dg.albedo();
 #endif
+	}
+	return radiance;
+}
+#endif
+
+#ifndef RTGI_SKIP_DEBUGALGO
+vec3 info_display::sample_pixel(uint32_t x, uint32_t y) {
+	vec3 radiance(0);
+	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
+	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+	if (closest.valid()) {
+		diff_geom dg(closest, rc->scene);
+		if (debug_pixel(x, y)) {
+			cout << "Material: '" << dg.mat->name << "'" << endl;
+		}
+		radiance = dg.albedo();
 	}
 	return radiance;
 }

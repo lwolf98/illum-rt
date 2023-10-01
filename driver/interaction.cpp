@@ -416,6 +416,9 @@ void eval(const std::string &line) {
 		in >> name;
 		gi_algorithm *a = nullptr;
 		if (name == "primary")      a = new primary_hit_display;
+#ifndef RTGI_SKIP_DEBUGALGO
+		if (name == "info")         a = new info_display;
+#endif
 #ifndef RTGI_SKIP_WF
 #define select_wf(X) if (!rc->platform) error("Cannot select wf algorithm without an active platform") else a = new X
 		else if (name == "primary-wf") {
