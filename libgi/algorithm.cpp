@@ -63,16 +63,27 @@ static std::string timediff(unsigned ms) {
 		ms /= 1000;
 		if (ms > 60) {
 			ms /= 60;
-			if (ms > 60) {
-				return "hours";
-			}
-			else return std::to_string((int)floor(ms)) + " min";
+			if (ms > 121) return "hours";
+			else return std::to_string((int)floor(ms+0.5)) + " min";
 		}
-		else {
-			return std::to_string((int)ms) + " sec";
-		}
+		else return std::to_string((int)(ms+0.5)) + " sec";
 	}
 	else return std::to_string(ms) + " ms";
+}
+static std::string timediff_when(unsigned ms) {
+	if (ms > 2000) {
+		ms /= 1000;
+		if (ms > 200) {
+			ms /= 60;
+			auto done = std::chrono::system_clock::now() + std::chrono::milliseconds(ms*60*1000);
+			auto tt = std::chrono::system_clock::to_time_t(done);
+			auto loc = std::localtime(&tt);
+			char doneat[6];
+			strftime(doneat, 6, "%H:%M", loc);
+			return std::string(", check back at ") + doneat;
+		}
+	}
+	return "";
 }
 
 /*  Implementation for "one path at a time" traversal on the CPU over the complete image.
@@ -92,7 +103,7 @@ void recursive_algorithm::compute_samples() {
 									   });
 		if (current_sample_index == 0) {
 			auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-			std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << std::endl;	
+			std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << timediff_when(delta_ms*(rc->sppx-1)) << std::endl;	
 		}
 	}
 
