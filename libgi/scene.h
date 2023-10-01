@@ -154,6 +154,10 @@ struct scene {
 	::camera camera;
 	vec3 up;
 	aabb scene_bounds;
+
+	//! meshes with this material will not be loaded
+	std::vector<std::string> mtl_blacklist;
+
 	const ::material material(uint32_t triangle_index) const {
 		return materials[triangles[triangle_index].material_id];
 	}

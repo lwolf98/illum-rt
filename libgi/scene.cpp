@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <algorithm>
 #include <filesystem>
 #include <glm/glm.hpp>
 #include <assimp/Importer.hpp>
@@ -230,13 +231,18 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 		// load mesh data
 		uint32_t material_id = mesh_ai->mMaterialIndex + material_offset;
 		uint32_t index_offset = rtgi_scene->vertices.size();
+		auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
+        
+		aiString name_ai;
+		mat_ai->Get(AI_MATKEY_NAME, name_ai);
+		if (any_of(rtgi_scene->mtl_blacklist.begin(), rtgi_scene->mtl_blacklist.end(), [&name_ai](string n) { return n == name_ai.C_Str(); }))
+			continue;
 		
 		if (rtgi_scene->materials[material_id].emissive != vec3(0)) {
 			light_geom.push_back({(int)rtgi_scene->triangles.size(), (int)(rtgi_scene->triangles.size()+mesh_ai->mNumFaces), material_id});
 			light_prims += mesh_ai->mNumFaces;
 		}
 
-		auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
 		aiUVTransform uvt;
 		glm::mat3 uv_trafo(1);
 		if (mat_ai->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_BASE_COLOR, 0), uvt) == AI_SUCCESS)

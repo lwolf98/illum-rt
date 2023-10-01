@@ -82,6 +82,12 @@ static string remove_surrounding_space(const std::string &str) {
 	return s;
 }
 
+static string read_rest_of_line(std::istream &in) {
+	string name;
+	getline(in, name);
+	return remove_surrounding_space(name);
+}
+
 const char *prompt = "rtgi > ";
 
 #define ifcmd(c) if (command==c)
@@ -620,16 +626,20 @@ void eval(const std::string &line) {
 		check_in("Syntax error, requires material name, command and subsequent arguments");
 		command = cmd;
 		ifcmd("select") {
-			string name;
-			getline(in, name);
-			name = remove_surrounding_space(name);
+			string name = read_rest_of_line(in);
 			material *m = nullptr; for (auto &mtl : scene.materials) if (mtl.name == name) { m = &mtl; break; }
 			if (!m) error("No material called '" << name << "'");
 			selected_mat = m;
 			return;
 		}
+		ifcmd("blacklist") {
+			rc->scene.mtl_blacklist.push_back(read_rest_of_line(in));
+			return;
+		}
+
 		if (!selected_mat)
 			error("No material selected");
+
 		ifcmd("albedo") {
 			in >> tmp;
 			check_in_complete("Expects a color triplet");
