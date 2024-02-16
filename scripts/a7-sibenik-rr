@@ -69,7 +69,7 @@ algo simple-pt
 #sppx 2000
 #path rr-start 3
 #path bounce brdf
-#outfile a8-sibenik-RR-3.png
+#outfile a7-sibenik-RR-3.png
 #run
 #stats print
 #stats clear
@@ -79,7 +79,7 @@ algo simple-pt
 path bounce brdf
 path len 10
 path rr-start 10
-outfile a8-sibenik-RR-1.png
+outfile a7-sibenik-RR-1.png
 run
 echo >>>> WITHOUT RR @ 250sppx
 stats print
@@ -87,7 +87,7 @@ stats clear
 
 # --------
 path rr-start 2
-outfile a8-sibenik-RR-2.png
+outfile a7-sibenik-RR-2.png
 run
 echo >>>> WITH RR @ 250sppx
 stats print

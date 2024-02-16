@@ -46,8 +46,10 @@
 #endif
 #endif
 
+#ifndef RTGI_SKIP_BVH
 #ifdef HAVE_LIBEMBREE3
 #include "rt/cpu/embree.h"
+#endif
 #endif
 
 #include "libgi/timer.h"
@@ -840,6 +842,7 @@ void eval(const std::string &line) {
 	else ifcmd("echo") {
 		string text;
 		getline(in, text);
+		if (text == "") text = " ";
 		cout << text.substr(1) << endl;
 	}
 	else if (command == "") ;

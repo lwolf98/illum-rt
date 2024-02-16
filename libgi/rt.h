@@ -33,13 +33,13 @@ struct ray {
 /*! \brief A vertex is a point in space with associated normal and texture coordinate.
  */
 struct vertex {
-	vec3 pos;
-	vec3 norm;
-	vec2 tc;
+	vec3 pos;   //!< vertex position in space
+	vec3 norm;  //!< vertex normal (surface orientation)
+	vec2 tc;    //!< texture coordinate
 };
 
-/*! \brief A trinalge references three vertices (from the scene's vertex data)
- *         as well as its surface properties (via material_id)
+/*! \brief A trinalge references three vertices (from the scene's vertex data, cf scene::vertices)
+ *         as well as its surface properties (via material_id, cf scene::materials).
  */
 struct triangle {
 	uint32_t a, b, c;
@@ -48,6 +48,7 @@ struct triangle {
 
 /*! \brief A ray/triangle intersection holds the distance along the ray to where the
  *         triangle is intersected and two of the intersection's barycentric coordinates.
+ *         Ref referes to the triangle (cf triangle abeove and scene::triangles).
  */
 struct triangle_intersection {
 	typedef unsigned int uint;

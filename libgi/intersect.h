@@ -74,6 +74,11 @@ inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray,
 }	
 
 #ifndef RTGI_SKIP_RAY_BOX_IS
+/*! returns wether the \c box is intersected by \c ray.
+ *  the intersection distance (overall t_near) should be returned via \c is.
+ *  this allows the calling code to figure out if the intersection found is
+ *  really the closest along the ray.
+ */
 inline bool intersect(const aabb &box, const ray &ray, float &is) {
 #ifndef RTGI_SKIP_RAY_BOX_IS_1
 	float t_near = -FLT_MAX;

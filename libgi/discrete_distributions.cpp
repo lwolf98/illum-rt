@@ -42,7 +42,7 @@ void distribution_1d::build_cdf() {
 	// todo: set up cdf table for given discrete pdf (stored in f)
 	// and store the integral over f
 #endif
-	assert(cdf[N] == 1.0f);
+	assert(cdf[N] == 1.0f); // note: this will trigger when you have not implemented the first assignment ;)
 }
 
 pair<uint32_t,float> distribution_1d::sample_index(float xi) const {

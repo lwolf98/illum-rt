@@ -55,9 +55,27 @@ material ior 1.3
 material roughness 0.1428
 commit
 
-# TODO feel free to adapt those numbers
-sppx 2500
+sppx 100
+echo Sampling with low counts
+algo direct
 
+is light
+outfile mis-100-1-light.png
+run
+
+is brdf
+outfile mis-100-3-brdf.png
+run
+
+algo direct/mis
+
+outfile mis-100-2-mis.png
+run
+
+
+
+sppx 2500
+echo Sampling with high counts
 algo direct
 
 is light
@@ -70,23 +88,7 @@ run
 
 algo direct/mis
 
-is mis
 outfile mis-2500-2-mis.png
 run
 
-algo direct
 
-sppx 100
-is light
-outfile mis-100-1-light.png
-run
-
-is brdf
-outfile mis-100-3-brdf.png
-run
-
-algo direct/mis
-
-is mis
-outfile mis-100-2-mis.png
-run

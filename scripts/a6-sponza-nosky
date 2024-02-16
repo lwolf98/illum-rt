@@ -8,7 +8,7 @@ raytracer embree
 #skylight load render-data/skylight-day.floats 30
 
 material select vase_round.001
-material emissive 10 10 10
+material emissive 30 20 10
 
 material select floor.001
 material ior 2.3
@@ -16,7 +16,7 @@ material roughness 0.05
 
 commit
 
-sppx 1000
+sppx 500
 resolution 960 540
 # direct showcase
 at -1250 650 300
@@ -27,13 +27,21 @@ look 1 -0.2 -0.3
 
 algo direct
 is light
-outfile a6-sponza-nosky.png
+outfile a6-sponza-nosky-1.png
 run
 
 algo direct/mis
-outfile a6-sponza-nosky-mis.png
+outfile a6-sponza-nosky-2-mis.png
 run
 
+## feel free to also try running with
+## 	denoise on
+## for comparison, uncomment the following
 
+algo direct/mis
+denoise on
+sppx 350
+outfile a6-sponza-nosky-3-denoise.png
+run
 
 

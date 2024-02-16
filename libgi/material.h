@@ -26,9 +26,9 @@ struct interaction_type {
 		specular = 0b0010,
 		glossy   = 0b0100,
 		// direction
-		reflection       = 0b0001'0000,
-		transmission_in  = 0b0010'0000,
-		transmission_out = 0b0100'0000,
+		reflection       = 0b0'0001'0000,
+		transmission_in  = 0b0'0010'0000,
+		transmission_out = 0b0'0100'0000,
 		// combinations
 		diffuse_reflection    = diffuse  | reflection,
 		specular_reflection   = specular | reflection,
@@ -100,6 +100,7 @@ struct perfectly_specular_reflection : public specular_brdf {
 #endif
 };
 
+#ifndef RTGI_SKIP_ASS
 struct dielectric_specular_bsdf : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;
 #ifndef RTGI_SKIP_IMPORTANCE_SAMPLING
@@ -117,6 +118,7 @@ struct thin_dielectric_specular_bsdf : public dielectric_specular_bsdf {
 	sampling_res sample(const diff_geom &geom, const vec3 &w_o, const vec2 &xis) override;
 #endif
 };
+#endif
 
 struct phong_specular_reflection : public specular_brdf {
 	vec3 f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) override;

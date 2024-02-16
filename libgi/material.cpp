@@ -99,6 +99,7 @@ brdf::sampling_res perfectly_specular_reflection::sample(const diff_geom &geom, 
 #endif
 
 
+#ifndef RTGI_SKIP_ASS
 // dielectric specular reflection and transmission
 
 vec3 dielectric_specular_bsdf::f(const diff_geom &geom, const vec3 &w_o, const vec3 &w_i) {
@@ -173,7 +174,7 @@ brdf::sampling_res thin_dielectric_specular_bsdf::sample(const diff_geom &geom, 
 	}
 }
 #endif
-
+#endif
 
 // specular phong brdf
 
@@ -329,10 +330,12 @@ brdf *new_brdf(const std::string name, scene &scene) {
 			f = new lambertian_reflection;
 		else if (name == "mirror" || name == "specular")
 			f = new perfectly_specular_reflection;
+#ifndef RTGI_SKIP_ASS
 		else if (name == "dielectric-specular")
 			f = new dielectric_specular_bsdf;
 		else if (name == "thin-dielectric-specular")
 			f = new thin_dielectric_specular_bsdf;
+#endif
 		else if (name == "phong")
 			f = new phong_specular_reflection;
 		else if (name == "layered-phong") {
@@ -355,7 +358,8 @@ brdf *new_brdf(const std::string name, scene &scene) {
 			assert(coat);
 			f = new layered_brdf(coat, base);
 #else
-			throw std::runtime_error(std::string("Not implemented yet: ") + name);
+			// todo intantiate proper layered brdf for lambert/gtr2
+			throw std::logic_error(std::string("Not implemented yet: ") + name);
 #endif
 		}
 #endif

@@ -7,9 +7,11 @@ load render-data/sibenik/sibenik.obj
 raytracer seq
 algo primary
 sppx 16
-#pointlight pos 0 -4 0 col 35 30 26
 resolution 640 360
 outfile out.png
+
+# render sub-resolution image before finishisng first sample
+preview-offset 8
 
 material select pod
 material roughness 0.055
