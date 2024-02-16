@@ -1,3 +1,4 @@
+#define RTGI_SKIP_ASS
 #define RTGI_CONFIG_A8
 
 #define RTGI_SKIP_WF

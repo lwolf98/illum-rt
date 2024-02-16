@@ -23,12 +23,12 @@ at -1250 650 300
 look 1 0 -0.4
 
 algo direct/mis
-outfile a8-sponza-sky1-direct.png
+outfile a7-sponza-sky1-direct.png
 run
 
 
 algo simple-pt
 path bounce brdf
 sppx 500
-outfile a8-sponza-sky1-simplept.png
+outfile a7-sponza-sky1-simplept.png
 run

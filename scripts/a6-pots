@@ -1,0 +1,30 @@
+up 0 1 0
+look 0.55003 -0.12553 0.5955
+at -3.5638 1.8637 -4.8895
+#camup 0.40455 0.31061 0.42338
+
+#at -2.8908 1.7537 -0.050779
+#look 0.85235 -0.52249 -0.022323
+#camup 0.52233 0.85264 -0.013184
+
+load render-data/checkerpots/checkerpots.obj
+raytracer embree
+
+#skylight render-data/skylight-blue.floats .25
+skylight load render-data/skylight-day.floats 4
+
+commit
+algo direct/mis
+sppx 128
+resolution 1280 720
+
+#skytest skytest.png 1000000
+
+material select light
+material emissive 0 0 0
+
+material select Material.001
+#material texture drop
+material brdf layered-gtr2
+
+run

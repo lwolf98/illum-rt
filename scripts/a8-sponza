@@ -10,8 +10,9 @@ load render-data/sponza/sponza.fixed.obj
 raytracer embree
 
 material select vase_round.001
-#material emissive 760 600 200
-material emissive 360 300 100
+# settings for a7
+# material emissive 30 20 10 
+material emissive 60 40 20
 #material emissive 0 0 0
 
 material select floor.001
@@ -30,8 +31,7 @@ look 1 0 -0.3
 at -1250 650 300
 look 1 0 -0.4
 
-sppx 1000
-sppx 5000
+sppx 500
 #sppx 100
 
 ### center

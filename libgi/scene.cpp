@@ -455,7 +455,9 @@ void scene::print_memory_stats() {
 	for (auto &m : materials)
 		if (m.albedo_tex)
 			texs += m.albedo_tex->size_in_bytes();
+#ifndef RTGI_SKIP_BRDF
 	uint64_t lights = 0, lights_r = 0;
+#ifndef RTGI_SKIP_SKY
 	if (sky) {
 		lights += sky->tex->size_in_bytes();
 		lights_r += sky->tex->size_in_bytes();
@@ -463,13 +465,15 @@ void scene::print_memory_stats() {
 		lights += s;
 		lights_r += c;
 	}
+#endif
 	lights += this->lights.size() * (sizeof(light) + sizeof(light*));
 	lights_r += this->lights.capacity() * (sizeof(light) + sizeof(light*));
+#endif
 
 	auto format = [](uint64_t mem) {
 		vector<string> suffixes = { "", "K", "M", "G" };
 		int s = 0;
-		while (mem > 10'000) {
+		while (mem > 10000) {
 			mem /= 1024;
 			s++;
 			if (s == suffixes.size()-1) break;
@@ -480,7 +484,9 @@ void scene::print_memory_stats() {
 	cout << "Scene memory consumption" << endl;
 	cout << "    meshes:   " << setw(10) << format(mesh) << " (" << format(mesh_r) << ")" << endl;
 	cout << "    textures: " << setw(10) << format(texs) << endl;
+#ifndef RTGI_SKIP_BRDF
 	cout << "    lights:   " << setw(10) << format(lights) << " (" << format(lights_r) << ")" << endl;
+#endif
 }
 
 

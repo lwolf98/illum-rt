@@ -89,7 +89,9 @@ void run(gi_algorithm *algo) {
 	using namespace std::chrono;
 
 	algo->prepare_frame();
+#ifdef RTGI_CONFIG_A1
 	test_camrays(rc->scene.camera);
+#endif
 	rc->framebuffer.clear();
 	rc->framebuffer_albedo.clear();
 	rc->framebuffer_normal.clear();

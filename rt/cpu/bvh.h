@@ -7,7 +7,6 @@
 #include <float.h>
 #include <glm/glm.hpp>
 
-constexpr const float ALPHA_THRESHOLD = 0.5f;
 // #define COUNT_HITS
 
 #ifndef RTGI_SKIP_WF
@@ -22,6 +21,7 @@ struct naive_bvh : public individual_ray_tracer {
 		aabb box;
 		uint32_t left, right;
 		uint32_t triangle = (uint32_t)-1;
+		//! is the node an inner node (as opposed to a leaf)
 		bool inner() const { return triangle == (uint32_t)-1; }
 	};
 
@@ -42,15 +42,19 @@ private:
 struct bbvh_node {
 	aabb box_l, box_r;
 	int32_t link_l, link_r;
-	bool inner() const { return link_r >= 0; }
-	int32_t tri_offset() const { return -link_l; }
-	int32_t tri_count()  const { return -link_r; }
-	void tri_offset(int32_t offset) { link_l = -offset; }
-	void tri_count(int32_t count) { link_r = -count; }
+	
+	bool inner() const { return link_r >= 0; }     //<! returns if the node is an inner node (as opposed to a leaf).
+	int32_t tri_offset() const { return -link_l; } //<! gives the (leaf) node's offset into the scene's triangle data.
+	int32_t tri_count()  const { return -link_r; } //<! a (leaf) node may hold more than one triangle.
+	void tri_offset(int32_t offset) { link_l = -offset; }  // these two can be used to specify counts/offset
+	void tri_count(int32_t count) { link_r = -count; }     // without having to take care of how they are represented.
 };
 static_assert(sizeof(bbvh_node) == 2*2*3*4+2*4);
 
 #ifndef RTGI_SIMPLER_BBVH
+
+constexpr const float ALPHA_THRESHOLD = 0.5f;
+
 struct bvh {
 	typedef bbvh_node node;
 	uint32_t root;
@@ -124,6 +128,15 @@ struct binary_bvh_tracer : public individual_ray_tracer {
 	bool interprete(const std::string &command, std::istringstream &in) override;
 
 private:
+	/*! recursively builds the BVH (tree).
+	 *  - start and end simply index into the scene's triangle list
+	 *  - the box handed in is always the box (holding those trinalges) that should be subdivided
+	 *  - before calling this recursively, compute the bounding boxes of the child nodes
+	 *  - use this to determine the split axis
+	 *  
+	 *  note: which of those two is called can be configured via script, see binary_bvh_tracer::build
+	 *  in your implementation, don't forget to call the function you are in (easy to miss by copy&paste)
+	 */
 	int32_t subdivide_om(int start, int end, aabb box); 
 	int32_t subdivide_sm(int start, int end, aabb box); 
 };

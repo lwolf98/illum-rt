@@ -7,7 +7,7 @@ fi
 
 ASS="$1"
 REF="$2"
-YEAR=2022
+YEAR=2023
 
 branch="master"
 if [ "$(git branch --show-current)" != "$branch" ] ; then
@@ -38,8 +38,8 @@ done
 
 #cd ..; cp -r make-ass /tmp/; cd -;
 autoreconf -if && ./configure && make -j20 || failed=true
-make dist-bzip2 || failed=true
-cp rtgi-$YEAR-a??$REF.tar.bz2 ..
+make dist || failed=true
+cp rtgi-$YEAR-a??$REF.tar.gz ..
 cd ..
 
 if [ "$failed" = "true" ] ; then

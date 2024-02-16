@@ -170,7 +170,7 @@ vec3 pt_nee::path(ray ray, int x, int y) {
 	// - if it is a light AND we have not bounced yet, add the light's contribution
 	// - for mis we take the next path vertex to be the brdf sample of the next-event path
 	// - branch off direct lighting path that directly terminates
-	// - bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
+	// - bounce the ray  NOTE: bounce might bounce other than with the BRDF, but we strictly use the BRDF-pdf above
 	// - apply RR
 #else
 	vec3 throughput(1);
@@ -184,7 +184,9 @@ vec3 pt_nee::path(ray ray, int x, int y) {
 				if (!mis || i==0)
 					radiance += throughput * rc->scene.sky->Le(ray);
 				else {
+#ifndef RTGI_SKIP_ASS
 					// TODO misses light distrib
+#endif
 					float light_pdf = rc->scene.sky->pdf_Li(ray);
 					radiance += throughput * rc->scene.sky->Le(ray) * brdf_pdf / (light_pdf+brdf_pdf);
 				}
@@ -235,7 +237,7 @@ vec3 pt_nee::path(ray ray, int x, int y) {
 			}
 		}
 
-		// bounce the ray  TODO: bounce might bounce other than with the BRDF and we strictly use the BRDF above
+		// bounce the ray  TODO: bounce might bounce other than with the BRDF, but we strictly use the BRDF above
 		auto [w_i, f, pdf, ia] = hit.mat->brdf->sample(hit, -ray.d, rc->rng.uniform_float2());
 		::ray bounced(hit.x, w_i);
 		brdf_pdf = pdf;	// for mis in next iteration

@@ -1,4 +1,4 @@
-AC_INIT([rtgi], [2022], [kai selgrad at oth regensburg de])
+AC_INIT([rtgi], [2023], [kai selgrad at oth regensburg de])
 
 AC_CONFIG_SRCDIR([driver/main.cpp])
 AC_CONFIG_HEADERS(config.h)
@@ -86,12 +86,10 @@ AS_IF([test x$have_optix = xyes],
 	  [AC_MSG_WARN([Compiling without OptiX support])])
 #endif
 
-#ifndef RTGI_SKIP_BVH
 have_embree=yes
 AC_CHECK_LIB([embree3], [main], [], [have_embree=no])
 AM_CONDITIONAL([have_embree], [test x$have_embree = xyes])
 AS_IF([test x$have_embree = xyes], [], [AC_MSG_WARN([Compiling without Embree support: CPU tracing will be slow])])
-#endif
 
 have_oidn=yes
 AC_CHECK_LIB([OpenImageDenoise], [main], [], [have_oidn=no])
