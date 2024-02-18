@@ -43,7 +43,7 @@ void embree_tracer<alpha_aware>::build(::scene *scene) {
 							   RTC_FORMAT_UINT3,
 							   &(scene->triangles[0]),
 							   0,
-							   4*sizeof(triangle),
+							   sizeof(triangle),
 							   scene->triangles.size());
 	rtcSetSharedGeometryBuffer(geom,
 							   RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3,
