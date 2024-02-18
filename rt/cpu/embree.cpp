@@ -29,7 +29,7 @@ embree_tracer<alpha_aware>::~embree_tracer() {
 	rtcReleaseDevice(em_device);
 }
 
-//This expects everything in the szene to be one merged triangle mesh
+//This expects everything in the scene to be one merged triangle mesh
 //Other geometry types (NURBS etc) are supported by embree,
 //but we would need to set additional buffers here depending on the geometry type
 template <bool alpha_aware>
@@ -43,13 +43,13 @@ void embree_tracer<alpha_aware>::build(::scene *scene) {
 							   RTC_FORMAT_UINT3,
 							   &(scene->triangles[0]),
 							   0,
-							   4*sizeof(uint32_t),
+							   4*sizeof(triangle),
 							   scene->triangles.size());
 	rtcSetSharedGeometryBuffer(geom,
 							   RTC_BUFFER_TYPE_VERTEX, 0, RTC_FORMAT_FLOAT3,
 							   &(scene->vertices[0]),
 							   0,
-							   8*sizeof(float),
+							   sizeof(vertex),
 							   scene->vertices.size());
 
 	rtcCommitGeometry(geom);
