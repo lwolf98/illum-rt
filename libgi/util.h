@@ -39,8 +39,16 @@ inline vec3 nextafter(const vec3 &from, const vec3 &d) {
 				std::nextafter(from.z, d.z > 0 ? from.z+1 : from.z-1));
 }
 
-inline float int_as_float(int i) { return reinterpret_cast<float&>(i); }
-inline int float_as_int(float f) { return reinterpret_cast<int&>(f); }
+// The following two function names clash with cuda device functions
+#ifndef __CUDA_ARCH__
+inline float _int_as_float(int i) { return reinterpret_cast<float&>(i); }
+inline int _float_as_int(float f) { return reinterpret_cast<int&>(f); }
+#define int_as_float _int_as_float
+#define float_as_int _float_as_int
+#else
+#define int_as_float __int_as_float
+#define float_as_int __float_as_int
+#endif
 
 template<typename V, typename I3=glm::ivec3> heterogeneous inline V offset_ray(const V &p, const V &ng) {
 	const float origin = 1.0f / 32.0f;
@@ -57,6 +65,11 @@ template<typename V, typename I3=glm::ivec3> heterogeneous inline V offset_ray(c
 	        fabsf(p.y) < origin ? p.y + float_scale*ng.y : p_i.y,
 	        fabsf(p.z) < origin ? p.z + float_scale*ng.z : p_i.z};
 }
+
+#ifndef __CUDA_ARCH__
+#undef int_as_float
+#undef float_as_int
+#endif
 
 inline ray offset_ray(const ray &r, const vec3 &ng) {
 	ray new_ray(r);
