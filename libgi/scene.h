@@ -165,7 +165,7 @@ struct scene {
 		modelpaths.push_back("");
 	}
 	~scene();
-	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4());
+	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4(), const uint subdiv_level = 0);
 	
 	std::vector<std::filesystem::path> modelpaths;
 	void add_modelpath(const std::filesystem::path &p);

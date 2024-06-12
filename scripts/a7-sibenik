@@ -1,17 +1,23 @@
-at -10 -10 0
-at -13 -12 0
+#at -10 -10 0
+#at -13 -12 0
 #at 1 -12.5 1
-look 1 0 0
+#look 1 0 0
 up 0 1 0
 
 raytracer embree
 
 algo direct
-sppx 500
+sppx 1000
 resolution 960 540
 
 default-brdf layered-gtr2
 load render-data/sibenik/sibenik-nostaklo.obj
+load render-data/cube.obj subd_level 4
+#load render-data/plane.obj subd_level 1
+#load render-data/throne.obj subd_level 1
+
+material select Cube_mat
+material albedo 1 0 0
 
 material select pod
 material roughness 0.055
@@ -61,18 +67,20 @@ material emissive 1.9 18.3 2.15
 commit
 
 
-at 2 -14 0
-look -1 0 0
+#at 2 -14 0
+#look -1 0 0
+at 2.18155 -11.8258 -2.05766
+look -0.935018 -0.178238 0.30655
 
 
 algo direct/mis
 outfile a7-sibenik-00-500-direct.png
 run
 
-algo simple-pt
-path bounce brdf
-path len 10
-outfile a7-sibenik-00-500-simplept.png
-run
+#algo simple-pt
+#path bounce brdf
+#path len 10
+#outfile a7-sibenik-00-500-simplept.png
+#run
 
 

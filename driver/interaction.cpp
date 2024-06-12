@@ -394,11 +394,24 @@ void eval(const std::string &line) {
 	}
 	else ifcmd("load") {
 		string file, name;
+		int subd_level = 0;
 		in >> file;
-		if (!in.eof())
-			in >> name;
+		string load_args;
+		while (!in.eof()) {
+			in >> load_args;
+			//TODO: this is not flexible and covers not all cases...
+			if (load_args == "subd_level") {
+				in >> subd_level;
+			}
+			else if (load_args == "name") {
+				in >> name;
+			}
+			else {
+				name = load_args;
+			}
+		}
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name, modelmatrix);
+		scene.add(file, name, modelmatrix, subd_level);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {

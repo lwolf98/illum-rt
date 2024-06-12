@@ -3,6 +3,7 @@
 #include "global-context.h"
 #include "color.h"
 #include "util.h"
+#include "subdivision.h"
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "sampling.h"
 #endif
@@ -221,7 +222,7 @@ glm::vec4 to_glm_vec4(const aiVector3D &from) {
 // from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 // Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
+							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene, const uint subdiv_level) {
 	mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 	mat4 transform = model_trafo * node_trafo;
 	mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -248,26 +249,114 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 		if (mat_ai->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_BASE_COLOR, 0), uvt) == AI_SUCCESS)
 			uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 		
-		for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
-			vertex vertex;
-			vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
-			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-			vertex.norm = normalize(glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i])));
-			if (mesh_ai->HasTextureCoords(0))
-				vertex.tc = glm::vec2(uv_trafo * to_glm(mesh_ai->mTextureCoords[0][i]));
-			else
-				vertex.tc = vec2(0,0);
-			rtgi_scene->vertices.push_back(vertex);
-			rtgi_scene->scene_bounds.grow(vertex.pos);
+		if (subdiv_level == 0) {
+			for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
+				vertex vertex;
+				vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
+				// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+				vertex.norm = normalize(glm::vec3(normal_transform * to_glm_vec4(mesh_ai->mNormals[i])));
+				if (mesh_ai->HasTextureCoords(0))
+					vertex.tc = glm::vec2(uv_trafo * to_glm(mesh_ai->mTextureCoords[0][i]));
+				else
+					vertex.tc = vec2(0,0);
+				rtgi_scene->vertices.push_back(vertex);
+				rtgi_scene->scene_bounds.grow(vertex.pos);
+			}
+			
+			for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
+				const aiFace &face = mesh_ai->mFaces[i];
+				if (face.mNumIndices == 3) {
+					triangle triangle;
+					triangle.a = face.mIndices[0] + index_offset;
+					triangle.b = face.mIndices[1] + index_offset;
+					triangle.c = face.mIndices[2] + index_offset;
+					// test if geom normal agrees with shading normals
+					// if not, flip winding order
+					auto a = rtgi_scene->vertices[triangle.a];
+					auto b = rtgi_scene->vertices[triangle.b];
+					auto c = rtgi_scene->vertices[triangle.c];
+					if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+						std::swap(triangle.b, triangle.c);
+					// append
+					triangle.material_id = material_id;
+					rtgi_scene->triangles.push_back(triangle);
+				}
+				else
+					std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
+			}
 		}
-		
-		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
-			const aiFace &face = mesh_ai->mFaces[i];
-			if (face.mNumIndices == 3) {
+		else {
+			// control mesh vertices and faces
+			std::vector<subd::ctrl_vertex> ctrl_vertices;
+			std::vector<std::vector<int>> ctrl_faces;
+
+			// load control mesh vertices (ctrl_vertices)
+			for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
+				subd::ctrl_vertex vertex;
+				vertex.pos = to_glm(mesh_ai->mVertices[i]);
+
+				if (mesh_ai->HasTextureCoords(0))
+					vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
+				else
+					vertex.tc = vec2(0,0);
+
+				cout << "Cube vertex " << i << ": " << vertex.pos << endl;
+				ctrl_vertices.push_back(vertex);
+			}
+
+			// load control mesh faces (ctrl_faces)
+			for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
+				const aiFace &f = mesh_ai->mFaces[i];
+				std::vector<int> face;
+				for (uint32_t j = 0; j < f.mNumIndices; ++j) {
+					face.push_back(f.mIndices[j]);
+				}
+				ctrl_faces.push_back(face);
+			}
+
+			// subdivide object
+			// face normals (normals) will be calculated in subd::subdivide
+			vector<vec3> normals;
+			for (uint32_t i = 0; i < subdiv_level; ++i) {
+				subd::subdivide(ctrl_vertices, ctrl_faces, normals);
+			}
+
+			// calculate vertex normals
+			for (uint32_t i = 0; i < ctrl_vertices.size(); ++i) {
+				subd::ctrl_vertex &vert = ctrl_vertices[i];
+				vert.norm = vec3(0);
+				for (uint32_t j = 0; j < vert.face_ids.size(); ++j)
+					vert.norm += normals[j];
+
+				vert.norm *= 1.f/vert.face_ids.size();
+				vert.norm = glm::normalize(vert.norm);
+
+				cout << "Normal " << i << ": " << vert.norm << endl;
+			}
+
+			// triangulate faces
+			subd::triangulate(ctrl_vertices, ctrl_faces, normals);
+
+			// store data in scene
+			for (uint32_t i = 0; i < ctrl_vertices.size(); ++i) {
+				vertex vertex = ctrl_vertices[i];
+				vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
+				// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+				vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
+				if (mesh_ai->HasTextureCoords(0))
+					vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
+				else
+					vertex.tc = vec2(0,0);
+				rtgi_scene->vertices.push_back(vertex);
+				rtgi_scene->scene_bounds.grow(vertex.pos);
+			}
+
+			for (uint32_t i = 0; i < ctrl_faces.size(); ++i) {
+				vector<int> &face = ctrl_faces[i];
 				triangle triangle;
-				triangle.a = face.mIndices[0] + index_offset;
-				triangle.b = face.mIndices[1] + index_offset;
-				triangle.c = face.mIndices[2] + index_offset;
+				triangle.a = face[0] + index_offset;
+				triangle.b = face[1] + index_offset;
+				triangle.c = face[2] + index_offset;
 				// test if geom normal agrees with shading normals
 				// if not, flip winding order
 				auto a = rtgi_scene->vertices[triangle.a];
@@ -279,23 +368,29 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 				triangle.material_id = material_id;
 				rtgi_scene->triangles.push_back(triangle);
 			}
-			else
-				std::cout << "WARN: Mesh: skipping non-triangle [" << face.mNumIndices << "] face (that the ass imp did not triangulate)!" << std::endl;
 		}
 	}
 	
 	for (int i = 0; i < node_ai->mNumChildren; i++)
-		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene);
+		mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level);
 }
 
-void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo) {
+void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level) {
 	// find file
 	filesystem::path modelpath = find_model(path);
 	if (modelpath == "")
 		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
     // load from disk
     Assimp::Importer importer;
-	unsigned int flags = aiProcess_Triangulate | aiProcess_GenNormals;  // | aiProcess_FlipUVs  // TODO assimp
+	unsigned int flags;  // | aiProcess_FlipUVs  // TODO assimp
+	if (subdiv_level == 0) {
+		flags = aiProcess_GenNormals;
+		flags |= aiProcess_Triangulate;
+	} else {
+		flags = aiProcess_JoinIdenticalVertices;
+		flags |= aiProcess_DropNormals;
+	}
+
     const aiScene* scene_ai = importer.ReadFile(modelpath.string(), flags);
     if (!scene_ai) // handle error
         throw std::runtime_error("ERROR: Failed to load file: " + modelpath.string() + "!");
@@ -360,7 +455,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	std::vector<std::tuple<int,int,int>> light_geom;
 
     // load meshes
-    mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, this);
+    mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, this, subdiv_level);
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
