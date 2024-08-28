@@ -1,0 +1,104 @@
+
+sppx 1024
+resolution 960 540
+
+default-brdf layered-gtr2
+#load render-data/sibenik/sibenik-nostaklo.obj
+load render-data/sibenik/sibenik.obj
+
+load render-data/cornell_sibenik.obj subd_level 4
+#load output/subd/out_test_subd.obj
+#load render-data/cornell_sibenik.obj
+#load render-data/cube.obj subd_level 1
+load /home/lukas/Downloads/obj/spaceship.obj subd_level 1
+
+material select Cube_mat
+#material ior 0
+#material albedo 0 0 1
+
+material select pod
+material roughness 0.055
+material ior 2.289
+
+
+#skylight load render-data/skylight-sunset.floats 30
+
+
+# kept this in in case you want to render the regular sibenik model
+# but then don't forget to disable the skylight
+material select kamen_zid_parapet
+material albedo  0.73412 0.73059 0.67412
+material ior  1.3
+material roughness  0.50372
+
+material select pod
+material albedo  0.73412 0.70941 0.67412
+material ior  2.289
+material roughness  0.155
+ 
+material select pod_tepih
+material albedo  0.54627 0.21961 0.18392
+material ior 1.3
+material roughness  0.50372
+
+material select sprljci
+material albedo  0.78431 0.78431 0.78431
+material ior 1.3
+material roughness  0.50372
+
+material select staklo
+material emissive 7.8431 7.8431 7.8431
+
+material select staklo_crveno
+material emissive 50.118 8.392 0.562
+
+material select staklo_plavo
+material emissive 1.61177 2.82549 16.9216
+
+material select staklo_zeleno
+material emissive 1.9 18.3 2.15
+
+#material select staklo_zuto
+#material emissive 37.5 32.2 0.3
+
+up 0 1 0
+
+# Pos 1
+#at 2.18155 -11.8258 -2.05766
+#look -0.935018 -0.178238 0.30655
+
+# Pos 2
+#at -6.5654 -11.2936 1.62631
+#look 0.697203 -0.462518 -0.547709
+
+# Pos 3 (Cornellbox Cube)
+at -6.23871 -11.2936 -0.722548
+look 0.857795 -0.499953 0.119306
+
+# Pos 4 (Spaceship)
+#at -10.8116 -8.80657 -3.06846
+#look -0.678169 -0.374951 0.632059
+
+#raytracer embree
+#commit
+#algo direct/mis
+#outfile subd-sibenik-direct_cpu.png
+
+#raytracer embree
+#commit
+#algo simple-pt
+#path bounce brdf
+#path len 10
+#outfile subd-sibenik-pt_cpu.png
+
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile subd-sibenik-primary_cuda.png
+algo direct-wf
+is light
+outfile subd-sibenik-direct_cuda.png
+commit
+
+run

@@ -286,60 +286,38 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 			}
 		}
 		else {
-			// control mesh vertices and faces
-			std::vector<subd::ctrl_vertex> ctrl_vertices;
-			std::vector<std::vector<int>> ctrl_faces;
-
-			// load control mesh vertices (ctrl_vertices)
-			for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
-				subd::ctrl_vertex vertex;
-				vertex.pos = to_glm(mesh_ai->mVertices[i]);
-
-				if (mesh_ai->HasTextureCoords(0))
-					vertex.tc = vec2(to_glm(mesh_ai->mTextureCoords[0][i]));
-				else
-					vertex.tc = vec2(0,0);
-
-				cout << "Cube vertex " << i << ": " << vertex.pos << endl;
-				ctrl_vertices.push_back(vertex);
-			}
-
-			// load control mesh faces (ctrl_faces)
-			for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
-				const aiFace &f = mesh_ai->mFaces[i];
-				std::vector<int> face;
-				for (uint32_t j = 0; j < f.mNumIndices; ++j) {
-					face.push_back(f.mIndices[j]);
-				}
-				ctrl_faces.push_back(face);
-			}
+			// object with control mesh vertices and faces
+			// -> load data from Assimp import
+			subd::object o(mesh_ai, name_ai.C_Str());
 
 			// subdivide object
-			// face normals (normals) will be calculated in subd::subdivide
-			vector<vec3> normals;
 			for (uint32_t i = 0; i < subdiv_level; ++i) {
-				subd::subdivide(ctrl_vertices, ctrl_faces, normals);
+				o.mesh.subdivide();
 			}
 
-			// calculate vertex normals
-			for (uint32_t i = 0; i < ctrl_vertices.size(); ++i) {
-				subd::ctrl_vertex &vert = ctrl_vertices[i];
-				vert.norm = vec3(0);
-				for (uint32_t j = 0; j < vert.face_ids.size(); ++j)
-					vert.norm += normals[j];
+			o.mesh.calculate_vertex_normals();
 
-				vert.norm *= 1.f/vert.face_ids.size();
-				vert.norm = glm::normalize(vert.norm);
+			// triangulate quad faces
+			o.mesh.triangulate();
 
-				cout << "Normal " << i << ": " << vert.norm << endl;
+			// serialize vertices
+			vector<vertex> serialized_verts;
+			for (int i = 0; i < o.mesh.faces.size(); i++) {
+				subd::face &f = o.mesh.faces[i];
+				for (int j = 0; j < f.verts.size(); j++) {
+					subd::vertex_config &v_cfg = f.verts[j];
+					vertex v;
+					v.pos = o.mesh.vertices[v_cfg.pos].pos;
+					v.tc = o.mesh.tex_coords[v_cfg.tc];
+					v.norm = o.mesh.vertices[v_cfg.pos].norm;
+					serialized_verts.push_back(v);
+				}
 			}
-
-			// triangulate faces
-			subd::triangulate(ctrl_vertices, ctrl_faces, normals);
 
 			// store data in scene
-			for (uint32_t i = 0; i < ctrl_vertices.size(); ++i) {
-				vertex vertex = ctrl_vertices[i];
+			for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+				// cut off ctrl_vertex to regular vertex
+				vertex vertex = serialized_verts[i];
 				vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
 				// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
 				vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
@@ -351,12 +329,11 @@ void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 paren
 				rtgi_scene->scene_bounds.grow(vertex.pos);
 			}
 
-			for (uint32_t i = 0; i < ctrl_faces.size(); ++i) {
-				vector<int> &face = ctrl_faces[i];
+			for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
 				triangle triangle;
-				triangle.a = face[0] + index_offset;
-				triangle.b = face[1] + index_offset;
-				triangle.c = face[2] + index_offset;
+				triangle.a = index_offset + i;
+				triangle.b = index_offset + i+1;
+				triangle.c = index_offset + i+2;
 				// test if geom normal agrees with shading normals
 				// if not, flip winding order
 				auto a = rtgi_scene->vertices[triangle.a];
