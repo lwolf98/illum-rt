@@ -656,9 +656,9 @@ namespace subd {
 
 				// test if the triangle x-a-b is an ear (all other points of the polygon are outside this triangle),
 				// otherwise continue
-				// 1. calc normal (cross(to_a, to_b))
-				// 2. calc "normal of normal and to_a" (cross(normal, to_a))
-				// 3. test for each other point if its left or right of to_a
+				// 1. calc normal (cross(to_b, to_a))
+				// 2. calc direction v orthogonal to a_to_b and inside the triangle (cross(normal, b_to_a))
+				// 3. test for each other point if it is left or right of b_to_a
 				vec3 normal = cross(to_b, to_a);
 				vec3 b_to_a = a - b;
 				vec3 v = cross(normal, b_to_a);

@@ -1,0 +1,17 @@
+ray-setup-glsl.cpp: preamble.glsl random.glsl
+preamble-glsl.cpp: bindings.h
+bindings.h:
+random-glsl.cpp:
+seq-closest-glsl.cpp: preamble.glsl tri-is.glsl
+tri-is-glsl.cpp:
+seq-any-glsl.cpp: preamble.glsl tri-is.glsl
+bvh-closest-glsl.cpp: preamble.glsl tri-is.glsl
+bvh-any-glsl.cpp: preamble.glsl tri-is.glsl
+clear-framebuffer-glsl.cpp: preamble.glsl
+add-hitpoint-albedo-glsl.cpp: preamble.glsl
+sample-light-glsl.cpp: preamble.glsl random.glsl
+sample-uniform-glsl.cpp: preamble.glsl random.glsl
+integrate-dir-sample-glsl.cpp: preamble.glsl
+integrate-light-sample-glsl.cpp: preamble.glsl
+copy-to-preview-glsl.cpp: preamble.glsl
+Makefile:
