@@ -27,8 +27,8 @@ namespace import {
 	class assimp_importer : public asset_importer {
 		private:
 		Assimp::Importer importer;
-		//const aiScene* scene_ai;
-		std::optional<const aiScene *> opt_scene_ai;
+		const aiScene* scene_ai;
+		//std::optional<const aiScene *> opt_scene_ai;
 
 		public:
 		assimp_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)

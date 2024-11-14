@@ -7,11 +7,13 @@ default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 load render-data/sibenik/sibenik.obj
 
+load render-data/knife/knife.usda subd_level 2
+
 load render-data/cornell_sibenik.obj subd_level 4
 #load output/subd/out_test_subd.obj
 #load render-data/cornell_sibenik.obj
 #load render-data/cube.obj subd_level 1
-load /home/lukas/Downloads/obj/spaceship.obj subd_level 1
+#load /home/lukas/Downloads/obj/spaceship.obj subd_level 1
 
 material select Cube_mat
 #material ior 0

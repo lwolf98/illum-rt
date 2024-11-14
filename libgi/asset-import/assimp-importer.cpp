@@ -61,17 +61,18 @@ namespace import {
 			flags |= aiProcess_DropNormals;
 		}
 
-		opt_scene_ai = importer.ReadFile(filepath.string(), flags);
-		if (!opt_scene_ai) // handle error
+		scene_ai = importer.ReadFile(filepath.string(), flags);
+		if (!scene_ai) // handle error
 			throw std::runtime_error("ERROR: Failed to load file: " + filepath.string() + "!");
 
+		std::cout << "TMP/TEST: Number of materials: " << scene_ai->mNumMaterials << std::endl;
 	}
 
 	void assimp_importer::import(scene& scene) {
 		// todo: store indices prior to adding anything to allow "transform-last"
 
 		// load materials
-		const aiScene *scene_ai = opt_scene_ai.value();
+		//const aiScene *scene_ai = opt_scene_ai.value();
 		if (!scene_ai)
 			throw std::runtime_error("ERROR: aiScene has not been initialized!");
 		unsigned material_offset = scene.materials.size();

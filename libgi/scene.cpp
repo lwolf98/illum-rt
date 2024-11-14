@@ -229,10 +229,22 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	 * importer.import(scene)
 	 * 
 	 */
-	import::asset_importer *imp = new import::usd_importer(name, trafo, subdiv_level);
-	imp = new import::assimp_importer(name, trafo, subdiv_level);
-	imp->load_scene(modelpath);
-	imp->import(*this);
+	const std::string &extension = modelpath.extension().c_str();
+	if (extension == ".usda") {
+		import::usd_importer imp(name, trafo, subdiv_level);
+		imp.load_scene(modelpath);
+		imp.import(*this);
+	}
+	else if (extension == ".objx") {
+		import::objx_importer imp(name, trafo, subdiv_level);
+		imp.load_scene(modelpath);
+		imp.import(*this);
+	}
+	else {
+		import::assimp_importer imp(name, trafo, subdiv_level);
+		imp.load_scene(modelpath);
+		imp.import(*this);
+	}
 }
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM

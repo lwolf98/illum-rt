@@ -19,6 +19,7 @@ AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (shoul
 # libdl is needed by OptiX
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
 AC_CHECK_LIB([tinyusdz], [main], [], [AC_MSG_ERROR([You need to install tinyusdz. It is available on GitHub.])])
+AC_CHECK_LIB([usd_ms], [main], [], [AC_MSG_ERROR([You need to install OpenUSD. It is available on GitHub.])])
 
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
