@@ -1,3 +1,4 @@
+#omp off
 
 sppx 1024
 resolution 960 540
@@ -79,10 +80,10 @@ look 0.857795 -0.499953 0.119306
 #at -10.8116 -8.80657 -3.06846
 #look -0.678169 -0.374951 0.632059
 
-#raytracer embree
-#commit
-#algo direct/mis
-#outfile subd-sibenik-direct_cpu.png
+raytracer embree
+commit
+algo direct/mis
+outfile subd-sibenik-direct_cpu.png
 
 #raytracer embree
 #commit
@@ -91,14 +92,14 @@ look 0.857795 -0.499953 0.119306
 #path len 10
 #outfile subd-sibenik-pt_cpu.png
 
-platform cuda
-raytracer optix
-add-scene-step build accel struct
-#algo primary-wf
-#outfile subd-sibenik-primary_cuda.png
-algo direct-wf
-is light
-outfile subd-sibenik-direct_cuda.png
-commit
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+#outfile subd-sibenik-direct_cuda.png
+#commit
 
 run

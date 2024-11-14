@@ -13,7 +13,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					rt.cpp \
 					scene.cpp \
 					timer.cpp \
-					subdivision.cpp
+					subdivision.cpp \
+					test-tinyusdz.cpp
 
 
 #ifndef RTGI_SKIP_BRDF
@@ -42,7 +43,8 @@ noinst_HEADERS = 	algorithm.h \
 					scene.h \
 					timer.h \
 					util.h \
-					subdivision.h
+					subdivision.h \
+					test-tinyusdz.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
@@ -55,6 +57,7 @@ noinst_HEADERS +=	sampling.h
 noinst_HEADERS +=   wavefront-rt.h
 #endif
 
+SUBDIRS = asset-import
 if have_gl
-SUBDIRS = gl
+SUBDIRS += gl
 endif

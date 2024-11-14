@@ -16,9 +16,11 @@ CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
 AC_CHECK_HEADER([glm/glm.hpp], [], [AC_MSG_ERROR([You need to install glm. On Debian-style distros this is libglm-dev.])])
 AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On Debian-style distros this is libpng++-dev])])
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
-AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 # libdl is needed by OptiX
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
+AC_CHECK_LIB([tinyusdz], [main], [], [AC_MSG_ERROR([You need to install tinyusdz. It is available on GitHub.])])
+
+AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
 
 ## 
 ## CHECK FOR GL
@@ -136,6 +138,7 @@ AC_CONFIG_FILES([Makefile
 				 driver/Makefile
 				 libgi/Makefile
 				 libgi/gl/Makefile
+				 libgi/asset-import/Makefile
 				 rt/Makefile
 				 rt/cpu/Makefile
 				 gi/Makefile

@@ -24,6 +24,7 @@ rtgi_LDADD += ../rt/gl/libglrt.a
 rtgi_LDADD += ../libgi/gl/libgl.a
 endif
 rtgi_LDADD += ../libgi/libgi.a
+rtgi_LDADD += ../libgi/asset-import/libimport.a
 rtgi_LDADD += $(WAND_LIBS)
 
 #ifndef RTGI_SKIP_WF

@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <assimp/mesh.h>
+#include <tinyusdz.hh>
 #include "subdivision.h"
 #include "rt.h"
 
@@ -89,6 +90,10 @@ namespace subd {
 			material = mat_name;
 			init_object(mesh_ai);
 		}
+		object(const tinyusdz::GeomMesh *usd_mesh, std::string mat_name = "") : object() {
+			material = mat_name;
+			init_object(usd_mesh);
+		}
 		bool has_material() { return material != ""; }
 		void write_obj(std::string outfile_name, bool write_normals, std::string mtllib_path = "");
 		void write_obj(bool write_normals, std::string mtllib_path = "") {
@@ -97,6 +102,7 @@ namespace subd {
 
 	private:
 		void init_object(aiMesh *mesh_ai);
+		void init_object(const tinyusdz::GeomMesh *usd_mesh);
 
 	};
 }

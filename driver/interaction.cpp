@@ -15,6 +15,8 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 
+#include "libgi/test-tinyusdz.h"
+
 #ifndef RTGI_SKIP_WF
 #include "libgi/wavefront-rt.h"
 
@@ -391,6 +393,15 @@ void eval(const std::string &line) {
 			modelmatrix = scale(modelmatrix, s);
 		}
 		else error("unsupported trafo: " << trafo);
+	}
+	else ifcmd("testusd") {
+		cout << "Test tinyusdz lib:" << endl;
+		testusd();
+	}
+	else ifcmd("testusd2") {
+		string filepath;
+		in >> filepath;
+		testusd2(filepath);
 	}
 	else ifcmd("load") {
 		string file, name;

@@ -5,6 +5,7 @@
 
 using namespace glm;
 using namespace std;
+using namespace tinyusdz;
 
 namespace subd {
 	bool subd_debug = false;
@@ -92,6 +93,7 @@ namespace subd {
 
 	/* object implementation */
 
+	// Load from Assimp
 	void object::init_object(aiMesh *mesh_ai) {
 		// Meta data
 		mesh.has_normals = mesh_ai->HasNormals();
@@ -131,7 +133,6 @@ namespace subd {
 		//mesh.creases.push_back(...);
 
 		// load control mesh faces (ctrl_faces)
-		int vert_count = 0;
 		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
 			const aiFace &f = mesh_ai->mFaces[i];
 			face face;
@@ -144,6 +145,77 @@ namespace subd {
 				face.verts.push_back(v);
 			}
 			mesh.faces.push_back(face);
+		}
+	}
+
+	// Load from USD
+	void object::init_object(const GeomMesh *usd_mesh) {
+		
+		// Meta data
+		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
+		mesh.has_texture = true; //TODO //mesh_ai->HasTextureCoords(0);
+		name = "USD object"; //TODO //mesh_ai->mName.C_Str();
+		material = "KnifeMtl"; //TODO //load...
+
+		// load control mesh vertices (ctrl_vertices)
+		vector<value::point3f> usd_points = usd_mesh->get_points();
+		std::cout << "#points: " << usd_points.size() << std::endl;
+		for (uint32_t i = 0; i < usd_points.size(); ++i) {
+			auto v = usd_points[i];
+			vec3 vert_pos = vec3(v.x, v.y, v.z);
+			mesh.vertices.push_back(ctrl_vertex(vert_pos));
+		}
+
+		// load texture coordinates
+		if (mesh.has_texture) {
+			tinyusdz::GeomPrimvar texCoords;
+			bool stExists = usd_mesh->get_primvar("st", &texCoords);
+			auto vecTCs = texCoords.get_attribute().get_value<std::vector<tinyusdz::value::float2>>().value();
+			std::cout << "#TCs: " << vecTCs.size() << std::endl;
+			for (const auto &uv : vecTCs) {
+				//std::cout << "u: " << uv[0] << ", " << uv[1] << std::endl;
+				mesh.tex_coords.push_back(vec2(uv[0], uv[1]));
+			}
+		}
+		else {
+			//TODO: is this required?
+			mesh.tex_coords.push_back(vec2(0, 0));
+		}
+
+		// load crease data
+		std::vector<int32_t> usd_crease_indices;
+		std::vector<int32_t> usd_crease_lengths;
+		std::vector<float> usd_crease_sharpness;
+		usd_mesh->creaseIndices.get_value().value().get_scalar(&usd_crease_indices);
+		usd_mesh->creaseLengths.get_value().value().get_scalar(&usd_crease_lengths);
+		usd_mesh->creaseSharpnesses.get_value().value().get_scalar(&usd_crease_sharpness);
+		uint32_t off = 0;
+		for (uint32_t i = 0; i < usd_crease_lengths.size(); ++i) {
+			for (uint32_t j = 0; j < usd_crease_lengths[i]-1; ++j) {
+				mesh.creases.add(
+					usd_crease_indices[off+j],
+					usd_crease_indices[off+j+1],
+					std::min(usd_crease_sharpness[i],1.f)
+				);
+			}
+			off += usd_crease_lengths[i];
+		}
+
+		// load control mesh faces (ctrl_faces)
+		auto usd_indices = usd_mesh->get_faceVertexIndices();
+		auto usd_face_counts = usd_mesh->get_faceVertexCounts();
+		off = 0;
+		for (uint32_t i = 0; i < usd_face_counts.size(); ++i) {
+			face face;
+
+			for (uint32_t j = 0; j < usd_face_counts[i]; ++j) {
+				vertex_config v;
+				v.pos = usd_indices[off+j];
+				v.tc = off+j;
+				face.verts.push_back(v);
+			}
+			mesh.faces.push_back(face);
+			off += usd_face_counts[i];
 		}
 	}
 
