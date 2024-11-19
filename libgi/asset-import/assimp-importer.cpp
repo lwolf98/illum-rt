@@ -65,7 +65,6 @@ namespace import {
 		if (!scene_ai) // handle error
 			throw std::runtime_error("ERROR: Failed to load file: " + filepath.string() + "!");
 
-		std::cout << "TMP/TEST: Number of materials: " << scene_ai->mNumMaterials << std::endl;
 	}
 
 	void assimp_importer::import(scene& scene) {

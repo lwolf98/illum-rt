@@ -13,6 +13,8 @@
 #include "framebuffer.h"
 #endif
 
+#include <algorithm>
+#include <cctype>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -229,8 +231,11 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	 * importer.import(scene)
 	 * 
 	 */
-	const std::string &extension = modelpath.extension().c_str();
-	if (extension == ".usda") {
+	std::string extension = modelpath.extension().c_str();
+	std::transform(extension.begin(), extension.end(), extension.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+		
+	if (extension.substr(0, 4) == ".usd") {
 		import::usd_importer imp(name, trafo, subdiv_level);
 		imp.load_scene(modelpath);
 		imp.import(*this);

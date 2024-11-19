@@ -1,5 +1,10 @@
 #include "asset-import.h"
 
+#include "libgi/color.h"
+#include "libgi/util.h"
+#include "libgi/subdivision.h"
+#include "libgi/material.h"
+
 #include <iostream>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
@@ -12,161 +17,291 @@
 #include <pxr/usd/usdShade/shader.h>
 #include <pxr/usd/usdShade/input.h>
 
-using namespace import;
 using namespace pxr;
+using namespace glm;
+using namespace std;
 
-void TraverseShaderInputs(const UsdShadeShader& shader, int level) {
-	std::string space(level, '\t');
+namespace import {
+	void usd_importer::traverse_shader_inputs(const UsdShadeShader &shader, int level, material &material) {
+		std::string space(level, '\t');
 
-	TfToken shaderId;
-	shader.GetIdAttr().Get(&shaderId);
-	std::cout << space << "Shader id: " << shaderId << std::endl;
-	/*if (shaderId == "UsdUVTexture") {
-		std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
-		VtValue inputValue;
-		shader.GetInput(TfToken("file")).Get(&inputValue);
-		std::cout << inputValue << std::endl;
-		std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
-	}*/
+		TfToken shaderId;
+		shader.GetIdAttr().Get(&shaderId);
+		std::cout << space << "Shader id: " << shaderId << std::endl;
+		/*if (shaderId == "UsdUVTexture") {
+			std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
+			VtValue inputValue;
+			shader.GetInput(TfToken("file")).Get(&inputValue);
+			std::cout << inputValue << std::endl;
+			std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
+		}*/
 
-	// Iterate over shader inputs
-	std::vector<UsdShadeInput> shaderInputs = shader.GetInputs();
-	for (const auto& shaderInput : shaderInputs) {
-		std::cout << space << "Shader input: " << shaderInput.GetFullName() << std::endl;
+		// Iterate over shader inputs
+		std::vector<UsdShadeInput> shaderInputs = shader.GetInputs();
+		for (const auto& shaderInput : shaderInputs) {
+			std::cout << space << "Shader input: " << shaderInput.GetFullName() << std::endl;
 
-		// Check if the input is connected to another shader
-		UsdShadeConnectableAPI source;
-		TfToken inputName;
-		UsdShadeAttributeType type;
-		if (shaderInput.GetConnectedSource(&source, &inputName, &type)) {
-			UsdPrim sourcePrim = source.GetPrim();
-			if (sourcePrim.IsA<UsdShadeShader>()) {
-				// If the input is connected to another shader, print the connected shader path
-				UsdShadeShader connectedShader(sourcePrim);
-				std::cout << space << "Input connected to shader: " << connectedShader.GetPath() << std::endl;
-				
-				// You can now recursively handle the connected shader's inputs as well
-				TraverseShaderInputs(connectedShader, level+1);
-			}
-			else {
-				// If the input is not connected to another shader, fetch its value (color, float, etc.)
+			// Check if the input is connected to another shader
+			UsdShadeConnectableAPI source;
+			TfToken inputName;
+			UsdShadeAttributeType type;
+			if (shaderInput.GetConnectedSource(&source, &inputName, &type)) {
+				UsdPrim sourcePrim = source.GetPrim();
+				if (sourcePrim.IsA<UsdShadeShader>()) {
+					// If the input is connected to another shader, print the connected shader path
+					UsdShadeShader connectedShader(sourcePrim);
+					std::cout << space << "Input connected to shader: " << connectedShader.GetPath() << std::endl;
+					
+					// You can now recursively handle the connected shader's inputs as well
+					traverse_shader_inputs(connectedShader, level+1, material);
+				}
+				else {
+					// If the input is not connected to another shader, fetch its value (color, float, etc.)
+					VtValue inputValue;
+					if (shaderInput.Get(&inputValue)) {
+						std::cout << space << "Input value: " << inputValue << std::endl;
+					}
+				}
+			} else {
+				// If not connected, print the input value
 				VtValue inputValue;
 				if (shaderInput.Get(&inputValue)) {
 					std::cout << space << "Input value: " << inputValue << std::endl;
+
+					if (shaderInput.GetFullName() == "inputs:file") {
+						std::cout << space << "DONE: Assign texture file" << std::endl;
+						std::string tex_path = inputValue.Get<SdfAssetPath>().GetAssetPath();
+						filesystem::path p = filepath.parent_path() / tex_path.erase(0, 2);
+						material.albedo_tex = load_image4f(p);
+						std::cout << "Filepath: " << p << std::endl;
+					}
+					else if (shaderInput.GetFullName() == "inputs:roughness") {
+						float roughness = inputValue.Get<float>();
+						material.roughness = roughness;
+					}
+					else if (shaderInput.GetFullName() == "inputs:ior") {
+						float ior = inputValue.Get<float>();
+						material.ior = ior;
+					}
+
 				}
-			}
-		} else {
-			// If not connected, print the input value
-			VtValue inputValue;
-			if (shaderInput.Get(&inputValue)) {
-				std::cout << space << "Input value: " << inputValue << std::endl;
 			}
 		}
 	}
-}
 
-void usd_importer::load_scene(const std::filesystem::path& filepath) {
-	//UsdStageRefPtr *stage;
-	//stage = UsdStage::Open(filepath);
+	void usd_importer::load_scene(const std::filesystem::path& filepath) {
+		//UsdStageRefPtr *stage;
+		//stage = UsdStage::Open(filepath);
+		this->filepath = filepath;
 
-	std::cout << "USD importer load called!" << std::endl;
+		std::cout << "USD importer load called!" << std::endl;
 
-	// Open the stage (USD file)
-	UsdStageRefPtr stage = UsdStage::Open(filepath.c_str());
-	if (!stage) {
-		std::cerr << "Failed to open USD file: " << filepath.c_str() << std::endl;
-		return;
+		// Open the stage (USD file)
+		//UsdStageRefPtr stage = UsdStage::Open(filepath.c_str());
+		stage = UsdStage::Open(filepath.c_str());
+		if (!stage) {
+			std::cerr << "Failed to open USD file: " << filepath.c_str() << std::endl;
+			//TODO: throw error!
+			return;
+		}
 	}
 
-	for (auto prim : stage->Traverse()) {
-		if (prim.IsA<UsdGeomMesh>()) {
-			UsdGeomMesh mesh(prim);
-			std::cout << "Found mesh: " << prim.GetPath() << std::endl;
+	void usd_importer::import(scene& scene) {
+		unsigned material_offset = scene.materials.size();
+		for (auto prim : stage->Traverse()) {
+			if (prim.IsA<UsdGeomMesh>()) {
+				UsdGeomMesh mesh(prim);
+				std::cout << "Found mesh: " << prim.GetPath() << std::endl;
 
-			// Process the mesh data (see next step)
-			// Accessing points (vertices)
-			VtArray<GfVec3f> points;
-			mesh.GetPointsAttr().Get(&points);
-			std::cout << "Number of vertices: " << points.size() << std::endl;
+				// Import via object
+				{
+					//TODO: init/pass transormation matrices!
+					mat4 model_trafo(1); mat4 node_trafo(1);
+					//mat4 usd_node_trafo_to_glm(1);
+					//mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
+					//mat4 node_trafo = usd_node_trafo_to_glm * parent_trafo;
+					mat4 transform = model_trafo * node_trafo;
+					mat3 normal_transform = transpose(inverse(mat3(transform)));
 
-			// Accessing face vertex indices
-			VtArray<int> faceVertexIndices;
-			mesh.GetFaceVertexIndicesAttr().Get(&faceVertexIndices);
-			std::cout << "Number of face vertex indices: " << faceVertexIndices.size() << std::endl;
+					// load mesh data
+					//TODO: load correct material (id)!
+					uint32_t material_id = material_offset + 0; //+ mesh_ai->mMaterialIndex;
+					uint32_t index_offset = scene.vertices.size();
+					//TODO: material stuff!
+					/*auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
+					
+					aiString name_ai;
+					mat_ai->Get(AI_MATKEY_NAME, name_ai);
+					if (any_of(rtgi_scene.mtl_blacklist.begin(), rtgi_scene.mtl_blacklist.end(), [&name_ai](string n) { return n == name_ai.C_Str(); }))
+						continue;
+					
+					if (rtgi_scene.materials[material_id].emissive != vec3(0)) {
+						light_geom.push_back({(int)rtgi_scene.triangles.size(), (int)(rtgi_scene.triangles.size()+mesh_ai->mNumFaces), material_id});
+						light_prims += mesh_ai->mNumFaces;
+					}*/
 
-			// Accessing face vertex counts
-			VtArray<int> faceVertexCounts;
-			mesh.GetFaceVertexCountsAttr().Get(&faceVertexCounts);
-			std::cout << "Number of faces: " << faceVertexCounts.size() << std::endl;
+					glm::mat3 uv_trafo(1);
+					//TODO: load transforms!
+					/*if (mat_ai->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_BASE_COLOR, 0), uvt) == AI_SUCCESS) {
+						uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
+					}*/
 
-			VtArray<GfVec3f> normals;
-			if (mesh.GetNormalsAttr().Get(&normals)) {
-				std::cout << "Number of normals: " << normals.size() << std::endl;
-			}
-			else {
-				std::cout << "No normals" << std::endl;
-			}
+					subd::object o(mesh);
 
-			UsdGeomPrimvarsAPI primvarsAPI(mesh);
-			UsdGeomPrimvar stPrimvar = primvarsAPI.GetPrimvar(TfToken("st"));
-			VtArray<GfVec2f> uvs;
-			if (stPrimvar && stPrimvar.Get(&uvs)) {
-				std::cout << "Number of UV coordinates: " << uvs.size() << std::endl;
-			}
-			else {
-				std::cout << "No UVs" << std::endl;
-			}
+					// subdivide object
+					for (uint32_t i = 0; i < subdiv_level; ++i) {
+						o.mesh.subdivide();
+					}
 
-			UsdShadeMaterialBindingAPI binding(mesh);
-			//UsdShadeMaterial material = binding.GetMaterial();
-			UsdRelationship materialRel = binding.GetDirectBindingRel();
-			if (materialRel) {
-				std::vector<SdfPath> materialPaths;
-				materialRel.GetTargets(&materialPaths);
+					o.mesh.calculate_vertex_normals();
 
-				if (!materialPaths.empty()) {
-					std::cout << "Number of assigned materials: " << materialPaths.size() << std::endl;
+					// triangulate quad faces
+					o.mesh.triangulate();
 
-					// Now we have the material, let's load it
-					UsdShadeMaterial material(stage->GetPrimAtPath(materialPaths[0]));  // Resolve the material
-					std::cout << "Material assigned to mesh: " << material.GetPath() << std::endl;
-
-					// Accessing the material's surface output (it connects to the shader)
-					UsdShadeOutput surfaceOutput = material.GetOutput(TfToken("surface"));
-					if (surfaceOutput) {
-						std::cout << "Material has a surface output connected to: " << surfaceOutput.GetFullName() << std::endl;
-
-						// Now, traverse the connected shader inputs
-						//UsdShadeShader shader = surfaceOutput.GetConnectedSource().GetPrim().GetChild<UsdShadeShader>();
-						UsdShadeConnectableAPI source;
-						TfToken inputName;
-						UsdShadeAttributeType type;
-						if (!surfaceOutput.GetConnectedSource(&source, &inputName, &type)) {
-							std::cout << "No connected source found for surface output." << std::endl;
-							return;
+					// serialize vertices
+					vector<vertex> serialized_verts;
+					for (int i = 0; i < o.mesh.faces.size(); i++) {
+						subd::face &f = o.mesh.faces[i];
+						for (int j = 0; j < f.verts.size(); j++) {
+							subd::vertex_config &v_cfg = f.verts[j];
+							vertex v;
+							v.pos = o.mesh.vertices[v_cfg.pos].pos;
+							v.tc = o.mesh.tex_coords[v_cfg.tc];
+							v.norm = o.mesh.vertices[v_cfg.pos].norm;
+							serialized_verts.push_back(v);
 						}
-						//UsdShadeShader shader = source.GetPrim().GetChild<UsdShadeShader>();
-						UsdShadeShader shader(source.GetPrim());
-						if (shader) {
-							std::cout << "Shader connected to surface output: " << shader.GetPath() << std::endl;
+					}
 
-							TraverseShaderInputs(shader, 1);
-						}
-					} else {
-						std::cout << "Material surface output is not connected." << std::endl;
+					// store data in scene
+					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+						// cut off ctrl_vertex to regular vertex
+						vertex vertex = serialized_verts[i];
+						vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
+						// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+						vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
+						if (o.mesh.has_texture)
+							vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
+						else
+							vertex.tc = vec2(0,0);
+						scene.vertices.push_back(vertex);
+						scene.scene_bounds.grow(vertex.pos);
+					}
+
+					for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+						triangle triangle;
+						triangle.a = index_offset + i;
+						triangle.b = index_offset + i+1;
+						triangle.c = index_offset + i+2;
+						// test if geom normal agrees with shading normals
+						// if not, flip winding order
+						auto a = scene.vertices[triangle.a];
+						auto b = scene.vertices[triangle.b];
+						auto c = scene.vertices[triangle.c];
+						if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+							std::swap(triangle.b, triangle.c);
+						// append
+						triangle.material_id = material_id;
+						std::cout << "Mat ID: " << material_id << std::endl;
+						scene.triangles.push_back(triangle);
 					}
 				}
+				// End Import via object
+
+				// Process the mesh data (see next step)
+				// Accessing points (vertices)
+				VtArray<GfVec3f> points;
+				mesh.GetPointsAttr().Get(&points);
+				std::cout << "Number of vertices: " << points.size() << std::endl;
+
+				// Accessing face vertex indices
+				VtArray<int> faceVertexIndices;
+				mesh.GetFaceVertexIndicesAttr().Get(&faceVertexIndices);
+				std::cout << "Number of face vertex indices: " << faceVertexIndices.size() << std::endl;
+
+				// Accessing face vertex counts
+				VtArray<int> faceVertexCounts;
+				mesh.GetFaceVertexCountsAttr().Get(&faceVertexCounts);
+				std::cout << "Number of faces: " << faceVertexCounts.size() << std::endl;
+
+				VtArray<GfVec3f> normals;
+				if (mesh.GetNormalsAttr().Get(&normals)) {
+					std::cout << "Number of normals: " << normals.size() << std::endl;
+				}
+				else {
+					std::cout << "No normals" << std::endl;
+				}
+
+				UsdGeomPrimvarsAPI primvarsAPI(mesh);
+				UsdGeomPrimvar stPrimvar = primvarsAPI.GetPrimvar(TfToken("st"));
+				VtArray<GfVec2f> uvs;
+				if (stPrimvar && stPrimvar.Get(&uvs)) {
+					std::cout << "Number of UV coordinates: " << uvs.size() << std::endl;
+				}
+				else {
+					std::cout << "No UVs" << std::endl;
+				}
+
+				UsdShadeMaterialBindingAPI binding(mesh);
+				//UsdShadeMaterial material = binding.GetMaterial();
+				UsdRelationship materialRel = binding.GetDirectBindingRel();
+				if (materialRel) {
+					std::vector<SdfPath> materialPaths;
+					materialRel.GetTargets(&materialPaths);
+
+					if (!materialPaths.empty()) {
+						std::cout << "Number of assigned materials: " << materialPaths.size() << std::endl;
+
+						// Now we have the material, let's load it
+						UsdShadeMaterial material(stage->GetPrimAtPath(materialPaths[0]));  // Resolve the material
+						std::cout << "Material assigned to mesh: " << material.GetPath() << std::endl;
+
+						// Accessing the material's surface output (it connects to the shader)
+						UsdShadeOutput surfaceOutput = material.GetOutput(TfToken("surface"));
+						if (surfaceOutput) {
+							std::cout << "Material has a surface output connected to: " << surfaceOutput.GetFullName() << std::endl;
+
+							// Now, traverse the connected shader inputs
+							//UsdShadeShader shader = surfaceOutput.GetConnectedSource().GetPrim().GetChild<UsdShadeShader>();
+							UsdShadeConnectableAPI source;
+							TfToken inputName;
+							UsdShadeAttributeType type;
+							if (!surfaceOutput.GetConnectedSource(&source, &inputName, &type)) {
+								std::cout << "No connected source found for surface output." << std::endl;
+								return;
+							}
+							//UsdShadeShader shader = source.GetPrim().GetChild<UsdShadeShader>();
+							UsdShadeShader shader(source.GetPrim());
+							if (shader) {
+								std::cout << "Shader connected to surface output: " << shader.GetPath() << std::endl;
+
+								::material new_mat;
+								new_mat.brdf = scene.brdfs["default"];
+								new_mat.albedo = vec4(0, 0, 0, 1.f);
+								new_mat.emissive = vec3(0,0,0);
+								traverse_shader_inputs(shader, 1, new_mat);
+								scene.materials.push_back(new_mat);
+								std::cout << "Materials size: " << scene.materials.size() << std::endl;
+								std::cout << "New Material:\n"
+									<< "name: " << new_mat.name << std::endl
+									<< "albedo: " << new_mat.albedo << std::endl
+									<< "emissive: " << new_mat.emissive << std::endl
+									<< "tex: " << new_mat.albedo_tex << std::endl
+									<< "ior: " << new_mat.ior << std::endl
+									<< "roughness: " << new_mat.roughness << std::endl
+									<< "brdf: " << new_mat.brdf << std::endl;
+							}
+						} else {
+							std::cout << "Material surface output is not connected." << std::endl;
+						}
+					}
+				}
+				else {
+					std::cout << "Could not resolve material :(" << std::endl;
+				}
 			}
 			else {
-				std::cout << "Could not resolve material :(" << std::endl;
+				std::cout << "No mesh: " << prim.GetPath() << std::endl;
 			}
 		}
-		else {
-			std::cout << "No mesh: " << prim.GetPath() << std::endl;
-		}
 	}
-}
-
-void usd_importer::import(scene& scene) {
-
 }

@@ -6,6 +6,8 @@
 #include <optional>
 #include <glm/glm.hpp>
 #include <assimp/Importer.hpp>
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdShade/shader.h>
 
 namespace import {
 	class asset_importer {
@@ -28,7 +30,6 @@ namespace import {
 		private:
 		Assimp::Importer importer;
 		const aiScene* scene_ai;
-		//std::optional<const aiScene *> opt_scene_ai;
 
 		public:
 		assimp_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
@@ -41,12 +42,12 @@ namespace import {
 
 	class usd_importer : public asset_importer {
 		private:
-		//UsdStageRefPtr stage;
+		pxr::UsdStageRefPtr stage;
+		void traverse_shader_inputs(const pxr::UsdShadeShader &shader, int level, material &material);
 
 		public:
 		usd_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
 			: asset_importer(name, trafo, subdiv_level) {}
-		//usd_importer() : asset_importer(name, glm::mat4(0)) {}
 		~usd_importer() {}
 
 		void load_scene(const std::filesystem::path& path) override;

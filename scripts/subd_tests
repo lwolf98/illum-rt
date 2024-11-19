@@ -1,15 +1,22 @@
 #omp off
 
-sppx 1024
+#sppx 1024
+sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 load render-data/sibenik/sibenik.obj
 
-load render-data/knife/knife.usda subd_level 2
+#load render-data/knife/knife.usda subd_level 4
+#load render-data/knife.obj
+load render-data/knife_compare/knife_base.obj
+#load render-data/knife_compare/knife_base.usda subd_level 1
+load render-data/knife_compare/knife_creases.usda subd_level 4
+load render-data/knife_compare/knife_no_creases.obj subd_level 4
+#load render-data/knife_compare/knife_no_creases.usda subd_level 1
 
-load render-data/cornell_sibenik.obj subd_level 4
+#load render-data/cornell_sibenik.obj subd_level 4
 #load output/subd/out_test_subd.obj
 #load render-data/cornell_sibenik.obj
 #load render-data/cube.obj subd_level 1
@@ -75,12 +82,24 @@ up 0 1 0
 #look 0.697203 -0.462518 -0.547709
 
 # Pos 3 (Cornellbox Cube)
-at -6.23871 -11.2936 -0.722548
-look 0.857795 -0.499953 0.119306
+#at -6.23871 -11.2936 -0.722548
+#look 0.857795 -0.499953 0.119306
 
 # Pos 4 (Spaceship)
 #at -10.8116 -8.80657 -3.06846
 #look -0.678169 -0.374951 0.632059
+
+# Pos 5 (Knives)
+#at -3.98014 -12.4293 -0.776237
+#look 0.920817 0.388978 -0.028155
+
+# Pos 6 (Knives rug)
+#at 5.72902 -7.79992 -0.01104
+#look -0.237893 -0.970669 0.034764
+
+# Pos 7 (Knives floor)
+at -6.50667 -8.37197 -0.237811
+look -9.6e-05 -0.999998 -0.002056
 
 raytracer embree
 commit

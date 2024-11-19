@@ -3,9 +3,19 @@
 #include <map>
 #include "subdivision.h"
 
+#include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/usd/usdGeom/xform.h>
+#include <pxr/base/gf/vec3f.h>
+#include <pxr/usd/usd/primRange.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usdShade/material.h>
+#include <pxr/usd/usdShade/materialBindingAPI.h>
+#include <pxr/usd/usdShade/shader.h>
+#include <pxr/usd/usdShade/input.h>
+
 using namespace glm;
 using namespace std;
-using namespace tinyusdz;
 
 namespace subd {
 	bool subd_debug = false;
@@ -148,8 +158,9 @@ namespace subd {
 		}
 	}
 
-	// Load from USD
-	void object::init_object(const GeomMesh *usd_mesh) {
+	// Load from USD with tinyusdz
+	void object::init_object(const tinyusdz::GeomMesh *usd_mesh) {
+		using namespace tinyusdz;
 		
 		// Meta data
 		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
@@ -204,6 +215,90 @@ namespace subd {
 		// load control mesh faces (ctrl_faces)
 		auto usd_indices = usd_mesh->get_faceVertexIndices();
 		auto usd_face_counts = usd_mesh->get_faceVertexCounts();
+		off = 0;
+		for (uint32_t i = 0; i < usd_face_counts.size(); ++i) {
+			face face;
+
+			for (uint32_t j = 0; j < usd_face_counts[i]; ++j) {
+				vertex_config v;
+				v.pos = usd_indices[off+j];
+				v.tc = off+j;
+				face.verts.push_back(v);
+			}
+			mesh.faces.push_back(face);
+			off += usd_face_counts[i];
+		}
+	}
+
+	// Load from USD with OpenUSD
+	void object::init_object(const pxr::UsdGeomMesh &usd_mesh) {
+		using namespace pxr;
+
+		// Meta data
+		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
+		mesh.has_texture = true; //TODO //mesh_ai->HasTextureCoords(0);
+		name = "USD object..."; //TODO //mesh_ai->mName.C_Str();
+		material = "mtl..."; //TODO //load...
+
+		// load control mesh vertices (ctrl_vertices)
+		VtArray<GfVec3f> usd_points;
+		usd_mesh.GetPointsAttr().Get(&usd_points);
+		std::cout << "#points: " << usd_points.size() << std::endl;
+		for (uint32_t i = 0; i < usd_points.size(); ++i) {
+			auto v = usd_points[i];
+			vec3 vert_pos = vec3(v[0], v[1], v[2]);
+			mesh.vertices.push_back(ctrl_vertex(vert_pos));
+		}
+
+		// load texture coordinates
+		if (mesh.has_texture) {
+			//tinyusdz::GeomPrimvar texCoords;
+			//bool stExists = usd_mesh->get_primvar("st", &texCoords);
+			//auto vecTCs = texCoords.get_attribute().get_value<std::vector<tinyusdz::value::float2>>().value();
+			UsdGeomPrimvarsAPI primvarsAPI(usd_mesh);
+			UsdGeomPrimvar stPrimvar = primvarsAPI.GetPrimvar(TfToken("st"));
+			VtArray<GfVec2f> uvs;
+			if (stPrimvar && stPrimvar.Get(&uvs)) {
+				std::cout << "Number of UV coordinates: " << uvs.size() << std::endl;
+			}
+			else {
+				std::cout << "No UVs" << std::endl;
+				}
+
+			for (const auto &uv : uvs) {
+				//std::cout << "u: " << uv[0] << ", " << uv[1] << std::endl;
+				mesh.tex_coords.push_back(vec2(uv[0], uv[1]));
+			}
+		}
+		else {
+			//TODO: is this required?
+			mesh.tex_coords.push_back(vec2(0, 0));
+		}
+
+		// load crease data
+		uint32_t off = 0;
+		VtIntArray usd_crease_indices;
+		VtIntArray usd_crease_lengths;
+		VtFloatArray usd_crease_sharpness;
+		usd_mesh.GetCreaseIndicesAttr().Get(&usd_crease_indices);
+		usd_mesh.GetCreaseLengthsAttr().Get(&usd_crease_lengths);
+		usd_mesh.GetCreaseSharpnessesAttr().Get(&usd_crease_sharpness);
+		for (uint32_t i = 0; i < usd_crease_lengths.size(); ++i) {
+			for (uint32_t j = 0; j < usd_crease_lengths[i]-1; ++j) {
+				mesh.creases.add(
+					usd_crease_indices[off+j],
+					usd_crease_indices[off+j+1],
+					std::min(usd_crease_sharpness[i],1.f)
+				);
+			}
+			off += usd_crease_lengths[i];
+		}
+
+		// load control mesh faces (ctrl_faces)
+		VtArray<int> usd_indices;
+		usd_mesh.GetFaceVertexIndicesAttr().Get(&usd_indices);
+		VtArray<int> usd_face_counts;
+		usd_mesh.GetFaceVertexCountsAttr().Get(&usd_face_counts);
 		off = 0;
 		for (uint32_t i = 0; i < usd_face_counts.size(); ++i) {
 			face face;
