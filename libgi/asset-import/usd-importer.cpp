@@ -6,6 +6,7 @@
 #include "libgi/material.h"
 
 #include <iostream>
+#include <glm/gtc/matrix_transform.hpp>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/xform.h>
@@ -217,6 +218,22 @@ namespace import {
 		return to_glm(transform);
 	}
 
+	glm::mat4 get_orientation_trafo(glm::vec3 scene_up, std::string usd_up_axis) {
+			int aid = 0;
+			scene_up = normalize(scene_up);
+			vec3 usd_up_vector;
+			std::string a = usd_up_axis;
+			if (a == "x" || a == "X") usd_up_vector = vec3(1,0,0);
+			else if (a == "y" || a == "Y") usd_up_vector = vec3(0,1,0);
+			else if (a == "z" || a == "Z") usd_up_vector = vec3(0,0,1);
+			else usd_up_vector = vec3(0,1,0); // default to Y axis
+			float rad = std::acos(dot(scene_up, usd_up_vector));
+			vec3 rotation_vector = cross(scene_up, usd_up_vector);
+			mat4 base(1);
+			base = glm::rotate(base, rad, rotation_vector);
+			return base;
+	}
+
 	void usd_importer::import(scene& scene) {
 		unsigned material_offset = scene.materials.size();
 		material_map.clear();
@@ -229,11 +246,11 @@ namespace import {
 
 				// Import via object
 				//TODO: init/pass transormation matrices!
-				mat4 model_trafo(1);
+				mat4 parent_trafo(1);
 				//mat4 usd_node_trafo_to_glm(1);
 				//mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 				//mat4 node_trafo = usd_node_trafo_to_glm * parent_trafo;
-				const mat4 &parent_trafo = trafo;
+				const mat4 &model_trafo = trafo;
 				mat4 node_trafo = get_mesh_trafo(mesh) * parent_trafo;
 				mat4 transform = model_trafo * node_trafo;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
