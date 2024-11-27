@@ -2,17 +2,17 @@
 
 up 0 1 0
 
-sppx 1024
-#sppx 4096
+#sppx 1024
+sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 load render-data/sibenik/sibenik.obj
 
-modeltrafo rotate x -1.57
+#modeltrafo rotate x -1.57
 
-load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
+load render-data/USD/animals/animals.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/dog.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/fox_flat.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/cars/cars.usda
@@ -26,7 +26,7 @@ load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
 #load render-data/knife_compare/knife_no_creases.obj subd_level 4
 ##load render-data/knife_compare/knife_no_creases.usda subd_level 1
 
-modeltrafo rotate x 1.57
+#modeltrafo rotate x 1.57
 
 #load render-data/241120_alien/out_Reptile_Alien_Creature_0.obj
 #load render-data/241120_alien/alien_front.obj
@@ -128,26 +128,26 @@ material emissive 1.9 18.3 2.15
 at 1.15099 1.804 0.667121
 look -0.995159 0.037408 -0.090879
 
-raytracer embree
-commit
-algo direct/mis
-outfile out_subds/aliens-direct_cpu.png
+#raytracer embree
+#commit
+#algo direct/mis
+#outfile out_subds/subd-direct_cpu.png
 
 #raytracer embree
 #commit
 #algo simple-pt
 #path bounce brdf
 #path len 10
-#outfile subd-sibenik-pt_cpu.png
+#outfile out_subds/subd-pt_cpu.png
 
-#platform cuda
-#raytracer optix
-#add-scene-step build accel struct
-##algo primary-wf
-##outfile subd-sibenik-primary_cuda.png
-#algo direct-wf
-#is light
-#outfile subd-sibenik-direct_cuda.png
-#commit
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile subd-sibenik-primary_cuda.png
+algo direct-wf
+is light
+outfile out_subds/subd-direct_cuda.png
+commit
 
 run
