@@ -67,6 +67,7 @@ namespace subd {
 		std::vector<face> faces;
 		edge_list creases;
 		int get_vert_id(glm::vec3 v_pos);
+		void update();
 		void subdivide();
 		void calculate_vertex_normals();
 		void triangulate();
@@ -78,6 +79,8 @@ namespace subd {
 		glm::vec3 calc_smooth_edge_vertex(const edge &e, const std::vector<glm::vec3> &face_vertices);
 		glm::vec3 calc_sharp_edge_vertex(const edge &e);
 		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
+
+		void calculate_face_normals();
 	};
 
 	struct object {

@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <assimp/Importer.hpp>
 #include <pxr/usd/usd/stage.h>
+#include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdShade/shader.h>
 
 namespace import {
@@ -43,6 +44,10 @@ namespace import {
 	class usd_importer : public asset_importer {
 		private:
 		pxr::UsdStageRefPtr stage;
+		// material_map associates an USD material path to an material id relative to an asset import.
+		// The map will be reset on a call of usd_importer::import
+		std::map<std::string, int> material_map;
+		int load_material(const pxr::UsdGeomMesh &mesh, scene& scene);
 		void traverse_shader_inputs(const pxr::UsdShadeShader &shader, int level, material &material);
 
 		public:

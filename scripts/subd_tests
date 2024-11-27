@@ -1,20 +1,35 @@
 #omp off
 
-#sppx 1024
-sppx 4096
+sppx 1024
+#sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 load render-data/sibenik/sibenik.obj
 
-#load render-data/knife/knife.usda subd_level 4
-#load render-data/knife.obj
-load render-data/knife_compare/knife_base.obj
-#load render-data/knife_compare/knife_base.usda subd_level 1
-load render-data/knife_compare/knife_creases.usda subd_level 4
-load render-data/knife_compare/knife_no_creases.obj subd_level 4
-#load render-data/knife_compare/knife_no_creases.usda subd_level 1
+modeltrafo rotate x -1.57
+
+load /home/lukas/Downloads/USD/animals/animals.usda subd_level 1
+#load /home/lukas/Downloads/USD/animals/dog.usda subd_level 1
+#load /home/lukas/Downloads/USD/animals/fox_flat.usda subd_level 1
+#load /home/lukas/Downloads/USD/cars/cars.usda
+#load /home/lukas/Downloads/USD/nissan/nissan.usda
+
+#load render-data/knife/knife.usda subd_level 2
+##load render-data/knife.obj
+#load render-data/knife_compare/knife_base.obj
+##load render-data/knife_compare/knife_base.usda subd_level 1
+#load render-data/knife_compare/knife_creases.usda subd_level 4
+#load render-data/knife_compare/knife_no_creases.obj subd_level 4
+##load render-data/knife_compare/knife_no_creases.usda subd_level 1
+
+modeltrafo rotate x 1.57
+
+#load render-data/241120_alien/out_Reptile_Alien_Creature_0.obj
+#load render-data/241120_alien/alien_front.obj
+#load render-data/241120_alien/alien_front.obj
+#load render-data/241120_alien/alien_right.obj subd_level 1
 
 #load render-data/cornell_sibenik.obj subd_level 4
 #load output/subd/out_test_subd.obj
@@ -31,7 +46,7 @@ material roughness 0.055
 material ior 2.289
 
 
-#skylight load render-data/skylight-sunset.floats 30
+skylight load render-data/skylight-sunset.floats 10
 
 
 # kept this in in case you want to render the regular sibenik model
@@ -98,13 +113,25 @@ up 0 1 0
 #look -0.237893 -0.970669 0.034764
 
 # Pos 7 (Knives floor)
-at -6.50667 -8.37197 -0.237811
-look -9.6e-05 -0.999998 -0.002056
+#at -6.50667 -8.37197 -0.237811
+#look -9.6e-05 -0.999998 -0.002056
+
+# Pos 8 (Aliens)
+#at 6.40351 -10.0462 1.86696
+#look 0.885838 -0.340812 -0.314863
+
+# Pos 9 (Alien)
+#at 7.16317 -10.4379 1.70931
+#look 0.330249 -0.427686 -0.84144
+
+# Pos 10 (Animals)
+at 1.15099 1.804 0.667121
+look -0.995159 0.037408 -0.090879
 
 raytracer embree
 commit
 algo direct/mis
-outfile subd-sibenik-direct_cpu.png
+outfile out_subds/aliens-direct_cpu.png
 
 #raytracer embree
 #commit

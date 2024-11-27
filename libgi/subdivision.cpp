@@ -433,6 +433,18 @@ namespace subd {
 
 	/* mesh implementation */
 
+	void mesh::update() {
+		// Calculate adjacent edges and faces
+		edge_list edges;
+		for (uint i = 0; i < faces.size(); i++) {
+			face& f = faces[i];
+			for (uint j = 0; j < f.size(); j++)
+				add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+		}
+
+		calculate_face_normals();
+	}
+
 	void mesh::subdivide() {
 		mesh new_mesh;
 
@@ -776,6 +788,16 @@ namespace subd {
 		return -1;
 	}
 
+	void mesh::calculate_face_normals() {
+		for (int i = 0; i < faces.size(); i++) {
+			const face &f = faces[i];
+			glm::vec3 u = vertices[f.verts[0].pos].pos - vertices[f.verts[1].pos].pos;
+			glm::vec3 v = vertices[f.verts[2].pos].pos - vertices[f.verts[1].pos].pos;
+			glm::vec3 normal = glm::normalize(glm::cross(v, u));
+			normals.push_back(normal);
+		}
+	}
+
 	// Calculate vertex normals from face normals
 	void mesh::calculate_vertex_normals() {
 		for (uint32_t i = 0; i < vertices.size(); ++i) {
@@ -805,8 +827,20 @@ namespace subd {
 			face &f = faces[i];
 			int n = f.verts.size();
 			int j = -1;
+			int j_max = n*n; // upper bound
+			int original_n = n;
 			while (n > 3) {
 				j++;
+				if (j > j_max) {
+					std::cerr << "Error: Could not triangulate face, skipped: { ("
+						<< vertices[f.verts[0].pos].pos << ") ("
+						<< vertices[f.verts[1].pos].pos << ") ("
+						<< vertices[f.verts[2].pos].pos << ") ("
+						<< vertices[f.verts[3].pos].pos << ") }"
+						<< std::endl;
+						break;
+				}
+				assert(j <= j_max);
 				int i_x = j%n;
 				int i_a = ((j-1) % n + n) % n;
 				int i_b = (j+1) % n;
@@ -867,8 +901,11 @@ namespace subd {
 				f.verts.erase(f.verts.begin() + i_x);
 				n = f.verts.size();
 			}
-			new_mesh.faces.push_back(f);
-			new_mesh.normals.push_back(normals[i]);
+			// If triangulation failed for this face, it will be skipped and not added
+			if (f.size() == 3) {
+				new_mesh.faces.push_back(f);
+				new_mesh.normals.push_back(normals[i]);
+			}
 		}
 
 		normals.clear();
