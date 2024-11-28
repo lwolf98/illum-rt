@@ -66,6 +66,7 @@ struct light {
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const = 0;
 // 	virtual float pdf(const ray &r) const = 0;
+	virtual tuple<ray, vec3, vec3, float> sample_Le(const vec2 &xis1, const vec2 &xis2) const = 0;
 #endif
 };
 
@@ -77,6 +78,7 @@ struct pointlight : public light {
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 // 	float pdf(const ray &r) const override { return 0; }
+	tuple<ray, vec3, vec3, float> sample_Le(const vec2 &xis1, const vec2 &xis2) const override;
 #endif
 };
 #endif
@@ -97,6 +99,7 @@ struct trianglelight : public light, public triangle {
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 	tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const override;
 	float pdf(const ray &r, const diff_geom &on_light) const;
+	tuple<ray, vec3, vec3, float> sample_Le(const vec2 &xis_pos, const vec2 &xis_dir) const override;
 #endif
 };
 #endif
@@ -117,6 +120,7 @@ struct skylight : public light {
 	virtual vec3 power() const;
 	virtual tuple<ray, vec3, float> sample_Li(const diff_geom &from, const vec2 &xis) const;
 	float pdf_Li(const ray &ray) const;
+	virtual tuple<ray, vec3, vec3, float> sample_Le(const vec2 &xis1, const vec2 &xis2) const;
 };
 
 #endif

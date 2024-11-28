@@ -6,6 +6,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "initialize framebuffer";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *rd) = 0;
 	};
@@ -36,6 +37,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "download framebuffer";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *rd) = 0;
 	};
@@ -65,6 +67,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "copy to preview";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *rd) = 0;
 	};
@@ -94,6 +97,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample camera rays";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *rd) = 0;
 	};
@@ -123,6 +127,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "add hitpoint albedo";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *sample_rays) = 0;
 	};
@@ -153,6 +158,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "add hitpoint albedo secondary";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *sample_rays) = 0;
 	};
@@ -182,6 +188,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "add hitpoint normal secondary";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *sample_rays) = 0;
 	};

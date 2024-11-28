@@ -102,13 +102,47 @@ namespace wf::gl {
 	raydata* platform::allocate_raydata() {
 	    return new raydata(rc->resolution());
 	}
+		
+	raydata* platform::allocate_raydata_manually(int size) {
+		//TODO-ML: to be implemented
+		return nullptr;
+	    //return new raydata(size, 1, false);
+	}
 
 	per_sample_data<float>* platform::allocate_float_per_sample() {
 		return new per_sample_data<float>(rc->resolution());
 	}
-
+		
 	per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
 		return new per_sample_data<vec3>(rc->resolution());
+	}
+		
+	per_sample_data<int>* platform::allocate_int_per_sample() {
+		return new per_sample_data<int>(rc->resolution());
+	}
+	
+	per_sample_data<float>* platform::allocate_float_per_sample_manually(int size) {
+		return new per_sample_data<float>(glm::ivec2(size, 1), false);
+	}
+		
+	per_sample_data<vec3>* platform::allocate_vec3_per_sample_manually(int size) {
+		return new per_sample_data<vec3>(glm::ivec2(size, 1), false);
+	}
+	
+	per_sample_data<int>* platform::allocate_int_per_sample_manually(int size) {
+		return new per_sample_data<int>(glm::ivec2(size, 1), false);
+	}
+
+	/* manylight allocation */
+	//TODO-ML: to be implemented
+	vpldata* platform::allocate_vpldata() {
+		return nullptr;
+		//return new vpldata(rc->resolution());
+	}
+		
+	vpldata* platform::allocate_vpldata_manually(int size) {
+		return nullptr;
+		//return new vpldata(size, 1);
 	}
 
 	platform *pf = nullptr;

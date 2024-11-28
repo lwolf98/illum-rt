@@ -261,6 +261,11 @@ namespace wf::cuda {
         host_launch_params.triangles = scene_data->triangles.device_memory;
     }
 
+	void optix_tracer::update_res(glm::ivec2 new_res) {
+		host_launch_params.frame_buffer_dimensions.x = new_res.x;
+		host_launch_params.frame_buffer_dimensions.y = new_res.y;
+	}
+
     void optix_tracer::init_optix() {
         CHECK_OPTIX_ERROR(optixInit(), "");
     }

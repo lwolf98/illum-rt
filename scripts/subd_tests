@@ -3,7 +3,8 @@
 up 0 1 0
 
 #sppx 1024
-sppx 4096
+#sppx 4096
+sppx 512
 resolution 960 540
 
 default-brdf layered-gtr2
@@ -12,7 +13,8 @@ load render-data/sibenik/sibenik.obj
 
 #modeltrafo rotate x -1.57
 
-load render-data/USD/animals/animals.usda subd_level 1
+#load render-data/USD/animals/animals.usda subd_level 1
+load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/dog.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/fox_flat.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/cars/cars.usda
@@ -128,6 +130,10 @@ material emissive 1.9 18.3 2.15
 at 1.15099 1.804 0.667121
 look -0.995159 0.037408 -0.090879
 
+# Pos 11 (Animals back)
+at -1.03277 2.88905 -1.623
+look 0.249376 -0.278914 0.927372
+
 #raytracer embree
 #commit
 #algo direct/mis
@@ -149,5 +155,14 @@ algo direct-wf
 is light
 outfile out_subds/subd-direct_cuda.png
 commit
+
+# WF setup ML
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+#algo manylight-wf
+##is light paths 4096 length 10 g 0.1 vps 1
+#is light paths 512 length 10 g 0.1 vps 1
+#commit
 
 run

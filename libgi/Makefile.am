@@ -13,6 +13,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					rt.cpp \
 					scene.cpp \
 					timer.cpp \
+					objdraw.cpp \
 					subdivision.cpp \
 					test-tinyusdz.cpp
 
@@ -43,6 +44,7 @@ noinst_HEADERS = 	algorithm.h \
 					scene.h \
 					timer.h \
 					util.h \
+					objdraw.h \
 					subdivision.h \
 					test-tinyusdz.h
 

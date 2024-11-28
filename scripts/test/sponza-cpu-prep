@@ -1,0 +1,54 @@
+# Format:
+# pm_spo_p[pos]_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
+# ml_spo_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
+
+# Outfile
+outfile sponza-test/sponza_cpu_prep.png
+
+# obj files
+load render-data/sponza/sponza.fixed.obj
+
+# Position 1
+at -516 300 0
+look 1 0 0
+up 0 1 0
+
+# Position 2
+#at -516 300 0
+#look 1 0 0
+#up 0 1 0
+
+# Parameter
+resolution 640 360
+raytracer embree
+#algo photon-mapping
+algo manylight paths 4096 length 10 g 0.00001
+sppx 2048
+
+# Skylight
+skylight load render-data/skylight-sunset.floats 30
+
+# Materials: light
+material select vase_round.001
+#material emissive 76 60 20
+material emissive 0 0 0
+
+# Materials: default
+material select floor.001
+material ior 2.3
+material roughness 0.01
+
+# VPL calculation
+commit
+vplcalc
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths 4096 length 10 g 0.00001
+commit
+
+# Run
+run

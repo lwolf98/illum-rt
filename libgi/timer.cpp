@@ -39,6 +39,17 @@ std::string timer::format(const std::string& name) const {
         return format(ms(name), ms_total());
 }
 
+std::string string_width(std::string str, int width) {
+    std::string res = str;
+    int len = str.length();
+    if (len < width) {
+        int diff = width - len;
+        for (int i = 0; i < diff; i++)
+            res + " ";
+    }
+    return res;
+}
+
 std::string timer::format(double ms_elapsed, double ms_total) {
     std::stringstream time;
     time.precision(1);
@@ -49,6 +60,7 @@ std::string timer::format(double ms_elapsed, double ms_total) {
 	     << std::setw(2) << std::to_string(elapsed_seconds) << "s, "
 	     << std::setw(3) << std::to_string(uint64_t(ms_elapsed) % 1000) << "ms";
     time << std::fixed << std::right << std::setw(5) << " [" << std::setw(5) << ms_elapsed / ms_total * 100 << "%]";
+	time << std::fixed << std::right << std::setw(10) << "(" << ms_elapsed * 1000000 << "ns)";
     return time.str();
 }
 
@@ -62,7 +74,7 @@ std::string timer::format(double ms_elapsed, double ms_total, uint64_t count) {
 	     << std::setw(2) << std::to_string(elapsed_seconds) << "s, "
 	     << std::setw(3) << std::to_string(uint64_t(ms_elapsed) % 1000) << "ms";
     time << std::fixed << std::right << std::setw(5) << " [" << std::setw(5) << ms_elapsed / ms_total * 100 << "%]";
-	time << std::fixed << std::right << std::setw(10) << "(" << ms_elapsed / count * 1000000 << "ns * " << count/1000000.0 << "M calls)";
+	time << std::fixed << std::right << std::setw(10) << "(" << ms_elapsed / count * 1000000 << "ns per call, " << count << " calls)";
     return time.str();
 }
 
@@ -77,12 +89,16 @@ void timer::print(const std::string& timer_name) {
     std::cout << (timer_name.size() ? timer_name : "Times taken") << ":" << std::endl;
     for (auto &t : sorted_times) {
         // output timing
-        std::cout << std::left << std::setw(25) << t.first;
+        //std::cout << std::left << std::setw(25) << t.first;
+        //std::cout << format(t.first) << std::endl;
+        std::cout << std::left << std::setw(50) << t.first;
         std::cout << format(t.first) << std::endl;
     }
     // output total
-    std::cout << std::left << std::setw(25) << "Total:";
+    std::cout << std::left << std::setw(50) << "Total:";
     std::cout << std::right << std::setw(25) << format(ms_total(), ms_total()) << std::endl;
+    //std::cout << std::left << string_width("Total:", 50);
+    //std::cout << std::right << std::setw(50) << format(ms_total(), ms_total()) << std::endl;
     std::cout << std::endl;
 }
 

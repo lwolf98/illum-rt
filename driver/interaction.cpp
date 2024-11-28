@@ -34,6 +34,9 @@
 #ifndef RTGI_SKIP_SIMPLE_PT
 #include "gi/pt.h"
 #endif
+#ifndef RTGI_SKIP_MANYLIGHT
+#include "gi/manylight.h"
+#endif
 
 #ifdef HAVE_GL
 #ifndef RTGI_SKIP_WF
@@ -453,6 +456,9 @@ void eval(const std::string &line) {
 		else if (name == "direct-wf") {
 			select_wf(wf::direct_light);
 		}
+		else if (name == "manylight-wf") {
+			select_wf(wf::manylight_algorithm);
+		}
 #undef select_wf
 #endif
 #ifndef RTGI_SKIP_LOCAL_ILLUM
@@ -471,6 +477,33 @@ void eval(const std::string &line) {
 #ifndef RTGI_SKIP_PT
 		else if (name == "pt")  a = new pt_nee;
 #endif
+#endif
+#ifndef RTGI_SKIP_MANYLIGHT
+		else if (name == "manylight") {
+			uint32_t paths, length;
+			float G_max;
+			string cmd;
+			in >> cmd;
+			check_in("Command incomplete");
+			if (cmd == "paths")
+				in >> paths;
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in("Syntax error: algo manylight paths n length m g f");
+			in >> cmd;
+			check_in("Command incomplete");
+			if (cmd == "length")
+				in >> length;
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in("Syntax error: algo manylight paths n length m g f");
+			in >> cmd;
+			check_in("Command incomplete");
+			if (cmd == "g")
+				in >> G_max;
+			else error("Syntax error: algo manylight paths n length m g f");
+			check_in_complete("Syntax error: algo manylight paths n length m g f");
+
+			a = new manylight_algorithm(paths, length, G_max);
+		}
 #endif
 		else error("There is no gi algorithm called '" << name << "'");
 		if (a) {
@@ -645,6 +678,24 @@ void eval(const std::string &line) {
 #endif
 			run(rc->algo);
 	}
+#ifndef RTGI_SKIP_MANYLIGHT
+	else ifcmd("vplcalc") {
+		if (!uc.valid_platform)
+			error("Invalid platform");
+		if (!platform_and_algo_aligned())
+			error("Incompatible algorithm form platform");
+		if (uc.scene_touched_at == 0 || uc.tracer_touched_at == 0 || uc.accel_touched_at == 0 || rc->algo == nullptr)
+			error("We have to have a scene loaded, a ray tracer set, an acceleration structure built and an algorithm set prior to running");
+		if (uc.accel_touched_at < uc.tracer_touched_at)
+			error("The current tracer does (might?) not have an up-to-date acceleration structure");
+		if (uc.accel_touched_at < uc.scene_touched_at)
+			error("The current acceleration structure is out-dated");
+
+		rc->ml_cpu_preparation = true;
+		rc->algo->prepare_frame();
+		std::cout << "FINISHED VPL PREP!!!" << std::endl;
+	}
+#endif
 	else ifcmd("material") {
 		string cmd;
 		in >> cmd;

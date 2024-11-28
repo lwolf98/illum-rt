@@ -1,0 +1,43 @@
+# Format:
+# pm_spo_p[pos]_[global photons]_[global estimate]_[caustics photons]_[caustics estimate]_[path len pass 1]_[path len pass 2]_[sppx]s.png
+# ml_spo_p[pos]_[paths]x[path_len]_[vpl count]v_[gterm]_[sppx]s.png
+
+# Outfile
+outfile san-miguel-test.png
+
+# obj files
+load render-data/san_miguel/san-miguel.obj
+
+# Position 1
+#at 600 130 200
+#look 1 -0.2 -0.5
+#up 0 1 0
+
+# Position 2
+#at 900 100 500
+#look -0.58 0.01 -0.81
+#up 0 1 0
+
+# Position 3
+at 7 2 6
+look 0.6 0 -0.4
+up 0 1 0
+
+# Parameter
+resolution 640 360
+raytracer embree
+#algo photon-mapping
+algo manylight paths 102400 length 10 g 0.1
+#algo direct
+sppx 8192
+
+# Skylight
+skylight load render-data/skylight-sunset.floats 30
+
+# Materials: light
+#material select Grass
+#material emissive 10 10 10
+
+# Run
+commit
+run

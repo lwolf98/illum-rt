@@ -1,0 +1,26 @@
+at 0 0.3 0
+look -1 0 0
+up 0 1 0
+load render-data/san_miguel/san-miguel.obj
+platform cpu
+raytracer embree
+add-scene-step build accel struct
+
+#algo direct-wf
+algo manylight-wf
+#importance sampling (is) methods: uniform cosine light brdf
+is light paths 1024 length 10 vps 5
+
+sppx 2048
+resolution 640 360
+outfile out_wf_mig.png
+
+omp on
+skylight load render-data/skylight-sunset.floats 30
+
+#material select Grass
+#material emissive 10 10 10
+
+commit
+
+run

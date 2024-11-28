@@ -1,6 +1,7 @@
 SUFFIXES = .cu
 noinst_LIBRARIES = libcudaraytracing.a
 libcudaraytracing_a_CUDA_SOURCES = bounce.cu \
+								   manylight.cu \
 								   kernels.cu \
 								   preprocessing-kernels.cu \
 								   trace-kernels.cu \
@@ -9,6 +10,7 @@ libcudaraytracing_a_CUDA_SOURCES = bounce.cu \
 libcudaraytracing_a_SOURCES = base.cpp cuda-helpers.cpp platform.cpp preprocessing.cpp rni.cpp $(libcudaraytracing_a_CUDA_SOURCES)
 
 noinst_HEADERS = bounce.h \
+				 manylight.h \
 				 cuda-helpers.h \
 				 cuda-operators.h \
 				 kernels.h \

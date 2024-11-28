@@ -20,6 +20,7 @@ namespace wf::cuda {
             optix_tracer(bool alpha_aware);
 
             void build(scenedata *scene) override;
+			void update_res(glm::ivec2 new_res) override;
             void compute_hit(bool anyhit) override;
 
         protected:

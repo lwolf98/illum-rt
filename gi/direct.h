@@ -46,13 +46,14 @@ public:
 #include "gi/direct-steps.h"
 namespace wf {
 	class direct_light : public simple_algorithm {
+	protected:
 		raydata *camrays = nullptr,
 				*shadowrays = nullptr;
 		per_sample_data<float> *pdf = nullptr;
 		per_sample_data<vec3> *lightcol = nullptr;
 
 		enum ::direct_light::sampling_mode sampling_mode = ::direct_light::sample_uniform;
-		void regenerate_steps();
+		virtual void regenerate_steps();
 	public:
 		direct_light();
 		bool interprete(const std::string &command, std::istringstream &in) override;

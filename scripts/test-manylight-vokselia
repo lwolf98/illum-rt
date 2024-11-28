@@ -1,0 +1,21 @@
+at 0 0.3 0
+look -1 0 0
+up 0 1 0
+load render-data/vokselia_spawn/vokselia_spawn.obj
+
+raytracer embree
+algo manylight paths 2048 length 10
+sppx 1024
+resolution 640 360
+outfile out_ml_vok.png
+
+omp on
+skylight load render-data/skylight-sunset.floats 10
+#skylight load render-data/skylight-blue.floats 30
+
+#material select Grass
+#material emissive 10 10 10
+
+commit
+
+run

@@ -68,6 +68,8 @@ namespace wf::cuda {
 	int2 frame_res() { auto r = rc->resolution(); return {r.x,r.y}; }
 
 	void sample_uniform_dir::run() {
+		//time_this_block(sample_uniform_dir);
+		//time_this_wf_step;
 		rng.compute();
 
 		int2 res = frame_res();
@@ -126,6 +128,8 @@ namespace wf::cuda {
 	}
 
 	void sample_cos_weighted_dir::run() {
+		//time_this_wf_step;
+		//time_this_block(sample_cos_dir);
 		rng.compute();
 
 		int2 res = frame_res();
@@ -255,6 +259,8 @@ namespace wf::cuda {
 
 	
 	void sample_light_dir::run() {
+		//time_this_block(sample_light_dir);
+		//time_this_wf_step;
 		rng.compute();
 		int2 res = frame_res();
 		k::sample_light<<<launch_config>>>(res,
@@ -364,7 +370,8 @@ namespace wf::cuda {
 				uint4  tri = triangles[hit.ref];
 				float3 ng = hit_ng(hit, tri, vert_norm);
 				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				//float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = lambertian_reflection(w_o, w_i, ng, tri, hit, mat, vertex_tc);
 				// dot
 				float cos_theta = cdot(w_i, ng);
 				// combine
@@ -398,17 +405,21 @@ namespace wf::cuda {
 				uint4  tri = triangles[hit.ref];
 				float3 ng  = hit_ng(hit, tri, vert_norm);
 				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				//float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = lambertian_reflection(w_o, w_i, ng, tri, hit, mat, vertex_tc);
 				// dot
 				float cos_theta = cdot(w_i, ng);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
 			}
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(0,0,0, 1.0);
 		}
 	}
 
 	void integrate_dir_sample::run() {
+		//time_this_block(integr_dir_sample);
+		//time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_dir<<<launch_config>>>(res,
 											camrays->rays.device_memory,
@@ -424,6 +435,8 @@ namespace wf::cuda {
 	}
 	
 	void integrate_light_sample::run() {
+		//time_this_block(integr_light_sample);
+		//time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_light<<<launch_config>>>(res,
 											  camrays->rays.device_memory,

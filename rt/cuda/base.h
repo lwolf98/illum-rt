@@ -37,7 +37,7 @@ namespace wf {
 
 			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
 			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
-			__device__ __inline__ bool valid() { return t != FLT_MAX; }
+			__device__ __inline__ bool valid() const { return t != FLT_MAX; }
 		};
 
 		struct __align__(16) simple_bvh_node /*: public node*/ {
@@ -333,17 +333,19 @@ namespace wf {
 			global_memory_buffer<float4> framebuffer;
 
 			raydata(glm::ivec2 dim) : raydata(dim.x, dim.y) {}
-			raydata(int w, int h) : w(w), h(h),
+			raydata(int w, int h, bool update_size = true) : w(w), h(h),
 									rays("rays", 2*w*h),
 									intersections("intersections", w*h),
 									framebuffer("framebuffer", w*h)	{
-				  rc->call_at_resolution_change[this] = [this](int w, int h) {
-					  this->w = w;
-					  this->h = h;
-					  this->rays.resize(2*w*h);
-					  this->intersections.resize(w*h);
-					  this->framebuffer.resize(w*h);
-				  };
+				if (update_size) {
+					rc->call_at_resolution_change[this] = [this](int w, int h) {
+						this->w = w;
+						this->h = h;
+						this->rays.resize(2*w*h);
+						this->intersections.resize(w*h);
+						this->framebuffer.resize(w*h);
+					};
+				}
 			}
 			~raydata() {
 				rc->call_at_resolution_change.erase(this);
@@ -355,6 +357,55 @@ namespace wf {
 			float4 emissive;
 			cudaTextureObject_t albedo_tex;
 			float ior, roughness;
+		};
+
+		// virtual point light
+		struct vpldata : public wf::vpldata {
+			int w, h;
+			global_memory_buffer<float4> pos;
+			global_memory_buffer<float4> col;
+			//global_memory_buffer<float4> normal; //optional with 'is'
+			global_memory_buffer<float4> w_in;
+			global_memory_buffer<tri_is> is;
+			// Constructor for VPLs (v_1 to v_...)
+
+			vpldata(glm::ivec2 dim) : vpldata(dim.x, dim.y) {}
+			vpldata(int w, int h, bool update_size = true) : w(w), h(h),
+			pos("vpl_pos", w*h),
+			col("vpl_col", w*h),
+			//normal("vpl_normals", w*h),
+			w_in("vpl_w_in", w*h),
+			is("vpl_intersections", w*h) {
+				if (update_size) {
+					rc->call_at_resolution_change[this] = [this](int w, int h) {
+						this->w = w;
+						this->h = h;
+						this->pos.resize(w*h);
+						this->col.resize(w*h);
+						this->w_in.resize(w*h);
+						this->is.resize(w*h);
+					};
+				}
+			}
+
+			virtual int size() override {
+				return w*h;
+			}
+
+			//vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
+			//vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}
+
+			/*float4 pos;
+			float4 col;
+			float4 normal; //optional with 'is'
+			float4 w_in;
+			tri_is is;*/
+
+			// Constructor for VPLs (v_1 to v_...)
+			/*vpl(const float4& col, const float4& pos, const float4& normal, const float4& w_in, const tri_is& is)
+			: pos(pos), col(col), normal(normal), w_in(w_in), is(is) {}
+
+			vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}*/
 		};
 
 		struct scenedata {
@@ -415,8 +466,10 @@ namespace wf {
 			batch_rt() : bvh_nodes("bvh_nodes", 0), bvh_index("index", 0) {
 			}
 			virtual void build(scenedata *scene);
+			virtual void update_res(glm::ivec2 new_res) {} //TODO-ML: override in all raytracers (if required) and remove empty implementation
 			void use(wf::raydata *rays) override { 
-			    rd = dynamic_cast<raydata*>(rays);
+				rd = dynamic_cast<raydata*>(rays);
+				update_res(glm::ivec2(rd->w, rd->h));
 			}
 			bool interprete(const std::string &command, std::istringstream &in) override;
 			void compute_closest_hit() override {
