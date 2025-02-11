@@ -28,6 +28,10 @@ uint32_t naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector<vert
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
 	if (end - start == 1) {
+		if (triangles[start].material_id == (uint32_t)-1) {
+			// TODO: put in the SubD 2-level BVH node
+			// return ...;
+		}
 		uint32_t id = nodes.size();
 		nodes.emplace_back();
 		nodes[id].triangle = start;
@@ -106,11 +110,20 @@ triangle_intersection naive_bvh::closest_hit(const ray &ray) {
 				}
 		}
 		else {
-			if (intersect(scene->triangles[node.triangle], scene->vertices.data(), ray, intersection))
-				if (intersection.t < closest.t) {
-					closest = intersection;
-					closest.ref = node.triangle;
+			if (false) { // if leaf node holds a SubD quad:
+				// TODO: evaluate SubD quad
+				// triangle tri1 = quad.tri1();
+				// triangle tri2 = quad.tri2();
+				// make intersect test from below for both tris...
+			}
+			else {
+				if (intersect(scene->triangles[node.triangle], scene->vertices.data(), ray, intersection)) {
+					if (intersection.t < closest.t) {
+						closest = intersection;
+						closest.ref = node.triangle;
+					}
 				}
+			}
 		}
 	}
 #ifdef COUNT_HITS

@@ -13,6 +13,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					rt.cpp \
 					scene.cpp \
 					timer.cpp \
+					subdivision_grid.cpp \
 					subdivision.cpp \
 					test-tinyusdz.cpp
 

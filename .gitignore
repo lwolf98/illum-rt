@@ -24,3 +24,6 @@ render-data/dragon/
 *.png
 rtgi-202*tar.gz
 rtgi-202*tar.bz2
+
+render-data/subd/
+.vscode/

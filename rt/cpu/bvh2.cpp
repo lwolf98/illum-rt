@@ -102,6 +102,14 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::close
 			else if (hit_r)
 				stack[++sp] = node.link_r;
 		}
+		/*
+		else if (node.subd_aabb_id != -1) {
+			uint32_t id = node.subd_aabb_id;
+			subd_aabb box = subd_nodes[id];
+			triangle_intersection is = subd_closest_hit(box.bvh, ray);
+			
+		}
+		*/
 		else {
 			for (int i = 0; i < node.tri_count(); ++i) {
 				int tri_idx = triangle_index(node.tri_offset()+i);
@@ -135,6 +143,18 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::close
 	return triangle_intersection();
 #endif
 }
+
+// TODO: SubD closest hit implementation?
+/*triangle_intersection subd_closest_hit(const bvh &bvh, const ray &ray) {
+	if (innner()) {
+		// same traverse logic
+	}
+	else {
+		assert(depth_level == subd_level);
+
+
+	}
+}*/
 
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
 bool binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::any_hit(const ray &ray) {

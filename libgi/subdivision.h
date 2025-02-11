@@ -68,6 +68,7 @@ namespace subd {
 		edge_list creases;
 		int get_vert_id(glm::vec3 v_pos);
 		void update();
+		void subdivide(uint32_t level);
 		void subdivide();
 		void calculate_vertex_normals();
 		void triangulate();
@@ -113,5 +114,25 @@ namespace subd {
 		void init_object(const tinyusdz::GeomMesh *usd_mesh);
 		void init_object(const pxr::UsdGeomMesh &usd_mesh);
 
+	};
+
+	struct subd_patch {
+		std::vector<glm::vec3> verts;
+		uint32_t material_id;
+		uint32_t subd_level;
+
+		subd_patch(uint32_t level) : subd_level(level) {
+			uint32_t size = len()*len();
+			verts.reserve(size);
+			for (uint32_t i = 0; i < size; ++i)
+				verts.emplace_back(0);
+
+		}
+
+		void print_verts();
+		uint32_t len();
+		uint32_t vert_right(uint32_t vert_id);
+		uint32_t vert_down(uint32_t vert_id);
+		uint32_t vert_down_right(uint32_t vert_id);
 	};
 }

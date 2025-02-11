@@ -200,9 +200,10 @@ namespace import {
 				subd::object o(mesh_ai, name_ai.C_Str());
 
 				// subdivide object
-				for (uint32_t i = 0; i < subdiv_level; ++i) {
+				/*for (uint32_t i = 0; i < subdiv_level; ++i) {
 					o.mesh.subdivide();
-				}
+				}*/
+				o.mesh.subdivide(subdiv_level);
 
 				o.mesh.calculate_vertex_normals();
 

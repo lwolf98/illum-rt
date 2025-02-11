@@ -20,6 +20,9 @@ using namespace std;
 namespace subd {
 	bool subd_debug = false;
 
+	/* Grid layout data structures */
+	vector<subd_patch> patches;
+
 	/* utility functionality */
 
 	void normalize_edge_order(int &a, int &b) {
@@ -445,6 +448,21 @@ namespace subd {
 		calculate_face_normals();
 	}
 
+	void mesh::subdivide(uint32_t level) {
+		// TODO: handling for extraordinary faces/nodes (harder to predict exact size)
+		// reserve space for every subd patch
+		patches.reserve(faces.size());
+
+		for (uint32_t i = 0; i < faces.size(); ++i)
+			patches.emplace_back(level);
+
+		for (uint32_t i = 0; i < level; ++i)
+			subdivide();
+
+		for (auto patch : patches)
+			patch.print_verts();
+	}
+
 	void mesh::subdivide() {
 		mesh new_mesh;
 
@@ -607,17 +625,18 @@ namespace subd {
 				face new_f;
 				int edge_vert1_id = f.verts[(j+1)%n].pos;
 				int edge_vert2_id = f.verts[((j-1)%n+n)%n].pos;
-				int v_vert_id = off_vert+f.verts[j].pos;
-				int e_vert1_id = off_edge+edges.get_id(f.verts[j].pos, edge_vert1_id);
-				int f_vert_id = off_face+i;
-				int e_vert2_id = off_edge+edges.get_id(f.verts[j].pos, edge_vert2_id);
+				int vert_ids[4]; // [0] v_vert, [1] e_vert1, [2] f_vert, [3] e_vert2
+				vert_ids[0] = off_vert+f.verts[j].pos;
+				vert_ids[1] = off_edge+edges.get_id(f.verts[j].pos, edge_vert1_id);
+				vert_ids[2] = off_face+i;
+				vert_ids[3] = off_edge+edges.get_id(f.verts[j].pos, edge_vert2_id);
 				for (int k = 0; k < 4; k++)
 					new_f.verts.push_back(vertex_config());
 
-				new_f.verts[0].pos = v_vert_id;		// 1 vertex vertex,	e(4,1) -> calc. sharpness
-				new_f.verts[1].pos = e_vert1_id;	// 2 edge vertex,	e(1,2) -> calc. sharpness
-				new_f.verts[2].pos = f_vert_id;		// 3 face vertex,	e(2,3) -> smooth edge
-				new_f.verts[3].pos = e_vert2_id;	// 4 edge vertex,	e(3,4) -> smooth edge
+				new_f.verts[0].pos = vert_ids[0];		// 1 vertex vertex,	e(4,1) -> calc. sharpness
+				new_f.verts[1].pos = vert_ids[1];	// 2 edge vertex,	e(1,2) -> calc. sharpness
+				new_f.verts[2].pos = vert_ids[2];		// 3 face vertex,	e(2,3) -> smooth edge
+				new_f.verts[3].pos = vert_ids[3];	// 4 edge vertex,	e(3,4) -> smooth edge
 
 				new_f.verts[0].tc = off_tcs + j*2;				// vertex tc
 				new_f.verts[1].tc = off_tcs + j*2+1;			// edge tc
@@ -626,10 +645,33 @@ namespace subd {
 				
 				new_mesh.faces.push_back(new_f);
 
+				// ----- subd grid -----
+
+				std::cout << "V : " << vertices[vert_ids[0]].pos << std::endl;
+				std::cout << "E1: " << vertices[vert_ids[1]].pos << std::endl;
+				std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
+				std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
+
+				subd_patch &patch = patches[i];
+				uint32_t start_id = 0;
+				if (j == 1) start_id = patch.vert_right(start_id);
+				if (j == 3) start_id = patch.vert_down(start_id);
+				if (j == 2) start_id = patch.vert_down_right(start_id);
+
+				patch.verts[start_id] = vertices[vert_ids[(n-j + 0)%n]].pos;
+				if (j == 1 || j == 2)
+					patch.verts[patch.vert_right(start_id)] = vertices[vert_ids[(n-j + 1)%n]].pos;
+				if (j == 2 || j == 3)
+					patch.verts[patch.vert_down(start_id)] = vertices[vert_ids[(n-j - 1)%n]].pos;
+				if (j == 2)
+					patch.verts[patch.vert_down_right(start_id)] = vertices[vert_ids[(n-j - 2)%n]].pos;
+
+				// ----- ---- ---- -----
+
 				if (!new_mesh.creases.exists(f.verts[j].pos, edge_vert1_id)) {
 					float s = 0.f;
 
-					ctrl_vertex &v = vertices[v_vert_id];
+					ctrl_vertex &v = vertices[vert_ids[0]];
 					int e_id = edges.get_id(f.verts[j].pos, edge_vert1_id);
 					edge &e = edges.get(e_id);
 					float max_adjacent_sharpness = 0.f;
@@ -646,7 +688,7 @@ namespace subd {
 					//s = 1.f/4 * (3*e.sharpness + max_adjacent_sharpness);
 					s = e.sharpness;
 
-					new_mesh.creases.add(v_vert_id, e_vert1_id, s);
+					new_mesh.creases.add(vert_ids[0], vert_ids[1], s);
 				}
 				// TODO: is this second case neccessary or is it guaranteed that the first case covers all new edges?
 				if (!new_mesh.creases.exists(f.verts[j].pos, edge_vert2_id)) {

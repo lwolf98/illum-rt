@@ -160,6 +160,7 @@ namespace import {
 						std::cout << "Shader connected to surface output: " << shader.GetPath() << std::endl;
 
 						::material new_mat;
+						new_mat.name = material.GetPath().GetName();
 						new_mat.brdf = scene.brdfs["default"];
 						new_mat.albedo = vec4(0, 0, 0, 1.f);
 						new_mat.emissive = vec3(0,0,0);
