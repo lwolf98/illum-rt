@@ -6,8 +6,8 @@
 #include <assimp/mesh.h>
 #include <tinyusdz.hh>
 #include <pxr/usd/usdGeom/mesh.h>
-#include "subdivision.h"
 #include "rt.h"
+#include "intersect.h"
 
 namespace subd {
 	struct edge {
@@ -58,6 +58,53 @@ namespace subd {
 		uint size() { return verts.size(); }
 	};
 
+	struct node {
+		aabb box;
+		uint32_t left = (uint32_t)-1;
+		uint32_t right = (uint32_t)-1;
+		uint32_t triangle = (uint32_t)-1;
+		//! is the node an inner node (as opposed to a leaf)
+		bool inner() const { return triangle == (uint32_t)-1; }
+		void set_secondary_value(uint32_t val) {
+			triangle = ((uint32_t)-1) - (val + 1);
+		}
+		uint32_t get_secondary_value() {
+			return ((uint32_t)-1) - (triangle + 1);
+		}
+	};
+
+	struct subd_patch {
+		//std::vector<glm::vec3> verts;
+		std::vector<vertex> verts;
+		uint32_t bvh_node;
+		std::vector<node> nodes;
+		uint32_t material_id;
+		uint32_t subd_level;
+
+		subd_patch(uint32_t level) : subd_level(level) {
+			uint32_t size = len()*len();
+			verts.reserve(size);
+			for (uint32_t i = 0; i < size; ++i) {
+				vertex v;
+				v.pos = vec3(0);
+				verts.emplace_back(v);
+			}
+		}
+
+		void print_verts();
+		uint32_t len();
+		uint32_t vert_right(uint32_t vert_id);
+		uint32_t vert_down(uint32_t vert_id);
+		uint32_t vert_down_right(uint32_t vert_id);
+		void build_bvh();
+		int get_subd_quad(int morton_code);
+		std::array<triangle, 2> tris(int morton_code);
+
+		private:
+		int calculate_morton_code(int x, int y);
+		tuple<int, int> evaluate_morton_code(int morton_code);
+	};
+
 	struct mesh {
 		bool has_normals;
 		bool has_texture;
@@ -66,14 +113,15 @@ namespace subd {
 		std::vector<glm::vec2> tex_coords;
 		std::vector<face> faces;
 		edge_list creases;
+		std::vector<subd_patch> patches;
 		int get_vert_id(glm::vec3 v_pos);
 		void update();
 		void subdivide(uint32_t level);
-		void subdivide();
 		void calculate_vertex_normals();
 		void triangulate();
 
 	private:
+		void subdivide_internal(uint32_t level);
 		int add_edge(edge_list &edges, int a, int b, int f_id);
 		void update_vertex(ctrl_vertex &v, int f_id, int e_id);
 
@@ -114,25 +162,5 @@ namespace subd {
 		void init_object(const tinyusdz::GeomMesh *usd_mesh);
 		void init_object(const pxr::UsdGeomMesh &usd_mesh);
 
-	};
-
-	struct subd_patch {
-		std::vector<glm::vec3> verts;
-		uint32_t material_id;
-		uint32_t subd_level;
-
-		subd_patch(uint32_t level) : subd_level(level) {
-			uint32_t size = len()*len();
-			verts.reserve(size);
-			for (uint32_t i = 0; i < size; ++i)
-				verts.emplace_back(0);
-
-		}
-
-		void print_verts();
-		uint32_t len();
-		uint32_t vert_right(uint32_t vert_id);
-		uint32_t vert_down(uint32_t vert_id);
-		uint32_t vert_down_right(uint32_t vert_id);
 	};
 }

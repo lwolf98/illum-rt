@@ -6,8 +6,9 @@ libcputracing_a_SOURCES = seq.cpp
 noinst_HEADERS = seq.h
 
 #ifndef RTGI_SKIP_BVH
-libcputracing_a_SOURCES += bvh.cpp bvh2.cpp
+libcputracing_a_SOURCES += bvh.cpp bvh2.cpp subd_bvh.cpp
 noinst_HEADERS += bvh.h
+noinst_HEADERS += subd_bvh.h
 #ifndef RTGI_SIMPLER_BBVH
 noinst_HEADERS += bvh-ctor.h
 #endif

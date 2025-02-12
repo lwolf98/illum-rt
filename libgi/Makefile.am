@@ -11,10 +11,10 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					framebuffer.cpp \
 					random.cpp \
 					rt.cpp \
-					scene.cpp \
-					timer.cpp \
 					subdivision_grid.cpp \
 					subdivision.cpp \
+					scene.cpp \
+					timer.cpp \
 					test-tinyusdz.cpp
 
 
@@ -41,10 +41,10 @@ noinst_HEADERS = 	algorithm.h \
 					material.h \
 					random.h \
 					rt.h \
+					subdivision.h \
 					scene.h \
 					timer.h \
 					util.h \
-					subdivision.h \
 					test-tinyusdz.h
 
 

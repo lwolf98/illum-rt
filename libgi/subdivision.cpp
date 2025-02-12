@@ -20,9 +20,6 @@ using namespace std;
 namespace subd {
 	bool subd_debug = false;
 
-	/* Grid layout data structures */
-	vector<subd_patch> patches;
-
 	/* utility functionality */
 
 	void normalize_edge_order(int &a, int &b) {
@@ -456,14 +453,21 @@ namespace subd {
 		for (uint32_t i = 0; i < faces.size(); ++i)
 			patches.emplace_back(level);
 
-		for (uint32_t i = 0; i < level; ++i)
-			subdivide();
+		for (uint32_t l = 1; l <= level; ++l)
+			subdivide_internal(l);
 
 		for (auto patch : patches)
 			patch.print_verts();
+
+		for (int i = 0; i < patches.size(); i++) {
+			auto &patch = patches[i];
+			patch.build_bvh();
+			//patch.nodes[patch.bvh_node].triangle = ((uint32_t)-1) - i;
+			patch.nodes[patch.bvh_node].set_secondary_value(i);
+		}
 	}
 
-	void mesh::subdivide() {
+	void mesh::subdivide_internal(uint32_t level) {
 		mesh new_mesh;
 
 		// Gather face vertices and edges and update vertex information
@@ -604,6 +608,10 @@ namespace subd {
 		for (uint i = 0; i < faces.size(); i++) {
 			face &f = faces[i];
 			int off_tcs = new_mesh.tex_coords.size();
+
+			int step = pow(2, level-1);
+			int off = i%step;
+			uint32_t quad_id = 4 * (i-off) + 2 * off;
 			
 			int n = f.size();
 			// Calculate texture coordinates of the face
@@ -652,19 +660,20 @@ namespace subd {
 				std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
 				std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
 
-				subd_patch &patch = patches[i];
+				subd_patch &patch = patches[i]; // TODO: track which patch...
 				uint32_t start_id = 0;
 				if (j == 1) start_id = patch.vert_right(start_id);
 				if (j == 3) start_id = patch.vert_down(start_id);
 				if (j == 2) start_id = patch.vert_down_right(start_id);
 
-				patch.verts[start_id] = vertices[vert_ids[(n-j + 0)%n]].pos;
+				quad_id = 0; // TODO: set quad_id correctly per patch
+				patch.verts[quad_id+start_id] = vertices[vert_ids[(n-j + 0)%n]];
 				if (j == 1 || j == 2)
-					patch.verts[patch.vert_right(start_id)] = vertices[vert_ids[(n-j + 1)%n]].pos;
+					patch.verts[quad_id+patch.vert_right(start_id)] = vertices[vert_ids[(n-j + 1)%n]];
 				if (j == 2 || j == 3)
-					patch.verts[patch.vert_down(start_id)] = vertices[vert_ids[(n-j - 1)%n]].pos;
+					patch.verts[quad_id+patch.vert_down(start_id)] = vertices[vert_ids[(n-j - 1)%n]];
 				if (j == 2)
-					patch.verts[patch.vert_down_right(start_id)] = vertices[vert_ids[(n-j - 2)%n]].pos;
+					patch.verts[quad_id+patch.vert_down_right(start_id)] = vertices[vert_ids[(n-j - 2)%n]];
 
 				// ----- ---- ---- -----
 

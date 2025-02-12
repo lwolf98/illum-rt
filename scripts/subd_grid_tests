@@ -1,3 +1,5 @@
+omp on
+
 up 0 1 0
 
 sppx 256
@@ -9,8 +11,12 @@ default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 #load render-data/sibenik/sibenik.obj
 
-#load render-data/grid_models/basic_plane.obj
-load render-data/grid_models/basic_plane.obj subd_level 1
+modeltrafo shift 1 0 -1
+load render-data/subd_grid_models/basic_plane.obj
+modeltrafo shift -1 0 1
+
+load render-data/subd_grid_models/basic_plane.obj subd_level 1
+#load render-data/subd_grid_models/half_cube.obj subd_level 1
 
 #load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
 
@@ -20,7 +26,8 @@ skylight load render-data/skylight-sunset.floats 10
 at -3 0 0
 look 1 0 0
 
-raytracer naive-bvh
+#raytracer naive-bvh
+raytracer subd-naive-bvh
 commit
 algo primary
 outfile out_grid/grid_test.png

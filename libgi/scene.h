@@ -1,5 +1,6 @@
 #pragma once
 
+#include "subdivision.h"
 #include "camera.h"
 #include "intersect.h"
 #include "material.h"
@@ -154,6 +155,8 @@ struct scene {
 	::camera camera;
 	vec3 up;
 	aabb scene_bounds;
+
+	std::vector<subd::subd_patch> patches;
 
 	//! meshes with this material will not be loaded
 	std::vector<std::string> mtl_blacklist;

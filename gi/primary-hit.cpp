@@ -25,8 +25,13 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (closest.valid()) {
-		diff_geom dg(closest, rc->scene);
-		radiance = dg.albedo();
+		if (closest.ref < rc->scene.triangles.size()) {
+			diff_geom dg(closest, rc->scene);
+			radiance = dg.albedo();
+		}
+		else {
+			radiance = vec3(1);
+		}
 	}
 	return radiance;
 #else

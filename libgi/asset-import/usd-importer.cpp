@@ -290,9 +290,7 @@ namespace import {
 				subd::object o(mesh);
 
 				// subdivide object
-				for (uint32_t i = 0; i < subdiv_level; ++i) {
-					o.mesh.subdivide();
-				}
+				o.mesh.subdivide(subdiv_level);
 
 				if (subdiv_level == 0)
 					o.mesh.update();

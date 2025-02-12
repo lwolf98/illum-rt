@@ -207,6 +207,37 @@ namespace import {
 
 				o.mesh.calculate_vertex_normals();
 
+				// TODO: not only assign, but add to list (multiple meshes possible)
+				auto &patches = o.mesh.patches;
+				rtgi_scene.patches = patches;
+				for (int p = 0; p < patches.size(); p++) {
+					auto &patch = patches[p];
+					auto &root_bvh_node = patch.nodes[patch.bvh_node];
+					rtgi_scene.scene_bounds.grow(root_bvh_node.box);
+
+					triangle dummy_tri;
+					vertex v;
+					v.pos = root_bvh_node.box.min;
+					rtgi_scene.vertices.push_back(v);
+					dummy_tri.a = rtgi_scene.vertices.size()-1;
+					//rtgi_scene.scene_bounds.grow(v.pos);
+
+					v.pos = root_bvh_node.box.max;
+					rtgi_scene.vertices.push_back(v);
+					dummy_tri.b = rtgi_scene.vertices.size()-1;
+					//rtgi_scene.scene_bounds.grow(v.pos);
+
+					// Add again, because only extent of the volume is relevant, not the tri itself
+					rtgi_scene.vertices.push_back(v);
+					dummy_tri.c = rtgi_scene.vertices.size()-1;
+
+					dummy_tri.material_id = ((uint32_t)-1) - p; // reference to the patch id
+
+					rtgi_scene.triangles.push_back(dummy_tri);
+				}
+
+				/*continue;
+
 				// triangulate quad faces
 				o.mesh.triangulate();
 
@@ -254,7 +285,7 @@ namespace import {
 					// append
 					triangle.material_id = material_id;
 					rtgi_scene.triangles.push_back(triangle);
-				}
+				}*/
 			}
 		}
 		
