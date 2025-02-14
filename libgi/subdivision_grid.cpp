@@ -8,7 +8,8 @@ void subd_patch::print_verts() {
 	for (uint32_t y = 0; y < length; ++y) {
 		for (uint32_t x = 0; x < length; ++x) {
 			//std::printf("(%d/%d) ", x, y);
-			std::cout << "(" << verts[y*length+x].pos << ") ";
+			glm::vec3 &pos = verts[y*length+x].pos;
+			std::cout << "(" << pos.y << " " << pos.z << ") ";
 		}
 		std::cout << std::endl;
 	}

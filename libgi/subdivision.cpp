@@ -611,7 +611,7 @@ namespace subd {
 
 			int step = pow(2, level-1);
 			int off = i%step;
-			uint32_t quad_id = 4 * (i-off) + 2 * off;
+			uint32_t quad_id = 5 * (i-off) + 2 * off;
 			
 			int n = f.size();
 			// Calculate texture coordinates of the face
@@ -641,7 +641,7 @@ namespace subd {
 				for (int k = 0; k < 4; k++)
 					new_f.verts.push_back(vertex_config());
 
-				new_f.verts[0].pos = vert_ids[0];		// 1 vertex vertex,	e(4,1) -> calc. sharpness
+				/*new_f.verts[0].pos = vert_ids[0];		// 1 vertex vertex,	e(4,1) -> calc. sharpness
 				new_f.verts[1].pos = vert_ids[1];	// 2 edge vertex,	e(1,2) -> calc. sharpness
 				new_f.verts[2].pos = vert_ids[2];		// 3 face vertex,	e(2,3) -> smooth edge
 				new_f.verts[3].pos = vert_ids[3];	// 4 edge vertex,	e(3,4) -> smooth edge
@@ -651,7 +651,7 @@ namespace subd {
 				new_f.verts[2].tc = off_tcs + n*2;				// face tc
 				new_f.verts[3].tc = off_tcs + (j-1+n)%n * 2+1;	// edge tc
 				
-				new_mesh.faces.push_back(new_f);
+				new_mesh.faces.push_back(new_f);*/
 
 				// ----- subd grid -----
 
@@ -660,20 +660,68 @@ namespace subd {
 				std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
 				std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
 
-				subd_patch &patch = patches[i]; // TODO: track which patch...
+				subd_patch &patch = patches[0]; // TODO: track which patch...
 				uint32_t start_id = 0;
 				if (j == 1) start_id = patch.vert_right(start_id);
 				if (j == 3) start_id = patch.vert_down(start_id);
 				if (j == 2) start_id = patch.vert_down_right(start_id);
 
-				quad_id = 0; // TODO: set quad_id correctly per patch
-				patch.verts[quad_id+start_id] = vertices[vert_ids[(n-j + 0)%n]];
-				if (j == 1 || j == 2)
-					patch.verts[quad_id+patch.vert_right(start_id)] = vertices[vert_ids[(n-j + 1)%n]];
-				if (j == 2 || j == 3)
-					patch.verts[quad_id+patch.vert_down(start_id)] = vertices[vert_ids[(n-j - 1)%n]];
-				if (j == 2)
-					patch.verts[quad_id+patch.vert_down_right(start_id)] = vertices[vert_ids[(n-j - 2)%n]];
+				//quad_id = 0; // TODO: set quad_id correctly per patch
+				uint32_t v_id[4];
+				v_id[0] = (n-j + 0)%n;
+				v_id[1] = (n-j + 1)%n;
+				v_id[2] = (n-j - 1)%n;
+				v_id[3] = ((n-j - 2)+n)%n;
+				uint32_t final_id = quad_id+start_id;
+				patch.verts[final_id] = vertices[vert_ids[v_id[0]]];
+				cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
+				if (j == 1 || j == 2) {
+					final_id = quad_id+patch.vert_right(start_id);
+					patch.verts[final_id] = vertices[vert_ids[v_id[1]]];
+					cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
+				}
+				if (j == 2 || j == 3) {
+					final_id = quad_id+patch.vert_down(start_id);
+					patch.verts[final_id] = vertices[vert_ids[v_id[2]]];
+					cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
+				}
+				if (j == 2) {
+					final_id = quad_id+patch.vert_down_right(start_id);
+					patch.verts[final_id] = vertices[vert_ids[v_id[3]]];
+					cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
+				}
+
+				// ----- ---- ---- -----
+				// b: broken values
+				// -: wrong output
+				// ?: redo / in question
+				// x: correct
+				// b - b - b b  - b b b b -  - b b b b -  b b - b - b
+				// 0 0 0 0 0 0  1 1 1 1 1 1  2 2 2 2 2 2  3 3 3 3 3 3
+				// 1 1 2 2 3 3  0 0 2 2 3 3  0 0 1 1 3 3  0 0 1 1 2 2
+				// 2 3 1 3 1 2  2 3 0 3 0 2  1 3 0 3 0 1  1 2 0 2 0 1
+				// 3 2 3 1 2 1  3 2 3 0 2 0  3 1 3 0 1 0  2 1 2 0 1 0
+
+				new_f.verts[0].pos = vert_ids[v_id[3]]; //0 2 0 0
+				new_f.verts[1].pos = vert_ids[v_id[2]]; //2 3 1 1
+				new_f.verts[2].pos = vert_ids[v_id[1]]; //3 1 2 3
+				new_f.verts[3].pos = vert_ids[v_id[0]]; //1 0 3 2
+				//new_f.verts[0].pos = vert_ids[3]; //0 0 0
+				//new_f.verts[1].pos = vert_ids[2]; //2 1 1
+				//new_f.verts[2].pos = vert_ids[1]; //3 3 2
+				//new_f.verts[3].pos = vert_ids[0]; //1 2 3
+				std::cout << "V0 : " << vertices[new_f.verts[0].pos].pos << std::endl;
+				std::cout << "V1: " << vertices[new_f.verts[1].pos].pos << std::endl;
+				std::cout << "V2 : " << vertices[new_f.verts[2].pos].pos << std::endl;
+				std::cout << "V3: " << vertices[new_f.verts[3].pos].pos << std::endl;
+
+				// TODO: Update TC positions, currently not aligned with vertex positions
+				new_f.verts[0].tc = off_tcs + j*2;				// vertex tc
+				new_f.verts[1].tc = off_tcs + j*2+1;			// edge tc
+				new_f.verts[2].tc = off_tcs + n*2;				// face tc
+				new_f.verts[3].tc = off_tcs + (j-1+n)%n * 2+1;	// edge tc
+				
+				new_mesh.faces.push_back(new_f);
 
 				// ----- ---- ---- -----
 
