@@ -212,6 +212,8 @@ namespace import {
 				rtgi_scene.patches = patches;
 				for (int p = 0; p < patches.size(); p++) {
 					auto &patch = patches[p];
+					patch.material_id = material_id;
+
 					auto &root_bvh_node = patch.nodes[patch.bvh_node];
 					rtgi_scene.scene_bounds.grow(root_bvh_node.box);
 

@@ -55,6 +55,11 @@ namespace subd {
 	struct face {
 		glm::vec3 normal;
 		std::vector<vertex_config> verts;
+		uint32_t patch_id;
+		uint32_t patch_x;
+		uint32_t patch_y;
+
+		face() : normal(0), patch_id(0), patch_x(0), patch_y(0) {}
 		uint size() { return verts.size(); }
 	};
 
@@ -93,9 +98,11 @@ namespace subd {
 
 		void print_verts();
 		uint32_t len();
+		uint32_t len(uint32_t level);
 		uint32_t vert_right(uint32_t vert_id);
 		uint32_t vert_down(uint32_t vert_id);
 		uint32_t vert_down_right(uint32_t vert_id);
+		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y);
 		void build_bvh();
 		int get_subd_quad(int morton_code);
 		std::array<triangle, 2> tris(int morton_code);

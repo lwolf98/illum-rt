@@ -1,22 +1,31 @@
 #include "subdivision.h"
 #include <glm/ext.hpp>
+#include <iomanip>
 
 using namespace subd;
 
 void subd_patch::print_verts() {
+	using namespace std;
+
+	cout << fixed << setprecision(5);
+
 	uint32_t length = len();
 	for (uint32_t y = 0; y < length; ++y) {
 		for (uint32_t x = 0; x < length; ++x) {
-			//std::printf("(%d/%d) ", x, y);
+			//printf("(%d/%d) ", x, y);
 			glm::vec3 &pos = verts[y*length+x].pos;
-			std::cout << "(" << pos.y << " " << pos.z << ") ";
+			cout << "(" << setw(8) << pos.y << " " << setw(8) << pos.z << ") ";
 		}
-		std::cout << std::endl;
+		cout << endl;
 	}
 }
 
+uint32_t subd_patch::len(uint32_t level) {
+	return std::pow(2, level)+1;
+}
+
 uint32_t subd_patch::len() {
-	return std::pow(2, subd_level)+1;
+	return len(subd_level);
 }
 
 // TODO: check for illegal operations?
@@ -31,6 +40,10 @@ uint32_t subd_patch::vert_down(uint32_t vert_id) {
 
 uint32_t subd_patch::vert_down_right(uint32_t vert_id) {
 	return vert_id + len() + 1;
+}
+
+uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) {
+	return vert_id + off_y * len() + off_x;
 }
 
 int geometric_series(int iterations, int base) {
@@ -63,31 +76,39 @@ void subd_patch::build_bvh() {
 
 	for (int i = 0; i < subd_level; i++) {
 		int len = pow(2,(subd_level-i));
-		int off = 3 * geometric_series(i, 4);
-		for (int y = 0; y < len; y+=2) {
-			for (int x = 0; x < len; x+=2) {
+		int off = 0;
+		if (i > 0) {
+			off = nodes_count - 3 * geometric_series(subd_level-i, 4) + 2;
+		}
+		for (int y_base = 0; y_base < len; y_base+=2) {
+			for (int x_base = 0; x_base < len; x_base+=2) {
+				int step = 1;
+				if (i > 0)
+					step = 3;
+				int x = x_base * step;
+				int y = y_base * step;
 
 				node current_node;
 				node node_l;
 				node node_r;
 
-				node &lower_node_1 = nodes[y*len+x];
-				node &lower_node_2 = nodes[y*len+(x+1)];
-				node &lower_node_3 = nodes[(y+1)*len+x];
-				node &lower_node_4 = nodes[(y+1)*len+(x+1)];
+				node &lower_node_1 = nodes[off + y*len+x];
+				node &lower_node_2 = nodes[off + y*len+(x+step)];
+				node &lower_node_3 = nodes[off + (y+step)*len+x];
+				node &lower_node_4 = nodes[off + (y+step)*len+(x+step)];
 
 				node_l.box.grow(lower_node_1.box);
 				node_l.box.grow(lower_node_2.box);
-				node_l.left = y*len+x;
-				node_l.right = y*len+(x+1);
+				node_l.left = off + y*len+x;
+				node_l.right = off + y*len+(x+step);
 				nodes.emplace_back(node_l);
 				current_node.box.grow(node_l.box);
 				current_node.left = nodes.size()-1;
 
 				node_r.box.grow(lower_node_3.box);
 				node_r.box.grow(lower_node_4.box);
-				node_r.left = (y+1)*len+x;
-				node_r.right = (y+1)*len+(x+1);
+				node_r.left = off + (y+step)*len+x;
+				node_r.right = off + (y+step)*len+(x+step);
 				nodes.emplace_back(node_r);
 				current_node.box.grow(node_r.box);
 				current_node.right = nodes.size()-1;
