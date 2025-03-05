@@ -21,7 +21,7 @@ diff_geom::diff_geom(const triangle &t, const triangle_intersection &is, const s
 
 diff_geom::diff_geom(const triangle_intersection &is, const scene &scene)
  : diff_geom(scene.triangles[is.ref], is, scene) {
-} 
+}
 
 vec3 diff_geom::albedo() const {
 	if (mat->albedo_tex)

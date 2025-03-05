@@ -154,12 +154,16 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 					assert(patch_ref >= 0);
 					subd::subd_patch &patch = scene->patches[patch_ref];
 					std::array<triangle, 2> tris = patch.tris(morton_code);
-					for (triangle &tri : tris) {
+					for (int i = 0; i < 2; i++) {
 						//if (intersect(scene->patches[patch_ref], morton_code, )) {
-						if (intersect(tri, patch.verts.data(), ray, intersection)) {
+						if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
 							if (intersection.t < closest.t) {
 								closest = intersection;
-								closest.ref = ((uint32_t)-1) - morton_code;
+								closest.ref = ((uint32_t)-1) - patch_ref;
+								closest.subd_quad_ref = morton_code + 1;
+								if (i == 1)
+									closest.subd_quad_ref *= -1;
+
 								break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 							}
 						}

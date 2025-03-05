@@ -14,14 +14,20 @@ default-brdf layered-gtr2
 modeltrafo shift 1 0 -1
 load render-data/subd_grid_models/basic_plane.obj
 modeltrafo shift -1 0 1
+load render-data/subd_grid_models/tex_plane.obj subd_level 4
+
+#load render-data/knife_compare/knife_base.obj subd_level 1
+load render-data/subd_grid_models/knife_part_test.obj subd_level 3
+#load render-data/knife/knife.usda
 
 #load render-data/subd_grid_models/basic_plane.obj subd_level 1
 #load render-data/subd_grid_models/basic_plane.obj subd_level 2
 #load render-data/subd_grid_models/basic_plane.obj subd_level 3
 #load render-data/subd_grid_models/half_cube.obj subd_level 4
-load render-data/subd_grid_models/l_form.obj subd_level 4
+#load render-data/subd_grid_models/l_form.obj subd_level 4
 
 #load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
+
 
 skylight load render-data/skylight-sunset.floats 10
 

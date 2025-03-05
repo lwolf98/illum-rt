@@ -30,7 +30,25 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 			radiance = dg.albedo();
 		}
 		else {
-			radiance = vec3(1);
+			uint32_t patch_ref = ((uint32_t)-1) - closest.ref;
+			bool upper = closest.subd_quad_ref > 0;
+			uint32_t subd_quad_ref = abs(closest.subd_quad_ref) - 1;
+
+			subd::subd_patch &patch = rc->scene.patches[patch_ref];
+			std::array<triangle, 2> tris = patch.tris(subd_quad_ref);
+			triangle tri;
+			if (upper)
+				tri = tris[0];
+			else
+				tri = tris[1];
+
+			vertex &a = patch.verts[tri.a];
+			vertex &b = patch.verts[tri.b];
+			vertex &c = patch.verts[tri.c];
+
+			diff_geom dg(a, b, c, &rc->scene.materials[patch.material_id], closest, rc->scene);
+
+			radiance = dg.albedo(); //vec3(1);
 		}
 	}
 	return radiance;

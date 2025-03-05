@@ -457,9 +457,10 @@ namespace subd {
 
 		for (uint32_t l = 1; l <= level; ++l) {
 			subdivide_internal(l);
-			for (auto patch : patches)
+			for (auto patch : patches) {
 				patch.print_verts();
-
+				patch.print_vert_tcs();
+			}
 		}
 
 		for (int i = 0; i < patches.size(); i++) {
@@ -645,6 +646,12 @@ namespace subd {
 				vert_ids[1] = off_edge+edges.get_id(f.verts[j].pos, edge_vert1_id);
 				vert_ids[2] = off_face+i;
 				vert_ids[3] = off_edge+edges.get_id(f.verts[j].pos, edge_vert2_id);
+				int tex_ids[4];
+				tex_ids[0] = off_tcs + j*2;				// vertex tc
+				tex_ids[1] = off_tcs + j*2+1;			// edge tc
+				tex_ids[2] = off_tcs + n*2;				// face tc
+				tex_ids[3] = off_tcs + (j-1+n)%n * 2+1;	// edge tc
+
 				for (int k = 0; k < 4; k++)
 					new_f.verts.push_back(vertex_config());
 
@@ -656,9 +663,9 @@ namespace subd {
 				new_f.verts[0].tc = off_tcs + j*2;				// vertex tc
 				new_f.verts[1].tc = off_tcs + j*2+1;			// edge tc
 				new_f.verts[2].tc = off_tcs + n*2;				// face tc
-				new_f.verts[3].tc = off_tcs + (j-1+n)%n * 2+1;	// edge tc
+				new_f.verts[3].tc = off_tcs + (j-1+n)%n * 2+1;	// edge tc*/
 				
-				new_mesh.faces.push_back(new_f);*/
+				//new_mesh.faces.push_back(new_f);
 
 				// ----- subd grid -----
 
@@ -703,23 +710,32 @@ namespace subd {
 				uint32_t final_id = patch.len() * new_f.patch_y + new_f.patch_x;
 				//final_id = quad_id + new_f.patch_y * 5 + new_f.patch_x;
 				patch.verts[final_id] = vertices[vert_ids[v_id[0]]];
+				//patch.verts[final_id].tc = new_mesh.tex_coords[new_f.verts[v_id[0]].tc];
+				patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
 				cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
+				cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
 				
 				uint32_t tmp_id;
 				if (j == 1 || j == 2) {
 					tmp_id = quad_id+patch.vert_right(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[1]]];
+					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
+				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
 				if (j == 2 || j == 3) {
 					tmp_id = quad_id+patch.vert_down(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[2]]];
+					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
+				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
 				if (j == 2) {
 					tmp_id = quad_id+patch.vert_down_right(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[3]]];
+					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
+					cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
 
 				// ----- ---- ---- -----
@@ -747,10 +763,10 @@ namespace subd {
 				std::cout << "V3: " << vertices[new_f.verts[3].pos].pos << std::endl;
 
 				// TODO: Update TC positions, currently not aligned with vertex positions
-				new_f.verts[0].tc = off_tcs + j*2;				// vertex tc
-				new_f.verts[1].tc = off_tcs + j*2+1;			// edge tc
-				new_f.verts[2].tc = off_tcs + n*2;				// face tc
-				new_f.verts[3].tc = off_tcs + (j-1+n)%n * 2+1;	// edge tc
+				new_f.verts[0].tc = tex_ids[v_id[0]];
+				new_f.verts[1].tc = tex_ids[v_id[1]];
+				new_f.verts[2].tc = tex_ids[v_id[3]];
+				new_f.verts[3].tc = tex_ids[v_id[2]];
 
 				new_mesh.faces.push_back(new_f);
 

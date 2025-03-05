@@ -7,14 +7,30 @@ using namespace subd;
 void subd_patch::print_verts() {
 	using namespace std;
 
+	cout << "Vert positions:" << endl;
 	cout << fixed << setprecision(5);
 
 	uint32_t length = len();
 	for (uint32_t y = 0; y < length; ++y) {
 		for (uint32_t x = 0; x < length; ++x) {
-			//printf("(%d/%d) ", x, y);
 			glm::vec3 &pos = verts[y*length+x].pos;
 			cout << "(" << setw(8) << pos.y << " " << setw(8) << pos.z << ") ";
+		}
+		cout << endl;
+	}
+}
+
+void subd_patch::print_vert_tcs() {
+	using namespace std;
+
+	cout << "Vert TCs:" << endl;
+	cout << fixed << setprecision(5);
+
+	uint32_t length = len();
+	for (uint32_t y = 0; y < length; ++y) {
+		for (uint32_t x = 0; x < length; ++x) {
+			glm::vec2 &tc = verts[y*length+x].tc;
+			cout << "(" << setw(8) << tc.x << " " << setw(8) << tc.y << ") ";
 		}
 		cout << endl;
 	}

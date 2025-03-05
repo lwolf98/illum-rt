@@ -54,6 +54,7 @@ struct triangle_intersection {
 	typedef unsigned int uint;
 	float t, beta, gamma;
 	uint ref;
+	int subd_quad_ref;
 	triangle_intersection() : t(FLT_MAX), ref(0) {
 	}
 	explicit triangle_intersection(uint t) : t(FLT_MAX), ref(t) {
@@ -88,12 +89,14 @@ struct diff_geom {
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
 	diff_geom(const triangle_intersection &is, const scene &scene);
+	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
+	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 
 	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
 	float opacity() const; // evaluates the surface opacity (including texture lookup)
 private:
-	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
-	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
+	//diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
+	//diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
 };
 
 /*  \brief Ray tracing interface.

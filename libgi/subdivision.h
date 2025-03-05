@@ -97,6 +97,7 @@ namespace subd {
 		}
 
 		void print_verts();
+		void print_vert_tcs();
 		uint32_t len();
 		uint32_t len(uint32_t level);
 		uint32_t vert_right(uint32_t vert_id);

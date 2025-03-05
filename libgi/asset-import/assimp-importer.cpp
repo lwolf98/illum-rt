@@ -209,7 +209,6 @@ namespace import {
 
 				// TODO: not only assign, but add to list (multiple meshes possible)
 				auto &patches = o.mesh.patches;
-				rtgi_scene.patches = patches;
 				for (int p = 0; p < patches.size(); p++) {
 					auto &patch = patches[p];
 					patch.material_id = material_id;
@@ -237,6 +236,9 @@ namespace import {
 
 					rtgi_scene.triangles.push_back(dummy_tri);
 				}
+
+				// Store patches into scene
+				rtgi_scene.patches = patches;
 
 				/*continue;
 
