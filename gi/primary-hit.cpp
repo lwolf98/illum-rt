@@ -16,14 +16,34 @@
 
 #include "debug/pixel.h"
 
+#include "rt/cpu/subd_bvh.h"
+
 using namespace glm;
 using namespace std;
 
 vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 #ifndef RTGI_SKIP_PRIM_HIT_IMPL
 	vec3 radiance(0);
+	//std::cout << "POSITION: ( " << x << " | " << y << ")" << std::endl;
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
+	//if (x == 436 && y == 182) { //debug knife
+	/*if (x == 480 && y == 223 || x == 482 && y == 222) { //debug tri
+		cout << "aaaaaaaaaaaaaaa" << endl;
+		//dynamic_cast<subd_naive_bvh*>(rc->scene.rt)->debug = true;
+	}
+	else {
+		dynamic_cast<subd_naive_bvh*>(rc->scene.rt)->debug = false;
+	}*/
+
+	/*if (x == 485 && y == 260) {
+		radiance = vec3(1,0,0);
+		dynamic_cast<subd_naive_bvh*>(rc->scene.rt)->debug = true;
+	}
+	else {
+		dynamic_cast<subd_naive_bvh*>(rc->scene.rt)->debug = false;
+	}*/
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+
 	if (closest.valid()) {
 		if (closest.ref < rc->scene.triangles.size()) {
 			diff_geom dg(closest, rc->scene);
@@ -48,9 +68,12 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 
 			diff_geom dg(a, b, c, &rc->scene.materials[patch.material_id], closest, rc->scene);
 
+			assert(dg.tc.x >= 0 && dg.tc.x <= 1);
+			assert(dg.tc.y >= 0 && dg.tc.y <= 1);
 			radiance = dg.albedo(); //vec3(1);
 		}
 	}
+
 	return radiance;
 #else
 	// todo: implement primary hitpoint algorithm

@@ -86,6 +86,7 @@ void subd_patch::build_bvh() {
 			uint32_t morton_code = calculate_morton_code(x, y); //0xffffff; //TODO: morton code
 			//current_node.triangle = ((uint32_t)-1) - morton_code;
 			current_node.set_secondary_value(morton_code);
+			assert(morton_code <= verts.size());
 			nodes.emplace_back(current_node);
 		}
 	}
@@ -131,12 +132,16 @@ void subd_patch::build_bvh() {
 
 				nodes.emplace_back(current_node);
 
-				if (i == subd_level-1)
-					bvh_node = nodes.size()-1;
+				//if (i == subd_level-1)
+				//	bvh_node = nodes.size()-1;
 
 			}
 		}
 	}
+
+	bvh_node = nodes.size()-1;
+	if (subd_level == 0)
+		nodes[bvh_node].set_subd_root_and_leaf();
 }
 
 int subd_patch::calculate_morton_code(int x, int y) {

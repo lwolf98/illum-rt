@@ -209,6 +209,7 @@ namespace import {
 
 				// TODO: not only assign, but add to list (multiple meshes possible)
 				auto &patches = o.mesh.patches;
+				int patch_offset = rtgi_scene.patches.size();
 				for (int p = 0; p < patches.size(); p++) {
 					auto &patch = patches[p];
 					patch.material_id = material_id;
@@ -232,13 +233,21 @@ namespace import {
 					rtgi_scene.vertices.push_back(v);
 					dummy_tri.c = rtgi_scene.vertices.size()-1;
 
-					dummy_tri.material_id = ((uint32_t)-1) - p; // reference to the patch id
+					dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
 
 					rtgi_scene.triangles.push_back(dummy_tri);
 				}
 
 				// Store patches into scene
-				rtgi_scene.patches = patches;
+				//rtgi_scene.patches = patches;
+				for (auto &patch : patches) {
+					rtgi_scene.patches.push_back(patch);
+					subd::subd_patch &scene_patch =
+						rtgi_scene.patches[rtgi_scene.patches.size()-1];
+
+					subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
+					node.set_secondary_value(node.get_secondary_value() + patch_offset);
+				}
 
 				/*continue;
 

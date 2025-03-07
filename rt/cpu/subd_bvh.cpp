@@ -42,9 +42,9 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 			for (auto &node : patch.nodes) {
 				nodes.emplace_back(node);
 				auto &copied_node = nodes[nodes.size()-1];
-				if (copied_node.left != ((uint32_t)-1))
+				if (copied_node.left < ((uint32_t)-2))
 					copied_node.left += offset;
-				if (copied_node.right != ((uint32_t)-1))
+				if (copied_node.right < ((uint32_t)-2))
 					copied_node.right += offset;
 			}
 			uint32_t id = patch.bvh_node + offset;
@@ -118,17 +118,27 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 #endif
 	int patch_ref = -1;
 	while (sp >= 0) {
+		if (debug) std::cout << "\nStack pointer: " << sp << std::endl;
+		if (debug) std::cout << "Node position: " << stack[sp] << std::endl;
+		if (debug) std::cout << "patch_ref (start): " << patch_ref << std::endl;
 		subd::node node = nodes[stack[sp--]];
 #ifdef COUNT_HITS
 		hits++;
 #endif
 		if (node.inner()) {
 			float dist;
-			if (intersect(node.box, ray, dist))
+			if (debug) std::cout << "Regular node" << std::endl;
+			if (intersect(node.box, ray, dist)) {
 				if (dist < closest.t) {
 					stack[++sp] = node.left;
 					stack[++sp] = node.right;
+					if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
 				}
+				else
+					if (debug) std::cout << "Not closer, not updated" << std::endl;
+			}
+			else
+				if (debug) std::cout << "No intersect, not updated" << std::endl;
 		}
 		else {
 			if (node.triangle > scene->triangles.size()-1) { // if leaf node holds a SubD quad:
@@ -137,20 +147,49 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 				// triangle tri2 = quad.tri2();
 				// make intersect test from below for both tris...
 				//uint32_t morton_code = ((uint32_t)-1) - node.triangle;
-				if (node.left != ((uint32_t)-1) || node.right != ((uint32_t)-1)) {
+				//if (node.left != ((uint32_t)-1) || node.right != ((uint32_t)-1)) {
+				if (node.is_only_subd_root()) {
+					if (debug) std::cout << "Subd root node" << std::endl;
 					// branch: hit subd patch root node
 					patch_ref = node.get_secondary_value();
+					//if (patch_ref == 8)
+					//	std::cout << "bbbbbbbbb" << std::endl;
 					float dist;
 					if (intersect(node.box, ray, dist)) {
 						if (dist < closest.t) {
 							stack[++sp] = node.left;
 							stack[++sp] = node.right;
+							if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
 						}
+						else {
+							//patch_ref = -1;
+							if (debug) std::cout << "Not closer, not updated" << std::endl;
+						}
+					}
+					else {
+						//patch_ref = -1;
+						if (debug) std::cout << "No intersect, not updated" << std::endl;
 					}
 				}
 				else {
 					// branch: hit subd patch leaf node (subd quad)
-					uint32_t morton_code = node.get_secondary_value();
+					if (debug) std::cout << "Subd leaf" << std::endl;
+					if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
+
+					//uint32_t morton_code = node.get_secondary_value();
+					uint32_t morton_code = 0;
+					//if (patch_ref != -1) {
+					if (node.is_subd_root_and_leaf()) {
+						// Special handling if subd root node is also the leaf node
+						patch_ref = node.get_secondary_value();
+					}
+					else {
+						// Regular case
+						morton_code = node.get_secondary_value();
+					}
+					if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
+					if (debug) std::cout << "morton_code: " << morton_code << std::endl;
+
 					assert(patch_ref >= 0);
 					subd::subd_patch &patch = scene->patches[patch_ref];
 					std::array<triangle, 2> tris = patch.tris(morton_code);
@@ -158,27 +197,43 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 						//if (intersect(scene->patches[patch_ref], morton_code, )) {
 						if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
 							if (intersection.t < closest.t) {
+								assert(morton_code <= patch.verts.size());
 								closest = intersection;
 								closest.ref = ((uint32_t)-1) - patch_ref;
 								closest.subd_quad_ref = morton_code + 1;
 								if (i == 1)
 									closest.subd_quad_ref *= -1;
 
+								if (debug) std::cout << "Closest updated!!!" << std::endl;
 								break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 							}
+							else
+								if (debug) std::cout << "Not closer, not updated" << std::endl;
 						}
+						else
+							if (debug) std::cout << "No intersect, not updated" << std::endl;
 					}
+					//patch_ref = -1;
 				}
 			}
 			else {
+				if (debug) std::cout << "Regular leaf" << std::endl;
 				if (intersect(scene->triangles[node.triangle], scene->vertices.data(), ray, intersection)) {
 					if (intersection.t < closest.t) {
 						closest = intersection;
 						closest.ref = node.triangle;
+
+						if (debug) std::cout << "Closest updated!!!" << std::endl;
 					}
+					else
+						if (debug) std::cout << "Not closer, not updated" << std::endl;
 				}
+				else
+					if (debug) std::cout << "No intersect, not updated" << std::endl;
 			}
 		}
+
+		if (debug) std::cout << "patch_ref (end): " << patch_ref << std::endl;
 	}
 #ifdef COUNT_HITS
 	closest.ref = hits;

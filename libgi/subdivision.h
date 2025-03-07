@@ -55,11 +55,11 @@ namespace subd {
 	struct face {
 		glm::vec3 normal;
 		std::vector<vertex_config> verts;
-		uint32_t patch_id;
+		int32_t patch_id;
 		uint32_t patch_x;
 		uint32_t patch_y;
 
-		face() : normal(0), patch_id(0), patch_x(0), patch_y(0) {}
+		face() : normal(0), patch_id(-1), patch_x(0), patch_y(0) {}
 		uint size() { return verts.size(); }
 	};
 
@@ -76,6 +76,27 @@ namespace subd {
 		uint32_t get_secondary_value() {
 			return ((uint32_t)-1) - (triangle + 1);
 		}
+		bool is_subd_leaf() {
+			return left >= (uint32_t)-2 && right >= (uint32_t)-2;
+		}
+		bool is_subd_root_and_leaf() {
+			return left == (uint32_t)-2 && right == (uint32_t)-2;
+		}
+		bool is_only_subd_root() {
+			return !inner() && !is_subd_leaf();
+		}
+		void set_subd_root_and_leaf(bool flag = true) {
+			if (flag) {
+				left = (uint32_t)-2;
+				right = (uint32_t)-2;
+			}
+			else {
+				if (is_subd_root_and_leaf()) {
+					left = (uint32_t)-1;
+					right = (uint32_t)-1;
+				}
+			}
+		}
 	};
 
 	struct subd_patch {
@@ -88,6 +109,7 @@ namespace subd {
 
 		subd_patch(uint32_t level) : subd_level(level) {
 			uint32_t size = len()*len();
+			//TODO: maybe use resize with init value to avoid own init loop
 			verts.reserve(size);
 			for (uint32_t i = 0; i < size; ++i) {
 				vertex v;
@@ -129,7 +151,7 @@ namespace subd {
 		void triangulate();
 
 	private:
-		void subdivide_internal(uint32_t level);
+		void subdivide_internal(uint32_t end_level);
 		int add_edge(edge_list &edges, int a, int b, int f_id);
 		void update_vertex(ctrl_vertex &v, int f_id, int e_id);
 

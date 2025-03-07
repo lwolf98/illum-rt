@@ -2,6 +2,7 @@ omp on
 
 up 0 1 0
 
+#sppx 1
 sppx 256
 #sppx 1024
 #sppx 4096
@@ -11,13 +12,17 @@ default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 #load render-data/sibenik/sibenik.obj
 
-modeltrafo shift 1 0 -1
-load render-data/subd_grid_models/basic_plane.obj
-modeltrafo shift -1 0 1
-load render-data/subd_grid_models/tex_plane.obj subd_level 4
+#modeltrafo shift 1 0 -3
+#load render-data/subd_grid_models/basic_plane.obj
+##load render-data/subd_grid_models/tri_test.obj subd_level 1
+#modeltrafo shift -1 0 3
 
-#load render-data/knife_compare/knife_base.obj subd_level 1
-load render-data/subd_grid_models/knife_part_test.obj subd_level 3
+#load render-data/subd_grid_models/tex_plane.obj subd_level 1
+load render-data/subd_grid_models/quad_tri_test.obj subd_level 4
+load render-data/subd_grid_models/tri_test.obj subd_level 1
+
+load render-data/knife_compare/knife_base.obj subd_level 2
+#load render-data/subd_grid_models/knife_part_test.obj subd_level 3
 #load render-data/knife/knife.usda
 
 #load render-data/subd_grid_models/basic_plane.obj subd_level 1
@@ -34,6 +39,10 @@ skylight load render-data/skylight-sunset.floats 10
 # Pos 1
 at -3 0 0
 look 1 0 0
+
+# Pos 2 (Knife)
+#at -3.00000 0.00000 0.00000
+#look -0.05541 -0.98693 -0.15135
 
 #raytracer naive-bvh
 raytracer subd-naive-bvh

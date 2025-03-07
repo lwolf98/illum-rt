@@ -451,12 +451,18 @@ namespace subd {
 		patches.reserve(faces.size());
 
 		for (uint32_t i = 0; i < faces.size(); ++i) {
-			faces[i].patch_id = i;
-			patches.emplace_back(level);
+			face &face = faces[i];
+			if (face.size() == 4) {
+				// Initialize patches for quad base faces.
+				// Other n-gon base faces need to be treated
+				// differently in the subdivision process.
+				faces[i].patch_id = patches.size();
+				patches.emplace_back(level);
+			}
 		}
 
 		for (uint32_t l = 1; l <= level; ++l) {
-			subdivide_internal(l);
+			subdivide_internal(level);
 			for (auto patch : patches) {
 				patch.print_verts();
 				patch.print_vert_tcs();
@@ -467,11 +473,18 @@ namespace subd {
 			auto &patch = patches[i];
 			patch.build_bvh();
 			//patch.nodes[patch.bvh_node].triangle = ((uint32_t)-1) - i;
+
+			// Set patch ref inside patch root node.
+			// In case the root node is also the (only) leaf node
+			// the information of the subd quad position in the patch
+			// (morton code) will be overridden inside the leaf node.
+			// This happens only if the patch is of level 0,
+			// thus holding only one subd quad with position (x=0, y=0).
 			patch.nodes[patch.bvh_node].set_secondary_value(i);
 		}
 	}
 
-	void mesh::subdivide_internal(uint32_t level) {
+	void mesh::subdivide_internal(uint32_t end_level) {
 		mesh new_mesh;
 
 		// Gather face vertices and edges and update vertex information
@@ -611,17 +624,17 @@ namespace subd {
 		normals.clear();
 		for (uint i = 0; i < faces.size(); i++) {
 			face &f = faces[i];
+			int n = f.size();
 			int off_tcs = new_mesh.tex_coords.size();
 
-			subd_patch &patch = patches[f.patch_id]; // TODO: track which patch...
+			subd_patch *patch_opt = f.patch_id >= 0 ? &patches[f.patch_id] : nullptr; // TODO: track which patch...
 			//int level_len = patch.len(level);
 
 			int step = 2; //pow(2, level-1);
 			//int off = i%step;
 			//uint32_t quad_id = 5 * (i-off) + 2 * off;
-			uint32_t quad_id = (patch.len() * f.patch_y + f.patch_x) * step;
+			uint32_t quad_id = patch_opt ? (patch_opt->len() * f.patch_y + f.patch_x) * step : 0;
 			
-			int n = f.size();
 			// Calculate texture coordinates of the face
 			if (has_texture) {
 				vec2 tc_face(0);
@@ -635,6 +648,15 @@ namespace subd {
 				}
 				tc_face /= n; // face tc
 				new_mesh.tex_coords.push_back(tc_face);
+			}
+
+			if (n != 4) {
+				assert(end_level >= 1);
+				uint32_t patch_level = end_level-1;
+				patches.resize(patches.size() + n, patch_level);
+				//for (int j = 0; j < n; j++)
+				//	patches.emplace_back(patch_level);
+
 			}
 
 			for (int j = 0; j < n; j++) {
@@ -674,37 +696,55 @@ namespace subd {
 				std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
 				std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
 
-				uint32_t start_id = 0;
-				if (j == 1) start_id = patch.vert_right(start_id);
-				if (j == 3) start_id = patch.vert_down(start_id);
-				if (j == 2) start_id = patch.vert_down_right(start_id);
+				// TODO: Init patches for irregular faces
+				int irregular_patch_id = -1;
+				if (n != 4) {
+					irregular_patch_id = patches.size() - n + j;
+					patch_opt = &patches[irregular_patch_id];
+				}
 
-				new_f.patch_id = f.patch_id;
-				uint32_t base_x = f.patch_x * 2;
-				uint32_t base_y = f.patch_y * 2;
-				if (j == 0) {
-					new_f.patch_x = base_x + 0;
-					new_f.patch_y = base_y + 0;
+				assert(patch_opt != nullptr);
+				subd_patch &patch = *patch_opt;
+
+				uint32_t start_id = 0;
+				if (n == 4) {
+					if (j == 1) start_id = patch.vert_right(start_id);
+					if (j == 3) start_id = patch.vert_down(start_id);
+					if (j == 2) start_id = patch.vert_down_right(start_id);
 				}
-				else if (j == 1) {
-					new_f.patch_x = base_x + 1;
-					new_f.patch_y = base_y + 0;
+
+				new_f.patch_id = irregular_patch_id < 0 ? f.patch_id : irregular_patch_id;
+				if (n == 4) {
+					uint32_t base_x = f.patch_x * 2;
+					uint32_t base_y = f.patch_y * 2;
+					if (j == 0) {
+						new_f.patch_x = base_x + 0;
+						new_f.patch_y = base_y + 0;
+					}
+					else if (j == 1) {
+						new_f.patch_x = base_x + 1;
+						new_f.patch_y = base_y + 0;
+					}
+					else if (j == 2) {
+						new_f.patch_x = base_x + 1;
+						new_f.patch_y = base_y + 1;
+					}
+					else if (j == 3) {
+						new_f.patch_x = base_x + 0;
+						new_f.patch_y = base_y + 1;
+					}
 				}
-				else if (j == 2) {
-					new_f.patch_x = base_x + 1;
-					new_f.patch_y = base_y + 1;
-				}
-				else if (j == 3) {
-					new_f.patch_x = base_x + 0;
-					new_f.patch_y = base_y + 1;
+				else {
+					new_f.patch_x = 0;
+					new_f.patch_y = 0;
 				}
 
 				//quad_id = 0; // TODO: set quad_id correctly per patch
 				uint32_t v_id[4];
-				v_id[0] = (n-j + 0)%n;
-				v_id[1] = (n-j + 1)%n;
-				v_id[2] = (n-j - 1)%n;
-				v_id[3] = ((n-j - 2)+n)%n;
+				v_id[0] = ((4-j + 0)%4+4)%4;
+				v_id[1] = ((4-j + 1)%4+4)%4;
+				v_id[2] = ((4-j - 1)%4+4)%4;
+				v_id[3] = ((4-j - 2)%4+4)%4;
 				//uint32_t final_id = quad_id+start_id;
 				//uint32_t final_id = patch.vert_offset(quad_id, new_f.patch_x, new_f.patch_y);
 				uint32_t final_id = patch.len() * new_f.patch_y + new_f.patch_x;
@@ -716,21 +756,21 @@ namespace subd {
 				cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
 				
 				uint32_t tmp_id;
-				if (j == 1 || j == 2) {
+				if (j == 1 || j == 2 || n != 4) {
 					tmp_id = quad_id+patch.vert_right(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[1]]];
 					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
-				if (j == 2 || j == 3) {
+				if (j == 2 || j == 3 || n != 4) {
 					tmp_id = quad_id+patch.vert_down(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[2]]];
 					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
-				if (j == 2) {
+				if (j == 2 || n != 4) {
 					tmp_id = quad_id+patch.vert_down_right(start_id);
 					patch.verts[tmp_id] = vertices[vert_ids[v_id[3]]];
 					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
