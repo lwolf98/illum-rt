@@ -446,6 +446,11 @@ namespace subd {
 	}
 
 	void mesh::subdivide(uint32_t level) {
+		// Nothing to do on subdivision level 0
+		assert(level >= 0);
+		if (level == 0)
+			return;
+
 		// TODO: handling for extraordinary faces/nodes (harder to predict exact size)
 		// reserve space for every subd patch
 		patches.reserve(faces.size());
@@ -986,7 +991,28 @@ namespace subd {
 
 	// Calculate vertex normals from face normals
 	void mesh::calculate_vertex_normals() {
-		for (uint32_t i = 0; i < vertices.size(); ++i) {
+		auto calc_normal = [this](ctrl_vertex &vert) {
+			vert.norm = vec3(0);
+			for (uint32_t j = 0; j < vert.face_ids.size(); ++j)
+				vert.norm += normals[vert.face_ids[j]];
+
+			vert.norm *= 1.f/vert.face_ids.size();
+			vert.norm = glm::normalize(vert.norm);
+			
+			has_normals = true;
+
+			if (subd_debug)
+				cout << "Normal: " << vert.norm << endl;
+		};
+
+		for (uint32_t i = 0; i < vertices.size(); ++i)
+			calc_normal(vertices[i]);
+
+		/*for (auto &patch : patches)
+			for (auto &vert : patch.verts)
+				calc_normal(vert);*/
+
+		/*for (uint32_t i = 0; i < vertices.size(); ++i) {
 			ctrl_vertex &vert = vertices[i];
 			vert.norm = vec3(0);
 			for (uint32_t j = 0; j < vert.face_ids.size(); ++j)
@@ -999,7 +1025,7 @@ namespace subd {
 
 			if (subd_debug)
 				cout << "Normal " << i << ": " << vert.norm << endl;
-		}
+		}*/
 	}
 
 	// Ear cutting triangulation

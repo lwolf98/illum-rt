@@ -100,6 +100,10 @@ namespace import {
 						float ior = inputValue.Get<float>();
 						material.ior = ior;
 					}
+					else if (shaderInput.GetFullName() == "inputs:diffuseColor") {
+						GfVec3f color = inputValue.Get<GfVec3f>();
+						material.albedo = vec3(color[0], color[1], color[2]);
+					}
 
 				}
 			}
@@ -162,8 +166,8 @@ namespace import {
 						::material new_mat;
 						new_mat.name = material.GetPath().GetName();
 						new_mat.brdf = scene.brdfs["default"];
-						new_mat.albedo = vec4(0, 0, 0, 1.f);
-						new_mat.emissive = vec3(0,0,0);
+						new_mat.albedo = vec4(0, 0, 0, 1.f); // TODO: load albedo
+						new_mat.emissive = vec3(0,0,0); // TODO: load emissive
 						traverse_shader_inputs(shader, 1, new_mat);
 						scene.materials.push_back(new_mat);
 						std::string material_key = material_path.GetString();
@@ -297,53 +301,113 @@ namespace import {
 
 				o.mesh.calculate_vertex_normals();
 
-				// triangulate quad faces
-				o.mesh.triangulate();
+				if (subdiv_level == 0) {
+					// triangulate quad faces
+					o.mesh.triangulate();
 
-				// serialize vertices
-				vector<vertex> serialized_verts;
-				for (int i = 0; i < o.mesh.faces.size(); i++) {
-					subd::face &f = o.mesh.faces[i];
-					for (int j = 0; j < f.verts.size(); j++) {
-						subd::vertex_config &v_cfg = f.verts[j];
-						vertex v;
-						v.pos = o.mesh.vertices[v_cfg.pos].pos;
-						v.tc = o.mesh.tex_coords[v_cfg.tc];
-						v.norm = o.mesh.vertices[v_cfg.pos].norm;
-						serialized_verts.push_back(v);
+					// serialize vertices
+					vector<vertex> serialized_verts;
+					for (int i = 0; i < o.mesh.faces.size(); i++) {
+						subd::face &f = o.mesh.faces[i];
+						for (int j = 0; j < f.verts.size(); j++) {
+							subd::vertex_config &v_cfg = f.verts[j];
+							vertex v;
+							v.pos = o.mesh.vertices[v_cfg.pos].pos;
+							v.tc = o.mesh.tex_coords[v_cfg.tc];
+							v.norm = o.mesh.vertices[v_cfg.pos].norm;
+							serialized_verts.push_back(v);
+						}
+					}
+
+					// store data in scene
+					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+						// cut off ctrl_vertex to regular vertex
+						vertex vertex = serialized_verts[i];
+						//vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
+						// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+						//vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
+						if (o.mesh.has_texture)
+							vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
+						else
+							vertex.tc = vec2(0,0);
+						scene.vertices.push_back(vertex);
+						scene.scene_bounds.grow(vertex.pos);
+					}
+
+					for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+						triangle triangle;
+						triangle.a = index_offset + i;
+						triangle.b = index_offset + i+1;
+						triangle.c = index_offset + i+2;
+						// test if geom normal agrees with shading normals
+						// if not, flip winding order
+						auto a = scene.vertices[triangle.a];
+						auto b = scene.vertices[triangle.b];
+						auto c = scene.vertices[triangle.c];
+						if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+							std::swap(triangle.b, triangle.c);
+						// append
+						triangle.material_id = material_id;
+						scene.triangles.push_back(triangle);
 					}
 				}
+				else {
+					// TODO: not only assign, but add to list (multiple meshes possible)
+					auto &patches = o.mesh.patches;
+					int patch_offset = scene.patches.size();
+					for (int p = 0; p < patches.size(); p++) {
+						auto &patch = patches[p];
+						patch.material_id = material_id;
 
-				// store data in scene
-				for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
-					// cut off ctrl_vertex to regular vertex
-					vertex vertex = serialized_verts[i];
-					vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
-					// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-					vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
-					if (o.mesh.has_texture)
-						vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
-					else
-						vertex.tc = vec2(0,0);
-					scene.vertices.push_back(vertex);
-					scene.scene_bounds.grow(vertex.pos);
-				}
+						auto &root_bvh_node = patch.nodes[patch.bvh_node];
+						scene.scene_bounds.grow(root_bvh_node.box);
 
-				for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
-					triangle triangle;
-					triangle.a = index_offset + i;
-					triangle.b = index_offset + i+1;
-					triangle.c = index_offset + i+2;
-					// test if geom normal agrees with shading normals
-					// if not, flip winding order
-					auto a = scene.vertices[triangle.a];
-					auto b = scene.vertices[triangle.b];
-					auto c = scene.vertices[triangle.c];
-					if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
-						std::swap(triangle.b, triangle.c);
-					// append
-					triangle.material_id = material_id;
-					scene.triangles.push_back(triangle);
+						triangle dummy_tri;
+						vertex v;
+						v.pos = root_bvh_node.box.min;
+						scene.vertices.push_back(v);
+						dummy_tri.a = scene.vertices.size()-1;
+						//rtgi_scene.scene_bounds.grow(v.pos);
+
+						v.pos = root_bvh_node.box.max;
+						scene.vertices.push_back(v);
+						dummy_tri.b = scene.vertices.size()-1;
+						//rtgi_scene.scene_bounds.grow(v.pos);
+
+						// Add again, because only extent of the volume is relevant, not the tri itself
+						scene.vertices.push_back(v);
+						dummy_tri.c = scene.vertices.size()-1;
+
+						dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+
+						scene.triangles.push_back(dummy_tri);
+					}
+
+					// Store patches into scene
+					//rtgi_scene.patches = patches;
+					for (auto &patch : patches) {
+						scene.patches.push_back(patch);
+						subd::subd_patch &scene_patch =
+							scene.patches[scene.patches.size()-1];
+
+						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
+						node.set_secondary_value(node.get_secondary_value() + patch_offset);
+
+						/*for (auto &vert : scene_patch.verts) {
+							// cut off ctrl_vertex to regular vertex
+							vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
+							// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+							vert.norm = normalize(glm::vec3(normal_transform * vec4(vert.norm, 1.f)));
+							if (mesh_ai->HasTextureCoords(0))
+								vert.tc = glm::vec2(uv_trafo * vec3(vert.tc, 1.f));
+							else
+								vert.tc = vec2(0,0);
+
+							//rtgi_scene.vertices.push_back(vertex);
+							// TODO: This might be not exact because old positions are also included in the scene bounds...
+							rtgi_scene.scene_bounds.grow(vert.pos);
+						}*/
+					}
 				}
 
 			}

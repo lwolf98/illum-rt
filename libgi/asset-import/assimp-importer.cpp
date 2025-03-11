@@ -247,6 +247,21 @@ namespace import {
 
 					subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
 					node.set_secondary_value(node.get_secondary_value() + patch_offset);
+
+					/*for (auto &vert : scene_patch.verts) {
+						// cut off ctrl_vertex to regular vertex
+						vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
+						// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+						vert.norm = normalize(glm::vec3(normal_transform * vec4(vert.norm, 1.f)));
+						if (mesh_ai->HasTextureCoords(0))
+							vert.tc = glm::vec2(uv_trafo * vec3(vert.tc, 1.f));
+						else
+							vert.tc = vec2(0,0);
+
+						//rtgi_scene.vertices.push_back(vertex);
+						// TODO: This might be not exact because old positions are also included in the scene bounds...
+						rtgi_scene.scene_bounds.grow(vert.pos);
+					}*/
 				}
 
 				/*continue;
