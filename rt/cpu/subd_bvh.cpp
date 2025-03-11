@@ -28,15 +28,10 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 
 	// Rekursionsabbruch: Nur noch ein Dreieck in der Liste
 	if (end - start == 1) {
-		//if (triangles[start].material_id == (uint32_t)-1) {
 		if (triangles[start].material_id > scene->materials.size()-1) {
 			// TODO: put in the SubD 2-level BVH node
 			uint32_t patch_ref = ((uint32_t)-1) - triangles[start].material_id;
 			subd::subd_patch &patch = scene->patches[patch_ref];
-
-			// TODO:
-			// add patch nodes to this list
-			// update id by offset
 
 			uint32_t offset = nodes.size();
 			for (auto &node : patch.nodes) {
@@ -49,7 +44,6 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 			}
 			uint32_t id = patch.bvh_node + offset;
 
-			//nodes[id].triangle = start;
 			return id;
 		}
 		uint32_t id = nodes.size();
@@ -142,18 +136,10 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 		}
 		else {
 			if (node.triangle > scene->triangles.size()-1) { // if leaf node holds a SubD quad:
-				// TODO: evaluate SubD quad
-				// triangle tri1 = quad.tri1();
-				// triangle tri2 = quad.tri2();
-				// make intersect test from below for both tris...
-				//uint32_t morton_code = ((uint32_t)-1) - node.triangle;
-				//if (node.left != ((uint32_t)-1) || node.right != ((uint32_t)-1)) {
 				if (node.is_only_subd_root()) {
 					if (debug) std::cout << "Subd root node" << std::endl;
 					// branch: hit subd patch root node
 					patch_ref = node.get_secondary_value();
-					//if (patch_ref == 8)
-					//	std::cout << "bbbbbbbbb" << std::endl;
 					float dist;
 					if (intersect(node.box, ray, dist)) {
 						if (dist < closest.t) {
@@ -162,12 +148,10 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 							if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
 						}
 						else {
-							//patch_ref = -1;
 							if (debug) std::cout << "Not closer, not updated" << std::endl;
 						}
 					}
 					else {
-						//patch_ref = -1;
 						if (debug) std::cout << "No intersect, not updated" << std::endl;
 					}
 				}
@@ -176,9 +160,7 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 					if (debug) std::cout << "Subd leaf" << std::endl;
 					if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
 
-					//uint32_t morton_code = node.get_secondary_value();
 					uint32_t morton_code = 0;
-					//if (patch_ref != -1) {
 					if (node.is_subd_root_and_leaf()) {
 						// Special handling if subd root node is also the leaf node
 						patch_ref = node.get_secondary_value();
@@ -194,7 +176,6 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 					subd::subd_patch &patch = scene->patches[patch_ref];
 					std::array<triangle, 2> tris = patch.tris(morton_code);
 					for (int i = 0; i < 2; i++) {
-						//if (intersect(scene->patches[patch_ref], morton_code, )) {
 						if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
 							if (intersection.t < closest.t) {
 								assert(morton_code <= patch.verts.size());
@@ -213,7 +194,6 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 						else
 							if (debug) std::cout << "No intersect, not updated" << std::endl;
 					}
-					//patch_ref = -1;
 				}
 			}
 			else {

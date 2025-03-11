@@ -247,12 +247,8 @@ namespace import {
 				UsdGeomMesh mesh(prim);
 				std::cout << "Found mesh: " << prim.GetPath() << std::endl;
 
-				// Import via object
-				//TODO: init/pass transormation matrices!
+				// Init transormation matrices
 				mat4 parent_trafo(1);
-				//mat4 usd_node_trafo_to_glm(1);
-				//mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
-				//mat4 node_trafo = usd_node_trafo_to_glm * parent_trafo;
 				VtValue usd_up;
 				bool success = stage->GetMetadata(TfToken("upAxis"), &usd_up);
 				const mat4 orientation = get_orientation_trafo(scene.up, usd_up.Get<TfToken>().GetString());
@@ -261,11 +257,9 @@ namespace import {
 				mat4 transform = model_trafo * node_trafo * orientation;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
 
-				// load mesh data
-				//TODO: load correct material (id)!
-				//uint32_t material_id = material_offset;
 				uint32_t index_offset = scene.vertices.size();
-				//TODO: material stuff!
+
+				//TODO: Implement this section for USD
 				/*auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
 				
 				aiString name_ai;
@@ -284,28 +278,35 @@ namespace import {
 					uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 				}*/
 
-				// load material
+				// Load material
 				int material_id = load_material(mesh, scene);
 				if (material_id == -1)
 					material_id = 0;
 				material_id += material_offset;
 
-				// load geometry as object (preparation for subdivision)
+				// Load geometry as object (preparation for subdivision)
 				subd::object o(mesh);
 
-				// subdivide object
+				for (auto &vert : o.mesh.vertices) {
+					// cut off ctrl_vertex to regular vertex
+					vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
+					// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+					vert.norm = normalize(glm::vec3(normal_transform * vec4(vert.norm, 1.f)));
+					if (o.mesh.has_texture)
+						vert.tc = glm::vec2(uv_trafo * vec3(vert.tc, 1.f));
+					else
+						vert.tc = vec2(0,0);
+						
+				}
+
+				// Subdivide object
 				o.mesh.subdivide(subdiv_level);
 
-				if (subdiv_level == 0)
-					o.mesh.update();
-
-				o.mesh.calculate_vertex_normals();
-
 				if (subdiv_level == 0) {
-					// triangulate quad faces
+					// Triangulate quad faces
 					o.mesh.triangulate();
 
-					// serialize vertices
+					// Serialize vertices
 					vector<vertex> serialized_verts;
 					for (int i = 0; i < o.mesh.faces.size(); i++) {
 						subd::face &f = o.mesh.faces[i];
@@ -323,13 +324,6 @@ namespace import {
 					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
 						// cut off ctrl_vertex to regular vertex
 						vertex vertex = serialized_verts[i];
-						//vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
-						// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-						//vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
-						if (o.mesh.has_texture)
-							vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
-						else
-							vertex.tc = vec2(0,0);
 						scene.vertices.push_back(vertex);
 						scene.scene_bounds.grow(vertex.pos);
 					}
@@ -352,7 +346,9 @@ namespace import {
 					}
 				}
 				else {
-					// TODO: not only assign, but add to list (multiple meshes possible)
+					// Add "dummy triangles" to the scene representing the extent of the patches.
+					// These are used to identify and include the second level patch BVHs when
+					// building the first level BVH
 					auto &patches = o.mesh.patches;
 					int patch_offset = scene.patches.size();
 					for (int p = 0; p < patches.size(); p++) {
@@ -367,12 +363,10 @@ namespace import {
 						v.pos = root_bvh_node.box.min;
 						scene.vertices.push_back(v);
 						dummy_tri.a = scene.vertices.size()-1;
-						//rtgi_scene.scene_bounds.grow(v.pos);
 
 						v.pos = root_bvh_node.box.max;
 						scene.vertices.push_back(v);
 						dummy_tri.b = scene.vertices.size()-1;
-						//rtgi_scene.scene_bounds.grow(v.pos);
 
 						// Add again, because only extent of the volume is relevant, not the tri itself
 						scene.vertices.push_back(v);
@@ -384,7 +378,6 @@ namespace import {
 					}
 
 					// Store patches into scene
-					//rtgi_scene.patches = patches;
 					for (auto &patch : patches) {
 						scene.patches.push_back(patch);
 						subd::subd_patch &scene_patch =
@@ -392,21 +385,6 @@ namespace import {
 
 						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
 						node.set_secondary_value(node.get_secondary_value() + patch_offset);
-
-						/*for (auto &vert : scene_patch.verts) {
-							// cut off ctrl_vertex to regular vertex
-							vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
-							// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-							vert.norm = normalize(glm::vec3(normal_transform * vec4(vert.norm, 1.f)));
-							if (mesh_ai->HasTextureCoords(0))
-								vert.tc = glm::vec2(uv_trafo * vec3(vert.tc, 1.f));
-							else
-								vert.tc = vec2(0,0);
-
-							//rtgi_scene.vertices.push_back(vertex);
-							// TODO: This might be not exact because old positions are also included in the scene bounds...
-							rtgi_scene.scene_bounds.grow(vert.pos);
-						}*/
 					}
 				}
 

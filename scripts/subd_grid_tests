@@ -12,17 +12,19 @@ default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 #load render-data/sibenik/sibenik.obj
 
-#modeltrafo shift 1 0 -3
+modeltrafo shift 1 0 -3
 #load render-data/subd_grid_models/basic_plane.obj
 #load render-data/subd_grid_models/tri_test.obj subd_level 1
-#modeltrafo shift -1 0 3
+#load render-data/subd_grid_models/cubi.usda subd_level 3
+#load render-data/subd_grid_models/quad_tri_test.obj subd_level 1
+modeltrafo shift -1 0 3
 
-#load render-data/subd_grid_models/cubi.usda subd_level 1
+load render-data/subd_grid_models/cubi.usda subd_level 1
 #load render-data/subd_grid_models/tex_plane.obj subd_level 1
-#load render-data/subd_grid_models/quad_tri_test.obj subd_level 4
+load render-data/subd_grid_models/quad_tri_test.obj subd_level 3
 #load render-data/subd_grid_models/tri_test.obj subd_level 1
 
-#load render-data/knife_compare/knife_base.obj subd_level 2
+load render-data/knife_compare/knife_base.obj subd_level 2
 #load render-data/subd_grid_models/knife_part_test.obj subd_level 3
 load render-data/knife/knife.usda subd_level 3
 
