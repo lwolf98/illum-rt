@@ -443,6 +443,7 @@ namespace subd {
 		}
 
 		calculate_face_normals();
+		calculate_vertex_normals();
 	}
 
 	void mesh::subdivide(uint32_t level) {
@@ -636,12 +637,9 @@ namespace subd {
 			int n = f.size();
 			int off_tcs = new_mesh.tex_coords.size();
 
-			subd_patch *patch_opt = f.patch_id >= 0 ? &patches[f.patch_id] : nullptr; // TODO: track which patch...
-			//int level_len = patch.len(level);
+			subd_patch *patch_opt = f.patch_id >= 0 ? &patches[f.patch_id] : nullptr;
 
-			int step = 2; //pow(2, level-1);
-			//int off = i%step;
-			//uint32_t quad_id = 5 * (i-off) + 2 * off;
+			int step = 2;
 			uint32_t quad_id = patch_opt ? (patch_opt->len() * f.patch_y + f.patch_x) * step : 0;
 			
 			// Calculate texture coordinates of the face
@@ -740,30 +738,42 @@ namespace subd {
 				v_id[2] = ((4-j - 1)%4+4)%4;
 				v_id[3] = ((4-j - 2)%4+4)%4;
 				uint32_t final_id = patch.len() * new_f.patch_y + new_f.patch_x;
-				patch.verts[final_id] = vertices[vert_ids[v_id[0]]];
-				patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
+				ctrl_vertex *vert = &vertices[vert_ids[v_id[0]]];
+				vert->patch_positions.push_back({new_f.patch_id, final_id});
+				patch.verts[final_id] = *vert;
+				if (new_mesh.has_texture)
+					patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
 				cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
 				cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
 				
 				uint32_t tmp_id;
 				if (j == 1 || j == 2 || n != 4) {
 					tmp_id = quad_id+patch.vert_right(start_id);
-					patch.verts[tmp_id] = vertices[vert_ids[v_id[1]]];
-					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
+					vert = &vertices[vert_ids[v_id[1]]];
+					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+					patch.verts[tmp_id] = *vert;
+					if (new_mesh.has_texture)
+						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
 				if (j == 2 || j == 3 || n != 4) {
 					tmp_id = quad_id+patch.vert_down(start_id);
-					patch.verts[tmp_id] = vertices[vert_ids[v_id[2]]];
-					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
+					vert = &vertices[vert_ids[v_id[2]]];
+					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+					patch.verts[tmp_id] = *vert;
+					if (new_mesh.has_texture)
+						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
 				if (j == 2 || n != 4) {
 					tmp_id = quad_id+patch.vert_down_right(start_id);
-					patch.verts[tmp_id] = vertices[vert_ids[v_id[3]]];
-					patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
+					vert = &vertices[vert_ids[v_id[3]]];
+					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+					patch.verts[tmp_id] = *vert;
+					if (new_mesh.has_texture)
+						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
 					cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
 				}
@@ -967,6 +977,8 @@ namespace subd {
 
 			vert.norm *= 1.f/vert.face_ids.size();
 			vert.norm = glm::normalize(vert.norm);
+			for (auto &position : vert.patch_positions)
+				patches[position.first].verts[position.second].norm = vert.norm;
 			
 			has_normals = true;
 

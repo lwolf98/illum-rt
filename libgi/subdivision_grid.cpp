@@ -4,7 +4,7 @@
 
 using namespace subd;
 
-void subd_patch::print_verts() {
+void subd_patch::print_verts() const {
 	using namespace std;
 
 	cout << "Vert positions:" << endl;
@@ -13,14 +13,14 @@ void subd_patch::print_verts() {
 	uint32_t length = len();
 	for (uint32_t y = 0; y < length; ++y) {
 		for (uint32_t x = 0; x < length; ++x) {
-			glm::vec3 &pos = verts[y*length+x].pos;
+			const glm::vec3 &pos = verts[y*length+x].pos;
 			cout << "(" << setw(8) << pos.y << " " << setw(8) << pos.z << ") ";
 		}
 		cout << endl;
 	}
 }
 
-void subd_patch::print_vert_tcs() {
+void subd_patch::print_vert_tcs() const {
 	using namespace std;
 
 	cout << "Vert TCs:" << endl;
@@ -29,36 +29,36 @@ void subd_patch::print_vert_tcs() {
 	uint32_t length = len();
 	for (uint32_t y = 0; y < length; ++y) {
 		for (uint32_t x = 0; x < length; ++x) {
-			glm::vec2 &tc = verts[y*length+x].tc;
+			const glm::vec2 &tc = verts[y*length+x].tc;
 			cout << "(" << setw(8) << tc.x << " " << setw(8) << tc.y << ") ";
 		}
 		cout << endl;
 	}
 }
 
-uint32_t subd_patch::len(uint32_t level) {
+uint32_t subd_patch::len(uint32_t level) const {
 	return std::pow(2, level)+1;
 }
 
-uint32_t subd_patch::len() {
+uint32_t subd_patch::len() const {
 	return len(subd_level);
 }
 
 // TODO: check for illegal operations?
 // e.g. call vert_right on a vert that lies on the right edge...
-uint32_t subd_patch::vert_right(uint32_t vert_id) {
+uint32_t subd_patch::vert_right(uint32_t vert_id) const {
 	return vert_id+1;
 }
 
-uint32_t subd_patch::vert_down(uint32_t vert_id) {
+uint32_t subd_patch::vert_down(uint32_t vert_id) const {
 	return vert_id + len();
 }
 
-uint32_t subd_patch::vert_down_right(uint32_t vert_id) {
+uint32_t subd_patch::vert_down_right(uint32_t vert_id) const {
 	return vert_id + len() + 1;
 }
 
-uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) {
+uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const {
 	return vert_id + off_y * len() + off_x;
 }
 
@@ -144,40 +144,47 @@ void subd_patch::build_bvh() {
 		nodes[bvh_node].set_subd_root_and_leaf();
 }
 
-int subd_patch::calculate_morton_code(int x, int y) {
+int subd_patch::calculate_morton_code(int x, int y) const {
 	// Note: currently only working with index, is morton code neccessary?
 	return y * len() + x;
 }
 
-tuple<int, int> subd_patch::evaluate_morton_code(int morton_code) {
+tuple<int, int> subd_patch::evaluate_morton_code(int morton_code) const {
 	// Note: currently only working with index, is morton code neccessary?
 	int x = morton_code % len();
 	int y = morton_code / len();
 	return {x, y};
 }
 
-int subd_patch::get_subd_quad(int morton_code) {
+int subd_patch::get_subd_quad(int morton_code) const {
 	auto [x, y] = evaluate_morton_code(morton_code);
 	return y * len() + x;
 }
 
-std::array<triangle, 2> subd_patch::tris(int morton_code) {
-	triangle tri1;
-	triangle tri2;
+std::array<triangle, 2> subd_patch::tris(int morton_code) const {
+	return {
+		tri(morton_code, true),
+		tri(morton_code, false)
+	};
+}
+
+triangle subd_patch::tri(int morton_code, bool upper) const {
+	triangle tri;
 
 	//TODO:
-	// get subd quad by morton code
-	// get two tris from it
+	// get subd quad by morton code rather than the currently used position code?
 	int quad_id = get_subd_quad(morton_code);
-	tri1.a = quad_id;
-	tri1.b = vert_down(quad_id);
-	tri1.c = vert_right(quad_id);
-	tri1.material_id = material_id;
+	tri.material_id = material_id;
+	if (upper) {
+		tri.a = quad_id;
+		tri.b = vert_down(quad_id);
+		tri.c = vert_right(quad_id);
+	}
+	else {
+		tri.a = vert_down(quad_id);
+		tri.b = vert_down_right(quad_id);
+		tri.c = vert_right(quad_id);
+	}
 
-	tri2.a = vert_down(quad_id);
-	tri2.b = vert_down_right(quad_id);
-	tri2.c = vert_right(quad_id);
-	tri2.material_id = material_id;
-
-	return { tri1, tri2 };
+	return tri;
 }

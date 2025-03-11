@@ -24,6 +24,7 @@ namespace subd {
 	struct ctrl_vertex : ::vertex {
 		std::vector<int> edge_ids;
 		std::vector<int> face_ids;
+		std::vector<std::pair<uint32_t, uint32_t>> patch_positions;
 
 		ctrl_vertex() {}
 		ctrl_vertex(glm::vec3 v) {
@@ -100,7 +101,6 @@ namespace subd {
 	};
 
 	struct subd_patch {
-		//std::vector<glm::vec3> verts;
 		std::vector<vertex> verts;
 		uint32_t bvh_node;
 		std::vector<node> nodes;
@@ -118,21 +118,22 @@ namespace subd {
 			}
 		}
 
-		void print_verts();
-		void print_vert_tcs();
-		uint32_t len();
-		uint32_t len(uint32_t level);
-		uint32_t vert_right(uint32_t vert_id);
-		uint32_t vert_down(uint32_t vert_id);
-		uint32_t vert_down_right(uint32_t vert_id);
-		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y);
+		void print_verts() const;
+		void print_vert_tcs() const;
+		uint32_t len() const;
+		uint32_t len(uint32_t level) const;
+		uint32_t vert_right(uint32_t vert_id) const;
+		uint32_t vert_down(uint32_t vert_id) const;
+		uint32_t vert_down_right(uint32_t vert_id) const;
+		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
 		void build_bvh();
-		int get_subd_quad(int morton_code);
-		std::array<triangle, 2> tris(int morton_code);
+		int get_subd_quad(int morton_code) const;
+		std::array<triangle, 2> tris(int morton_code) const;
+		triangle tri(int morton_code, bool upper) const;
 
 		private:
-		int calculate_morton_code(int x, int y);
-		tuple<int, int> evaluate_morton_code(int morton_code);
+		int calculate_morton_code(int x, int y) const;
+		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
 
 	struct mesh {
