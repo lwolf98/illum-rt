@@ -16,8 +16,6 @@
 
 #include "debug/pixel.h"
 
-#include "rt/cpu/subd_bvh.h"
-
 using namespace glm;
 using namespace std;
 

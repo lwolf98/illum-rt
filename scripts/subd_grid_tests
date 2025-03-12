@@ -28,9 +28,9 @@ load render-data/subd_grid_models/cubi_open.usda
 #load render-data/subd_grid_models/quad_tri_test.obj subd_level 3
 #load render-data/subd_grid_models/tri_test.obj subd_level 1
 
-#load render-data/knife_compare/knife_base.obj subd_level 2
+load render-data/knife_compare/knife_base.obj subd_level 2
 #load render-data/subd_grid_models/knife_part_test.obj subd_level 3
-#load render-data/knife/knife.usda subd_level 3
+load render-data/knife/knife.usda subd_level 3
 
 #load render-data/subd_grid_models/basic_plane.obj subd_level 1
 #load render-data/subd_grid_models/basic_plane.obj subd_level 2
@@ -38,18 +38,22 @@ load render-data/subd_grid_models/cubi_open.usda
 #load render-data/subd_grid_models/half_cube.obj subd_level 4
 #load render-data/subd_grid_models/l_form.obj subd_level 4
 
-#load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
+load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 2
 
 
 skylight load render-data/skylight-sunset.floats 10
 
 # Pos 1
-at -3 0 0
-look 1 0 0
+#at -3 0 0
+#look 1 0 0
 
 # Pos 2 (Knife)
 #at -3.00000 0.00000 0.00000
 #look -0.05541 -0.98693 -0.15135
+
+# Pos 3 (Animals)
+at -0.17861 2.03795 1.25793
+look -0.79211 -0.08750 -0.60408
 
 #raytracer naive-bvh
 raytracer subd-naive-bvh

@@ -741,7 +741,7 @@ namespace subd {
 				ctrl_vertex *vert = &vertices[vert_ids[v_id[0]]];
 				vert->patch_positions.push_back({new_f.patch_id, final_id});
 				patch.verts[final_id] = *vert;
-				if (new_mesh.has_texture)
+				if (has_texture)
 					patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
 				cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
 				cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
@@ -752,7 +752,7 @@ namespace subd {
 					vert = &vertices[vert_ids[v_id[1]]];
 					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
 					patch.verts[tmp_id] = *vert;
-					if (new_mesh.has_texture)
+					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
@@ -762,7 +762,7 @@ namespace subd {
 					vert = &vertices[vert_ids[v_id[2]]];
 					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
 					patch.verts[tmp_id] = *vert;
-					if (new_mesh.has_texture)
+					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
 				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
@@ -772,7 +772,7 @@ namespace subd {
 					vert = &vertices[vert_ids[v_id[3]]];
 					vert->patch_positions.push_back({new_f.patch_id, tmp_id});
 					patch.verts[tmp_id] = *vert;
-					if (new_mesh.has_texture)
+					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
 					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
 					cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
@@ -989,24 +989,6 @@ namespace subd {
 		for (uint32_t i = 0; i < vertices.size(); ++i)
 			calc_normal(vertices[i]);
 
-		/*for (auto &patch : patches)
-			for (auto &vert : patch.verts)
-				calc_normal(vert);*/
-
-		/*for (uint32_t i = 0; i < vertices.size(); ++i) {
-			ctrl_vertex &vert = vertices[i];
-			vert.norm = vec3(0);
-			for (uint32_t j = 0; j < vert.face_ids.size(); ++j)
-				vert.norm += normals[vert.face_ids[j]];
-
-			vert.norm *= 1.f/vert.face_ids.size();
-			vert.norm = glm::normalize(vert.norm);
-			
-			has_normals = true;
-
-			if (subd_debug)
-				cout << "Normal " << i << ": " << vert.norm << endl;
-		}*/
 	}
 
 	// Ear cutting triangulation
