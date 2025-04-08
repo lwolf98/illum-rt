@@ -15,6 +15,7 @@ namespace subd {
 		float sharpness;
 		std::vector<int> face_ids;
 
+		edge() = default;
 		edge(int v1, int v2, float sharpness) : v1(v1), v2(v2), sharpness(sharpness) {}
 		edge(int v1, int v2) : edge(v1, v2, 0.f) {}
 
@@ -22,7 +23,7 @@ namespace subd {
 	};
 
 	struct ctrl_vertex : ::vertex {
-		std::vector<int> edge_ids;
+		std::vector<uint64_t> edge_ids;
 		std::vector<int> face_ids;
 		std::vector<std::pair<uint32_t, uint32_t>> patch_positions;
 
@@ -31,21 +32,37 @@ namespace subd {
 			pos = v;
 		}
 
-		bool edge_exists(int id) const;
+		bool edge_exists(uint64_t id) const;
 		bool face_exists(int id) const;
 	};
 
 	class edge_list {
-		std::vector<edge> edges;
+		//std::vector<edge> edges;
+		std::map<uint64_t, edge> edges;
+		std::map<uint64_t, edge>::iterator it;
+		bool reset = false;
+
+		uint64_t hash(int a, int b) const;
 
 	public:
-		int add(int a, int b);
-		int add(int a, int b, float sharpness);
-		int get_id(int a, int b) const;
-		edge& get(int id);
+		edge_list() {
+			reset_iterator();
+		}
+
+		uint64_t add(int a, int b);
+		uint64_t add(int a, int b, float sharpness);
+		uint64_t get_id(int a, int b) const;
+		uint64_t get_id(const edge &e) const;
+		edge& get(uint64_t id);
+		edge& get_next();
+		void reset_iterator();
 		int size() const;
 		bool exists(int a, int b) const;
 		void clear();
+		bool is_reset() { return reset; }
+		/*std::map<uint64_t, edge>::iterator iterator() {
+			return edges.begin();
+		}*/
 	};
 
 	struct vertex_config {
@@ -143,6 +160,7 @@ namespace subd {
 		std::vector<glm::vec3> normals;
 		std::vector<glm::vec2> tex_coords;
 		std::vector<face> faces;
+		edge_list edges;
 		edge_list creases;
 		std::vector<subd_patch> patches;
 		int get_vert_id(glm::vec3 v_pos);
@@ -153,12 +171,12 @@ namespace subd {
 
 	private:
 		void subdivide_internal(uint32_t end_level);
-		int add_edge(edge_list &edges, int a, int b, int f_id);
-		void update_vertex(ctrl_vertex &v, int f_id, int e_id);
+		uint64_t add_edge(edge_list &edges, int a, int b, int f_id);
+		void update_vertex(ctrl_vertex &v, int f_id, uint64_t e_id);
 
 		glm::vec3 calc_smooth_edge_vertex(const edge &e, const std::vector<glm::vec3> &face_vertices);
 		glm::vec3 calc_sharp_edge_vertex(const edge &e);
-		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
+		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
 
 		void calculate_face_normals();
 	};

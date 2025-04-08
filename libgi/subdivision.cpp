@@ -2,6 +2,7 @@
 #include <fstream>
 #include <map>
 #include "subdivision.h"
+#include "libgi/timer.h"
 
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
@@ -44,29 +45,57 @@ namespace subd {
 
 	/* edge_list implementation */
 
-	int edge_list::add(int a, int b, float sharpness) {
-		normalize_edge_order(a, b);
-		edges.push_back(edge(a, b, sharpness));
-		return size()-1;
+	uint64_t edge_list::hash(int a, int b) const {
+		//normalize_edge_order(a, b);
+		uint64_t hash_a = a; //std::hash<int>{}(a);
+		uint64_t hash_b = b; //std::hash<int>{}(b);
+		return hash_a << 32 | hash_b;
 	}
 
-	int edge_list::add(int a, int b) {
+	uint64_t edge_list::add(int a, int b, float sharpness) {
+		normalize_edge_order(a, b);
+		//edges.push_back(edge(a, b, sharpness));
+		uint64_t hashval = hash(a, b);
+		edges[hashval] = edge(a, b, sharpness);
+		return hashval; //size()-1;
+	}
+
+	uint64_t edge_list::add(int a, int b) {
 		return add(a, b, 0.f);
 	}
 
-	int edge_list::get_id(int a, int b) const {
+	uint64_t edge_list::get_id(int a, int b) const {
 		normalize_edge_order(a, b);
-		for (int i = 0; i < size(); i++) {
+		uint64_t hashval = hash(a, b);
+		return edges.count(hashval) > 0 ? hashval : (uint64_t)-1;
+
+		/*for (int i = 0; i < size(); i++) {
 			const edge &e = edges[i];
 			if (e.v1 == a && e.v2 == b)
 				return i;
 		}
 		
-		return -1;
+		return -1;*/
 	}
 
-	edge& edge_list::get(int id) {
+	uint64_t edge_list::get_id(const edge &e) const {
+		return get_id(e.v1, e.v2);
+	}
+
+	edge& edge_list::get(uint64_t id) {
 		return edges[id];
+	}
+
+	edge& edge_list::get_next() {
+		assert(it != edges.end());
+		if (reset)  reset = false;
+		else        std::advance(it, 1);
+		return it->second;
+	}
+
+	void edge_list::reset_iterator() {
+		it = edges.begin();
+		reset = true;
 	}
 
 	int edge_list::size() const {
@@ -74,7 +103,7 @@ namespace subd {
 	}
 
 	bool edge_list::exists(int a, int b) const {
-		return get_id(a, b) != -1;
+		return get_id(a, b) != (uint64_t)-1;
 	}
 
 	void edge_list::clear() {
@@ -84,9 +113,9 @@ namespace subd {
 
 	/* ctrl_vertex implementation */
 
-	bool ctrl_vertex::edge_exists(int id) const {
-		for (int i : edge_ids)
-			if (i == id)
+	bool ctrl_vertex::edge_exists(uint64_t id) const {
+		for (uint64_t key : edge_ids)
+			if (key == id)
 				return true;
 
 		return false;
@@ -105,6 +134,8 @@ namespace subd {
 
 	// Load from Assimp
 	void object::init_object(aiMesh *mesh_ai) {
+		time_this_block(init_object);
+
 		// Meta data
 		mesh.has_normals = mesh_ai->HasNormals();
 		mesh.has_texture = mesh_ai->HasTextureCoords(0);
@@ -156,11 +187,14 @@ namespace subd {
 			}
 			mesh.faces.push_back(face);
 		}
+
+		mesh.update();
 	}
 
 	// Load from USD with tinyusdz
 	void object::init_object(const tinyusdz::GeomMesh *usd_mesh) {
 		using namespace tinyusdz;
+		time_this_block(init_object);
 		
 		// Meta data
 		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
@@ -228,11 +262,14 @@ namespace subd {
 			mesh.faces.push_back(face);
 			off += usd_face_counts[i];
 		}
+
+		mesh.update();
 	}
 
 	// Load from USD with OpenUSD
 	void object::init_object(const pxr::UsdGeomMesh &usd_mesh) {
 		using namespace pxr;
+		time_this_block(init_object);
 
 		// Meta data
 		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
@@ -312,6 +349,8 @@ namespace subd {
 			mesh.faces.push_back(face);
 			off += usd_face_counts[i];
 		}
+
+		mesh.update();
 	}
 
 	// Export object to obj format
@@ -434,8 +473,10 @@ namespace subd {
 	/* mesh implementation */
 
 	void mesh::update() {
+		time_this_block(mesh_update);
 		// Calculate adjacent edges and faces
-		edge_list edges;
+		//edge_list edges;
+		edges.clear();
 		for (uint i = 0; i < faces.size(); i++) {
 			face& f = faces[i];
 			for (uint j = 0; j < f.size(); j++)
@@ -449,10 +490,10 @@ namespace subd {
 	void mesh::subdivide(uint32_t level) {
 		// Nothing to do on subdivision level 0
 		assert(level >= 0);
-		if (level == 0) {
+		/*if (level == 0) {
 			update();
 			return;
-		}
+		}*/
 
 		// TODO: handling for extraordinary faces/nodes (harder to predict exact size)
 		// reserve space for every subd patch
@@ -471,9 +512,11 @@ namespace subd {
 
 		for (uint32_t l = 1; l <= level; ++l) {
 			subdivide_internal(level);
-			for (auto patch : patches) {
-				patch.print_verts();
-				patch.print_vert_tcs();
+			if (subd_debug) {
+				for (auto patch : patches) {
+					patch.print_verts();
+					patch.print_vert_tcs();
+				}
 			}
 		}
 
@@ -498,12 +541,14 @@ namespace subd {
 		mesh new_mesh;
 
 		// Gather face vertices and edges and update vertex information
-		edge_list edges;
+		//edge_list edges;
 		vector<vec3> face_vertices;
+		int32_t f1 = 0;
 		for (uint i = 0; i < faces.size(); i++) {
+			time_this_block(calc_face_verts);
 			face& f = faces[i];
 			vec3 f_new(0);
-			for (uint j = 0; j < f.verts.size(); j++)
+			for (uint j = 0; j < f.size(); j++)
 				f_new += vertices[f.verts[j].pos].pos;
 
 			f_new = 1.f/f.size() * f_new;
@@ -511,23 +556,31 @@ namespace subd {
 			if (subd_debug)
 				cout << "f_new: (" << f_new.x << ", " << f_new.y << ", " << f_new.z << ")" << endl;
 
-			for (uint j = 0; j < f.size(); j++)
-				add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+			//for (uint j = 0; j < f.size(); j++)
+			//	add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 
+			f1 += f.size();
 		}
 
 		// Assign edge crease sharpness
+		creases.reset_iterator();
 		for (int i = 0; i < creases.size(); i++) {
-			edge &c = creases.get(i);
+			time_this_block(assign_edge_creases);
+			edge &c = creases.get_next();
 			edge &e = edges.get(edges.get_id(c.v1, c.v2));
 			e.sharpness = c.sharpness;
 		}
 
 		// Calculate current edge vertices
-		vector<vec3> edge_vertices;
+		//vector<vec3> edge_vertices;
+		std::map<uint64_t, vec3> edge_vertices;
+		edges.reset_iterator();
 		for (int i = 0; i < edges.size(); i++) {
-			edge &e = edges.get(i);
-			edge_vertices.push_back(1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos));
+		//for (const auto &[_, e] : edges) {
+			time_this_block(calc_cur_edge_verts);
+			edge &e = edges.get_next(); //edges.get(i);
+			//edge_vertices.push_back(1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos));
+			edge_vertices[edges.get_id(e)] = 1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos);
 
 			if (subd_debug) {
 				cout << "edge: (" << e.v1 << "," << e.v2 << ") f:";
@@ -540,8 +593,10 @@ namespace subd {
 
 		// Calculate new edge vertices
 		vector<vec3> e_news;
+		edges.reset_iterator();
 		for (int i = 0; i < edges.size(); i++) {
-			edge &e = edges.get(i);
+			time_this_block(calc_edge_verts);
+			edge &e = edges.get_next();
 			vec3 e_new;
 
 			if (e.sharpness <= 0) {
@@ -550,11 +605,11 @@ namespace subd {
 			}
 			else if(e.sharpness >= 1.f) {
 				// Infinitely Sharp edge
-				e_new = edge_vertices[i];
+				e_new = edge_vertices[edges.get_id(e)]; //edge_vertices[i];
 			}
 			else {
 				// Semi-sharp edge
-				e_new = e.sharpness * edge_vertices[i] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
+				e_new = e.sharpness * edge_vertices[edges.get_id(e)] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
 			}
 
 			e_news.push_back(e_new);
@@ -566,6 +621,7 @@ namespace subd {
 		// Calculate new vertex points
 		vector<vec3> v_news;
 		for (uint i = 0; i < vertices.size(); i++) {
+			time_this_block(calc_vertex_verts);
 			ctrl_vertex &v = vertices[i];
 			vector<edge *> sharp_edges;
 			vector<int> sharp_edge_ids;
@@ -620,19 +676,23 @@ namespace subd {
 		vertices.clear();
 
 		// Assign vertices
-		for (uint i = 0; i < old_vertices; i++) {
-			vertices.push_back(v_news[i]);
-		}
-		for (vec3 &e : e_news) {
-			vertices.push_back(e);
-		}
-		for (vec3 &f : face_vertices) {
-			vertices.push_back(f);
+		{
+			time_this_block(assign_verts);
+			for (uint i = 0; i < old_vertices; i++) {
+				vertices.push_back(v_news[i]);
+			}
+			for (vec3 &e : e_news) {
+				vertices.push_back(e);
+			}
+			for (vec3 &f : face_vertices) {
+				vertices.push_back(f);
+			}
 		}
 
 		// Assign faces
 		normals.clear();
 		for (uint i = 0; i < faces.size(); i++) {
+			time_this_block(assign_faces);
 			face &f = faces[i];
 			int n = f.size();
 			int off_tcs = new_mesh.tex_coords.size();
@@ -684,10 +744,12 @@ namespace subd {
 
 				// ----- subd grid -----
 
-				std::cout << "V : " << vertices[vert_ids[0]].pos << std::endl;
-				std::cout << "E1: " << vertices[vert_ids[1]].pos << std::endl;
-				std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
-				std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
+				if (subd_debug) {
+					std::cout << "V : " << vertices[vert_ids[0]].pos << std::endl;
+					std::cout << "E1: " << vertices[vert_ids[1]].pos << std::endl;
+					std::cout << "F : " << vertices[vert_ids[2]].pos << std::endl;
+					std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
+				}
 
 				// Init patches for irregular faces
 				int irregular_patch_id = -1;
@@ -743,8 +805,11 @@ namespace subd {
 				patch.verts[final_id] = *vert;
 				if (has_texture)
 					patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
-				cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
-				cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
+
+				if (subd_debug) {
+					cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
+					cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
+				}
 				
 				uint32_t tmp_id;
 				if (j == 1 || j == 2 || n != 4) {
@@ -754,8 +819,11 @@ namespace subd {
 					patch.verts[tmp_id] = *vert;
 					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
-					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
-				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+
+					if (subd_debug) {
+						cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
+						cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+					}
 				}
 				if (j == 2 || j == 3 || n != 4) {
 					tmp_id = quad_id+patch.vert_down(start_id);
@@ -764,8 +832,11 @@ namespace subd {
 					patch.verts[tmp_id] = *vert;
 					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
-					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
-				cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+
+					if (subd_debug)	 {
+						cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
+						cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+					}
 				}
 				if (j == 2 || n != 4) {
 					tmp_id = quad_id+patch.vert_down_right(start_id);
@@ -774,18 +845,24 @@ namespace subd {
 					patch.verts[tmp_id] = *vert;
 					if (has_texture)
 						patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
-					cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
-					cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+					
+					if (subd_debug) {
+						cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
+						cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+					}
 				}
 
 				new_f.verts[0].pos = vert_ids[v_id[0]];
 				new_f.verts[1].pos = vert_ids[v_id[1]];
 				new_f.verts[2].pos = vert_ids[v_id[3]];
 				new_f.verts[3].pos = vert_ids[v_id[2]];
-				std::cout << "V0 : " << vertices[new_f.verts[0].pos].pos << std::endl;
-				std::cout << "V1: " << vertices[new_f.verts[1].pos].pos << std::endl;
-				std::cout << "V2 : " << vertices[new_f.verts[2].pos].pos << std::endl;
-				std::cout << "V3: " << vertices[new_f.verts[3].pos].pos << std::endl;
+
+				if (subd_debug) {
+					std::cout << "V0 : " << vertices[new_f.verts[0].pos].pos << std::endl;
+					std::cout << "V1: " << vertices[new_f.verts[1].pos].pos << std::endl;
+					std::cout << "V2 : " << vertices[new_f.verts[2].pos].pos << std::endl;
+					std::cout << "V3: " << vertices[new_f.verts[3].pos].pos << std::endl;
+				}
 
 				new_f.verts[0].tc = tex_ids[v_id[0]];
 				new_f.verts[1].tc = tex_ids[v_id[1]];
@@ -800,7 +877,7 @@ namespace subd {
 					float s = 0.f;
 
 					ctrl_vertex &v = vertices[vert_ids[0]];
-					int e_id = edges.get_id(f.verts[j].pos, edge_vert1_id);
+					uint64_t e_id = edges.get_id(f.verts[j].pos, edge_vert1_id);
 					edge &e = edges.get(e_id);
 					float max_adjacent_sharpness = 0.f;
 					for (uint k = 0; k < v.edge_ids.size(); k++) {
@@ -831,37 +908,42 @@ namespace subd {
 		}
 
 		// Propagate new crease values
-		creases.clear();
-		for (int i = 0; i < new_mesh.creases.size(); i++) {
-			edge &e = new_mesh.creases.get(i);
-			if (e.sharpness > 0)
-				creases.add(e.v1, e.v2, e.sharpness);
+		{
+			time_this_block(cleanup);
+			creases.clear();
+			new_mesh.creases.reset_iterator();
+			for (int i = 0; i < new_mesh.creases.size(); i++) {
+				//edge &e = new_mesh.creases.get(i);
+				edge &e = new_mesh.creases.get_next();
+				if (e.sharpness > 0)
+					creases.add(e.v1, e.v2, e.sharpness);
+			}
+
+			tex_coords.clear();
+			for (vec2 tc : new_mesh.tex_coords)
+				tex_coords.push_back(tc);
+
+			faces.clear();
+			for (face &f : new_mesh.faces) {
+				faces.push_back(f);
+			}
+
+			// Calculate adjacent edges and faces
+			edges.clear();
+			for (uint i = 0; i < faces.size(); i++) {
+				face& f = faces[i];
+				for (uint j = 0; j < f.size(); j++)
+					add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+			}
+
+			// Normals have been calculated in this method
+			has_normals = true;
 		}
-
-		tex_coords.clear();
-		for (vec2 tc : new_mesh.tex_coords)
-			tex_coords.push_back(tc);
-
-		faces.clear();
-		for (face &f : new_mesh.faces) {
-			faces.push_back(f);
-		}
-
-		// Calculate adjacent edges and faces
-		edges.clear();
-		for (uint i = 0; i < faces.size(); i++) {
-			face& f = faces[i];
-			for (uint j = 0; j < f.size(); j++)
-				add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
-		}
-
-		// Normals have been calculated in this method
-		has_normals = true;
 	}
 
-	int mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
-		int e_id = edges.get_id(a, b);
-		if (e_id == -1) {
+	uint64_t mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
+		uint64_t e_id = edges.get_id(a, b);
+		if (e_id == ((uint64_t)-1)) {
 			e_id = edges.add(a, b);
 		}
 		edge &e = edges.get(e_id);
@@ -877,7 +959,7 @@ namespace subd {
 		return e_id;
 	}
 
-	void mesh::update_vertex(ctrl_vertex &v, int f_id, int e_id) {
+	void mesh::update_vertex(ctrl_vertex &v, int f_id, uint64_t e_id) {
 		if (!v.edge_exists(e_id))
 			v.edge_ids.push_back(e_id);
 
@@ -913,7 +995,7 @@ namespace subd {
 		return .5f * (vertices[e.v1].pos + vertices[e.v2].pos);
 	}
 
-	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const vector<vec3> &edge_vertices, const vector<vec3> &face_vertices) {
+	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, vec3> &edge_vertices, const vector<vec3> &face_vertices) {
 		uint n = v.edge_ids.size();
 		if (n == v.face_ids.size()) {
 			vec3 Q(0), R(0);
@@ -922,8 +1004,12 @@ namespace subd {
 
 			Q /= n;
 
-			for (uint j = 0; j < n; j++)
-				R += edge_vertices[v.edge_ids[j]];
+			for (uint j = 0; j < n; j++) {
+				auto edge_it = edge_vertices.find(v.edge_ids[j]);
+				assert(edge_it != edge_vertices.end());
+				R += edge_it->second;
+				//R += edge_vertices[v.edge_ids[j]];
+			}
 
 			R /= n;
 
@@ -939,7 +1025,11 @@ namespace subd {
 					continue;
 
 				relevant_edges++;
-				R += edge_vertices[v.edge_ids[j]];
+
+				auto edge_it = edge_vertices.find(v.edge_ids[j]);
+				assert(edge_it != edge_vertices.end());
+				R += edge_it->second;
+				//R += edge_vertices[v.edge_ids[j]];
 			}
 
 			// TODO: verify if this case is equivalent to literature!
