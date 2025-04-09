@@ -39,30 +39,39 @@ namespace subd {
 	class edge_list {
 		//std::vector<edge> edges;
 		std::map<uint64_t, edge> edges;
-		std::map<uint64_t, edge>::iterator it;
-		bool reset = false;
+		std::map<uint64_t, int> edge_indices;
+		//std::map<uint64_t, edge>::iterator it;
+		//bool it_reset = false;
+		bool initialized = false;
 
 		uint64_t hash(int a, int b) const;
 
 	public:
-		edge_list() {
+		/*edge_list() {
 			reset_iterator();
-		}
+		}*/
 
 		uint64_t add(int a, int b);
 		uint64_t add(int a, int b, float sharpness);
-		uint64_t get_id(int a, int b) const;
-		uint64_t get_id(const edge &e) const;
+		uint64_t get_key(int a, int b) const;
+		uint64_t get_key(const edge &e) const;
+		int get_index(uint64_t key) const;
+		int get_index(int a, int b) const;
+		int get_index(const edge &e) const;
+		//edge& get(uint64_t id);
 		edge& get(uint64_t id);
-		edge& get_next();
-		void reset_iterator();
+		edge& get(int a, int b);
+		//edge& get_next();
+		//void reset_iterator();
+		edge& get_next(std::map<uint64_t, edge>::iterator &it);
 		int size() const;
 		bool exists(int a, int b) const;
 		void clear();
-		bool is_reset() { return reset; }
-		/*std::map<uint64_t, edge>::iterator iterator() {
+		//bool is_reset() { return it_reset; }
+		void finish_init();
+		std::map<uint64_t, edge>::iterator iterator() {
 			return edges.begin();
-		}*/
+		}
 	};
 
 	struct vertex_config {
@@ -176,7 +185,8 @@ namespace subd {
 
 		glm::vec3 calc_smooth_edge_vertex(const edge &e, const std::vector<glm::vec3> &face_vertices);
 		glm::vec3 calc_sharp_edge_vertex(const edge &e);
-		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
+		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
+		//glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
 
 		void calculate_face_normals();
 	};

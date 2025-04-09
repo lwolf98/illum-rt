@@ -53,6 +53,7 @@ namespace subd {
 	}
 
 	uint64_t edge_list::add(int a, int b, float sharpness) {
+		assert(!initialized);
 		normalize_edge_order(a, b);
 		//edges.push_back(edge(a, b, sharpness));
 		uint64_t hashval = hash(a, b);
@@ -64,7 +65,7 @@ namespace subd {
 		return add(a, b, 0.f);
 	}
 
-	uint64_t edge_list::get_id(int a, int b) const {
+	uint64_t edge_list::get_key(int a, int b) const {
 		normalize_edge_order(a, b);
 		uint64_t hashval = hash(a, b);
 		return edges.count(hashval) > 0 ? hashval : (uint64_t)-1;
@@ -78,24 +79,53 @@ namespace subd {
 		return -1;*/
 	}
 
-	uint64_t edge_list::get_id(const edge &e) const {
-		return get_id(e.v1, e.v2);
+	uint64_t edge_list::get_key(const edge &e) const {
+		return get_key(e.v1, e.v2);
+	}
+
+	int edge_list::get_index(uint64_t key) const {
+		assert(initialized);
+		assert(edge_indices.count(key) > 0);
+		//return edge_indices[key];
+		auto it = edge_indices.find(key);
+		assert(it != edge_indices.end());
+		return it->second;
+	}
+
+	int edge_list::get_index(int a, int b) const {
+		normalize_edge_order(a, b);
+		return get_index(hash(a, b));
+	}
+
+	int edge_list::get_index(const edge &e) const {
+		return get_index(e.v1, e.v2);
 	}
 
 	edge& edge_list::get(uint64_t id) {
 		return edges[id];
 	}
 
-	edge& edge_list::get_next() {
-		assert(it != edges.end());
-		if (reset)  reset = false;
-		else        std::advance(it, 1);
-		return it->second;
+	edge& edge_list::get(int a, int b) {
+		return get(hash(a, b));
 	}
 
-	void edge_list::reset_iterator() {
+	/*edge& edge_list::get_next() {
+		assert(it != edges.end());
+		if (it_reset)  it_reset = false;
+		else        std::advance(it, 1);
+		return it->second;
+	}*/
+
+	/*void edge_list::reset_iterator() {
 		it = edges.begin();
 		reset = true;
+	}*/
+
+	edge& edge_list::get_next(std::map<uint64_t, edge>::iterator &it) {
+		assert(it != edges.end());
+		edge &e = it->second;
+		std::advance(it, 1);
+		return e;
 	}
 
 	int edge_list::size() const {
@@ -103,11 +133,22 @@ namespace subd {
 	}
 
 	bool edge_list::exists(int a, int b) const {
-		return get_id(a, b) != (uint64_t)-1;
+		return get_key(a, b) != (uint64_t)-1;
 	}
 
 	void edge_list::clear() {
 		edges.clear();
+		edge_indices.clear();
+		initialized = false;
+	}
+
+	void edge_list::finish_init() {
+		initialized = true;
+		auto it = iterator();
+		for (int i = 0; i < size(); i++) {
+			edge_indices[it->first] = i;
+			std::advance(it, 1);
+		}
 	}
 
 
@@ -563,24 +604,25 @@ namespace subd {
 		}
 
 		// Assign edge crease sharpness
-		creases.reset_iterator();
+		auto crease_it = creases.iterator();
 		for (int i = 0; i < creases.size(); i++) {
 			time_this_block(assign_edge_creases);
-			edge &c = creases.get_next();
-			edge &e = edges.get(edges.get_id(c.v1, c.v2));
+			edge &c = creases.get_next(crease_it);
+			//edge &e = edges.get(edges.get_key(c.v1, c.v2));
+			edge &e = edges.get(c.v1, c.v2);
 			e.sharpness = c.sharpness;
 		}
 
 		// Calculate current edge vertices
-		//vector<vec3> edge_vertices;
-		std::map<uint64_t, vec3> edge_vertices;
-		edges.reset_iterator();
+		vector<vec3> edge_vertices;
+		//std::map<uint64_t, vec3> edge_vertices;
+		auto edge_it = edges.iterator();
 		for (int i = 0; i < edges.size(); i++) {
 		//for (const auto &[_, e] : edges) {
 			time_this_block(calc_cur_edge_verts);
-			edge &e = edges.get_next(); //edges.get(i);
-			//edge_vertices.push_back(1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos));
-			edge_vertices[edges.get_id(e)] = 1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos);
+			edge &e = edges.get_next(edge_it); //edges.get(i);
+			edge_vertices.push_back(1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos));
+			//edge_vertices[edges.get_key(e)] = 1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos);
 
 			if (subd_debug) {
 				cout << "edge: (" << e.v1 << "," << e.v2 << ") f:";
@@ -593,10 +635,10 @@ namespace subd {
 
 		// Calculate new edge vertices
 		vector<vec3> e_news;
-		edges.reset_iterator();
+		edge_it = edges.iterator();
 		for (int i = 0; i < edges.size(); i++) {
 			time_this_block(calc_edge_verts);
-			edge &e = edges.get_next();
+			edge &e = edges.get_next(edge_it);
 			vec3 e_new;
 
 			if (e.sharpness <= 0) {
@@ -605,11 +647,13 @@ namespace subd {
 			}
 			else if(e.sharpness >= 1.f) {
 				// Infinitely Sharp edge
-				e_new = edge_vertices[edges.get_id(e)]; //edge_vertices[i];
+				e_new = edge_vertices[i];
+				//e_new = edge_vertices[edges.get_key(e)];
 			}
 			else {
 				// Semi-sharp edge
-				e_new = e.sharpness * edge_vertices[edges.get_id(e)] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
+				e_new = e.sharpness * edge_vertices[i] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
+				//e_new = e.sharpness * edge_vertices[edges.get_key(e)] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
 			}
 
 			e_news.push_back(e_new);
@@ -730,9 +774,9 @@ namespace subd {
 				int edge_vert2_id = f.verts[((j-1)%n+n)%n].pos;
 				int vert_ids[4]; // [0] v_vert, [1] e_vert1, [2] f_vert, [3] e_vert2
 				vert_ids[0] = off_vert+f.verts[j].pos;
-				vert_ids[1] = off_edge+edges.get_id(f.verts[j].pos, edge_vert1_id);
+				vert_ids[1] = off_edge+edges.get_index(f.verts[j].pos, edge_vert1_id);
 				vert_ids[2] = off_face+i;
-				vert_ids[3] = off_edge+edges.get_id(f.verts[j].pos, edge_vert2_id);
+				vert_ids[3] = off_edge+edges.get_index(f.verts[j].pos, edge_vert2_id);
 				int tex_ids[4];
 				tex_ids[0] = off_tcs + j*2;				// vertex tc
 				tex_ids[1] = off_tcs + j*2+1;			// edge tc
@@ -877,8 +921,9 @@ namespace subd {
 					float s = 0.f;
 
 					ctrl_vertex &v = vertices[vert_ids[0]];
-					uint64_t e_id = edges.get_id(f.verts[j].pos, edge_vert1_id);
+					uint64_t e_id = edges.get_key(f.verts[j].pos, edge_vert1_id);
 					edge &e = edges.get(e_id);
+					//edge &e = edges.get(f.verts[j].pos, edge_vert1_id);
 					float max_adjacent_sharpness = 0.f;
 					for (uint k = 0; k < v.edge_ids.size(); k++) {
 						if (v.edge_ids[k] != e_id) {
@@ -911,10 +956,10 @@ namespace subd {
 		{
 			time_this_block(cleanup);
 			creases.clear();
-			new_mesh.creases.reset_iterator();
+			crease_it = new_mesh.creases.iterator();
 			for (int i = 0; i < new_mesh.creases.size(); i++) {
 				//edge &e = new_mesh.creases.get(i);
-				edge &e = new_mesh.creases.get_next();
+				edge &e = new_mesh.creases.get_next(crease_it);
 				if (e.sharpness > 0)
 					creases.add(e.v1, e.v2, e.sharpness);
 			}
@@ -942,10 +987,16 @@ namespace subd {
 	}
 
 	uint64_t mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
-		uint64_t e_id = edges.get_id(a, b);
+		/*uint64_t e_id = edges.get_key(a, b);
 		if (e_id == ((uint64_t)-1)) {
 			e_id = edges.add(a, b);
-		}
+		}*/
+		uint64_t e_id = (uint64_t)-1;
+		if (edges.exists(a, b))
+			e_id = edges.get_key(a, b);
+		else
+			e_id = edges.add(a, b);
+		
 		edge &e = edges.get(e_id);
 
 		update_vertex(vertices[a], f_id, e_id);
@@ -995,7 +1046,8 @@ namespace subd {
 		return .5f * (vertices[e.v1].pos + vertices[e.v2].pos);
 	}
 
-	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, vec3> &edge_vertices, const vector<vec3> &face_vertices) {
+	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<vec3> &edge_vertices, const vector<vec3> &face_vertices) {
+	//vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, vec3> &edge_vertices, const vector<vec3> &face_vertices) {
 		uint n = v.edge_ids.size();
 		if (n == v.face_ids.size()) {
 			vec3 Q(0), R(0);
@@ -1005,10 +1057,10 @@ namespace subd {
 			Q /= n;
 
 			for (uint j = 0; j < n; j++) {
-				auto edge_it = edge_vertices.find(v.edge_ids[j]);
+				/*auto edge_it = edge_vertices.find(v.edge_ids[j]);
 				assert(edge_it != edge_vertices.end());
-				R += edge_it->second;
-				//R += edge_vertices[v.edge_ids[j]];
+				R += edge_it->second;*/
+				R += edge_vertices[edges.get_index(v.edge_ids[j])];
 			}
 
 			R /= n;
@@ -1026,10 +1078,10 @@ namespace subd {
 
 				relevant_edges++;
 
-				auto edge_it = edge_vertices.find(v.edge_ids[j]);
+				/*auto edge_it = edge_vertices.find(v.edge_ids[j]);
 				assert(edge_it != edge_vertices.end());
-				R += edge_it->second;
-				//R += edge_vertices[v.edge_ids[j]];
+				R += edge_it->second;*/
+				R += edge_vertices[edges.get_index(v.edge_ids[j])];
 			}
 
 			// TODO: verify if this case is equivalent to literature!

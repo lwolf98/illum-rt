@@ -18,6 +18,12 @@ while (( "$#" )); do
 #  last_O="$1"
 # elif [[ "$1" == "-Wreturn-type" ]] ; then # not available in nvcc?
 #  true;
+ elif [[ "$1" == "-Wall" ]] ; then
+  args="$args"
+ elif [[ "$1" == "-Wnarrowing" ]] ; then
+  args="$args"
+ elif [[ "$1" == "-Wconversion" ]] ; then
+  args="$args -Xcompiler -Wconversion"
  elif [[ "$1" == "-fopenmp" ]] ; then #forward openmp flag to g++
   args="$args -Xcompiler -fopenmp"
  else
