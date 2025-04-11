@@ -2,8 +2,8 @@ omp on
 
 up 0 1 0
 
-sppx 1
-#sppx 256
+#sppx 1
+sppx 256
 #sppx 1024
 #sppx 4096
 resolution 960 540
@@ -15,23 +15,23 @@ default-brdf layered-gtr2
 #load render-data/subd_grid_models/cornell.obj subd_level 3
 #load render-data/cornell/cornell-box.obj subd_level 1
 
-#modeltrafo shift 1 0 -3
+modeltrafo shift 3 0 0
 #load render-data/subd_grid_models/basic_plane.obj
 #load render-data/subd_grid_models/tri_test.obj subd_level 1
 #load render-data/subd_grid_models/cubi_open.obj subd_level 3
 #load render-data/subd_grid_models/quad_tri_test.obj subd_level 1
-#modeltrafo shift -1 0 3
+load render-data/knife/knife.usda subd_level 2
+modeltrafo shift -3 0 0
 
 #load render-data/subd_grid_models/cubi.usda subd_level 1
 #load render-data/subd_grid_models/tex_plane.obj subd_level 1
-#load render-data/subd_grid_models/quad_tri_test.obj subd_level 3
 #load render-data/subd_grid_models/tri_test.obj subd_level 1
 
 load render-data/subd_grid_models/cubi_open.usda
-#load render-data/USD/animals/animals.usda subd_level 2
+load render-data/USD/animals/animals.usda subd_level 2
 #load render-data/knife_compare/knife_base.obj subd_level 2
-##load render-data/subd_grid_models/knife_part_test.obj subd_level 3
-#load render-data/knife/knife.usda subd_level 1
+load render-data/knife/knife.usda
+load render-data/subd_grid_models/quad_tri_test.obj subd_level 3
 
 #load render-data/subd_grid_models/basic_plane.obj subd_level 1
 #load render-data/subd_grid_models/basic_plane.obj subd_level 2

@@ -205,6 +205,8 @@ namespace import {
 						vert.tc = vec2(0,0);
 
 				}
+				for (auto &normal : o.mesh.normals)
+					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
 				// Subdivide object
 				o.mesh.subdivide(subdiv_level);

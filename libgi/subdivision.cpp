@@ -526,15 +526,17 @@ namespace subd {
 
 		calculate_face_normals();
 		calculate_vertex_normals();
+
+		edges.finish_init();
 	}
 
 	void mesh::subdivide(uint32_t level) {
 		// Nothing to do on subdivision level 0
 		assert(level >= 0);
-		/*if (level == 0) {
-			update();
+		if (level == 0) {
+			//update();
 			return;
-		}*/
+		}
 
 		// TODO: handling for extraordinary faces/nodes (harder to predict exact size)
 		// reserve space for every subd patch
@@ -980,6 +982,7 @@ namespace subd {
 				for (uint j = 0; j < f.size(); j++)
 					add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 			}
+			edges.finish_init();
 
 			// Normals have been calculated in this method
 			has_normals = true;
@@ -1144,7 +1147,7 @@ namespace subd {
 			face &f = faces[i];
 			int n = f.verts.size();
 			int j = -1;
-			int j_max = n*n; // upper bound
+ 			int j_max = n*n; // upper bound
 			int original_n = n;
 			while (n > 3) {
 				j++;
@@ -1154,6 +1157,8 @@ namespace subd {
 						<< vertices[f.verts[1].pos].pos << ") ("
 						<< vertices[f.verts[2].pos].pos << ") ("
 						<< vertices[f.verts[3].pos].pos << ") }"
+						<< std::endl
+						<< "Normal: " << normals[i]
 						<< std::endl;
 						break;
 				}
