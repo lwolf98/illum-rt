@@ -18,7 +18,7 @@ namespace subd {
 		edge() = default;
 		edge(int v1, int v2, float sharpness) : v1(v1), v2(v2), sharpness(sharpness) {}
 		edge(int v1, int v2) : edge(v1, v2, 0.f) {}
-		edge(int v1, int v2, int face_id) : edge(v1, v2) {
+		edge(int v1, int v2, float sharpness, int face_id) : edge(v1, v2, sharpness) {
 			face_ids.push_back(face_id);
 		}
 
@@ -56,6 +56,7 @@ namespace subd {
 
 		uint64_t add(int a, int b);
 		uint64_t add(int a, int b, float sharpness);
+		uint64_t add(const edge &e);
 		uint64_t get_key(int a, int b) const;
 		uint64_t get_key(const edge &e) const;
 		int get_index(uint64_t key) const;

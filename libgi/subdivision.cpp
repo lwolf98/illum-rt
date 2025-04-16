@@ -65,6 +65,12 @@ namespace subd {
 		return add(a, b, 0.f);
 	}
 
+	uint64_t edge_list::add(const edge &e) {
+		uint64_t hashval = hash(e.v1, e.v2);
+		edges[hashval] = e;
+		return hashval;
+	}
+
 	uint64_t edge_list::get_key(int a, int b) const {
 		normalize_edge_order(a, b);
 		uint64_t hashval = hash(a, b);
@@ -989,15 +995,18 @@ namespace subd {
 			for (face &f : new_mesh.faces) {
 				faces.push_back(f);
 			}
+		}
 
+		{
 			// Calculate adjacent edges and faces
-			edges.clear();
+			/*edges.clear();
 			for (uint i = 0; i < faces.size(); i++) {
 				face& f = faces[i];
 				for (uint j = 0; j < f.size(); j++)
 					add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 			}
-			edges.finish_init();
+			edges.finish_init();*/
+			update_topology();
 
 			// Normals have been calculated in this method
 			has_normals = true;
@@ -1005,66 +1014,120 @@ namespace subd {
 	}
 
 	void mesh::update_topology() {
+		//time_this_block(topology);
+
+		// Pass 1: Calculate edges
+
 		// Reset topology
 		edges.clear();
 
 		// 1. Edge collection (Map, parallel)
 		vector<edge> buckets[faces.size()];
-		#pragma omp parallel for
-		for (uint i = 0; i < faces.size(); i++) {
-			face& f = faces[i];
-			auto &bucket = buckets[i];
-			for (uint j = 0; j < f.size(); j++) {
-				//add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
-				int a = f.verts[j].pos;
-				int b = f.verts[(j+1)%f.size()].pos;
-				bucket.emplace_back(a<=b ? a:b, a<=b ? b:a, i);
+		{
+			time_this_block(topology_edge_collect);
+
+			#pragma omp parallel for
+			for (uint i = 0; i < faces.size(); i++) {
+				face& f = faces[i];
+				auto &bucket = buckets[i];
+				for (uint j = 0; j < f.size(); j++) {
+					//add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+					int a = f.verts[j].pos;
+					int b = f.verts[(j+1)%f.size()].pos;
+					bucket.emplace_back(a<=b ? a:b, a<=b ? b:a, 0.f, i);
+				}
 			}
 		}
 
 		// 2. Flatten/Group edge buckets (serial)
 		vector<edge> merged;
-		uint32_t merged_size = 0;
+		{
+			time_this_block(topology_merge);
 
-		for (const auto &bucket : buckets)
-			merged_size += bucket.size();
+			uint32_t merged_size = 0;
 
-		merged.reserve(merged_size);
-		for (const auto &bucket : buckets)
-			merged.insert(merged.end(), bucket.begin(), bucket.end());
+			for (const auto &bucket : buckets)
+				merged_size += bucket.size();
 
-		// 3. Shuffle/Sort edges by key (possibly parallel)
-		std::sort(merged.begin(), merged.end(), [](const edge &a, const edge &b) {
-			uint64_t val_a = (a.v1 << 32) || a.v2;
-			uint64_t val_b = (b.v1 << 32) || b.v2;
-			return val_a < val_b;
-		});
-
-		// 4. Reduce edges (serial, possibly parallel?)
-		auto it = merged.begin();
-		while (it != merged.end()) {
-			edge *e = (edge *)it;
-			edge reduced_edge(e->v1, e->v2);
-
-			while (it != merged.end() && e->v1 == reduced_edge.v1 && e->v2 == reduced_edge.v2) {
-				reduced_edge.face_ids.push_back(e->face_ids[0]);
-				++it;
-			}
-			edges.add(reduced_edge);
+			merged.reserve(merged_size);
+			for (const auto &bucket : buckets)
+				merged.insert(merged.end(), bucket.begin(), bucket.end());
 		}
 
+		// 3. Shuffle/Sort edges by key (possibly parallel)
+		/*{
+			time_this_block(topology_sort);
+			std::sort(merged.begin(), merged.end(), [](const edge &a, const edge &b) {
+				uint64_t val_a = ((uint64_t)a.v1 << 32) | a.v2;
+				uint64_t val_b = ((uint64_t)b.v1 << 32) | b.v2;
+				return val_a < val_b;
+			});
+		}
+
+		// 4. Reduce edges (serial, possibly parallel?)
+		{
+			time_this_block(topology_reduce);
+			
+			auto it = merged.begin();
+			while (it != merged.end()) {
+				//edge *e = &(*it);
+				edge &e = *it;
+				edge reduced_edge(e.v1, e.v2);
+
+				while (it != merged.end() && it->v1 == reduced_edge.v1 && it->v2 == reduced_edge.v2) {
+					reduced_edge.face_ids.push_back(it->face_ids[0]);
+					++it;
+				}
+				edges.add(reduced_edge);
+			}
+
+			edges.finish_init();
+		}*/
+
+		{
+			time_this_block(topology_reduce_compact);
+
+			for (int i = 0; i < merged.size(); i++) {
+				const edge &e = merged[i];
+				uint64_t e_id = edges.get_key(e.v1, e.v2);
+				if (e_id == ((uint64_t)-1))
+					e_id = edges.add(e.v1, e.v2);
+
+				 edges.get(e_id).face_ids.push_back(e.face_ids[0]);
+			}
+
+			edges.finish_init();
+		}
+
+
+		// Pass 2: Update vertices
+
+		{
+			time_this_block(topology_vertices);
+
+			for (uint i = 0; i < faces.size(); i++) {
+				face& f = faces[i];
+				for (uint j = 0; j < f.size(); j++) {
+					uint64_t a = f.verts[j].pos;
+					uint64_t b = f.verts[(j+1)%f.size()].pos;
+					uint64_t e_val = ((a<=b ? a:b) << 32) | (a<=b ? b:a);
+					update_vertex(vertices[a], i, e_val);
+					update_vertex(vertices[b], i, e_val);
+				}
+			}
+		}
 	}
 
 	uint64_t mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
-		/*uint64_t e_id = edges.get_key(a, b);
-		if (e_id == ((uint64_t)-1)) {
+		uint64_t e_id = edges.get_key(a, b);
+		if (e_id == ((uint64_t)-1))
 			e_id = edges.add(a, b);
-		}*/
-		uint64_t e_id = (uint64_t)-1;
+		
+		/*uint64_t e_id = (uint64_t)-1;
 		if (edges.exists(a, b))
 			e_id = edges.get_key(a, b);
 		else
-			e_id = edges.add(a, b);
+			e_id = edges.add(a, b);*/
 		
 		edge &e = edges.get(e_id);
 
