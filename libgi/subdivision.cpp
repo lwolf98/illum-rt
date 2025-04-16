@@ -1004,6 +1004,57 @@ namespace subd {
 		}
 	}
 
+	void mesh::update_topology() {
+		// Reset topology
+		edges.clear();
+
+		// 1. Edge collection (Map, parallel)
+		vector<edge> buckets[faces.size()];
+		#pragma omp parallel for
+		for (uint i = 0; i < faces.size(); i++) {
+			face& f = faces[i];
+			auto &bucket = buckets[i];
+			for (uint j = 0; j < f.size(); j++) {
+				//add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+				int a = f.verts[j].pos;
+				int b = f.verts[(j+1)%f.size()].pos;
+				bucket.emplace_back(a<=b ? a:b, a<=b ? b:a, i);
+			}
+		}
+
+		// 2. Flatten/Group edge buckets (serial)
+		vector<edge> merged;
+		uint32_t merged_size = 0;
+
+		for (const auto &bucket : buckets)
+			merged_size += bucket.size();
+
+		merged.reserve(merged_size);
+		for (const auto &bucket : buckets)
+			merged.insert(merged.end(), bucket.begin(), bucket.end());
+
+		// 3. Shuffle/Sort edges by key (possibly parallel)
+		std::sort(merged.begin(), merged.end(), [](const edge &a, const edge &b) {
+			uint64_t val_a = (a.v1 << 32) || a.v2;
+			uint64_t val_b = (b.v1 << 32) || b.v2;
+			return val_a < val_b;
+		});
+
+		// 4. Reduce edges (serial, possibly parallel?)
+		auto it = merged.begin();
+		while (it != merged.end()) {
+			edge *e = (edge *)it;
+			edge reduced_edge(e->v1, e->v2);
+
+			while (it != merged.end() && e->v1 == reduced_edge.v1 && e->v2 == reduced_edge.v2) {
+				reduced_edge.face_ids.push_back(e->face_ids[0]);
+				++it;
+			}
+			edges.add(reduced_edge);
+		}
+
+	}
+
 	uint64_t mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
 		/*uint64_t e_id = edges.get_key(a, b);
 		if (e_id == ((uint64_t)-1)) {

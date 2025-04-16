@@ -18,6 +18,9 @@ namespace subd {
 		edge() = default;
 		edge(int v1, int v2, float sharpness) : v1(v1), v2(v2), sharpness(sharpness) {}
 		edge(int v1, int v2) : edge(v1, v2, 0.f) {}
+		edge(int v1, int v2, int face_id) : edge(v1, v2) {
+			face_ids.push_back(face_id);
+		}
 
 		bool face_exists(int id) const;
 	};
@@ -180,6 +183,7 @@ namespace subd {
 
 	private:
 		void subdivide_internal(uint32_t end_level);
+		void update_topology();
 		uint64_t add_edge(edge_list &edges, int a, int b, int f_id);
 		void update_vertex(ctrl_vertex &v, int f_id, uint64_t e_id);
 
