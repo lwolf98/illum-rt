@@ -12,6 +12,15 @@ default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 #load render-data/sibenik/sibenik.obj
 
+# debug
+load render-data/knife/knife.usda
+#load render-data/subd_debug/checker_sphere.usda subd_level 1
+
+modeltrafo shift 5 0 0
+load render-data/knife/knife.usda subd_level 3
+modeltrafo shift -5 0 0
+# debug
+
 #load render-data/subd_grid_models/cornell.obj subd_level 3
 #load render-data/cornell/cornell-box.obj subd_level 1
 
