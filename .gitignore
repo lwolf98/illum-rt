@@ -22,6 +22,10 @@ test.obj
 rtgi-202*tar.gz
 rtgi-202*tar.bz2
 
+configure~
+embedded-ptx-code.cpp
+embedded-ptx-code.ptx
+
 render-data/sibenik/
 render-data/sponza/
 render-data/dragon/
