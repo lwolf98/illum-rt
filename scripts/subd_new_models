@@ -1,0 +1,65 @@
+omp on
+
+up 0 1 0
+
+#sppx 1
+sppx 256
+#sppx 1024
+#sppx 4096
+resolution 960 540
+
+default-brdf layered-gtr2
+#load render-data/sibenik/sibenik-nostaklo.obj
+#load render-data/sibenik/sibenik.obj
+
+load render-data/subd/knife_usd/knife.usda
+
+#load render-data/subd/cartoon_dragon/dragon.obj subd_level 2
+#load render-data/subd/car_doge_dart/car_doge_dart.obj subd_level 1
+#load render-data/subd/car_doge_dart/car_doge_dart.usda
+load render-data/subd/crz_coupe/crz_coupe.usda
+
+skylight load render-data/skylight-sunset.floats 10
+
+# Pos 1 (Animals)
+at -0.17861 2.03795 1.25793
+look -0.79211 -0.08750 -0.60408
+
+# Pos 2 (Cartoon Dragon)
+at -0.019347 0.027828 0.029178
+look 0.409553 -0.324814 -0.852504
+
+# Pos 3 (Doge Dart)
+at 1.18694 0.579747 1.22764
+look -0.562665 -0.346135 -0.750732
+
+#raytracer naive-bvh
+raytracer subd-naive-bvh
+commit
+#algo primary
+algo direct/mis
+outfile out_grid/grid_test.png
+
+#raytracer embree
+#commit
+#algo direct/mis
+#outfile out_subds/subd-direct_cpu.png
+
+#raytracer embree
+#commit
+#algo simple-pt
+#path bounce brdf
+#path len 10
+#outfile out_subds/subd-pt_cpu.png
+
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+#outfile out_subds/subd-direct_cuda.png
+#commit
+
+run

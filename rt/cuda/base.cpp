@@ -83,6 +83,56 @@ namespace wf {
 				mtls[i].roughness = scene->materials[i].roughness;
 			}
 			materials.upload(mtls);
+
+			// SubD patches
+			vector<subd_patch> device_patches(scene->patches.size());
+			vector<patch_node> device_nodes;
+			tmp_p.clear(), tmp_n.clear(), tmp_t.clear();
+			for (int i = 0; i < scene->patches.size(); ++i) {
+				const auto &patch = scene->patches[i];
+				auto &device_patch = device_patches[i];
+				device_patch.subd_level = patch.subd_level;
+				device_patch.material_id = patch.material_id;
+				
+				uint32_t offset = device_nodes.size();
+				device_nodes.resize(offset + patch.nodes.size());
+				device_patch.bvh_node = offset + patch.bvh_node;
+
+				#pragma omp parallel for
+				for (int j = 0; j < patch.nodes.size(); ++j) {
+					patch_node device_node;
+					const subd::node &node = patch.nodes[j];
+					device_node.min = f4(node.box.min);
+					device_node.max = f4(node.box.max);
+					device_node.left = offset + node.left;
+					device_node.right = offset + node.right;
+					device_node.triangle = node.triangle;
+
+					//device_nodes.push_back(device_node);
+					device_nodes[offset + j] = device_node;
+				}
+
+				device_patch.start_index = patch.verts.size();
+				uint32_t n_device_verts = tmp_p.size() + patch.verts.size();
+				tmp_p.resize(n_device_verts);
+				tmp_n.resize(n_device_verts);
+				tmp_t.resize(n_device_verts);
+
+				#pragma omp parallel for
+				for (uint32_t j = 0; j < patch.verts.size(); ++j) {
+					uint32_t insert_index = device_patch.start_index + j;
+					tmp_p[insert_index] = float4{ patch.verts[j].pos.x,  patch.verts[j].pos.y,  patch.verts[j].pos.z,  1 };
+					tmp_n[insert_index] = float4{ patch.verts[j].norm.x, patch.verts[j].norm.y, patch.verts[j].norm.z, 0 };
+					tmp_t[insert_index] = float2{ patch.verts[j].tc.x, patch.verts[j].tc.y };
+				}
+
+			}
+			patches.upload(device_patches);
+			patch_nodes.upload(device_nodes);
+
+			patch_vertex_pos.upload(tmp_p);
+			patch_vertex_norm.upload(tmp_n);
+			patch_vertex_tc.upload(tmp_t);
 		}
 
 		void batch_rt::build(scenedata *scene)
