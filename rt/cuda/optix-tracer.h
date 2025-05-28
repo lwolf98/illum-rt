@@ -21,6 +21,8 @@ namespace wf::cuda {
 
             void build(scenedata *scene) override;
             void compute_hit(bool anyhit) override;
+        private:
+            OptixTraversableHandle build_gas(wf::cuda::scenedata *scene, std::vector<OptixBuildInput> &build_inputs, OptixAccelBuildOptions &build_options);
 
         protected:
             void create_program(OptixProgramGroup &program_group, OptixProgramGroupOptions &program_group_options, OptixProgramGroupDesc &program_group_descriptor);
@@ -30,6 +32,8 @@ namespace wf::cuda {
             void create_module();
             void create_pipeline();
             void build_sbt();
+
+			uint32_t id_count = 0;
 
             /* If set to true the tracer will check wether the alpha value of the texture-coordinate which was hit (if there is any)
              * is above a certain threshold. If it's not the ray will be recast starting at the hit-coordinate. 
@@ -52,11 +56,13 @@ namespace wf::cuda {
             OptixModule optix_module;
 
             OptixTraversableHandle optix_accel_traversable_handle;
+			global_memory_buffer<OptixInstance> optix_ias_instances;
             global_memory_buffer<char> accel_struct_buffer;
             
             OptixProgramGroup raygen_program;
             OptixProgramGroup miss_program;
-            OptixProgramGroup hitgroup_program;
+            OptixProgramGroup hitgroup_program_tris;
+            OptixProgramGroup hitgroup_program_patches;
 
             OptixShaderBindingTable sbt;
 

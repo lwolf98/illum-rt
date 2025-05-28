@@ -87,6 +87,7 @@ namespace wf {
 			// SubD patches
 			vector<subd_patch> device_patches(scene->patches.size());
 			vector<patch_node> device_nodes;
+			vector<aabb> device_root_nodes(scene->patches.size());
 			tmp_p.clear(), tmp_n.clear(), tmp_t.clear();
 			for (int i = 0; i < scene->patches.size(); ++i) {
 				const auto &patch = scene->patches[i];
@@ -97,6 +98,11 @@ namespace wf {
 				uint32_t offset = device_nodes.size();
 				device_nodes.resize(offset + patch.nodes.size());
 				device_patch.bvh_node = offset + patch.bvh_node;
+
+				//TODO: remove min and max from patch when patch_root_nodes structure is used
+				device_patch.min = f4(patch.nodes[patch.bvh_node].box.min);
+				device_patch.max = f4(patch.nodes[patch.bvh_node].box.max);
+				device_root_nodes[i] = patch.nodes[patch.bvh_node].box;
 
 				#pragma omp parallel for
 				for (int j = 0; j < patch.nodes.size(); ++j) {
@@ -127,8 +133,10 @@ namespace wf {
 				}
 
 			}
+
 			patches.upload(device_patches);
 			patch_nodes.upload(device_nodes);
+			patch_root_nodes.upload(device_root_nodes);
 
 			patch_vertex_pos.upload(tmp_p);
 			patch_vertex_norm.upload(tmp_n);

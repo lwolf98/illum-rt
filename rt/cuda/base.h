@@ -367,16 +367,13 @@ namespace wf {
 		};
 
 		struct subd_patch {
+			float4 min;
+			float4 max;
 			uint32_t start_index;
 			uint32_t bvh_node;
 			uint32_t material_id;
 			uint32_t subd_level;
 
-			subd_patch() : bvh_node(0),
-						   start_index(0),
-						   material_id(0),
-						   subd_level(0) {
-			};
 		};
 
 		struct scenedata {
@@ -390,6 +387,7 @@ namespace wf {
 
 			global_memory_buffer<subd_patch> patches;
 			global_memory_buffer<patch_node> patch_nodes;
+			global_memory_buffer<aabb> patch_root_nodes;
 			texture_buffer<float4> patch_vertex_pos;
 			texture_buffer<float4> patch_vertex_norm;
 			texture_buffer<float2> patch_vertex_tc;
@@ -401,6 +399,7 @@ namespace wf {
 						  materials("materials", 0),
 						  patches("patches", 0),
 						  patch_nodes("patch_nodes", 0),
+						  patch_root_nodes("patch_root_nodes", 0),
 						  patch_vertex_pos("patch_vertex_pos", 0),
 						  patch_vertex_norm("patch_vertex_norm", 0),
 						  patch_vertex_tc("patch_vertex_tc", 0) {
@@ -416,6 +415,7 @@ namespace wf {
 																	n_triangles(org->n_triangles),
 																	patches(org->patches, m),
 																	patch_nodes(org->patch_nodes, m),
+																	patch_root_nodes(org->patch_root_nodes, m),
 																	patch_vertex_pos(org->patch_vertex_pos, m),
 																	patch_vertex_norm(org->patch_vertex_norm, m),
 																	patch_vertex_tc(org->patch_vertex_tc, m) {

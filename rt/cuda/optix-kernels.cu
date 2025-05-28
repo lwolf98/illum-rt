@@ -33,6 +33,8 @@ namespace wf::cuda {
     enum {SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT};
 
     extern "C" __global__ void __closesthit__radiance() {
+        printf("closest hit");
+
         tri_is *prd = per_ray_data<tri_is>();
 
         prd->ref = optixGetPrimitiveIndex();
@@ -60,6 +62,71 @@ namespace wf::cuda {
                 optixIgnoreIntersection();
         }
     };
+
+	extern "C" __global__ void __closesthit__patches() {
+		//TODO: implement
+		//printf("closest hit patches");
+
+		tri_is *prd = per_ray_data<tri_is>();
+
+        prd->ref = optixGetPrimitiveIndex();
+        //const float2 barycentrics = optixGetTriangleBarycentrics();
+        //
+        //prd->beta = barycentrics.x;
+        //prd->gamma = barycentrics.y;
+        prd->beta = 0.5f;
+        prd->gamma = 0.5f;
+        prd->t = optixGetRayTmax();
+	};
+
+	extern "C" __global__ void __anyhit__patches() {
+		//TODO: implement
+		printf("any hit patches");
+	};
+
+	extern "C" __global__ inline vec3 f3_to_vec3(float3 f3) {
+		return vec3(f3.x, f3.y, f3.z);
+	}
+
+	extern "C" __global__ inline vec3 f4_to_vec3(float4 f4) {
+		return f3_to_vec3(float3 {.x = f4.x, .y = f4.y, .z = f4.z});
+	}
+
+	extern "C" __global__ void __intersection__patches() {
+		//TODO: implement
+		//printf("intersection patches");
+
+		int id = optixGetPrimitiveIndex();
+		auto &patch = launch_params.patches[id];
+		//printf("%d:%d\n", id, patch.subd_level);
+		auto &node = launch_params.patch_nodes[patch.bvh_node];
+		printf("right:%d, left:%d\n", node.right, node.left);
+
+		float3 ray_origin = optixGetObjectRayOrigin();
+		float3 ray_direction = optixGetObjectRayDirection();
+		float tmin = optixGetRayTmin();
+		float tmax = optixGetRayTmax();
+		::ray is_ray(f3_to_vec3(ray_origin), f3_to_vec3(ray_direction));
+		is_ray.t_min = tmin;
+		is_ray.t_max = tmax;
+
+		auto &node_left = launch_params.patch_nodes[node.left];
+		auto &node_right = launch_params.patch_nodes[node.right];
+		aabb box_left {}, box_right {};
+		box_left.min = f4_to_vec3(node_left.min);
+		box_left.max = f4_to_vec3(node_left.max);
+		box_right.min = f4_to_vec3(node_right.min);
+		box_right.max = f4_to_vec3(node_right.max);
+
+		float t_l = FLT_MAX;
+		intersect4(box_left, is_ray, t_l);
+
+		float t_r = FLT_MAX;
+		intersect4(box_right, is_ray, t_r);
+		
+		//optixReportIntersection(0.5f, 0);
+		optixReportIntersection(t_l<t_r ? t_l:t_r, 0);
+	};
     
     extern "C" __global__ void __miss__radiance() {};
     
