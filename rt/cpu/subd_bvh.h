@@ -20,7 +20,7 @@ struct subd_naive_bvh : public individual_ray_tracer {
 
 	std::vector<subd::node> nodes;
 	uint32_t root;
-	bool debug;
+	bool debug = false;
 	void build(::scene *scene);
 private:
 	uint32_t subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);

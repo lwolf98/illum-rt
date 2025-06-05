@@ -12,6 +12,7 @@ noinst_HEADERS = bounce.h \
 				 cuda-helpers.h \
 				 cuda-operators.h \
 				 kernels.h \
+				 trace-helper.cuh \
 				 platform.h \
 				 preprocessing.h \
 				 rni.h \

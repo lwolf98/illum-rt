@@ -469,7 +469,7 @@ namespace wf::cuda
 		optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
 		optix_pipeline_compile_options.usesMotionBlur = false;
 		optix_pipeline_compile_options.numPayloadValues = 2;
-		optix_pipeline_compile_options.numAttributeValues = 2;
+		optix_pipeline_compile_options.numAttributeValues = 3;
 		optix_pipeline_compile_options.exceptionFlags = OptixExceptionFlags::OPTIX_EXCEPTION_FLAG_NONE;
 		optix_pipeline_compile_options.pipelineLaunchParamsVariableName = LAUNCH_PARAMS_VARIABLE_NAME;
 

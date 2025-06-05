@@ -104,16 +104,16 @@ namespace subd {
 		void set_secondary_value(uint32_t val) {
 			triangle = ((uint32_t)-1) - (val + 1);
 		}
-		uint32_t get_secondary_value() {
+		uint32_t get_secondary_value() const {
 			return ((uint32_t)-1) - (triangle + 1);
 		}
-		bool is_subd_leaf() {
+		bool is_subd_leaf() const {
 			return left >= (uint32_t)-2 && right >= (uint32_t)-2;
 		}
-		bool is_subd_root_and_leaf() {
+		bool is_subd_root_and_leaf() const {
 			return left == (uint32_t)-2 && right == (uint32_t)-2;
 		}
-		bool is_only_subd_root() {
+		bool is_only_subd_root() const {
 			return !inner() && !is_subd_leaf();
 		}
 		void set_subd_root_and_leaf(bool flag = true) {

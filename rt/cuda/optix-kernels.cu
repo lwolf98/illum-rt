@@ -5,10 +5,10 @@
 #include <vector_functions.h>
 #include "cuda-operators.h"
 #include "base.h"
+#include "trace-helper.cuh"
 
 
 namespace wf::cuda {
-
     extern "C" __constant__ optix_launch_params launch_params;
     
     static __forceinline__ __device__ void* unpack_pointer(uint32_t i0, uint32_t i1) {
@@ -33,11 +33,12 @@ namespace wf::cuda {
     enum {SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT};
 
     extern "C" __global__ void __closesthit__radiance() {
-        printf("closest hit");
+        //printf("closest hit");
 
         tri_is *prd = per_ray_data<tri_is>();
 
-        prd->ref = optixGetPrimitiveIndex();
+        //prd->ref = optixGetPrimitiveIndex();
+		prd->set_ref(optixGetPrimitiveIndex());
         const float2 barycentrics = optixGetTriangleBarycentrics();
         
         prd->beta = barycentrics.x;
@@ -66,66 +67,180 @@ namespace wf::cuda {
 	extern "C" __global__ void __closesthit__patches() {
 		//TODO: implement
 		//printf("closest hit patches");
+		uint3 px_index = optixGetLaunchIndex();
+		bool debug = true;
+
+		// node 6, patch 0 (level reg), quad 3 (lower)
+		//debug = debug && px_index.x == 640 && px_index.y == 250;
+
+		// node x, patch x (level -1), quad x (x)
+		debug = debug && px_index.x == 566 && px_index.y == 281;
 
 		tri_is *prd = per_ray_data<tri_is>();
 
-        prd->ref = optixGetPrimitiveIndex();
+        //const uint32_t u2 = optixGetPayload_2();
+        //const uint32_t u3 = optixGetPayload_3();
+        //debug_info *dbg = reinterpret_cast<debug_info*>(unpack_pointer(u2, u3));
+		optixGetLaunchIndex();
+
+        //prd->ref = ((uint32_t)-1) - optixGetPrimitiveIndex();
+		prd->set_ref(optixGetPrimitiveIndex(), true);
         //const float2 barycentrics = optixGetTriangleBarycentrics();
         //
         //prd->beta = barycentrics.x;
         //prd->gamma = barycentrics.y;
-        prd->beta = 0.5f;
-        prd->gamma = 0.5f;
+        prd->beta = __uint_as_float(optixGetAttribute_0()); //0.5f;
+        prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
+		int32_t quad_ref = (int32_t)optixGetAttribute_2();
+		prd->set_quad_ref(abs(quad_ref)-1, quad_ref >= 0);
+		if (debug) printf("CH: t: %f, beta: %f, gamma: %f\n", prd->t, prd->beta, prd->gamma);
 	};
 
 	extern "C" __global__ void __anyhit__patches() {
 		//TODO: implement
-		printf("any hit patches");
+		//printf("any hit patches");
 	};
-
-	extern "C" __global__ inline vec3 f3_to_vec3(float3 f3) {
-		return vec3(f3.x, f3.y, f3.z);
-	}
-
-	extern "C" __global__ inline vec3 f4_to_vec3(float4 f4) {
-		return f3_to_vec3(float3 {.x = f4.x, .y = f4.y, .z = f4.z});
-	}
 
 	extern "C" __global__ void __intersection__patches() {
 		//TODO: implement
 		//printf("intersection patches");
+		uint3 px_index = optixGetLaunchIndex();
+		bool debug = true;
 
-		int id = optixGetPrimitiveIndex();
-		auto &patch = launch_params.patches[id];
-		//printf("%d:%d\n", id, patch.subd_level);
-		auto &node = launch_params.patch_nodes[patch.bvh_node];
-		printf("right:%d, left:%d\n", node.right, node.left);
+		// node 6, patch 0 (level reg), quad 3 (lower)
+		//debug = debug && px_index.x == 640 && px_index.y == 250;
+
+		// node x, patch x (level -1), quad x (x)
+		debug = debug && px_index.x == 566 && px_index.y == 281;
 
 		float3 ray_origin = optixGetObjectRayOrigin();
 		float3 ray_direction = optixGetObjectRayDirection();
 		float tmin = optixGetRayTmin();
 		float tmax = optixGetRayTmax();
-		::ray is_ray(f3_to_vec3(ray_origin), f3_to_vec3(ray_direction));
-		is_ray.t_min = tmin;
-		is_ray.t_max = tmax;
+		float3 r_id = ray_id(ray_direction); //optixGetObjectRayDirection();
+		float3 r_ood = ray_ood(ray_origin, r_id); //optixGetObjectRayOrigin();
 
-		auto &node_left = launch_params.patch_nodes[node.left];
-		auto &node_right = launch_params.patch_nodes[node.right];
-		aabb box_left {}, box_right {};
-		box_left.min = f4_to_vec3(node_left.min);
-		box_left.max = f4_to_vec3(node_left.max);
-		box_right.min = f4_to_vec3(node_right.min);
-		box_right.max = f4_to_vec3(node_right.max);
+		int id = optixGetPrimitiveIndex();
+		auto &patch = launch_params.patches[id];
+		//printf("%d:%d\n", id, patch.subd_level);
+		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
+		//printf("right:%d, left:%d\n", root_node.right, root_node.left);
+		if (debug) printf("Root node ref: %d, L: %d, R: %d\n", patch.bvh_node, root_node.left, root_node.right);
 
-		float t_l = FLT_MAX;
-		intersect4(box_left, is_ray, t_l);
+		uint32_t stack[25];
+		int32_t sp = -1;
+		//stack[0] = patch.bvh_node;
+		bool is_root_and_leaf = root_node.left == (uint32_t)-2 && root_node.right == (uint32_t)-2;
+		if (is_root_and_leaf) {
+			stack[++sp] = patch.bvh_node;
+		}
+		else {
+			stack[++sp] = root_node.left;
+			stack[++sp] = root_node.right;
+		}
 
-		float t_r = FLT_MAX;
-		intersect4(box_right, is_ray, t_r);
-		
-		//optixReportIntersection(0.5f, 0);
-		optixReportIntersection(t_l<t_r ? t_l:t_r, 0);
+		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
+		if (debug) printf("Ray direction: (%f %f %f)\n", ray_direction.x, ray_direction.y, ray_direction.z);
+		if (debug) printf("t_min: %f, t_max: %f\n", tmin, tmax);
+
+		float closest_t = FLT_MAX;
+		float beta = 0, gamma = 0;
+		int32_t closest_quad_ref = 0;
+		while (sp >= 0) {
+			if (debug) printf("\n");
+			auto &node = launch_params.patch_nodes[stack[sp--]];
+			bool is_leaf = node.left >= (uint32_t)-2 && node.right >= (uint32_t)-2;
+
+			if (is_leaf) {
+				uint32_t quad_ref = 0;
+				if (!is_root_and_leaf) // is only leaf
+					quad_ref = ((uint32_t)-1) - (node.triangle + 1); //resolve encoded
+
+				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
+				if (debug) printf("Patch start index: %d\n", patch.start_index);
+
+				triangle tri_0 = subd_tri(patch, quad_ref, true);
+				triangle tri_1 = subd_tri(patch, quad_ref, false);
+				if (debug) printf("Tri 0: %d %d %d\n", tri_0.a, tri_0.b, tri_0.c);
+				if (debug) printf("Tri 1: %d %d %d\n", tri_1.a, tri_1.b, tri_1.c);
+				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.a]); //patch.start_index + 
+				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.b]); //patch.start_index + 
+				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.c]); //patch.start_index + 
+				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.a]); //patch.start_index + 
+				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.b]); //patch.start_index + 
+				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.c]); //patch.start_index + 
+				if (debug) {
+					printf("t_min: %f, t_max: %f\n", tmin, tmax);
+					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
+					printf(" (%f %f %f)", b_0.x, b_0.y, b_0.z);
+					printf(" (%f %f %f)\n", c_0.x, c_0.y, c_0.z);
+					printf("Tri 1 coords: (%f %f %f)", a_1.x, a_1.y, a_1.z);
+					printf(" (%f %f %f)", b_1.x, b_1.y, b_1.z);
+					printf(" (%f %f %f)\n", c_1.x, c_1.y, c_1.z);
+				}
+
+				float t = FLT_MAX;
+				bool hit = intersect_triangle(a_0, b_0, c_0,
+												ray_origin, ray_direction, tmin, tmax,
+												t, beta, gamma, debug);
+
+				
+				if (debug) {
+					printf("beta: %f, gamma: %f\n", beta, gamma);
+					if (hit) printf("hit tri 0\n");
+					else printf("did not hit tri 0\n");
+				}
+				if (hit && t < closest_t) {
+					if (debug) printf("hit tri 0 and is closer!!!\n");
+					closest_t = t;
+					closest_quad_ref = quad_ref+1;
+					continue;
+				}
+
+				t = FLT_MAX;
+				hit = intersect_triangle(a_1, b_1, c_1,
+												ray_origin, ray_direction, tmin, tmax,
+												t, beta, gamma, debug);
+
+				if (debug) {
+					printf("beta: %f, gamma: %f\n", beta, gamma);
+					if (hit) printf("hit tri 1\n");
+					else printf("did not hit tri 1\n");
+				}
+				if (hit && t < closest_t) {
+					if (debug) printf("hit tri 1 and is closer!!!\n");
+					closest_t = t;
+					closest_quad_ref = (quad_ref+1) * -1;
+				}
+				
+				//optixReportIntersection(.5f, 0);
+
+				
+			}
+			else {
+				if (debug) printf("Node ref: %d, L: %d, R: %d\n", stack[sp+1], node.left, node.right);
+				float3 node_min = f4_to_f3(node.min);
+				float3 node_max = f4_to_f3(node.max);
+
+				float t = FLT_MAX;
+				bool hit = intersect_box(node_min, node_max,
+								ray_origin, ray_direction, r_id, r_ood,
+								tmin, tmax, t);
+
+				if (hit && t < closest_t) {
+					if (debug) printf("hit node!!!!!!\n");
+					stack[++sp] = node.left;
+					stack[++sp] = node.right;
+				}
+				else if (debug) printf("didn't hit node...\n");
+			}
+		}
+
+		//printf("hit:%d\n", closest_t < FLT_MAX);
+		if (closest_t < FLT_MAX)
+			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref);
+
 	};
     
     extern "C" __global__ void __miss__radiance() {};
@@ -143,6 +258,12 @@ namespace wf::cuda {
         
         uint32_t u0, u1;
         pack_pointer(&intersection, u0, u1);
+
+		debug_info dbg;
+		dbg.px_index.x = ix;
+		dbg.px_index.y = iy;
+		uint32_t u2, u3;
+		pack_pointer(&dbg, u2, u3);
         
         int pixel_index = ix + iy * launch_params.frame_buffer_dimensions.x;
         
@@ -151,6 +272,8 @@ namespace wf::cuda {
     
         float3 ray_origin_f3  = make_float3(ray_o_f4.x, ray_o_f4.y, ray_o_f4.z);
         float3 ray_direction_f3  = make_float3(ray_d_f4.x, ray_d_f4.y, ray_d_f4.z);
+
+		if (ix == 640 && iy == 250) printf("raygen: t_min: %f, t_max: %f\n", ray_o_f4.w, ray_d_f4.w);
 
         optixTrace(launch_params.optix_traversable_handle,
                    ray_origin_f3,
@@ -163,8 +286,8 @@ namespace wf::cuda {
                    SURFACE_RAY_TYPE,
                    RAY_TYPE_COUNT,
                    SURFACE_RAY_TYPE,
-                   u0,
-                   u1);
+                   u0, u1);
+                   //u2, u3);
 
         launch_params.triangle_intersections[pixel_index] = intersection;
     }

@@ -4,6 +4,7 @@
 #include "libgi/sampling.h"
 
 #include "cuda-operators.h"
+#include "trace-helper.cuh"
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
@@ -44,7 +45,7 @@ namespace wf::cuda {
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref];
+				uint4 tri = triangles[hit.ref()];
 				material m = materials[tri.w];
 				if (not_black(m.emissive))
 					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
@@ -103,7 +104,7 @@ namespace wf::cuda {
 			float tmax = -FLT_MAX;
 			float pdf = one_over_pi;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref];
+				uint4 tri = triangles[hit.ref()];
 				material m = materials[tri.w];
 				if (not_black(m.emissive))
 					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
@@ -226,7 +227,7 @@ namespace wf::cuda {
 			float3 l_col { 0,0,0 };
 			float pdf = 0;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref];
+				uint4 tri = triangles[hit.ref()];
 				material m = materials[tri.w];
 				if (not_black(m.emissive))
 					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
@@ -355,13 +356,13 @@ namespace wf::cuda {
 			float3 radiance {0,0,0};
 			if (hit.valid() && light_hit.valid()) {
 				// light color
-				uint4 light_tri = triangles[light_hit.ref];
+				uint4 light_tri = triangles[light_hit.ref()];
 				material light_mat = materials[light_tri.w];
 				float3 brightness = f3(light_mat.emissive);
 				// brdf
 				float3 w_o = -f3(camrays[ray_index*2+1]);
 				float3 w_i = f3(shadowrays[ray_index*2+1]);
-				uint4  tri = triangles[hit.ref];
+				uint4  tri = triangles[hit.ref()];
 				float3 ng = hit_ng(hit, tri, vert_norm);
 				material mat = materials[tri.w];
 				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
@@ -378,6 +379,7 @@ namespace wf::cuda {
 											   float4 *shadowrays, tri_is *shadow_hits,
 											   float4 *framebuffer,
 											   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
+											   wf::cuda::subd_patch *patches, float4 *patch_vert_pos, float4 *patch_vert_norm, float2 *patch_vert_tc,
 											   float3 *lightcol, float *pdf) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -389,7 +391,53 @@ namespace wf::cuda {
 			tri_is shadow_hit = shadow_hits[ray_index];
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
-			if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
+			if (hit.valid()) {
+				radiance = {.x = 1, .y = 0, .z = 0};
+
+				// light color
+				float3 brightness = lightcol[ray_index];
+				// brdf
+				float3 w_o = -f3(camrays[2*ray_index+1]);
+				float3 w_i = f3(shadowray_dir);
+
+				if (hit.is_tri()) {
+					//...
+				}
+				else {
+					subd_patch &patch = patches[hit.ref()];
+					int32_t quad_ref = hit.quad_ref();
+					bool upper = quad_ref >= 0;
+					triangle tri = subd_tri(patch, quad_ref, hit.is_upper_tri());
+					//printf("patch ref: %d, quad ref:%d, upper: %d\n", hit.ref(), quad_ref, upper);
+
+					const float4 &a = patch_vert_pos[tri.a];
+					const float4 &b = patch_vert_pos[tri.b];
+					const float4 &c = patch_vert_pos[tri.c];
+
+					const float4 &a_norm = patch_vert_norm[tri.a];
+					const float4 &b_norm = patch_vert_norm[tri.b];
+					const float4 &c_norm = patch_vert_norm[tri.c];
+
+					const float2 &a_tc = patch_vert_tc[tri.a];
+					const float2 &b_tc = patch_vert_tc[tri.b];
+					const float2 &c_tc = patch_vert_tc[tri.c];
+					
+					material &mat = materials[patch.material_id];
+
+					float3 x = f3((1.0f-hit.beta-hit.gamma)*a + hit.beta*b + hit.gamma*c);
+					float3 ns = f3((1.0f-hit.beta-hit.gamma)*a_norm + hit.beta*b_norm + hit.gamma*c_norm); //TODO: normalize required?
+					float2 tc = (1.0f-hit.beta-hit.gamma)*a_tc  + hit.beta*b_tc + hit.gamma*c_tc;
+					float3 ng = cross(f3(b-a), f3(c-a));
+
+					float3 albedo = mat.albedo_tex > 0 ?
+									f3(tex2D<float4>(mat.albedo_tex, tc.x, tc.y)) :
+									f3(mat.albedo);
+
+					radiance = albedo;
+				}
+			}
+			/*if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
+				radiance = {.x = 1, .y = 0, .z = 0};
 				// light color
 				float3 brightness = lightcol[ray_index];
 				// brdf
@@ -403,7 +451,7 @@ namespace wf::cuda {
 				float cos_theta = cdot(w_i, ng);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
-			}
+			}*/
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
 		}
 	}
@@ -435,6 +483,10 @@ namespace wf::cuda {
 											  pf->sd->vertex_norm.device_memory,
 											  pf->sd->vertex_tc.device_memory,
 											  pf->sd->materials.device_memory,
+											  pf->sd->patches.device_memory,
+											  pf->sd->patch_vertex_pos.device_memory,
+											  pf->sd->patch_vertex_norm.device_memory,
+											  pf->sd->patch_vertex_tc.device_memory,
 											  light_col->data.device_memory,
 											  pdf->data.device_memory);
 	}

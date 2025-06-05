@@ -1,27 +1,35 @@
-omp on
+omp off
 
 up 0 1 0
 
-#sppx 1
-sppx 256
+sppx 1
+#sppx 256
 #sppx 1024
 #sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
 
+load render-data/local/to_upload/plane_sky.obj
+
 modeltrafo scale 5 5 5
 #load render-data/local/sibenik/sibenik-nostaklo.obj
-load render-data/local/sibenik/sibenik.obj
+#load render-data/local/sibenik/sibenik.obj
 modeltrafo scale 0.2 0.2 0.2
 
 # debug
 load render-data/subd/knife_usd/knife.usda
-modeltrafo shift 3 0 0
-load render-data/subd/knife_usd/knife.usda subd_level 2
-modeltrafo shift -3 0 0
+#modeltrafo shift 3 0 0
+load render-data/subd/knife_usd/knife.usda subd_level 3
+#modeltrafo shift -3 0 0
+
+#load render-data/subd/basic_tests/quad_tri_test.obj
+load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
 
 skylight load render-data/skylight-sunset.floats 10
+
+material select Light
+material emissive 0 0 10
 
 # Pos 1
 #at -3 0 0

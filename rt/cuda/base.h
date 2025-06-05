@@ -6,6 +6,8 @@
 #include "libgi/subdivision.h"
 
 #include "cuda-helpers.h"
+//#include "cuda-operators.h"
+//#include "optix-launch-params.h"
 
 #include <cuda_runtime_api.h>
 #define MULTIPROCESSOR_COUNT               82	// fixed (device dependent, 82 for RTX3090)
@@ -20,6 +22,10 @@
 
 namespace wf {
 	namespace cuda {
+
+		/*__forceinline__ __device__ float3 f4_to_f3(float4 v) {
+			return make_float3(v.x, v.y, v.z);
+		}*/
 		
 		//! \brief Take time of asynchronously running CUDA calls.
 		struct timer : public wf::timer {
@@ -34,11 +40,36 @@ namespace wf {
 			float t;
 			float beta;
 			float gamma;
-			unsigned int ref;
 
-			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
-			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
-			__device__ __inline__ bool valid() { return t != FLT_MAX; }
+			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), prim_ref(0), subd_quad_ref(0) {};
+			__device__ tri_is(float t, float beta, float gamma, uint32_t ref) : t(t), beta(beta), gamma(gamma), subd_quad_ref(0) {
+				set_ref(ref);
+			};
+			__device__ __inline__ bool valid() const { return t != FLT_MAX; }
+
+			__device__ __inline__ bool is_tri() const { return !(prim_ref & 1); }
+			__device__ __inline__ uint32_t ref() const { return prim_ref >> 1; }
+			__device__ __inline__ void set_ref(uint32_t ref, bool is_custom_prim = false) {
+				prim_ref = is_custom_prim ?
+							(ref << 1) | 1 :
+							ref << 1;
+			}
+			__device__ __inline__ int32_t quad_ref() {
+				return abs(subd_quad_ref) - 1;
+			}
+			__device__ __inline__ bool is_upper_tri() {
+				assert(subd_quad_ref != 0);
+				return subd_quad_ref > 0;
+			}
+			__device__ __inline__ void set_quad_ref(int32_t quad_ref, bool upper) {
+				quad_ref++;
+				subd_quad_ref = upper ? quad_ref : -1 * quad_ref;
+			}
+
+		private:
+			uint32_t prim_ref;
+			int32_t subd_quad_ref;
+
 		};
 
 		struct __align__(16) simple_bvh_node /*: public node*/ {
@@ -376,6 +407,57 @@ namespace wf {
 
 		};
 
+		/*struct __align__(16) diff_geom {
+			__device__ __inline__ diff_geom(const tri_is &is, const optix_launch_params &params) {
+				if (is.is_tri())
+					init_tri(is, params);
+				else
+					init_custom_prim(is, params);
+			}
+
+			__device__ __inline__ float3 interpolate_position(float beta, float gamma) {
+
+			}
+
+		float2 tc;
+		float3 x;
+		float3 ng, ns;
+		wf::cuda::material *mat;
+
+		private:
+			__device__ __forceinline__ void init_tri(const tri_is &is, const optix_launch_params &params) {
+				const unsigned int primitive_index = is.ref();
+				const uint4 triangle = params.triangles[primitive_index];
+				
+				//const float3 vertex_pos_a = f4_to_f3(params.vertex_pos[triangle.x]);
+				//const float3 vertex_pos_b = f4_to_f3(params.vertex_pos[triangle.y]);
+				//const float3 vertex_pos_c = f4_to_f3(params.vertex_pos[triangle.z]);
+				
+				const float2 vertex_tc_a = params.tex_coords[triangle.x];
+				const float2 vertex_tc_b = params.tex_coords[triangle.y];
+				const float2 vertex_tc_c = params.tex_coords[triangle.z];
+				
+				//const float3 vertex_norm_a = f4_to_f3(params.vertex_norm[triangle.x]);
+				//const float3 vertex_norm_b = f4_to_f3(params.vertex_norm[triangle.y]);
+				//const float3 vertex_norm_c = f4_to_f3(params.vertex_norm[triangle.z]);
+
+
+				mat = &params.materials[triangle.w]; 
+				
+				const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+				const float alpha = 1.0f - barycentrics.x - barycentrics.y;
+				
+				//x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
+				tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
+				//ng = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
+				ns = ng;
+			}
+
+			__device__ __forceinline__ void init_custom_prim(const tri_is &is, const optix_launch_params &params) {
+				
+			}
+		};*/
+
 		struct scenedata {
 			int n_vertices = 0, n_triangles = 0;
 			texture_buffer<float4> vertex_pos;
@@ -465,6 +547,10 @@ namespace wf {
 				compute_hit(true);
 			}
 			virtual void compute_hit(bool anyhit) = 0;
+		};
+
+		struct debug_info {
+			int2 px_index;
 		};
 
 	}

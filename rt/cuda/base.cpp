@@ -110,15 +110,19 @@ namespace wf {
 					const subd::node &node = patch.nodes[j];
 					device_node.min = f4(node.box.min);
 					device_node.max = f4(node.box.max);
-					device_node.left = offset + node.left;
-					device_node.right = offset + node.right;
+					device_node.left = node.left;
+					device_node.right = node.right;
+					if (!node.is_subd_leaf()) {
+						device_node.left += offset;
+						device_node.right += offset;
+					}
 					device_node.triangle = node.triangle;
 
 					//device_nodes.push_back(device_node);
 					device_nodes[offset + j] = device_node;
 				}
 
-				device_patch.start_index = patch.verts.size();
+				device_patch.start_index = tmp_p.size(); //patch.verts.size();
 				uint32_t n_device_verts = tmp_p.size() + patch.verts.size();
 				tmp_p.resize(n_device_verts);
 				tmp_n.resize(n_device_verts);
