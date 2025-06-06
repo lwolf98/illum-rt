@@ -22,10 +22,6 @@
 
 namespace wf {
 	namespace cuda {
-
-		/*__forceinline__ __device__ float3 f4_to_f3(float4 v) {
-			return make_float3(v.x, v.y, v.z);
-		}*/
 		
 		//! \brief Take time of asynchronously running CUDA calls.
 		struct timer : public wf::timer {
@@ -54,10 +50,10 @@ namespace wf {
 							(ref << 1) | 1 :
 							ref << 1;
 			}
-			__device__ __inline__ int32_t quad_ref() {
+			__device__ __inline__ int32_t quad_ref() const {
 				return abs(subd_quad_ref) - 1;
 			}
-			__device__ __inline__ bool is_upper_tri() {
+			__device__ __inline__ bool is_upper_tri() const {
 				assert(subd_quad_ref != 0);
 				return subd_quad_ref > 0;
 			}
@@ -405,58 +401,51 @@ namespace wf {
 			uint32_t material_id;
 			uint32_t subd_level;
 
+			__forceinline__ __device__ uint32_t len() const {
+				return std::pow(2, subd_level)+1;
+			}
+
+			__forceinline__ __device__ int32_t get_subd_quad(int quad_ref) const {
+				int x = quad_ref % len();
+				int y = quad_ref / len();
+				return y * len() + x;
+			}
+
+			__forceinline__ __device__ uint4 subd_tri(int quad_ref, bool upper) const {
+				uint4 tri;
+
+				//TODO:
+				// get subd quad by morton code rather than the currently used position code?
+				int quad_id = get_subd_quad(quad_ref);
+				tri.w = material_id;
+				if (upper) {
+					tri.x = start_index + quad_id;
+					tri.y = start_index + quad_id + len(); // vert down
+					tri.z = start_index + quad_id + 1; // vert right
+				}
+				else {
+					tri.x = start_index + quad_id + len(); // vert down
+					tri.y = start_index + quad_id + len() + 1; // vert down right
+					tri.z = start_index + quad_id + 1; // vert right
+				}
+
+				return tri;
+			}
 		};
 
-		/*struct __align__(16) diff_geom {
-			__device__ __inline__ diff_geom(const tri_is &is, const optix_launch_params &params) {
-				if (is.is_tri())
-					init_tri(is, params);
-				else
-					init_custom_prim(is, params);
-			}
+		struct scene_refs {
+			float4 *vertex_pos;
+			float4 *vertex_norm;
+			float2 *vertex_tc;
+			uint4 *triangles;
+			material *materials;
+			texture_image *tex_images;
 
-			__device__ __inline__ float3 interpolate_position(float beta, float gamma) {
-
-			}
-
-		float2 tc;
-		float3 x;
-		float3 ng, ns;
-		wf::cuda::material *mat;
-
-		private:
-			__device__ __forceinline__ void init_tri(const tri_is &is, const optix_launch_params &params) {
-				const unsigned int primitive_index = is.ref();
-				const uint4 triangle = params.triangles[primitive_index];
-				
-				//const float3 vertex_pos_a = f4_to_f3(params.vertex_pos[triangle.x]);
-				//const float3 vertex_pos_b = f4_to_f3(params.vertex_pos[triangle.y]);
-				//const float3 vertex_pos_c = f4_to_f3(params.vertex_pos[triangle.z]);
-				
-				const float2 vertex_tc_a = params.tex_coords[triangle.x];
-				const float2 vertex_tc_b = params.tex_coords[triangle.y];
-				const float2 vertex_tc_c = params.tex_coords[triangle.z];
-				
-				//const float3 vertex_norm_a = f4_to_f3(params.vertex_norm[triangle.x]);
-				//const float3 vertex_norm_b = f4_to_f3(params.vertex_norm[triangle.y]);
-				//const float3 vertex_norm_c = f4_to_f3(params.vertex_norm[triangle.z]);
-
-
-				mat = &params.materials[triangle.w]; 
-				
-				const float2 barycentrics = {.x = is.beta, .y = is.gamma};
-				const float alpha = 1.0f - barycentrics.x - barycentrics.y;
-				
-				//x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
-				tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
-				//ng = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
-				ns = ng;
-			}
-
-			__device__ __forceinline__ void init_custom_prim(const tri_is &is, const optix_launch_params &params) {
-				
-			}
-		};*/
+			subd_patch *patches;
+			float4 *patch_vertex_pos;
+			float4 *patch_vertex_norm;
+			float2 *patch_vertex_tc;
+		};
 
 		struct scenedata {
 			int n_vertices = 0, n_triangles = 0;
@@ -474,6 +463,8 @@ namespace wf {
 			texture_buffer<float4> patch_vertex_norm;
 			texture_buffer<float2> patch_vertex_tc;
 
+			global_memory_buffer<scene_refs> refs;
+
 			scenedata() : vertex_pos("vertex_pos", 0),
 						  vertex_norm("vertex_norm", 0),
 						  vertex_tc("vertex_tc", 0),
@@ -484,7 +475,8 @@ namespace wf {
 						  patch_root_nodes("patch_root_nodes", 0),
 						  patch_vertex_pos("patch_vertex_pos", 0),
 						  patch_vertex_norm("patch_vertex_norm", 0),
-						  patch_vertex_tc("patch_vertex_tc", 0) {
+						  patch_vertex_tc("patch_vertex_tc", 0),
+						  refs("scene_refs", 0) {
 			};
 			scenedata(const scenedata &) = delete;
 			scenedata(scenedata *org, buffer_copy_mode_shallow m) : vertex_pos(org->vertex_pos, m),
@@ -500,7 +492,8 @@ namespace wf {
 																	patch_root_nodes(org->patch_root_nodes, m),
 																	patch_vertex_pos(org->patch_vertex_pos, m),
 																	patch_vertex_norm(org->patch_vertex_norm, m),
-																	patch_vertex_tc(org->patch_vertex_tc, m) {
+																	patch_vertex_tc(org->patch_vertex_tc, m),
+																	refs(org->refs, m) {
 				this->org = org;
 			}
 			void upload(scene *scene);

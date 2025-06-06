@@ -145,6 +145,22 @@ namespace wf {
 			patch_vertex_pos.upload(tmp_p);
 			patch_vertex_norm.upload(tmp_n);
 			patch_vertex_tc.upload(tmp_t);
+
+			// load scene_refs object
+
+			scene_refs device_refs;
+			device_refs.vertex_pos = vertex_pos.device_memory;
+			device_refs.vertex_norm = vertex_norm.device_memory;
+			device_refs.vertex_tc = vertex_tc.device_memory;
+			device_refs.triangles = triangles.device_memory;
+			device_refs.materials = materials.device_memory;
+			//device_refs.tex_images = tex_images.device_memory;
+
+			device_refs.patches = patches.device_memory;
+			device_refs.patch_vertex_pos = patch_vertex_pos.device_memory;
+			device_refs.patch_vertex_norm = patch_vertex_norm.device_memory;
+			device_refs.patch_vertex_tc = patch_vertex_tc.device_memory;
+			refs.upload(1, &device_refs);
 		}
 
 		void batch_rt::build(scenedata *scene)

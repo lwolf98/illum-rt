@@ -68,7 +68,7 @@ namespace wf::cuda {
 		//TODO: implement
 		//printf("closest hit patches");
 		uint3 px_index = optixGetLaunchIndex();
-		bool debug = true;
+		bool debug = false;
 
 		// node 6, patch 0 (level reg), quad 3 (lower)
 		//debug = debug && px_index.x == 640 && px_index.y == 250;
@@ -106,7 +106,7 @@ namespace wf::cuda {
 		//TODO: implement
 		//printf("intersection patches");
 		uint3 px_index = optixGetLaunchIndex();
-		bool debug = true;
+		bool debug = false;
 
 		// node 6, patch 0 (level reg), quad 3 (lower)
 		//debug = debug && px_index.x == 640 && px_index.y == 250;
@@ -160,16 +160,16 @@ namespace wf::cuda {
 				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);
 
-				triangle tri_0 = subd_tri(patch, quad_ref, true);
-				triangle tri_1 = subd_tri(patch, quad_ref, false);
-				if (debug) printf("Tri 0: %d %d %d\n", tri_0.a, tri_0.b, tri_0.c);
-				if (debug) printf("Tri 1: %d %d %d\n", tri_1.a, tri_1.b, tri_1.c);
-				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.a]); //patch.start_index + 
-				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.b]); //patch.start_index + 
-				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.c]); //patch.start_index + 
-				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.a]); //patch.start_index + 
-				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.b]); //patch.start_index + 
-				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.c]); //patch.start_index + 
+				uint4 tri_0 = patch.subd_tri(quad_ref, true); //subd_tri(patch, quad_ref, true);
+				uint4 tri_1 = patch.subd_tri(quad_ref, false);
+				if (debug) printf("Tri 0: %d %d %d\n", tri_0.x, tri_0.y, tri_0.z);
+				if (debug) printf("Tri 1: %d %d %d\n", tri_1.x, tri_1.y, tri_1.z);
+				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]); //patch.start_index + 
+				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]); //patch.start_index + 
+				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]); //patch.start_index + 
+				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]); //patch.start_index + 
+				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]); //patch.start_index + 
+				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]); //patch.start_index + 
 				if (debug) {
 					printf("t_min: %f, t_max: %f\n", tmin, tmax);
 					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
@@ -272,8 +272,6 @@ namespace wf::cuda {
     
         float3 ray_origin_f3  = make_float3(ray_o_f4.x, ray_o_f4.y, ray_o_f4.z);
         float3 ray_direction_f3  = make_float3(ray_d_f4.x, ray_d_f4.y, ray_d_f4.z);
-
-		if (ix == 640 && iy == 250) printf("raygen: t_min: %f, t_max: %f\n", ray_o_f4.w, ray_d_f4.w);
 
         optixTrace(launch_params.optix_traversable_handle,
                    ray_origin_f3,

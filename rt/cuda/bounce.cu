@@ -20,6 +20,73 @@ namespace wf::cuda {
 		return bary_interpol(a, b, c, hit.beta, hit.gamma);
 	}
 
+
+
+	struct __align__(16) diff_geom {
+		__device__ __inline__ diff_geom(const tri_is &is, const scene_refs *params) {
+			if (is.is_tri())
+				init_tri(is, params);
+			else
+				init_custom_prim(is, params);
+		}
+
+		__device__ __inline__ float3 interpolate_position(float beta, float gamma) {
+
+		}
+
+		float2 tc;
+		float3 x;
+		float3 ng, ns;
+		const wf::cuda::material *mat;
+
+	private:
+		__device__ __forceinline__ void init_base(const float3 vertex_pos_a, const float3 vertex_pos_b, const float3 vertex_pos_c,
+													const float3 vertex_norm_a, const float3 vertex_norm_b, const float3 vertex_norm_c,
+													const float2 vertex_tc_a, const float2 vertex_tc_b, const float2 vertex_tc_c,
+													const float2 barycentrics, const material *mat) {
+
+			float alpha = 1.f - barycentrics.x - barycentrics.y;
+			x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
+			tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
+			ns = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
+			ng = cross(vertex_pos_b-vertex_pos_a, vertex_pos_c-vertex_pos_a);
+			normalize(ng);
+			this->mat = mat;
+		}
+
+		__device__ __forceinline__ void init_tri(const tri_is &is, const scene_refs *params) {
+			const unsigned int primitive_index = is.ref();
+			const uint4 triangle = params->triangles[primitive_index];
+			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+			init_base(
+				f3(params->vertex_pos[triangle.x]), f3(params->vertex_pos[triangle.y]), f3(params->vertex_pos[triangle.z]),
+				f3(params->vertex_norm[triangle.x]), f3(params->vertex_norm[triangle.y]), f3(params->vertex_norm[triangle.z]),
+				params->vertex_tc[triangle.x], params->vertex_tc[triangle.y], params->vertex_tc[triangle.z],
+				barycentrics, &params->materials[triangle.w]
+			);
+		}
+
+		__device__ __forceinline__ void init_custom_prim(const tri_is &is, const scene_refs *params) {
+			uint32_t patch_ref = is.ref(); //((uint32_t)-1) - is.ref();
+			bool upper = is.is_upper_tri() > 0;
+			int32_t subd_quad_ref = is.quad_ref();
+
+			const subd_patch patch = params->patches[patch_ref];
+			const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+
+			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+			init_base(
+				f3(params->patch_vertex_pos[tri.x]), f3(params->patch_vertex_pos[tri.y]), f3(params->patch_vertex_pos[tri.z]),
+				f3(params->patch_vertex_norm[tri.x]), f3(params->patch_vertex_norm[tri.y]), f3(params->patch_vertex_norm[tri.z]),
+				params->patch_vertex_tc[tri.x], params->patch_vertex_tc[tri.y], params->patch_vertex_tc[tri.z],
+				barycentrics, &params->materials[tri.w]
+			);
+
+			assert(tc.x >= 0 && tc.x <= 1);
+			assert(tc.y >= 0 && tc.y <= 1);
+		}
+	};
+
 	// 
 	// Uniform Sampling
 	// 
@@ -283,18 +350,16 @@ namespace wf::cuda {
 
 	namespace k {
 
-		__device__ float3 albedo(uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			if (mat.albedo_tex > 0) {
-				float2 tc = bary_interpol(vertex_tc[tri.x], vertex_tc[tri.y], vertex_tc[tri.z], hit.beta, hit.gamma);
-				return f3(tex2D<float4>(mat.albedo_tex, tc.x, tc.y));
+		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc) {
+			if (dg.mat->albedo_tex > 0) {
+				return f3(tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y));
 			}
-			return f3(mat.albedo);
+			return f3(dg.mat->albedo);
 		}
 
-		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, float3 ns,
-												uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			if (!same_hemisphere(w_i, ns)) return make_float3(0,0,0);
-			return one_over_pi * albedo(tri, hit, mat, vertex_tc);
+		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+			if (!same_hemisphere(w_i, dg.ns)) return make_float3(0,0,0);
+			return one_over_pi * albedo(dg, vertex_tc);
 		}
 
 		#define sqr(x) ((x)*(x))
@@ -315,35 +380,34 @@ namespace wf::cuda {
 		#undef sqr
 
 		
-		__device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, float3 ns,
-											  uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			if (!same_hemisphere(ns, w_i)) return make_float3(0,0,0); // should be ng
-			const float NdotV = cdot(ns, w_o);
-			const float NdotL = cdot(ns, w_i);
+		__device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+			if (!same_hemisphere(dg.ns, w_i)) return make_float3(0,0,0); // should be ng
+			const float NdotV = cdot(dg.ns, w_o);
+			const float NdotL = cdot(dg.ns, w_i);
 			if (NdotV == 0.f || NdotV == 0.f) return make_float3(0,0,0);
 			float3 H = (w_o + w_i); normalize(H);
-			const float NdotH = cdot(ns, H);
+			const float NdotH = cdot(dg.ns, H);
 			const float HdotL = cdot(H, w_i);
-			const float F = fresnel_dielectric(HdotL, 1.f, mat.ior);
-			const float D = ggx_d(NdotH, mat.roughness);
-			const float G = ggx_g1(NdotV, mat.roughness) * ggx_g1(NdotL, mat.roughness);
+			const float F = fresnel_dielectric(HdotL, 1.f, dg.mat->ior);
+			const float D = ggx_d(NdotH, dg.mat->roughness);
+			const float G = ggx_g1(NdotV, dg.mat->roughness) * ggx_g1(NdotL, dg.mat->roughness);
 			const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
 			return make_float3(microfacet,microfacet,microfacet);
 		}
 
-		__device__ float3 layered_gtr2(float3 w_o, float3 w_i, float3 ns,
-									   uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			const float F = fresnel_dielectric(absdot(ns, w_o), 1.0f, mat.ior);
-			float3 diff = lambertian_reflection(w_o, w_i, ns, tri, hit, mat, vertex_tc);
-			float3 spec = gtr_coat_reflection(w_o, w_i, ns, tri, hit, mat, vertex_tc);
+		__device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+			const float F = fresnel_dielectric(absdot(dg.ns, w_o), 1.0f, dg.mat->ior);
+			float3 diff = lambertian_reflection(w_o, w_i, dg, vertex_tc);
+			float3 spec = gtr_coat_reflection(w_o, w_i, dg, vertex_tc);
 			return (1.0f-F)*diff + F*spec;
 		}
 
+		//TODO: test the modified implementation, also check whether ng/ns is correctly used
 		static __global__ void integrate_dir(int2 res,
 											 float4 *camrays, tri_is *cam_hits,
 											 float4 *shadowrays, tri_is *light_hits,
 											 float4 *framebuffer,
-											 uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
+											 wf::cuda::scene_refs *refs,
 											 float *pdf) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -352,22 +416,20 @@ namespace wf::cuda {
 				return;
 
 			tri_is hit = cam_hits[ray_index];
+			diff_geom dg(hit, refs);
 			tri_is light_hit = light_hits[ray_index];
 			float3 radiance {0,0,0};
 			if (hit.valid() && light_hit.valid()) {
 				// light color
-				uint4 light_tri = triangles[light_hit.ref()];
-				material light_mat = materials[light_tri.w];
+				uint4 light_tri = refs->triangles[light_hit.ref()];
+				material light_mat = refs->materials[light_tri.w];
 				float3 brightness = f3(light_mat.emissive);
 				// brdf
 				float3 w_o = -f3(camrays[ray_index*2+1]);
 				float3 w_i = f3(shadowrays[ray_index*2+1]);
-				uint4  tri = triangles[hit.ref()];
-				float3 ng = hit_ng(hit, tri, vert_norm);
-				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
 				// dot
-				float cos_theta = cdot(w_i, ng);
+				float cos_theta = cdot(w_i, dg.ng);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
 			}
@@ -378,8 +440,7 @@ namespace wf::cuda {
 											   float4 *camrays, tri_is *cam_hits,
 											   float4 *shadowrays, tri_is *shadow_hits,
 											   float4 *framebuffer,
-											   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
-											   wf::cuda::subd_patch *patches, float4 *patch_vert_pos, float4 *patch_vert_norm, float2 *patch_vert_tc,
+											   wf::cuda::scene_refs *refs,
 											   float3 *lightcol, float *pdf) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -392,7 +453,7 @@ namespace wf::cuda {
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
 			if (hit.valid()) {
-				radiance = {.x = 1, .y = 0, .z = 0};
+				diff_geom dg(hit, refs);
 
 				// light color
 				float3 brightness = lightcol[ray_index];
@@ -400,58 +461,16 @@ namespace wf::cuda {
 				float3 w_o = -f3(camrays[2*ray_index+1]);
 				float3 w_i = f3(shadowray_dir);
 
-				if (hit.is_tri()) {
-					//...
-				}
-				else {
-					subd_patch &patch = patches[hit.ref()];
-					int32_t quad_ref = hit.quad_ref();
-					bool upper = quad_ref >= 0;
-					triangle tri = subd_tri(patch, quad_ref, hit.is_upper_tri());
-					//printf("patch ref: %d, quad ref:%d, upper: %d\n", hit.ref(), quad_ref, upper);
-
-					const float4 &a = patch_vert_pos[tri.a];
-					const float4 &b = patch_vert_pos[tri.b];
-					const float4 &c = patch_vert_pos[tri.c];
-
-					const float4 &a_norm = patch_vert_norm[tri.a];
-					const float4 &b_norm = patch_vert_norm[tri.b];
-					const float4 &c_norm = patch_vert_norm[tri.c];
-
-					const float2 &a_tc = patch_vert_tc[tri.a];
-					const float2 &b_tc = patch_vert_tc[tri.b];
-					const float2 &c_tc = patch_vert_tc[tri.c];
-					
-					material &mat = materials[patch.material_id];
-
-					float3 x = f3((1.0f-hit.beta-hit.gamma)*a + hit.beta*b + hit.gamma*c);
-					float3 ns = f3((1.0f-hit.beta-hit.gamma)*a_norm + hit.beta*b_norm + hit.gamma*c_norm); //TODO: normalize required?
-					float2 tc = (1.0f-hit.beta-hit.gamma)*a_tc  + hit.beta*b_tc + hit.gamma*c_tc;
-					float3 ng = cross(f3(b-a), f3(c-a));
-
-					float3 albedo = mat.albedo_tex > 0 ?
-									f3(tex2D<float4>(mat.albedo_tex, tc.x, tc.y)) :
-									f3(mat.albedo);
-
-					radiance = albedo;
-				}
-			}
-			/*if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
-				radiance = {.x = 1, .y = 0, .z = 0};
-				// light color
-				float3 brightness = lightcol[ray_index];
-				// brdf
-				float3 w_o = -f3(camrays[2*ray_index+1]);
-				float3 w_i = f3(shadowray_dir);
-				uint4  tri = triangles[hit.ref];
-				float3 ng  = hit_ng(hit, tri, vert_norm);
-				material mat = materials[tri.w];
-				float3 f = layered_gtr2(w_o, w_i, ng, tri, hit, mat, vertex_tc);
+				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
 				// dot
-				float cos_theta = cdot(w_i, ng);
+				float cos_theta = cdot(w_i, dg.ns);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
-			}*/
+
+				//TODO: remove this line after debugging
+				radiance = albedo(dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
+			}
+
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
 		}
 	}
@@ -464,10 +483,7 @@ namespace wf::cuda {
 											shadowrays->rays.device_memory,
 											shadowrays->intersections.device_memory,
 											camrays->framebuffer.device_memory,
-											pf->sd->triangles.device_memory,
-											pf->sd->vertex_norm.device_memory,
-											pf->sd->vertex_tc.device_memory,
-											pf->sd->materials.device_memory,
+											pf->sd->refs.device_memory,
 											pdf->data.device_memory);
 	}
 	
@@ -479,14 +495,7 @@ namespace wf::cuda {
 											  shadowrays->rays.device_memory,
 											  shadowrays->intersections.device_memory,
 											  camrays->framebuffer.device_memory,
-											  pf->sd->triangles.device_memory,
-											  pf->sd->vertex_norm.device_memory,
-											  pf->sd->vertex_tc.device_memory,
-											  pf->sd->materials.device_memory,
-											  pf->sd->patches.device_memory,
-											  pf->sd->patch_vertex_pos.device_memory,
-											  pf->sd->patch_vertex_norm.device_memory,
-											  pf->sd->patch_vertex_tc.device_memory,
+											  pf->sd->refs.device_memory,
 											  light_col->data.device_memory,
 											  pdf->data.device_memory);
 	}
