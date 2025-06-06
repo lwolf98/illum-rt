@@ -1,16 +1,20 @@
-omp off
+omp on
 
 up 0 1 0
 
-sppx 1
-#sppx 256
+#sppx 1
+sppx 256
 #sppx 1024
 #sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
 
+modeltrafo shift 0 150 0
+modeltrafo rotate x 3.14
 load render-data/local/to_upload/plane_sky.obj
+modeltrafo rotate x -3.14
+modeltrafo shift 0 -150 0
 
 modeltrafo scale 5 5 5
 #load render-data/local/sibenik/sibenik-nostaklo.obj
@@ -26,10 +30,10 @@ load render-data/subd/knife_usd/knife.usda subd_level 3
 #load render-data/subd/basic_tests/quad_tri_test.obj
 load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
 
-skylight load render-data/skylight-sunset.floats 10
+#skylight load render-data/skylight-sunset.floats 10
 
 material select Light
-material emissive 0 0 10
+material emissive 5 5 5
 
 # Pos 1
 #at -3 0 0
@@ -53,6 +57,7 @@ add-scene-step build accel struct
 #outfile subd-sibenik-primary_cuda.png
 algo direct-wf
 is light
+#is cosine
 outfile out_subds/subd-direct_cuda.png
 commit
 

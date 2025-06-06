@@ -20,18 +20,12 @@ namespace wf::cuda {
 		return bary_interpol(a, b, c, hit.beta, hit.gamma);
 	}
 
-
-
 	struct __align__(16) diff_geom {
 		__device__ __inline__ diff_geom(const tri_is &is, const scene_refs *params) {
 			if (is.is_tri())
 				init_tri(is, params);
 			else
 				init_custom_prim(is, params);
-		}
-
-		__device__ __inline__ float3 interpolate_position(float beta, float gamma) {
-
 		}
 
 		float2 tc;
@@ -99,7 +93,7 @@ namespace wf::cuda {
 			return c.x != 0 || c.y != 0 || c.z != 0;
 		}
 		static __global__ void sample_uniform_dir(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
-												  uint4 *triangles, float4 *vert_norm, material *materials,
+												  const scene_refs *refs,
 												  float *pdf, float2 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -108,18 +102,17 @@ namespace wf::cuda {
 				return;
 	
 			tri_is hit = hits[ray_index];
+			diff_geom dg(hit, refs);
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref()];
-				material m = materials[tri.w];
-				if (not_black(m.emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
+				if (not_black(dg.mat->emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
-					float3 ng = hit_ng(hit, tri, vert_norm);
+					float3 ng = dg.ng;
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ng, cam_dir);
 					w_i = align(sampled_dir, ng);
@@ -144,9 +137,7 @@ namespace wf::cuda {
 												 camdata->intersections.device_memory,
 												 bouncedata->rays.device_memory,
 												 camdata->framebuffer.device_memory,
-												 pf->sd->triangles.device_memory,
-												 pf->sd->vertex_norm.device_memory,
-												 pf->sd->materials.device_memory,
+												 pf->sd->refs.device_memory,
 												 pdf->data.device_memory,
 												 rng.random_numbers);
 	}
@@ -157,7 +148,7 @@ namespace wf::cuda {
 
 	namespace k {
 		static __global__ void sample_cos_dir(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
-											  uint4 *triangles, float4 *vert_norm, material *materials,
+											  scene_refs *refs,
 											  float *pdfs, float2 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -166,19 +157,19 @@ namespace wf::cuda {
 				return;
 	
 			tri_is hit = hits[ray_index];
+			diff_geom dg(hit, refs);
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
 			float pdf = one_over_pi;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref()];
-				material m = materials[tri.w];
-				if (not_black(m.emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
+				if (not_black(dg.mat->emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
-					float3 ng = hit_ng(hit, tri, vert_norm);
+					//TODO: ng or ns (lookup entire file)??
+					float3 ng = dg.ng;
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ng, cam_dir);
 					w_i = align(sampled_dir, ng);
@@ -202,9 +193,7 @@ namespace wf::cuda {
 											 camdata->intersections.device_memory,
 											 bouncedata->rays.device_memory,
 											 camdata->framebuffer.device_memory,
-											 pf->sd->triangles.device_memory,
-											 pf->sd->vertex_norm.device_memory,
-											 pf->sd->materials.device_memory,
+											 pf->sd->refs.device_memory,
 											 pdf->data.device_memory,
 											 rng.random_numbers);
 	}
@@ -244,19 +233,19 @@ namespace wf::cuda {
 		}
 	
 		__device__ void sample_Li(int index, tri_is hit, float2 xi, int ray_index,
-								  float4 *camrays, uint4 *tri_lights, float4 *vert_pos, float4 *vert_norm, material *materials,
+								  float4 *camrays, uint4 *tri_lights, const scene_refs *refs,
 								  float3 &out_dir, float3 &out_pos, float &out_tmax, float3 &out_lcol, float &out_pdf) {
 			uint4 l_tri   = tri_lights[index];
 			float3 cam_d  = f3(camrays[ray_index*2+1]);
 			float3 from   = f3(camrays[ray_index*2+0]) + hit.t * cam_d;
 			float2 bc     = uniform_sample_triangle(xi);
-			float3 target = f3(bary_interpol(vert_pos[l_tri.x],  vert_pos[l_tri.y],  vert_pos[l_tri.z],  bc.x, bc.y));
-			float3 n      = f3(bary_interpol(vert_norm[l_tri.x], vert_norm[l_tri.y], vert_norm[l_tri.z], bc.x, bc.y));
+			float3 target = f3(bary_interpol(refs->vertex_pos[l_tri.x],  refs->vertex_pos[l_tri.y],  refs->vertex_pos[l_tri.z],  bc.x, bc.y));
+			float3 n      = f3(bary_interpol(refs->vertex_norm[l_tri.x], refs->vertex_norm[l_tri.y], refs->vertex_norm[l_tri.z], bc.x, bc.y));
 			float3 w_i    = target - from;
 
-			float area  = 0.5f * length(cross(f3(vert_pos[l_tri.y]-vert_pos[l_tri.x]),
-											  f3(vert_pos[l_tri.z]-vert_pos[l_tri.x])));
-			material mat = materials[l_tri.w];
+			float area  = 0.5f * length(cross(f3(refs->vertex_pos[l_tri.y]-refs->vertex_pos[l_tri.x]),
+											  f3(refs->vertex_pos[l_tri.z]-refs->vertex_pos[l_tri.x])));
+			material mat = refs->materials[l_tri.w];
 			float3 col = f3(mat.emissive);
 
 			float tmax = length(w_i);
@@ -279,7 +268,7 @@ namespace wf::cuda {
 
 
 		static __global__ void sample_light(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
-											uint4 *triangles, float4 *vert_pos, float4 *vert_norm, material *materials,
+											const scene_refs *refs,
 											int lights, float *lights_f, float *lights_cdf, float lights_int_1spaced, uint4 *tri_lights, float3 *lightcol, // TODO F4
 											float *pdfs, float4 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
@@ -288,23 +277,22 @@ namespace wf::cuda {
 			if (x >= res.x || y >= res.y)
 				return;
 			tri_is hit = hits[ray_index];
+			diff_geom dg(hit, refs); //TODO: maybe don't use diff_geom here when only material is required
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
 			float3 l_col { 0,0,0 };
 			float pdf = 0;
 			if (hit.valid()) {
-				uint4 tri = triangles[hit.ref()];
-				material m = materials[tri.w];
-				if (not_black(m.emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + m.emissive; // might be w==0
+				if (not_black(dg.mat->emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
 				else {
 					float4 xis = random[ray_index];
 					int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf);
 					float a_pdf = 0, r_tm;
 					float3 r_d, r_o;
 					sample_Li(l_id, hit, {xis.x,xis.y}, ray_index,
-							  camrays, tri_lights, vert_pos, vert_norm, materials,
+							  camrays, tri_lights, refs,
 							  r_d, r_o, r_tm, l_col, a_pdf);
 					if (not_black(l_col)) {
 						w_i = r_d;
@@ -330,10 +318,7 @@ namespace wf::cuda {
 										   camdata->intersections.device_memory,
 										   bouncedata->rays.device_memory,
 										   camdata->framebuffer.device_memory,
-										   pf->sd->triangles.device_memory,
-										   pf->sd->vertex_pos.device_memory,
-										   pf->sd->vertex_norm.device_memory,
-										   pf->sd->materials.device_memory,
+										   pf->sd->refs.device_memory,
 										   light_dist->n,
 										   light_dist->f.device_memory,
 										   light_dist->cdf.device_memory,
@@ -429,7 +414,7 @@ namespace wf::cuda {
 				float3 w_i = f3(shadowrays[ray_index*2+1]);
 				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
 				// dot
-				float cos_theta = cdot(w_i, dg.ng);
+				float cos_theta = cdot(w_i, dg.ns);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
 			}
@@ -452,7 +437,8 @@ namespace wf::cuda {
 			tri_is shadow_hit = shadow_hits[ray_index];
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
-			if (hit.valid()) {
+
+			if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
 				diff_geom dg(hit, refs);
 
 				// light color
@@ -466,9 +452,6 @@ namespace wf::cuda {
 				float cos_theta = cdot(w_i, dg.ns);
 				// combine
 				radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
-
-				//TODO: remove this line after debugging
-				radiance = albedo(dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
 			}
 
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
