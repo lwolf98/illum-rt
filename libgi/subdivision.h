@@ -5,9 +5,14 @@
 #include <string>
 #include <assimp/mesh.h>
 #include <tinyusdz.hh>
-#include <pxr/usd/usdGeom/mesh.h>
+#include <pxr/pxr.h>
 #include "rt.h"
 #include "intersect.h"
+
+PXR_NAMESPACE_OPEN_SCOPE
+// forward declaration to avoid full include of pxr/usd/usdGeom/mesh.h
+class UsdGeomMesh;
+PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace subd {
 	struct edge {
