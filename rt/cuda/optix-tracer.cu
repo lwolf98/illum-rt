@@ -90,7 +90,9 @@ namespace wf::cuda
 												   miss_records_buffer("miss records buffer", 1),
 												   hitgroup_records_buffer("hitgroup records buffer", 1),
 												   device_launch_params("optix launch params", 1),
-												   accel_struct_buffer("accell struct buffer", 0),
+												   accel_struct_buffer_tris("accell struct buffer", 0),
+												   accel_struct_buffer_patches("accell struct buffer", 0),
+												   accel_struct_buffer_ias("accell struct buffer", 0),
 												   optix_ias_instances("ias instances", 0)
 	{
 		init_optix();
@@ -158,7 +160,7 @@ namespace wf::cuda
 		CHECK_CUDA_ERROR(cudaGetLastError(), "");
 	}
 
-	OptixTraversableHandle optix_tracer::build_gas(wf::cuda::scenedata *scene, std::vector<OptixBuildInput> &build_inputs, OptixAccelBuildOptions &build_options)
+	OptixTraversableHandle optix_tracer::build_gas(wf::cuda::scenedata *scene, std::vector<OptixBuildInput> &build_inputs, OptixAccelBuildOptions &build_options, wf::cuda::global_memory_buffer<char> &accel_struct_buffer)
 	{	
 		const size_t NUM_BUILD_INPUTS = build_inputs.size();
 		constexpr const size_t NUM_EMITTED_PROPERTIES = 1;
@@ -267,12 +269,12 @@ namespace wf::cuda
 		global_memory_buffer<uint32_t> custom_sbt_index_buffer_tris("tmp_sbt_indices_tris", 0);
 		custom_sbt_index_buffer_tris.upload(custom_sbt_indices_tris);
 		CUdeviceptr d_sbt_indices_tris = (CUdeviceptr)custom_sbt_index_buffer_tris;
-		triangle_array.numSbtRecords = 2;
-		triangle_array.sbtIndexOffsetBuffer = d_sbt_indices_tris;
+		triangle_array.numSbtRecords = 1;
+		triangle_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices_tris;
 		triangle_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
 		triangle_array.sbtIndexOffsetStrideInBytes = 0;
 
-		OptixTraversableHandle triangles_handle = build_gas(scene, triangle_inputs, optix_accel_build_options);
+		OptixTraversableHandle triangles_handle = build_gas(scene, triangle_inputs, optix_accel_build_options, accel_struct_buffer_tris);
 		//return triangles_handle;
 
 		/* Build custom primitives GAS */
@@ -299,13 +301,13 @@ namespace wf::cuda
 		global_memory_buffer<uint32_t> custom_sbt_index_buffer("tmp_sbt_indices", 0);
 		custom_sbt_index_buffer.upload(custom_sbt_indices);
 		CUdeviceptr d_sbt_indices = (CUdeviceptr)custom_sbt_index_buffer;
-		custom_prim_array.numSbtRecords = 2;
-		custom_prim_array.sbtIndexOffsetBuffer = d_sbt_indices; //1
+		custom_prim_array.numSbtRecords = 1;
+		custom_prim_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices; //1
 		custom_prim_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
 		custom_prim_array.sbtIndexOffsetStrideInBytes = 0;
 
-		OptixTraversableHandle custom_prims_handle = build_gas(scene, custom_prim_inputs, optix_accel_build_options);
-		return custom_prims_handle;
+		OptixTraversableHandle custom_prims_handle = build_gas(scene, custom_prim_inputs, optix_accel_build_options, accel_struct_buffer_patches);
+		//return custom_prims_handle;
 
 		/* Create IAS from GASs */
 
@@ -317,20 +319,20 @@ namespace wf::cuda
 		};
 
 		OptixInstance triangles_instance = {};
+		memcpy(triangles_instance.transform, identity_transform, sizeof(float)*12);
 		triangles_instance.traversableHandle = triangles_handle;
 		triangles_instance.sbtOffset = 0;
 		triangles_instance.instanceId = 0;
 		triangles_instance.visibilityMask = 255;
 		triangles_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
-		memcpy(triangles_instance.transform, identity_transform, sizeof(float)*12);
 
 		OptixInstance custom_prims_instance = {};
+		memcpy(custom_prims_instance.transform, identity_transform, sizeof(float)*12);
 		custom_prims_instance.traversableHandle = custom_prims_handle;
 		custom_prims_instance.sbtOffset = 1;
 		custom_prims_instance.instanceId = 1;
 		custom_prims_instance.visibilityMask = 255;
 		custom_prims_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
-		memcpy(custom_prims_instance.transform, identity_transform, sizeof(float)*12);
 
 		optix_ias_instances.upload({ triangles_instance, custom_prims_instance });
 
@@ -344,44 +346,7 @@ namespace wf::cuda
 		instance_array.instances = instances;
 		instance_array.numInstances = 2;
 		instance_array.instanceStride = sizeof(OptixInstance);
-		//optix_accel_traversable_handle = build_gas(scene, instance_inputs, optix_accel_build_options);
-
-		OptixAccelBufferSizes buffer_sizes;
-		//TODO: use different flags?
-		//optix_accel_build_options.buildFlags = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
-		optix_accel_build_options.buildFlags = OPTIX_BUILD_FLAG_NONE;
-		CHECK_OPTIX_ERROR(optixAccelComputeMemoryUsage(optix_context,
-													   &optix_accel_build_options,
-													   instance_inputs.data(),
-													   instance_inputs.size(),
-													   &buffer_sizes),
-						  "");
-
-		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-		CHECK_CUDA_ERROR(cudaGetLastError(), "");
-
-		// If we intend to build the bvh multiple times (e.g. each frame) the temporary buffers
-		// should be stored as members to keep them for the next build.
-		global_memory_buffer<char> temp_buffer("OptiX temporary accel build buffer 2", buffer_sizes.tempSizeInBytes);
-		global_memory_buffer<char> output_buffer("OptiX output accel build buffer 2", buffer_sizes.outputSizeInBytes);
-
-		CHECK_OPTIX_ERROR(optixAccelBuild(optix_context,
-										  cuda_stream,
-										  &optix_accel_build_options,
-										  instance_inputs.data(),
-										  instance_inputs.size(),
-										  static_cast<CUdeviceptr>(temp_buffer),
-										  temp_buffer.size_in_bytes(),
-										  static_cast<CUdeviceptr>(output_buffer),
-										  output_buffer.size_in_bytes(),
-										  &optix_accel_traversable_handle,
-										  nullptr,
-										  0),
-						  "");
-
-		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-		CHECK_CUDA_ERROR(cudaGetLastError(), "");
-
+		optix_accel_traversable_handle = build_gas(scene, instance_inputs, optix_accel_build_options, accel_struct_buffer_ias);
 		return optix_accel_traversable_handle;
 	}
 
@@ -449,6 +414,7 @@ namespace wf::cuda
 		OptixDeviceContextOptions optix_device_context_options{};
 		optix_device_context_options.logCallbackFunction = context_log_cb;
 		optix_device_context_options.logCallbackLevel = 4;
+		//optix_device_context_options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
 		CHECK_OPTIX_ERROR(optixDeviceContextCreate(cuda_context, &optix_device_context_options, &optix_context), "");
 	}
 
@@ -466,7 +432,7 @@ namespace wf::cuda
 		//optix_module_compile_options.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
 		//optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
 
-		optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
+		optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 		optix_pipeline_compile_options.usesMotionBlur = false;
 		optix_pipeline_compile_options.numPayloadValues = 2;
 		optix_pipeline_compile_options.numAttributeValues = 3;
@@ -589,9 +555,8 @@ namespace wf::cuda
 		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(hitgroup_program_tris, &tmp_hitgroup_records[0]), "");
 		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(hitgroup_program_patches, &tmp_hitgroup_records[1]), "");
 		hitgroup_records_buffer.upload(tmp_hitgroup_records);
-		//hitgroup_records_buffer.upload(1, &tmp_hitgroup_records[1]); //TODO: debug... fix this for IAS
 		sbt.hitgroupRecordBase = static_cast<CUdeviceptr>(hitgroup_records_buffer);
 		sbt.hitgroupRecordStrideInBytes = sizeof(hitgroup_record);
-		sbt.hitgroupRecordCount = 2; //1
+		sbt.hitgroupRecordCount = hitgroup_records_buffer.size;
 	}
 }

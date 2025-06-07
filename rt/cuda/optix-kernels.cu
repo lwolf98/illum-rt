@@ -10,6 +10,7 @@
 
 namespace wf::cuda {
     extern "C" __constant__ optix_launch_params launch_params;
+	#define DBG_PRINT false
     
     static __forceinline__ __device__ void* unpack_pointer(uint32_t i0, uint32_t i1) {
         const uint64_t uptr = static_cast<uint64_t>(i0) << 32 | i1;
@@ -33,7 +34,7 @@ namespace wf::cuda {
     enum {SURFACE_RAY_TYPE = 0, RAY_TYPE_COUNT};
 
     extern "C" __global__ void __closesthit__radiance() {
-        //printf("closest hit");
+        if (DBG_PRINT) printf("closest hit\n");
 
         tri_is *prd = per_ray_data<tri_is>();
 
@@ -47,8 +48,9 @@ namespace wf::cuda {
     };
     
     constexpr const float ALPHA_THRESHOLD = 0.5f;
-    extern "C" __global__ void __anyhit__radiance() {};
+    extern "C" __global__ void __anyhit__radiance() {if (DBG_PRINT) printf("anyhit no alpha\n");};
     extern "C" __global__ void __anyhit__radiance_alpha() {
+		if (DBG_PRINT) printf("anyhit alpha\n");
         tri_is *prd = per_ray_data<tri_is>();
         const unsigned int primitive_index = optixGetPrimitiveIndex();
         const uint4 tri = launch_params.triangles[primitive_index];
@@ -66,7 +68,7 @@ namespace wf::cuda {
 
 	extern "C" __global__ void __closesthit__patches() {
 		//TODO: implement
-		//printf("closest hit patches");
+		if (DBG_PRINT) printf("closest hit patches\n");
 		uint3 px_index = optixGetLaunchIndex();
 		bool debug = false;
 
@@ -99,12 +101,12 @@ namespace wf::cuda {
 
 	extern "C" __global__ void __anyhit__patches() {
 		//TODO: implement
-		//printf("any hit patches");
+		if (DBG_PRINT) printf("any hit patches\n");
 	};
 
 	extern "C" __global__ void __intersection__patches() {
 		//TODO: implement
-		//printf("intersection patches");
+		if (DBG_PRINT) printf("intersection patches\n");
 		uint3 px_index = optixGetLaunchIndex();
 		bool debug = false;
 
@@ -243,7 +245,9 @@ namespace wf::cuda {
 
 	};
     
-    extern "C" __global__ void __miss__radiance() {};
+    extern "C" __global__ void __miss__radiance() {
+		if (DBG_PRINT) printf("miss!!!!!!!!\n");
+	};
     
     /* \brief The raygen program does not generate any rays in this case.
      * Since our algorithm has a dedicated step for generating rays we store
