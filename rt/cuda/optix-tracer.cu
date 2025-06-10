@@ -7,17 +7,17 @@
 #include <cuda-operators.h>
 
 /* Short overall OptiX concept:
- * 
- * Modules: 
+ *
+ * Modules:
  * Optix compiles the ptx-code of device-code files that contain optix-specific kernels
  * into modules.
- * 
+ *
  * Programs:
  * Programs map to functions within a module and also describe them.
- *  
+ *
  * Pipeline:
  * The pipeline is a collection of all existing programs.
- * 
+ *
  * Shader binding table (SBT):
  * The shader binding is the configuration of a pipeline launch.
  * It tells OptiX which programs to invoke.
@@ -25,11 +25,10 @@
  * programs (defined by an sbt-offset).
  * On top of that it provides program specific user-data which
  * can be attached to the sbt record and then be queried in the program.
- * 
+ *
  * For further information check the OptiX 7 Programming Guide.
- * 
+ *
  */
-
 
 #define CURRENT_CUDA_CONTEXT 0
 
@@ -44,8 +43,10 @@ constexpr const char *MISS_ENTRY_FUNCTION_NAME = "__miss__radiance";
 constexpr const char *CLOSESTHIT_ENTRY_FUNCTION_NAME = "__closesthit__radiance";
 constexpr const char *ANYHIT_ALPHA_ENTRY_FUNCTION_NAME = "__anyhit__radiance_alpha";
 constexpr const char *ANYHIT_ENTRY_FUNCTION_NAME = "__anyhit__radiance";
+constexpr const char *CLOSESTHIT_PATCHES_ENTRY_FUNCTION_NAME = "__closesthit__patches";
+constexpr const char *ANYHIT_PATCHES_ENTRY_FUNCTION_NAME = "__anyhit__patches";
+constexpr const char *INTERSECT_PATCHES_ENTRY_FUNCTION_NAME = "__intersection__patches";
 constexpr const char *LAUNCH_PARAMS_VARIABLE_NAME = "launch_params";
-
 
 // Configuration for stack sizes within the pipeline.
 
@@ -55,7 +56,7 @@ constexpr const char *LAUNCH_PARAMS_VARIABLE_NAME = "launch_params";
 constexpr const unsigned int MAX_TRAVERSABLE_GRAPH_DEPTH = 1;
 
 /* How many nested optixTrace calls do we have within our kernels?
- * 
+ *
  * Normal case: (MAX_TRACE_CALL_DEPTH - used when alpha_aware == false)
  * We only call optixTrace within the raygen program.
  * Note: The raygen program does not generate our rays even though the name suggests it.
@@ -64,11 +65,11 @@ constexpr const unsigned int MAX_TRACE_CALL_DEPTH = 1;
 
 /* Continuous callables are like direct callables (see below). The only difference is
  * that continuous callables can call optixTrace and thus have to be managed
- * differently by OptiX.  
+ * differently by OptiX.
  */
 constexpr const unsigned int MAX_CONTINUOUS_CALLABLE_CALL_DEPTH = 0;
 
-/* Direct callables are functions which the location of is stored in 
+/* Direct callables are functions which the location of is stored in
  * the shader binding table (the configuration of the optixLaunch).
  * Within the kernel code they are invoked via the sbt and an index.
  * Those functions provide flexibility and the ability to change the called function
@@ -76,355 +77,492 @@ constexpr const unsigned int MAX_CONTINUOUS_CALLABLE_CALL_DEPTH = 0;
  */
 constexpr const unsigned int MAX_DIRECT_CALLABLE_CALL_DEPTH = 0;
 
+namespace wf::cuda
+{
+	optix_tracer::optix_tracer(bool alpha_aware) : alpha_aware(alpha_aware),
+												   cuda_context(CURRENT_CUDA_CONTEXT),
+												   sbt{},
+												   verbose(false),
+												   optix_pipeline_link_options{},
+												   optix_pipeline_compile_options{},
+												   optix_context(nullptr),
+												   raygen_records_buffer("raygen records buffer", 1),
+												   miss_records_buffer("miss records buffer", 1),
+												   hitgroup_records_buffer("hitgroup records buffer", 1),
+												   device_launch_params("optix launch params", 1),
+												   accel_struct_buffer_tris("accell struct buffer", 0),
+												   accel_struct_buffer_patches("accell struct buffer", 0),
+												   accel_struct_buffer_ias("accell struct buffer", 0),
+												   optix_ias_instances("ias instances", 0)
+	{
+		init_optix();
+		create_context();
+		create_module();
 
-namespace wf::cuda {
-    optix_tracer::optix_tracer(bool alpha_aware) : alpha_aware(alpha_aware),
-                                                   cuda_context(CURRENT_CUDA_CONTEXT),
-                                                   sbt{},
-                                                   verbose(false),
-                                                   optix_pipeline_link_options{},
-                                                   optix_pipeline_compile_options{},
-                                                   optix_context(nullptr),
-                                                   raygen_records_buffer("raygen records buffer", 1),
-                                                   miss_records_buffer("miss records buffer", 1),
-                                                   hitgroup_records_buffer("hitgroup records buffer", 1),
-                                                   device_launch_params("optix launch params", 1),
-                                                   accel_struct_buffer("accell struct buffer", 0) {
-        init_optix();
-        create_context();
-        create_module();
+		OptixProgramGroupOptions program_group_options{};
 
-        OptixProgramGroupOptions program_group_options{};
-        
-        OptixProgramGroupDesc raygen_program_desc{};
-        raygen_program_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-        raygen_program_desc.raygen.module = optix_module;
-        raygen_program_desc.raygen.entryFunctionName = RAYGEN_ENTRY_FUNCTION_NAME;
-        create_program(raygen_program, program_group_options, raygen_program_desc);
+		OptixProgramGroupDesc raygen_program_desc{};
+		raygen_program_desc.kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
+		raygen_program_desc.raygen.module = optix_module;
+		raygen_program_desc.raygen.entryFunctionName = RAYGEN_ENTRY_FUNCTION_NAME;
+		create_program(raygen_program, program_group_options, raygen_program_desc);
 
-        OptixProgramGroupDesc miss_program_desc{};
-        miss_program_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-        miss_program_desc.miss.module = optix_module;
-        miss_program_desc.miss.entryFunctionName = MISS_ENTRY_FUNCTION_NAME;
-        create_program(miss_program, program_group_options, miss_program_desc);
+		OptixProgramGroupDesc miss_program_desc{};
+		miss_program_desc.kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
+		miss_program_desc.miss.module = optix_module;
+		miss_program_desc.miss.entryFunctionName = MISS_ENTRY_FUNCTION_NAME;
+		create_program(miss_program, program_group_options, miss_program_desc);
 
-        OptixProgramGroupDesc hitgroup_program_desc{};
-        hitgroup_program_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-        hitgroup_program_desc.hitgroup.moduleCH = optix_module;
-        hitgroup_program_desc.hitgroup.moduleAH = optix_module;
-        hitgroup_program_desc.hitgroup.entryFunctionNameCH = CLOSESTHIT_ENTRY_FUNCTION_NAME;
-        hitgroup_program_desc.hitgroup.entryFunctionNameAH = alpha_aware ? ANYHIT_ALPHA_ENTRY_FUNCTION_NAME : ANYHIT_ENTRY_FUNCTION_NAME;
-        create_program(hitgroup_program, program_group_options, hitgroup_program_desc);
+		OptixProgramGroupDesc hitgroup_program_tris_desc{};
+		hitgroup_program_tris_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+		hitgroup_program_tris_desc.hitgroup.moduleCH = optix_module;
+		hitgroup_program_tris_desc.hitgroup.moduleAH = optix_module;
+		hitgroup_program_tris_desc.hitgroup.entryFunctionNameCH = CLOSESTHIT_ENTRY_FUNCTION_NAME;
+		hitgroup_program_tris_desc.hitgroup.entryFunctionNameAH = alpha_aware ? ANYHIT_ALPHA_ENTRY_FUNCTION_NAME : ANYHIT_ENTRY_FUNCTION_NAME;
+		create_program(hitgroup_program_tris, program_group_options, hitgroup_program_tris_desc);
 
-        create_pipeline();
-        build_sbt();
-    }
+		OptixProgramGroupDesc hitgroup_program_patches_desc{};
+		hitgroup_program_patches_desc.kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
+		hitgroup_program_patches_desc.hitgroup.moduleCH = optix_module;
+		hitgroup_program_patches_desc.hitgroup.moduleAH = optix_module;
+		hitgroup_program_patches_desc.hitgroup.moduleIS = optix_module;
+		hitgroup_program_patches_desc.hitgroup.entryFunctionNameCH = CLOSESTHIT_PATCHES_ENTRY_FUNCTION_NAME;
+		hitgroup_program_patches_desc.hitgroup.entryFunctionNameAH = ANYHIT_PATCHES_ENTRY_FUNCTION_NAME;
+		hitgroup_program_patches_desc.hitgroup.entryFunctionNameIS = INTERSECT_PATCHES_ENTRY_FUNCTION_NAME;
+		create_program(hitgroup_program_patches, program_group_options, hitgroup_program_patches_desc);
 
-    void optix_tracer::compute_hit(bool anyhit) {    
-        if (anyhit)
-            host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT; 
-        else 
-            host_launch_params.ray_flags = alpha_aware ? OptixRayFlags::OPTIX_RAY_FLAG_NONE : OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
-        
-        host_launch_params.rays = rd->rays.device_memory;
-        host_launch_params.triangle_intersections = rd->intersections.device_memory;
-        device_launch_params.upload(1, &host_launch_params);
-        
-        CHECK_OPTIX_ERROR(optixLaunch(optix_pipeline,
-                                      cuda_stream,
-                                      static_cast<CUdeviceptr>(device_launch_params),
-                                      device_launch_params.size_in_bytes(),
-                                      &sbt,
-                                      host_launch_params.frame_buffer_dimensions.x,
-                                      host_launch_params.frame_buffer_dimensions.y,
-                                      1), "");
+		create_pipeline();
+		build_sbt();
+	}
 
-        CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-        CHECK_CUDA_ERROR(cudaGetLastError(), ""); 
-    }
-    
-    /* Builds and compacts the acceleration structure. 
-     * The acceleration structure has to be provided when calling optixTrace in device code
-     * and should thus remain within the launch parameters. 
-     * This makes the handle to the acceleration structure accessible by every kernel which wants
-     * to call optixTrace.
-     */
-    OptixTraversableHandle optix_tracer::build_acceleration_structure(scenedata *scene) {
-        time_this_block(optix_build);
+	void optix_tracer::compute_hit(bool anyhit)
+	{
+		if (anyhit)
+			host_launch_params.ray_flags = OptixRayFlags::OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT;
+		else
+			host_launch_params.ray_flags = alpha_aware ? OptixRayFlags::OPTIX_RAY_FLAG_NONE : OptixRayFlags::OPTIX_RAY_FLAG_DISABLE_ANYHIT;
 
-        using vertex_t = float4;
-        using triangle_t = uint4;
-        
-        constexpr const size_t NUM_BUILD_INPUTS = 1;
-        constexpr const size_t NUM_EMITTED_PROPERTIES = 1;
+		host_launch_params.rays = rd->rays.device_memory;
+		host_launch_params.triangle_intersections = rd->intersections.device_memory;
+		device_launch_params.upload(1, &host_launch_params);
 
-        CUdeviceptr vertices = static_cast<CUdeviceptr>(scene->vertex_pos);
-        CUdeviceptr triangles = static_cast<CUdeviceptr>(scene->triangles);
+		CHECK_OPTIX_ERROR(optixLaunch(optix_pipeline,
+									  cuda_stream,
+									  static_cast<CUdeviceptr>(device_launch_params),
+									  device_launch_params.size_in_bytes(),
+									  &sbt,
+									  host_launch_params.frame_buffer_dimensions.x,
+									  host_launch_params.frame_buffer_dimensions.y,
+									  1),
+						  "");
 
-        OptixBuildInput build_input{};
-        OptixBuildInputTriangleArray &triangle_array = build_input.triangleArray;
-        
-        build_input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		CHECK_CUDA_ERROR(cudaGetLastError(), "");
+	}
 
-        triangle_array.vertexFormat = OptixVertexFormat::OPTIX_VERTEX_FORMAT_FLOAT3;
-        triangle_array.vertexBuffers = &vertices;
-        triangle_array.vertexStrideInBytes = sizeof(vertex_t);
-        triangle_array.numVertices = scene->vertex_pos.size;
+	OptixTraversableHandle optix_tracer::build_gas(wf::cuda::scenedata *scene, std::vector<OptixBuildInput> &build_inputs, OptixAccelBuildOptions &build_options, wf::cuda::global_memory_buffer<char> &accel_struct_buffer)
+	{	
+		const size_t NUM_BUILD_INPUTS = build_inputs.size();
+		constexpr const size_t NUM_EMITTED_PROPERTIES = 1;
 
-        triangle_array.indexFormat = OptixIndicesFormat::OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-        triangle_array.indexBuffer = triangles;
-        triangle_array.indexStrideInBytes = sizeof(triangle_t);
-        triangle_array.numIndexTriplets = scene->triangles.size;
+		OptixAccelBufferSizes buffer_sizes;
 
-        uint32_t triangle_array_flags[1] = { 0 };
+		CHECK_OPTIX_ERROR(optixAccelComputeMemoryUsage(optix_context,
+													   &build_options,
+													   build_inputs.data(),
+													   NUM_BUILD_INPUTS,
+													   &buffer_sizes),
+						  "");
 
-        triangle_array.flags = triangle_array_flags;
-        triangle_array.numSbtRecords = 1;
-        triangle_array.sbtIndexOffsetBuffer = 0;
-        triangle_array.sbtIndexOffsetSizeInBytes = 0;
-        triangle_array.sbtIndexOffsetStrideInBytes = 0;
+		global_memory_buffer<uint64_t> compacted_size_buffer("OptiX compacted size accel build buffer", 1);
 
-        OptixAccelBuildOptions optix_accel_build_options{};
-        optix_accel_build_options.buildFlags = OPTIX_BUILD_FLAG_NONE | OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
-        optix_accel_build_options.motionOptions.numKeys = 1;
-        optix_accel_build_options.operation = OPTIX_BUILD_OPERATION_BUILD;
-        
-        OptixAccelBufferSizes buffer_sizes;
+		OptixAccelEmitDesc emit_desc;
+		emit_desc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
+		emit_desc.result = static_cast<CUdeviceptr>(compacted_size_buffer);
 
-        CHECK_OPTIX_ERROR(optixAccelComputeMemoryUsage(optix_context,
-                                                       &optix_accel_build_options,
-                                                       &build_input,
-                                                       NUM_BUILD_INPUTS, 
-                                                       &buffer_sizes), "");
-        
-     
-        global_memory_buffer<uint64_t> compacted_size_buffer("OptiX compacted size accel build buffer", 1);
+		// If we intend to build the bvh multiple times (e.g. each frame) the temporary buffers
+		// should be stored as members to keep them for the next build.
+		global_memory_buffer<char> temp_buffer("OptiX temporary accel build buffer" + std::to_string(id_count), buffer_sizes.tempSizeInBytes);
+		global_memory_buffer<char> output_buffer("OptiX output accel build buffer" + std::to_string(id_count), buffer_sizes.outputSizeInBytes);
+		id_count++;
 
-        OptixAccelEmitDesc emit_desc;
-        emit_desc.type = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
-        emit_desc.result = static_cast<CUdeviceptr>(compacted_size_buffer);
+		OptixTraversableHandle traversable_handle;
+		CHECK_OPTIX_ERROR(optixAccelBuild(optix_context,
+										  cuda_stream,
+										  &build_options,
+										  build_inputs.data(),
+										  NUM_BUILD_INPUTS,
+										  static_cast<CUdeviceptr>(temp_buffer),
+										  temp_buffer.size_in_bytes(),
+										  static_cast<CUdeviceptr>(output_buffer),
+										  output_buffer.size_in_bytes(),
+										  &traversable_handle,
+										  &emit_desc,
+										  NUM_EMITTED_PROPERTIES),
+						  "");
 
-        // If we intend to build the bvh multiple times (e.g. each frame) the temporary buffers
-        // should be stored as members to keep them for the next build.
-        global_memory_buffer<char> temp_buffer("OptiX temporary accel build buffer", buffer_sizes.tempSizeInBytes);
-        global_memory_buffer<char> output_buffer("OptiX output accel build buffer", buffer_sizes.outputSizeInBytes);
-    
-        CHECK_OPTIX_ERROR(optixAccelBuild(optix_context,
-                                          cuda_stream,
-                                          &optix_accel_build_options,
-                                          &build_input,
-                                          NUM_BUILD_INPUTS,
-                                          static_cast<CUdeviceptr>(temp_buffer),
-                                          temp_buffer.size_in_bytes(),
-                                          static_cast<CUdeviceptr>(output_buffer),
-                                          output_buffer.size_in_bytes(),
-                                          &optix_accel_traversable_handle,
-                                          &emit_desc,
-                                          NUM_EMITTED_PROPERTIES), "");
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		CHECK_CUDA_ERROR(cudaGetLastError(), "");
 
-        CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-        CHECK_CUDA_ERROR(cudaGetLastError(), "");
+		compacted_size_buffer.download();
 
-        compacted_size_buffer.download();
-        
-        accel_struct_buffer.resize(compacted_size_buffer.host_data[0]);
-       
-        CHECK_OPTIX_ERROR(optixAccelCompact(optix_context,
-                                            cuda_stream,
-                                            optix_accel_traversable_handle,
-                                            static_cast<CUdeviceptr>(accel_struct_buffer),
-                                            accel_struct_buffer.size_in_bytes(),
-                                            &optix_accel_traversable_handle), "");
-        
-        CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
-        CHECK_CUDA_ERROR(cudaGetLastError(), "");
-        
-        return optix_accel_traversable_handle;  
-    }
+		accel_struct_buffer.resize(compacted_size_buffer.host_data[0]);
 
-    /* Builds the acceleration structure and sets host launch parameters.
-     * The host-launch-parameters-structure contains data which gets copied to constant memory
-     * when calling optixLaunch. Since those parameters are stored globally they
-     * can be accessed by any device function.
-     */
-    void optix_tracer::build(scenedata *scenedata) {
-        scene_data = scenedata;
-        
-        rd = new raydata(rc->resolution());
+		CHECK_OPTIX_ERROR(optixAccelCompact(optix_context,
+											cuda_stream,
+											traversable_handle,
+											static_cast<CUdeviceptr>(accel_struct_buffer),
+											accel_struct_buffer.size_in_bytes(),
+											&traversable_handle),
+						  "");
 
-        host_launch_params.optix_traversable_handle = build_acceleration_structure(scenedata);
-        host_launch_params.frame_buffer_dimensions.x = rc->resolution().x;
-        host_launch_params.frame_buffer_dimensions.y = rc->resolution().y;
+		CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
+		CHECK_CUDA_ERROR(cudaGetLastError(), "");
 
-        host_launch_params.materials = scene_data->materials.device_memory;
-        host_launch_params.tex_coords = scene_data->vertex_tc.device_memory;
-        host_launch_params.triangles = scene_data->triangles.device_memory;
-    }
+		return traversable_handle;
+	}
+
+	/* Builds and compacts the acceleration structure.
+	 * The acceleration structure has to be provided when calling optixTrace in device code
+	 * and should thus remain within the launch parameters.
+	 * This makes the handle to the acceleration structure accessible by every kernel which wants
+	 * to call optixTrace.
+	 */
+	OptixTraversableHandle optix_tracer::build_acceleration_structure(scenedata *scene)
+	{
+		time_this_block(optix_build);
+
+		using vertex_t = float4;
+		using triangle_t = uint4;
+
+		// Build options
+		OptixAccelBuildOptions optix_accel_build_options{};
+		optix_accel_build_options.buildFlags = OPTIX_BUILD_FLAG_NONE | OPTIX_BUILD_FLAG_ALLOW_COMPACTION;
+		optix_accel_build_options.motionOptions.numKeys = 1;
+		optix_accel_build_options.operation = OPTIX_BUILD_OPERATION_BUILD;
+
+
+		/* Build triangle GAS */
+
+		// Triangle input data
+		std::vector<OptixBuildInput> triangle_inputs = { OptixBuildInput{} };
+		triangle_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+		
+		CUdeviceptr vertices = static_cast<CUdeviceptr>(scene->vertex_pos);
+		CUdeviceptr triangles = static_cast<CUdeviceptr>(scene->triangles);
+		
+		OptixBuildInputTriangleArray &triangle_array = triangle_inputs[0].triangleArray;
+		triangle_array.vertexFormat = OptixVertexFormat::OPTIX_VERTEX_FORMAT_FLOAT3;
+		triangle_array.vertexBuffers = &vertices;
+		triangle_array.vertexStrideInBytes = sizeof(vertex_t);
+		triangle_array.numVertices = scene->vertex_pos.size;
+
+		triangle_array.indexFormat = OptixIndicesFormat::OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+		triangle_array.indexBuffer = triangles;
+		triangle_array.indexStrideInBytes = sizeof(triangle_t);
+		triangle_array.numIndexTriplets = scene->triangles.size;
+
+		uint32_t triangle_array_flags[2] = {0, 0};
+		triangle_array.flags = triangle_array_flags;
+
+		std::vector<uint32_t> custom_sbt_indices_tris(scene->triangles.size, 0);
+		global_memory_buffer<uint32_t> custom_sbt_index_buffer_tris("tmp_sbt_indices_tris", 0);
+		custom_sbt_index_buffer_tris.upload(custom_sbt_indices_tris);
+		CUdeviceptr d_sbt_indices_tris = (CUdeviceptr)custom_sbt_index_buffer_tris;
+		triangle_array.numSbtRecords = 1;
+		triangle_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices_tris;
+		triangle_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+		triangle_array.sbtIndexOffsetStrideInBytes = 0;
+
+		OptixTraversableHandle triangles_handle = build_gas(scene, triangle_inputs, optix_accel_build_options, accel_struct_buffer_tris);
+		//return triangles_handle;
+
+		/* Build custom primitives GAS */
+
+		// SubD grid data
+		std::vector<OptixBuildInput> custom_prim_inputs = { OptixBuildInput{} };
+		custom_prim_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+		
+		//CUdeviceptr patches = static_cast<CUdeviceptr>(scene->patches);
+		CUdeviceptr aabb_roots = static_cast<CUdeviceptr>(scene->patch_root_nodes);
+
+		OptixBuildInputCustomPrimitiveArray &custom_prim_array = custom_prim_inputs[0].customPrimitiveArray;
+		//custom_prim_array.aabbBuffers = &patches;
+		//custom_prim_array.strideInBytes = sizeof(subd_patch);
+		//custom_prim_array.numPrimitives = scene->patches.size;
+		custom_prim_array.aabbBuffers = &aabb_roots;
+		custom_prim_array.strideInBytes = sizeof(aabb);
+		custom_prim_array.numPrimitives = scene->patch_root_nodes.size;
+
+		uint32_t custom_prim_flags[2] = {OPTIX_GEOMETRY_FLAG_NONE, OPTIX_GEOMETRY_FLAG_NONE};
+		custom_prim_array.flags = custom_prim_flags;
+
+		std::vector<uint32_t> custom_sbt_indices(scene->patch_root_nodes.size, 1);
+		global_memory_buffer<uint32_t> custom_sbt_index_buffer("tmp_sbt_indices", 0);
+		custom_sbt_index_buffer.upload(custom_sbt_indices);
+		CUdeviceptr d_sbt_indices = (CUdeviceptr)custom_sbt_index_buffer;
+		custom_prim_array.numSbtRecords = 1;
+		custom_prim_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices; //1
+		custom_prim_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+		custom_prim_array.sbtIndexOffsetStrideInBytes = 0;
+
+		OptixTraversableHandle custom_prims_handle = build_gas(scene, custom_prim_inputs, optix_accel_build_options, accel_struct_buffer_patches);
+		//return custom_prims_handle;
+
+		/* Create IAS from GASs */
+
+		//Create instances
+		float identity_transform[12] = {
+			1.f, 0.f, 0.f, 0.f,
+			0.f, 1.f, 0.f, 0.f,
+			0.f, 0.f, 1.f, 0.f
+		};
+
+		OptixInstance triangles_instance = {};
+		memcpy(triangles_instance.transform, identity_transform, sizeof(float)*12);
+		triangles_instance.traversableHandle = triangles_handle;
+		triangles_instance.sbtOffset = 0;
+		triangles_instance.instanceId = 0;
+		triangles_instance.visibilityMask = 255;
+		triangles_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+
+		OptixInstance custom_prims_instance = {};
+		memcpy(custom_prims_instance.transform, identity_transform, sizeof(float)*12);
+		custom_prims_instance.traversableHandle = custom_prims_handle;
+		custom_prims_instance.sbtOffset = 1;
+		custom_prims_instance.instanceId = 1;
+		custom_prims_instance.visibilityMask = 255;
+		custom_prims_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+
+		optix_ias_instances.upload({ triangles_instance, custom_prims_instance });
+
+		// Build IAS
+		std::vector<OptixBuildInput> instance_inputs = { OptixBuildInput{} };
+		instance_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
+		
+		CUdeviceptr instances = static_cast<CUdeviceptr>(optix_ias_instances);
+		
+		auto &instance_array = instance_inputs[0].instanceArray;
+		instance_array.instances = instances;
+		instance_array.numInstances = 2;
+		instance_array.instanceStride = sizeof(OptixInstance);
+		optix_accel_traversable_handle = build_gas(scene, instance_inputs, optix_accel_build_options, accel_struct_buffer_ias);
+		return optix_accel_traversable_handle;
+	}
+
+	/* Builds the acceleration structure and sets host launch parameters.
+	 * The host-launch-parameters-structure contains data which gets copied to constant memory
+	 * when calling optixLaunch. Since those parameters are stored globally they
+	 * can be accessed by any device function.
+	 */
+	void optix_tracer::build(scenedata *scenedata)
+	{
+		scene_data = scenedata;
+
+		rd = new raydata(rc->resolution());
+
+		host_launch_params.optix_traversable_handle = build_acceleration_structure(scenedata);
+		host_launch_params.frame_buffer_dimensions.x = rc->resolution().x;
+		host_launch_params.frame_buffer_dimensions.y = rc->resolution().y;
+
+		host_launch_params.materials = scene_data->materials.device_memory;
+		host_launch_params.tex_coords = scene_data->vertex_tc.device_memory;
+		host_launch_params.triangles = scene_data->triangles.device_memory;
+
+		host_launch_params.patches = scene_data->patches.device_memory;
+		host_launch_params.patch_nodes = scene_data->patch_nodes.device_memory;
+		host_launch_params.patch_vertex_pos = scene_data->patch_vertex_pos.device_memory;
+		//host_launch_params.patch_vertex_norm = ;
+		host_launch_params.patch_vertex_tc = scene_data->patch_vertex_tc.device_memory;
+	}
 
 	void optix_tracer::update_res(glm::ivec2 new_res) {
 		host_launch_params.frame_buffer_dimensions.x = new_res.x;
 		host_launch_params.frame_buffer_dimensions.y = new_res.y;
 	}
 
-    void optix_tracer::init_optix() {
-        CHECK_OPTIX_ERROR(optixInit(), "");
-    }
 
-    void optix_tracer::create_context() {
-        CHECK_CUDA_ERROR(cudaStreamCreate(&cuda_stream), "");
+	void optix_tracer::init_optix()
+	{
+		CHECK_OPTIX_ERROR(optixInit(), "");
+	}
 
-        const char *error_name;
-        const char *error_string;
- 
-        CUresult status = cuCtxGetCurrent(&cuda_context);
-        
-        if (status != CUDA_SUCCESS) {
-            std::cerr << "Error querying current CUDA context. Error code is " << status  << std::endl;
-            
-            if (cuGetErrorName(status, &error_name) == CUDA_SUCCESS)   
-                std::cerr << "CUDA error: " << error_name << std::endl;
-            else
-                std::cerr << "CUDA error: Cannot retrieve error name" << std::endl;
-            
-            if (cuGetErrorString(status, &error_string) == CUDA_SUCCESS)
-                std::cerr << "CUDA error: " << error_string << std::endl;
-            else
-                std::cerr << "CUDA error: Cannot retrieve error string" << std::endl;
-            
-            throw std::runtime_error("Cannot query current CUDA-Context");
-        }
-        
-        OptixDeviceContextOptions optix_device_context_options{};
-        CHECK_OPTIX_ERROR(optixDeviceContextCreate(cuda_context, &optix_device_context_options, &optix_context), "");
-    }
+	void context_log_cb(unsigned int level, const char* tag, const char* message, void*) {
+		std::cerr << "[" << level << "][" << tag << "]: " << message << std::endl;
+	}
 
-    /* Creates the OptiX module from the generated ptx-code.
-     * A module is a compiled version of the ptx-code / the device-kernels / the different programs.
-     * In this specific case there is only one device-code-file / ptx-code-file which results in
-     * only having one module but there could be more modules containing optix-specific device code.
-     */
-    void optix_tracer::create_module() {
-        OptixModuleCompileOptions optix_module_compile_options{};
-        optix_module_compile_options.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
-        optix_module_compile_options.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
-        optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
-        
-        optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_SINGLE_GAS;
-        optix_pipeline_compile_options.usesMotionBlur = false;
-        optix_pipeline_compile_options.numPayloadValues = 2;
-        optix_pipeline_compile_options.numAttributeValues = 2;
-        optix_pipeline_compile_options.exceptionFlags = OptixExceptionFlags::OPTIX_EXCEPTION_FLAG_NONE;
-        optix_pipeline_compile_options.pipelineLaunchParamsVariableName = LAUNCH_PARAMS_VARIABLE_NAME;
-        
-        optix_pipeline_link_options.maxTraceDepth = 1;
-        const std::string ptx_code(reinterpret_cast<const char*>(embedded_ptx_code));
-        
-        char log[2048];
-        size_t size_of_log = sizeof(log);
+	void optix_tracer::create_context()
+	{
+		CHECK_CUDA_ERROR(cudaStreamCreate(&cuda_stream), "");
 
-        CHECK_OPTIX_ERROR(optixModuleCreateFromPTX(optix_context,
-                                                   &optix_module_compile_options,
-                                                   &optix_pipeline_compile_options,
-                                                   ptx_code.c_str(),
-                                                   ptx_code.size(),
-                                                   log,
-                                                   &size_of_log,
-                                                   &optix_module), "");
+		const char *error_name;
+		const char *error_string;
 
-        if (size_of_log > 1 && verbose)
-            std::cout << log << std::endl;
-    };
+		CUresult status = cuCtxGetCurrent(&cuda_context);
 
-    void optix_tracer::create_program(OptixProgramGroup &program_group, OptixProgramGroupOptions &program_group_options, OptixProgramGroupDesc &program_group_descriptor) {       
-        char log[2048];
-        size_t size_of_log = sizeof(log);
+		if (status != CUDA_SUCCESS)
+		{
+			std::cerr << "Error querying current CUDA context. Error code is " << status << std::endl;
 
-        CHECK_OPTIX_ERROR(optixProgramGroupCreate(optix_context,
-                                                  &program_group_descriptor,
-                                                  1,
-                                                  &program_group_options,
-                                                  log,
-                                                  &size_of_log,
-                                                  &program_group), "");
-        
-        if (size_of_log > 1 && verbose)
-            std::cout << log << std::endl;
-    }
+			if (cuGetErrorName(status, &error_name) == CUDA_SUCCESS)
+				std::cerr << "CUDA error: " << error_name << std::endl;
+			else
+				std::cerr << "CUDA error: Cannot retrieve error name" << std::endl;
 
-    /* Creates the OptiX Pipeline using the previously created program groups.
-     * Also sets the call-stack-sizes for direct/continuous callables by calling utility functions
-     * which calculate the accumulated upper stack size bounds for all programs.
-     * 
-     * If the kernel functions such as raygen, anyhit, closesthit etc. change one has to
-     * adapt the constants MAX_TRACE_CALL_DEPTH, MAX_CONTINUOUS_CALLABLE_CALL_DEPTH, MAX_DIRECT_CALLABLE_CALL_DEPTH.
-     * 
-     * If there are multiple acceleration structures (e.g. TLAS) the constant MAX_TRAVERSABLE_GRAPH_DEPTH has to be adapted.
-     */
-    void optix_tracer::create_pipeline() {
-        std::vector<OptixProgramGroup> program_groups { raygen_program, miss_program, hitgroup_program };
-        
-        char log [2048];
-        size_t size_of_log = sizeof(log);
+			if (cuGetErrorString(status, &error_string) == CUDA_SUCCESS)
+				std::cerr << "CUDA error: " << error_string << std::endl;
+			else
+				std::cerr << "CUDA error: Cannot retrieve error string" << std::endl;
 
-        CHECK_OPTIX_ERROR(optixPipelineCreate(optix_context,
-                                              &optix_pipeline_compile_options,
-                                              &optix_pipeline_link_options,
-                                              program_groups.data(),
-                                              program_groups.size(),
-                                              log,
-                                              &size_of_log,
-                                              &optix_pipeline), "");
+			throw std::runtime_error("Cannot query current CUDA-Context");
+		}
 
-        if (size_of_log > 1 && verbose)
-            std::cout << log << std::endl;
+		OptixDeviceContextOptions optix_device_context_options{};
+		optix_device_context_options.logCallbackFunction = context_log_cb;
+		optix_device_context_options.logCallbackLevel = 4;
+		//optix_device_context_options.validationMode = OPTIX_DEVICE_CONTEXT_VALIDATION_MODE_ALL;
+		CHECK_OPTIX_ERROR(optixDeviceContextCreate(cuda_context, &optix_device_context_options, &optix_context), "");
+	}
 
-        OptixStackSizes accumulated_stack_sizes{};
+	/* Creates the OptiX module from the generated ptx-code.
+	 * A module is a compiled version of the ptx-code / the device-kernels / the different programs.
+	 * In this specific case there is only one device-code-file / ptx-code-file which results in
+	 * only having one module but there could be more modules containing optix-specific device code.
+	 */
+	void optix_tracer::create_module()
+	{
+		OptixModuleCompileOptions optix_module_compile_options{};
+		optix_module_compile_options.maxRegisterCount = OPTIX_COMPILE_DEFAULT_MAX_REGISTER_COUNT;
+		optix_module_compile_options.optLevel = OPTIX_COMPILE_OPTIMIZATION_DEFAULT;
+		optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
+		//optix_module_compile_options.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
+		//optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
 
-        for (auto &program_group: program_groups)
-            CHECK_OPTIX_ERROR(optixUtilAccumulateStackSizes(program_group, &accumulated_stack_sizes), "");
-        
-        unsigned int direct_callable_stack_size_from_traversal;
-        unsigned int direct_callable_stack_size_from_state;
-        unsigned int continuous_callable_stack_size;
-        CHECK_OPTIX_ERROR(optixUtilComputeStackSizes(&accumulated_stack_sizes,
-                                                     MAX_TRACE_CALL_DEPTH,
-                                                     MAX_CONTINUOUS_CALLABLE_CALL_DEPTH,
-                                                     MAX_DIRECT_CALLABLE_CALL_DEPTH,
-                                                     &direct_callable_stack_size_from_traversal,
-                                                     &direct_callable_stack_size_from_state,
-                                                     &continuous_callable_stack_size), 
-                                                     "");
+		optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
+		optix_pipeline_compile_options.usesMotionBlur = false;
+		optix_pipeline_compile_options.numPayloadValues = 2;
+		optix_pipeline_compile_options.numAttributeValues = 3;
+		optix_pipeline_compile_options.exceptionFlags = OptixExceptionFlags::OPTIX_EXCEPTION_FLAG_NONE;
+		optix_pipeline_compile_options.pipelineLaunchParamsVariableName = LAUNCH_PARAMS_VARIABLE_NAME;
 
-        CHECK_OPTIX_ERROR(optixPipelineSetStackSize(optix_pipeline,
-                                                    direct_callable_stack_size_from_traversal,
-                                                    direct_callable_stack_size_from_state,
-                                                    continuous_callable_stack_size,
-                                                    MAX_TRAVERSABLE_GRAPH_DEPTH), "");
-    }
+		optix_pipeline_link_options.maxTraceDepth = 1;
+		const std::string ptx_code(reinterpret_cast<const char *>(embedded_ptx_code));
 
-    /* Builds the shader binding table (sbt) which has to be provided when launching 
-     * the OptiX-Pipeline.
-     * For further details check "Short overall OptiX concept" at the beginning of this file.
-     */
-    void optix_tracer::build_sbt() {     
-        raygen_record tmp_raygen_record;
-        CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(raygen_program, &tmp_raygen_record), "");
-        raygen_records_buffer.upload(1, &tmp_raygen_record);
-        sbt.raygenRecord = static_cast<CUdeviceptr>(raygen_records_buffer);
-        
-        miss_record tmp_miss_record;
-        CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(miss_program, &tmp_miss_record), "");
+		char log[2048];
+		size_t size_of_log = sizeof(log);
 
-        miss_records_buffer.upload(1, &tmp_miss_record);
-        sbt.missRecordBase = static_cast<CUdeviceptr>(miss_records_buffer);
-        sbt.missRecordStrideInBytes = sizeof(miss_record);
-        sbt.missRecordCount = 1;
-    
-        hitgroup_record tmp_hitgroup_record;
-        CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(hitgroup_program, &tmp_hitgroup_record), "");
-        hitgroup_records_buffer.upload(1, &tmp_hitgroup_record);
-        sbt.hitgroupRecordBase = static_cast<CUdeviceptr>(hitgroup_records_buffer);
-        sbt.hitgroupRecordStrideInBytes = sizeof(hitgroup_record);
-        sbt.hitgroupRecordCount = 1;
-    }  
+		CHECK_OPTIX_ERROR(optixModuleCreateFromPTX(optix_context,
+												   &optix_module_compile_options,
+												   &optix_pipeline_compile_options,
+												   ptx_code.c_str(),
+												   ptx_code.size(),
+												   log,
+												   &size_of_log,
+												   &optix_module),
+						  "");
+
+		if (size_of_log > 1 && verbose)
+			std::cout << log << std::endl;
+	};
+
+	void optix_tracer::create_program(OptixProgramGroup &program_group, OptixProgramGroupOptions &program_group_options, OptixProgramGroupDesc &program_group_descriptor)
+	{
+		char log[2048];
+		size_t size_of_log = sizeof(log);
+
+		CHECK_OPTIX_ERROR(optixProgramGroupCreate(optix_context,
+												  &program_group_descriptor,
+												  1,
+												  &program_group_options,
+												  log,
+												  &size_of_log,
+												  &program_group),
+						  "");
+
+		if (size_of_log > 1 && verbose)
+			std::cout << log << std::endl;
+	}
+
+	/* Creates the OptiX Pipeline using the previously created program groups.
+	 * Also sets the call-stack-sizes for direct/continuous callables by calling utility functions
+	 * which calculate the accumulated upper stack size bounds for all programs.
+	 *
+	 * If the kernel functions such as raygen, anyhit, closesthit etc. change one has to
+	 * adapt the constants MAX_TRACE_CALL_DEPTH, MAX_CONTINUOUS_CALLABLE_CALL_DEPTH, MAX_DIRECT_CALLABLE_CALL_DEPTH.
+	 *
+	 * If there are multiple acceleration structures (e.g. TLAS) the constant MAX_TRAVERSABLE_GRAPH_DEPTH has to be adapted.
+	 */
+	void optix_tracer::create_pipeline()
+	{
+		std::vector<OptixProgramGroup> program_groups{raygen_program, miss_program, hitgroup_program_tris, hitgroup_program_patches};
+
+		char log[2048];
+		size_t size_of_log = sizeof(log);
+
+		CHECK_OPTIX_ERROR(optixPipelineCreate(optix_context,
+											  &optix_pipeline_compile_options,
+											  &optix_pipeline_link_options,
+											  program_groups.data(),
+											  program_groups.size(),
+											  log,
+											  &size_of_log,
+											  &optix_pipeline),
+						  "");
+
+		if (size_of_log > 1 && verbose)
+			std::cout << log << std::endl;
+
+		OptixStackSizes accumulated_stack_sizes{};
+
+		for (auto &program_group : program_groups)
+			CHECK_OPTIX_ERROR(optixUtilAccumulateStackSizes(program_group, &accumulated_stack_sizes), "");
+
+		unsigned int direct_callable_stack_size_from_traversal;
+		unsigned int direct_callable_stack_size_from_state;
+		unsigned int continuous_callable_stack_size;
+		CHECK_OPTIX_ERROR(optixUtilComputeStackSizes(&accumulated_stack_sizes,
+													 MAX_TRACE_CALL_DEPTH,
+													 MAX_CONTINUOUS_CALLABLE_CALL_DEPTH,
+													 MAX_DIRECT_CALLABLE_CALL_DEPTH,
+													 &direct_callable_stack_size_from_traversal,
+													 &direct_callable_stack_size_from_state,
+													 &continuous_callable_stack_size),
+						  "");
+
+		CHECK_OPTIX_ERROR(optixPipelineSetStackSize(optix_pipeline,
+													direct_callable_stack_size_from_traversal,
+													direct_callable_stack_size_from_state,
+													continuous_callable_stack_size,
+													MAX_TRAVERSABLE_GRAPH_DEPTH),
+						  "");
+	}
+
+	/* Builds the shader binding table (sbt) which has to be provided when launching
+	 * the OptiX-Pipeline.
+	 * For further details check "Short overall OptiX concept" at the beginning of this file.
+	 */
+	void optix_tracer::build_sbt()
+	{
+		raygen_record tmp_raygen_record;
+		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(raygen_program, &tmp_raygen_record), "");
+		raygen_records_buffer.upload(1, &tmp_raygen_record);
+		sbt.raygenRecord = static_cast<CUdeviceptr>(raygen_records_buffer);
+
+		miss_record tmp_miss_record;
+		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(miss_program, &tmp_miss_record), "");
+
+		miss_records_buffer.upload(1, &tmp_miss_record);
+		sbt.missRecordBase = static_cast<CUdeviceptr>(miss_records_buffer);
+		sbt.missRecordStrideInBytes = sizeof(miss_record);
+		sbt.missRecordCount = 1;
+
+		//hitgroup_record tmp_hitgroup_record;
+		std::vector<hitgroup_record> tmp_hitgroup_records(2);
+		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(hitgroup_program_tris, &tmp_hitgroup_records[0]), "");
+		CHECK_OPTIX_ERROR(optixSbtRecordPackHeader(hitgroup_program_patches, &tmp_hitgroup_records[1]), "");
+		hitgroup_records_buffer.upload(tmp_hitgroup_records);
+		sbt.hitgroupRecordBase = static_cast<CUdeviceptr>(hitgroup_records_buffer);
+		sbt.hitgroupRecordStrideInBytes = sizeof(hitgroup_record);
+		sbt.hitgroupRecordCount = hitgroup_records_buffer.size;
+	}
 }

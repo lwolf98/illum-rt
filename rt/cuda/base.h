@@ -3,8 +3,11 @@
 #include "libgi/wavefront-rt.h"
 #include "rt/cpu/bvh.h"
 #include "libgi/timer.h"
+#include "libgi/subdivision.h"
 
 #include "cuda-helpers.h"
+//#include "cuda-operators.h"
+//#include "optix-launch-params.h"
 
 #include <cuda_runtime_api.h>
 #define MULTIPROCESSOR_COUNT               82	// fixed (device dependent, 82 for RTX3090)
@@ -33,11 +36,36 @@ namespace wf {
 			float t;
 			float beta;
 			float gamma;
-			unsigned int ref;
 
-			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), ref(0) {};
-			__device__ tri_is(float t, float beta, float gamma, unsigned int ref) : t(t), beta(beta), gamma(gamma), ref(ref) {};
+			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), prim_ref(0), subd_quad_ref(0) {};
+			__device__ tri_is(float t, float beta, float gamma, uint32_t ref) : t(t), beta(beta), gamma(gamma), subd_quad_ref(0) {
+				set_ref(ref);
+			};
 			__device__ __inline__ bool valid() const { return t != FLT_MAX; }
+
+			__device__ __inline__ bool is_tri() const { return !(prim_ref & 1); }
+			__device__ __inline__ uint32_t ref() const { return prim_ref >> 1; }
+			__device__ __inline__ void set_ref(uint32_t ref, bool is_custom_prim = false) {
+				prim_ref = is_custom_prim ?
+							(ref << 1) | 1 :
+							ref << 1;
+			}
+			__device__ __inline__ int32_t quad_ref() const {
+				return abs(subd_quad_ref) - 1;
+			}
+			__device__ __inline__ bool is_upper_tri() const {
+				assert(subd_quad_ref != 0);
+				return subd_quad_ref > 0;
+			}
+			__device__ __inline__ void set_quad_ref(int32_t quad_ref, bool upper) {
+				quad_ref++;
+				subd_quad_ref = upper ? quad_ref : -1 * quad_ref;
+			}
+
+		private:
+			uint32_t prim_ref;
+			int32_t subd_quad_ref;
+
 		};
 
 		struct __align__(16) simple_bvh_node /*: public node*/ {
@@ -406,6 +434,69 @@ namespace wf {
 			: pos(pos), col(col), normal(normal), w_in(w_in), is(is) {}
 
 			vpl() : pos(make_float4(0,0,0,0)), col(make_float4(0,0,0,0)) {}*/
+
+		};
+		
+		struct patch_node {
+			float4 min;
+			float4 max;
+			uint32_t left = (uint32_t)-1;
+			uint32_t right = (uint32_t)-1;
+			uint32_t triangle = (uint32_t)-1;
+		};
+
+		struct subd_patch {
+			float4 min;
+			float4 max;
+			uint32_t start_index;
+			uint32_t bvh_node;
+			uint32_t material_id;
+			uint32_t subd_level;
+
+			__forceinline__ __device__ uint32_t len() const {
+				return std::pow(2, subd_level)+1;
+			}
+
+			__forceinline__ __device__ int32_t get_subd_quad(int quad_ref) const {
+				int x = quad_ref % len();
+				int y = quad_ref / len();
+				return y * len() + x;
+			}
+
+			__forceinline__ __device__ uint4 subd_tri(int quad_ref, bool upper) const {
+				uint4 tri;
+
+				//TODO:
+				// get subd quad by morton code rather than the currently used position code?
+				int quad_id = get_subd_quad(quad_ref);
+				tri.w = material_id;
+				if (upper) {
+					tri.x = start_index + quad_id;
+					tri.y = start_index + quad_id + len(); // vert down
+					tri.z = start_index + quad_id + 1; // vert right
+				}
+				else {
+					tri.x = start_index + quad_id + len(); // vert down
+					tri.y = start_index + quad_id + len() + 1; // vert down right
+					tri.z = start_index + quad_id + 1; // vert right
+				}
+
+				return tri;
+			}
+		};
+
+		struct scene_refs {
+			float4 *vertex_pos;
+			float4 *vertex_norm;
+			float2 *vertex_tc;
+			uint4 *triangles;
+			material *materials;
+			texture_image *tex_images;
+
+			subd_patch *patches;
+			float4 *patch_vertex_pos;
+			float4 *patch_vertex_norm;
+			float2 *patch_vertex_tc;
 		};
 
 		struct scenedata {
@@ -416,11 +507,28 @@ namespace wf {
 			texture_buffer<uint4> triangles;
 			global_memory_buffer<material> materials;
 			std::vector<texture_image> tex_images;
+
+			global_memory_buffer<subd_patch> patches;
+			global_memory_buffer<patch_node> patch_nodes;
+			global_memory_buffer<aabb> patch_root_nodes;
+			texture_buffer<float4> patch_vertex_pos;
+			texture_buffer<float4> patch_vertex_norm;
+			texture_buffer<float2> patch_vertex_tc;
+
+			global_memory_buffer<scene_refs> refs;
+
 			scenedata() : vertex_pos("vertex_pos", 0),
 						  vertex_norm("vertex_norm", 0),
 						  vertex_tc("vertex_tc", 0),
 						  triangles("triangles", 0),
-						  materials("materials", 0)	{
+						  materials("materials", 0),
+						  patches("patches", 0),
+						  patch_nodes("patch_nodes", 0),
+						  patch_root_nodes("patch_root_nodes", 0),
+						  patch_vertex_pos("patch_vertex_pos", 0),
+						  patch_vertex_norm("patch_vertex_norm", 0),
+						  patch_vertex_tc("patch_vertex_tc", 0),
+						  refs("scene_refs", 0) {
 			};
 			scenedata(const scenedata &) = delete;
 			scenedata(scenedata *org, buffer_copy_mode_shallow m) : vertex_pos(org->vertex_pos, m),
@@ -430,7 +538,14 @@ namespace wf {
 																	materials(org->materials, m),
 																	// tex_images not copied
 																	n_vertices(org->n_vertices),
-																	n_triangles(org->n_triangles) {
+																	n_triangles(org->n_triangles),
+																	patches(org->patches, m),
+																	patch_nodes(org->patch_nodes, m),
+																	patch_root_nodes(org->patch_root_nodes, m),
+																	patch_vertex_pos(org->patch_vertex_pos, m),
+																	patch_vertex_norm(org->patch_vertex_norm, m),
+																	patch_vertex_tc(org->patch_vertex_tc, m),
+																	refs(org->refs, m) {
 				this->org = org;
 			}
 			void upload(scene *scene);
@@ -479,6 +594,10 @@ namespace wf {
 				compute_hit(true);
 			}
 			virtual void compute_hit(bool anyhit) = 0;
+		};
+
+		struct debug_info {
+			int2 px_index;
 		};
 
 	}

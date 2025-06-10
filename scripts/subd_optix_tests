@@ -1,0 +1,73 @@
+omp on
+
+up 0 1 0
+
+#sppx 1
+#sppx 256
+#sppx 1024
+sppx 4096
+resolution 960 540
+
+default-brdf layered-gtr2
+
+modeltrafo shift 0 150 0
+modeltrafo rotate x 3.14
+load render-data/local/to_upload/plane_sky.obj
+modeltrafo rotate x -3.14
+modeltrafo shift 0 -150 0
+
+modeltrafo scale 5 5 5
+#load render-data/local/sibenik/sibenik-nostaklo.obj
+load render-data/local/sibenik/sibenik.obj
+modeltrafo scale 0.2 0.2 0.2
+
+# debug
+load render-data/subd/knife_usd/knife.usda
+modeltrafo shift 3 0 0
+load render-data/subd/knife_usd/knife.usda subd_level 3
+modeltrafo shift -3 0 0
+
+#load render-data/subd/basic_tests/quad_tri_test.obj
+load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
+
+#skylight load render-data/skylight-sunset.floats 10
+
+material select Light
+material emissive 5 5 5
+
+# Pos 1
+#at -3 0 0
+#look 1 0 0
+
+# Pos 2 (Knife)
+at -6.82282 1.2534 0.835015
+look 0.67736 -0.104066 -0.728254
+
+##raytracer naive-bvh
+#raytracer subd-naive-bvh
+#commit
+##algo primary
+#algo direct/mis
+#outfile out_grid/grid_test.png
+
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+##is cosine
+#outfile out_subds/subd-direct_cuda.png
+#commit
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+#is light paths 4096 length 10 g 0.1 vps 1
+is light paths 512 length 10 g 0.1 vps 1
+commit
+
+run

@@ -11,6 +11,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					framebuffer.cpp \
 					random.cpp \
 					rt.cpp \
+					subdivision_grid.cpp \
+					subdivision.cpp \
 					scene.cpp \
 					timer.cpp \
 					objdraw.cpp \
@@ -41,6 +43,7 @@ noinst_HEADERS = 	algorithm.h \
 					material.h \
 					random.h \
 					rt.h \
+					subdivision.h \
 					scene.h \
 					timer.h \
 					util.h \

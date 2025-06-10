@@ -24,10 +24,12 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
+
 	if (closest.valid()) {
-		diff_geom dg(closest, rc->scene);
+		diff_geom dg = diff_geom::init(closest, rc->scene);
 		radiance = dg.albedo();
 	}
+
 	return radiance;
 #else
 	// todo: implement primary hitpoint algorithm

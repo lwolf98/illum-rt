@@ -182,7 +182,7 @@ __global__ void add_hitpoint_albedo(int2 res,
 	float4 result { 0,0,0,1 };
 	wf::cuda::tri_is hit = intersections[ray_index];
 	if (hit.valid()) {
-		uint4 tri = triangles[hit.ref];
+		uint4 tri = triangles[hit.ref()];
 		if (materials[tri.w].albedo_tex > 0) {
 			float2 tc = (1.0f - hit.beta - hit.gamma) * tex_coords[tri.x]
 			            + hit.beta * tex_coords[tri.y] 

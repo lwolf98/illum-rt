@@ -7,6 +7,8 @@ namespace wf::cuda {
     class ray;  
     class tri_is; 
     class material;
+	class subd_patch;
+	class patch_node;
 
     struct optix_launch_params {
         int2 frame_buffer_dimensions;
@@ -17,5 +19,11 @@ namespace wf::cuda {
         material *materials;
         float2 *tex_coords;
         uint4 *triangles;
+
+		subd_patch *patches;
+		patch_node *patch_nodes;
+		float4 *patch_vertex_pos;
+		float2 *patch_vertex_tc;
+
     };
 }

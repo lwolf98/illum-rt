@@ -26,6 +26,7 @@
 #include "rt/cpu/seq.h"
 #ifndef RTGI_SKIP_BVH
 #include "rt/cpu/bvh.h"
+#include "rt/cpu/subd_bvh.h"
 #endif
 #include "gi/primary-hit.h"
 #ifndef RTGI_SKIP_DIRECT_ILLUM
@@ -532,6 +533,7 @@ void eval(const std::string &line) {
 		if (name == "seq") scene.use(new seq_tri_is);
 #ifndef RTGI_SKIP_BVH
 		else if (name == "naive-bvh") scene.use(new naive_bvh);
+		else if (name == "subd-naive-bvh") scene.use(new subd_naive_bvh);
 		else if (name == "bbvh") {
 			#ifndef RTGI_SIMPLER_BBVH
 			string tag1, tag2;

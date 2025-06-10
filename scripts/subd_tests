@@ -2,19 +2,22 @@
 
 up 0 1 0
 
+sppx 256
 #sppx 1024
 #sppx 4096
-sppx 512
 resolution 960 540
 
 default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
 load render-data/local/sibenik/sibenik.obj
 
+load render-data/subd/basic_tests/basic_plane.obj
+
 #modeltrafo rotate x -1.57
 
-#load render-data/USD/animals/animals.usda subd_level 1
-#load render-data/subd/animals/animals.usda subd_level 1
+#load /home/lukas/Downloads/Models/FBX/WyvernDragon_breathingfire.fbx
+
+#load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/dog.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/fox_flat.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/cars/cars.usda
@@ -41,7 +44,11 @@ load render-data/local/sibenik/sibenik.obj
 #load render-data/cube.obj subd_level 1
 #load /home/lukas/Downloads/obj/spaceship.obj subd_level 1
 
-material select Cube_mat
+#material select Material_135
+#material ior 0
+#material albedo 1 0 0
+
+#material select Cube_mat
 #material ior 0
 #material albedo 0 0 1
 

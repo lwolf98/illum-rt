@@ -53,7 +53,7 @@ namespace wf::cuda {
 				//printf("INVALID VPL: ref=%d, t= %f\n", vpl_is[i].ref, vpl_is[i].t);
 				continue;
 			}
-			uint4 tri = tris[vpl_is[i].ref];
+			uint4 tri = tris[vpl_is[i].ref()];
 			float3 cur_normal = hit_ng(vpl_is[i], tri, vert_normals);
 			normal.x += cur_normal.x;
 			normal.y += cur_normal.y;
@@ -454,7 +454,7 @@ namespace wf::cuda {
 			float pdf = one_over_pi;
 			float3 throughput { 0,0,0 };
 			if (vpl_is.valid()) {
-				uint4 vpl_tri = triangles[vpl_is.ref];
+				uint4 vpl_tri = triangles[vpl_is.ref()];
 				material vpl_mat = materials[vpl_tri.w];
 
 				float2 xi = random[(ray_index+1)%res.x];
@@ -600,7 +600,7 @@ namespace wf::cuda {
 					printf("Count: %d, VPLs p. samp.: %f\n", vpl_count[0], vpls_per_sample);
 					printf("Count: %d, VPLs p. samp.: %f, AVG len: %f, scale: %f\n", vpl_count[0], vpls_per_sample, avg_path_len, scale[0]);
 
-					float3 cur_normal = hit_ng(vpls_is[0], triangles[vpls_is[0].ref], vert_norm);
+					float3 cur_normal = hit_ng(vpls_is[0], triangles[vpls_is[0].ref()], vert_norm);
 					flip_normals_to_ray(cur_normal, f3(vpls_w_in[0]));
 					vpl_stats_device(vpls_is, vpls_w_in, vpl_count[0], triangles, vert_norm);
 				}
@@ -989,7 +989,7 @@ namespace wf::cuda {
 				// brdf at hit (x)
 				float3 x_w_o = -f3(camrays[2*ray_index+1]);
 				float3 x_w_i = f3(shadowray_dir);
-				uint4  x_tri = triangles[hit.ref];
+				uint4  x_tri = triangles[hit.ref()];
 				float3 x_ng  = hit_ng(hit, x_tri, vert_norm);
 				material x_mat = materials[x_tri.w];
 				//float3 f_x = layered_gtr2(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
@@ -998,7 +998,7 @@ namespace wf::cuda {
 				// brdf at vpl (v)
 				float3 vpl_w_o = -f3(shadowray_dir);
 				float3 vpl_w_i = -f3(vpls_w_in[vpl_indices[ray_index]]);
-				uint4 vpl_tri = triangles[vpl_is.ref];
+				uint4 vpl_tri = triangles[vpl_is.ref()];
 				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
 				material vpl_mat = materials[vpl_tri.w];
 				//float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
@@ -1025,7 +1025,7 @@ namespace wf::cuda {
 
 				radiance = f_x*G*vpl_col*f_v;
 				if (x == 44 && y == 55 && debugging)
-					printf("VPL[%d] = (%f, %f, %f)\n", vpl_is.ref, radiance.x, radiance.y, radiance.z);
+					printf("VPL[%d] = (%f, %f, %f)\n", vpl_is.ref(), radiance.x, radiance.y, radiance.z);
 
 				//Scale to part of avg path length
 				//TODO-ML: implement scaling...
@@ -1038,7 +1038,7 @@ namespace wf::cuda {
 				if (test_normal.z < 0) test_normal.z = test_normal.z * -1.f;
 				test_entered = {0,0,1.f};
 				//test_ref = {hit.ref*0.01f,hit.ref*0.01f,hit.ref*0.01f};
-				test_ref = {vpl_is.ref*0.01f,vpl_is.ref*0.01f,vpl_is.ref*0.01f};
+				test_ref = {vpl_is.ref()*0.01f,vpl_is.ref()*0.01f,vpl_is.ref()*0.01f};
 				test_is = {0,1,0};
 
 				if (x == 153 && y == 230) {

@@ -100,6 +100,10 @@ namespace import {
 						float ior = inputValue.Get<float>();
 						material.ior = ior;
 					}
+					else if (shaderInput.GetFullName() == "inputs:diffuseColor") {
+						GfVec3f color = inputValue.Get<GfVec3f>();
+						material.albedo = vec3(color[0], color[1], color[2]);
+					}
 
 				}
 			}
@@ -160,9 +164,10 @@ namespace import {
 						std::cout << "Shader connected to surface output: " << shader.GetPath() << std::endl;
 
 						::material new_mat;
+						new_mat.name = material.GetPath().GetName();
 						new_mat.brdf = scene.brdfs["default"];
-						new_mat.albedo = vec4(0, 0, 0, 1.f);
-						new_mat.emissive = vec3(0,0,0);
+						new_mat.albedo = vec4(0, 0, 0, 1.f); // TODO: load albedo
+						new_mat.emissive = vec3(0,0,0); // TODO: load emissive
 						traverse_shader_inputs(shader, 1, new_mat);
 						scene.materials.push_back(new_mat);
 						std::string material_key = material_path.GetString();
@@ -242,12 +247,8 @@ namespace import {
 				UsdGeomMesh mesh(prim);
 				std::cout << "Found mesh: " << prim.GetPath() << std::endl;
 
-				// Import via object
-				//TODO: init/pass transormation matrices!
+				// Init transormation matrices
 				mat4 parent_trafo(1);
-				//mat4 usd_node_trafo_to_glm(1);
-				//mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
-				//mat4 node_trafo = usd_node_trafo_to_glm * parent_trafo;
 				VtValue usd_up;
 				bool success = stage->GetMetadata(TfToken("upAxis"), &usd_up);
 				const mat4 orientation = get_orientation_trafo(scene.up, usd_up.Get<TfToken>().GetString());
@@ -256,11 +257,9 @@ namespace import {
 				mat4 transform = model_trafo * node_trafo * orientation;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
 
-				// load mesh data
-				//TODO: load correct material (id)!
-				//uint32_t material_id = material_offset;
 				uint32_t index_offset = scene.vertices.size();
-				//TODO: material stuff!
+
+				//TODO: Implement this section for USD
 				/*auto mat_ai = scene_ai->mMaterials[mesh_ai->mMaterialIndex];
 				
 				aiString name_ai;
@@ -279,72 +278,116 @@ namespace import {
 					uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 				}*/
 
-				// load material
+				// Load material
 				int material_id = load_material(mesh, scene);
 				if (material_id == -1)
 					material_id = 0;
 				material_id += material_offset;
 
-				// load geometry as object (preparation for subdivision)
+				// Load geometry as object (preparation for subdivision)
 				subd::object o(mesh);
 
-				// subdivide object
-				for (uint32_t i = 0; i < subdiv_level; ++i) {
-					o.mesh.subdivide();
+				for (auto &vert : o.mesh.vertices) {
+					// cut off ctrl_vertex to regular vertex
+					vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
+					// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+					vert.norm = normalize(glm::vec3(normal_transform * vec4(vert.norm, 1.f)));
+					if (o.mesh.has_texture)
+						vert.tc = glm::vec2(uv_trafo * vec3(vert.tc, 1.f));
+					else
+						vert.tc = vec2(0,0);
+						
 				}
+				for (auto &normal : o.mesh.normals)
+					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
-				if (subdiv_level == 0)
-					o.mesh.update();
+				// Subdivide object
+				o.mesh.subdivide(subdiv_level);
 
-				o.mesh.calculate_vertex_normals();
+				if (subdiv_level == 0) {
+					// Triangulate quad faces
+					o.mesh.triangulate();
 
-				// triangulate quad faces
-				o.mesh.triangulate();
+					// Serialize vertices
+					vector<vertex> serialized_verts;
+					for (int i = 0; i < o.mesh.faces.size(); i++) {
+						subd::face &f = o.mesh.faces[i];
+						for (int j = 0; j < f.verts.size(); j++) {
+							subd::vertex_config &v_cfg = f.verts[j];
+							vertex v;
+							v.pos = o.mesh.vertices[v_cfg.pos].pos;
+							v.tc = o.mesh.tex_coords[v_cfg.tc];
+							v.norm = o.mesh.vertices[v_cfg.pos].norm;
+							serialized_verts.push_back(v);
+						}
+					}
 
-				// serialize vertices
-				vector<vertex> serialized_verts;
-				for (int i = 0; i < o.mesh.faces.size(); i++) {
-					subd::face &f = o.mesh.faces[i];
-					for (int j = 0; j < f.verts.size(); j++) {
-						subd::vertex_config &v_cfg = f.verts[j];
-						vertex v;
-						v.pos = o.mesh.vertices[v_cfg.pos].pos;
-						v.tc = o.mesh.tex_coords[v_cfg.tc];
-						v.norm = o.mesh.vertices[v_cfg.pos].norm;
-						serialized_verts.push_back(v);
+					// store data in scene
+					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+						// cut off ctrl_vertex to regular vertex
+						vertex vertex = serialized_verts[i];
+						scene.vertices.push_back(vertex);
+						scene.scene_bounds.grow(vertex.pos);
+					}
+
+					for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+						triangle triangle;
+						triangle.a = index_offset + i;
+						triangle.b = index_offset + i+1;
+						triangle.c = index_offset + i+2;
+						// test if geom normal agrees with shading normals
+						// if not, flip winding order
+						auto a = scene.vertices[triangle.a];
+						auto b = scene.vertices[triangle.b];
+						auto c = scene.vertices[triangle.c];
+						if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+							std::swap(triangle.b, triangle.c);
+						// append
+						triangle.material_id = material_id;
+						scene.triangles.push_back(triangle);
 					}
 				}
+				else {
+					// Add "dummy triangles" to the scene representing the extent of the patches.
+					// These are used to identify and include the second level patch BVHs when
+					// building the first level BVH
+					auto &patches = o.mesh.patches;
+					int patch_offset = scene.patches.size();
+					for (int p = 0; p < patches.size(); p++) {
+						auto &patch = patches[p];
+						patch.material_id = material_id;
 
-				// store data in scene
-				for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
-					// cut off ctrl_vertex to regular vertex
-					vertex vertex = serialized_verts[i];
-					vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
-					// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-					vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
-					if (o.mesh.has_texture)
-						vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
-					else
-						vertex.tc = vec2(0,0);
-					scene.vertices.push_back(vertex);
-					scene.scene_bounds.grow(vertex.pos);
-				}
+						auto &root_bvh_node = patch.nodes[patch.bvh_node];
+						scene.scene_bounds.grow(root_bvh_node.box);
 
-				for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
-					triangle triangle;
-					triangle.a = index_offset + i;
-					triangle.b = index_offset + i+1;
-					triangle.c = index_offset + i+2;
-					// test if geom normal agrees with shading normals
-					// if not, flip winding order
-					auto a = scene.vertices[triangle.a];
-					auto b = scene.vertices[triangle.b];
-					auto c = scene.vertices[triangle.c];
-					if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
-						std::swap(triangle.b, triangle.c);
-					// append
-					triangle.material_id = material_id;
-					scene.triangles.push_back(triangle);
+						triangle dummy_tri;
+						vertex v;
+						v.pos = root_bvh_node.box.min;
+						scene.vertices.push_back(v);
+						dummy_tri.a = scene.vertices.size()-1;
+
+						v.pos = root_bvh_node.box.max;
+						scene.vertices.push_back(v);
+						dummy_tri.b = scene.vertices.size()-1;
+
+						// Add again, because only extent of the volume is relevant, not the tri itself
+						scene.vertices.push_back(v);
+						dummy_tri.c = scene.vertices.size()-1;
+
+						dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+
+						scene.triangles.push_back(dummy_tri);
+					}
+
+					// Store patches into scene
+					for (auto &patch : patches) {
+						scene.patches.push_back(patch);
+						subd::subd_patch &scene_patch =
+							scene.patches[scene.patches.size()-1];
+
+						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
+						node.set_secondary_value(node.get_secondary_value() + patch_offset);
+					}
 				}
 
 			}

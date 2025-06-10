@@ -806,8 +806,7 @@ void testusd2(std::string filepath) {
 
 	subd::object obj(mesh, "my_mat");
 	int level = 2;
-	for (int i = 0; i < level; i++)
-		obj.mesh.subdivide();
+	obj.mesh.subdivide(level);
 
 	obj.mesh.triangulate();
 	obj.write_obj("output/usdtest/cube.obj", false);

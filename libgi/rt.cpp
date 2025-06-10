@@ -1,5 +1,6 @@
 #include "rt.h"
 #include "scene.h"
+#include "libgi/subdivision.h"
 
 using namespace glm;
 
@@ -21,7 +22,29 @@ diff_geom::diff_geom(const triangle &t, const triangle_intersection &is, const s
 
 diff_geom::diff_geom(const triangle_intersection &is, const scene &scene)
  : diff_geom(scene.triangles[is.ref], is, scene) {
-} 
+}
+
+diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
+	if (is.ref < scene.triangles.size()) {
+		return diff_geom(is, scene);
+	}
+	else {
+		uint32_t patch_ref = ((uint32_t)-1) - is.ref;
+		bool upper = is.subd_quad_ref > 0;
+		uint32_t subd_quad_ref = abs(is.subd_quad_ref) - 1;
+		const subd::subd_patch &patch = scene.patches[patch_ref];
+		triangle tri = patch.tri(subd_quad_ref, upper);
+
+		const vertex &a = patch.verts[tri.a];
+		const vertex &b = patch.verts[tri.b];
+		const vertex &c = patch.verts[tri.c];
+
+		diff_geom dg(a, b, c, &scene.materials[patch.material_id], is, scene);
+		assert(dg.tc.x >= 0 && dg.tc.x <= 1);
+		assert(dg.tc.y >= 0 && dg.tc.y <= 1);
+		return dg;
+	}
+}
 
 vec3 diff_geom::albedo() const {
 	if (mat->albedo_tex)

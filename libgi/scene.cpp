@@ -254,9 +254,17 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 void scene::find_light_geometry() {
-	for (int i = 0; i < triangles.size(); ++i)
-		if (auto mat = materials[triangles[i].material_id]; mat.emissive != vec3(0))
+	for (int i = 0; i < triangles.size(); ++i) {
+		// TODO: check if valid mat_id only required to allow dummy tris for referencing subd patches
+		// remove and find different solution for final version
+		uint32_t mat_id = triangles[i].material_id;
+		if (mat_id > materials.size()-1)
+			continue;
+			
+		if (auto mat = materials[mat_id]; mat.emissive != vec3(0))
 			lights.push_back(new trianglelight(*this, i));
+
+	}
 }
 
 void scene::compute_light_distribution() {

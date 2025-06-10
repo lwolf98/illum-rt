@@ -83,6 +83,84 @@ namespace wf {
 				mtls[i].roughness = scene->materials[i].roughness;
 			}
 			materials.upload(mtls);
+
+			// SubD patches
+			vector<subd_patch> device_patches(scene->patches.size());
+			vector<patch_node> device_nodes;
+			vector<aabb> device_root_nodes(scene->patches.size());
+			tmp_p.clear(), tmp_n.clear(), tmp_t.clear();
+			for (int i = 0; i < scene->patches.size(); ++i) {
+				const auto &patch = scene->patches[i];
+				auto &device_patch = device_patches[i];
+				device_patch.subd_level = patch.subd_level;
+				device_patch.material_id = patch.material_id;
+				
+				uint32_t offset = device_nodes.size();
+				device_nodes.resize(offset + patch.nodes.size());
+				device_patch.bvh_node = offset + patch.bvh_node;
+
+				//TODO: remove min and max from patch when patch_root_nodes structure is used
+				device_patch.min = f4(patch.nodes[patch.bvh_node].box.min);
+				device_patch.max = f4(patch.nodes[patch.bvh_node].box.max);
+				device_root_nodes[i] = patch.nodes[patch.bvh_node].box;
+
+				#pragma omp parallel for
+				for (int j = 0; j < patch.nodes.size(); ++j) {
+					patch_node device_node;
+					const subd::node &node = patch.nodes[j];
+					device_node.min = f4(node.box.min);
+					device_node.max = f4(node.box.max);
+					device_node.left = node.left;
+					device_node.right = node.right;
+					if (!node.is_subd_leaf()) {
+						device_node.left += offset;
+						device_node.right += offset;
+					}
+					device_node.triangle = node.triangle;
+
+					//device_nodes.push_back(device_node);
+					device_nodes[offset + j] = device_node;
+				}
+
+				device_patch.start_index = tmp_p.size(); //patch.verts.size();
+				uint32_t n_device_verts = tmp_p.size() + patch.verts.size();
+				tmp_p.resize(n_device_verts);
+				tmp_n.resize(n_device_verts);
+				tmp_t.resize(n_device_verts);
+
+				#pragma omp parallel for
+				for (uint32_t j = 0; j < patch.verts.size(); ++j) {
+					uint32_t insert_index = device_patch.start_index + j;
+					tmp_p[insert_index] = float4{ patch.verts[j].pos.x,  patch.verts[j].pos.y,  patch.verts[j].pos.z,  1 };
+					tmp_n[insert_index] = float4{ patch.verts[j].norm.x, patch.verts[j].norm.y, patch.verts[j].norm.z, 0 };
+					tmp_t[insert_index] = float2{ patch.verts[j].tc.x, patch.verts[j].tc.y };
+				}
+
+			}
+
+			patches.upload(device_patches);
+			patch_nodes.upload(device_nodes);
+			patch_root_nodes.upload(device_root_nodes);
+
+			patch_vertex_pos.upload(tmp_p);
+			patch_vertex_norm.upload(tmp_n);
+			patch_vertex_tc.upload(tmp_t);
+
+			// load scene_refs object
+
+			scene_refs device_refs;
+			device_refs.vertex_pos = vertex_pos.device_memory;
+			device_refs.vertex_norm = vertex_norm.device_memory;
+			device_refs.vertex_tc = vertex_tc.device_memory;
+			device_refs.triangles = triangles.device_memory;
+			device_refs.materials = materials.device_memory;
+			//device_refs.tex_images = tex_images.device_memory;
+
+			device_refs.patches = patches.device_memory;
+			device_refs.patch_vertex_pos = patch_vertex_pos.device_memory;
+			device_refs.patch_vertex_norm = patch_vertex_norm.device_memory;
+			device_refs.patch_vertex_tc = patch_vertex_tc.device_memory;
+			refs.upload(1, &device_refs);
 		}
 
 		void batch_rt::build(scenedata *scene)
