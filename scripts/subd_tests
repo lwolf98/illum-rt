@@ -9,12 +9,12 @@ resolution 960 540
 
 default-brdf layered-gtr2
 #load render-data/sibenik/sibenik-nostaklo.obj
-load render-data/sibenik/sibenik.obj
+load render-data/local/sibenik/sibenik.obj
 
 #modeltrafo rotate x -1.57
 
 #load render-data/USD/animals/animals.usda subd_level 1
-load /home/lukas/Downloads/Models/USD/animals/animals.usda subd_level 1
+#load render-data/subd/animals/animals.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/dog.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/fox_flat.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/cars/cars.usda
@@ -146,23 +146,23 @@ look 0.249376 -0.278914 0.927372
 #path len 10
 #outfile out_subds/subd-pt_cpu.png
 
-platform cuda
-raytracer optix
-add-scene-step build accel struct
-#algo primary-wf
-#outfile subd-sibenik-primary_cuda.png
-algo direct-wf
-is light
-outfile out_subds/subd-direct_cuda.png
-commit
-
-# WF setup ML
 #platform cuda
 #raytracer optix
 #add-scene-step build accel struct
-#algo manylight-wf
-##is light paths 4096 length 10 g 0.1 vps 1
-#is light paths 512 length 10 g 0.1 vps 1
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+#outfile out_subds/subd-direct_cuda.png
 #commit
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+#is light paths 4096 length 10 g 0.1 vps 1
+is light paths 512 length 10 g 0.1 vps 1
+commit
 
 run
