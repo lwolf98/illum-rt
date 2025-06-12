@@ -552,12 +552,13 @@ namespace wf {
 		sampling_steps.push_back(integrate);
 
 		// For denoising
-		auto *hit_albedo = rc->platform->step<add_hitpoint_albedo_to_framebuffer>();
+		// TODO: denoising needs to be fixed, currently crashing compilation
+		/*auto *hit_albedo = rc->platform->step<add_hitpoint_albedo_to_framebuffer>();
 		auto *hit_normal = rc->platform->step<add_hitpoint_normal_to_framebuffer>();
 		hit_albedo->use(camrays);
 		hit_normal->use(camrays);
 		sampling_steps.push_back(hit_albedo);
-		sampling_steps.push_back(hit_normal);
+		sampling_steps.push_back(hit_normal);*/
 		
 #ifdef HAVE_GL
 		if (preview_window) {
