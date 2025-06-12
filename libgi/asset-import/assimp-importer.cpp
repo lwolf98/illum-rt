@@ -24,7 +24,7 @@ using namespace std;
 
 namespace import {
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level);
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches);
 
 	inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
@@ -119,14 +119,14 @@ namespace import {
 		std::vector<std::tuple<int,int,int>> light_geom;
 
 		// load meshes
-		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level);
+		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level, subdiv_type_patches);
 		
 	}
 
 	// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 	// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level) {
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches) {
 		mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 		mat4 transform = model_trafo * node_trafo;
 		mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -192,7 +192,7 @@ namespace import {
 			else {
 				// object with control mesh vertices and faces
 				// -> load data from Assimp import
-				subd::object o(mesh_ai, name_ai.C_Str());
+				subd::object o(mesh_ai, subd_type_patches, name_ai.C_Str());
 
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex
@@ -255,6 +255,6 @@ namespace import {
 		}
 		
 		for (int i = 0; i < node_ai->mNumChildren; i++)
-			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level);
+			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level, subd_type_patches);
 	}
 }

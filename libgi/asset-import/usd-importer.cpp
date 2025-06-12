@@ -285,7 +285,7 @@ namespace import {
 				material_id += material_offset;
 
 				// Load geometry as object (preparation for subdivision)
-				subd::object o(mesh);
+				subd::object o(mesh, subdiv_type_patches);
 
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex

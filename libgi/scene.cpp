@@ -205,7 +205,7 @@ texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &given_path) {
 	return tex;
 }
 
-void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level) {
+void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level, const bool subdiv_type_patches) {
 	#ifndef RTGI_SKIP_BRDF
 		// initialize brdfs
 		if (brdfs.empty() || brdfs.count("default") == 0) {
@@ -236,17 +236,17 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		[](unsigned char c) { return std::tolower(c); });
 		
 	if (extension.substr(0, 4) == ".usd") {
-		import::usd_importer imp(name, trafo, subdiv_level);
+		import::usd_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
 		imp.load_scene(modelpath);
 		imp.import(*this);
 	}
 	else if (extension == ".objx") {
-		import::objx_importer imp(name, trafo, subdiv_level);
+		import::objx_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
 		imp.load_scene(modelpath);
 		imp.import(*this);
 	}
 	else {
-		import::assimp_importer imp(name, trafo, subdiv_level);
+		import::assimp_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
 		imp.load_scene(modelpath);
 		imp.import(*this);
 	}

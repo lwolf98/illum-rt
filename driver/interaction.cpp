@@ -407,6 +407,7 @@ void eval(const std::string &line) {
 	else ifcmd("load") {
 		string file, name;
 		int subd_level = 0;
+		bool subd_patches = true;
 		in >> file;
 		string load_args;
 		while (!in.eof()) {
@@ -414,6 +415,13 @@ void eval(const std::string &line) {
 			//TODO: this is not flexible and covers not all cases...
 			if (load_args == "subd_level") {
 				in >> subd_level;
+			}
+			else if (load_args == "subd_type") {
+				string type;
+				in >> type;
+				if (type == "patches")		subd_patches = true;
+				else if (type == "tris")	subd_patches = false;
+				else						error("Wrong subd_type, use 'tris' or 'patches'");
 			}
 			else if (load_args == "name") {
 				in >> name;
@@ -423,7 +431,7 @@ void eval(const std::string &line) {
 			}
 		}
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name, modelmatrix, subd_level);
+		scene.add(file, name, modelmatrix, subd_level, subd_patches);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {

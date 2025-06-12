@@ -3,9 +3,9 @@ omp on
 up 0 1 0
 
 #sppx 1
-sppx 256
+#sppx 256
 #sppx 1024
-#sppx 4096
+sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
@@ -24,7 +24,7 @@ modeltrafo scale 0.2 0.2 0.2
 # debug
 load render-data/subd/knife_usd/knife.usda
 modeltrafo shift 3 0 0
-load render-data/subd/knife_usd/knife.usda subd_level 3
+load render-data/subd/knife_usd/knife.usda subd_level 3 subd_type patches
 modeltrafo shift -3 0 0
 
 #load render-data/subd/basic_tests/quad_tri_test.obj
