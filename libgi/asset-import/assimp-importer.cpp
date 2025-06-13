@@ -24,7 +24,7 @@ using namespace std;
 
 namespace import {
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level);
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches);
 
 	inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
@@ -119,14 +119,14 @@ namespace import {
 		std::vector<std::tuple<int,int,int>> light_geom;
 
 		// load meshes
-		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level);
+		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level, subdiv_type_patches);
 		
 	}
 
 	// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 	// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level) {
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches) {
 		mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
 		mat4 transform = model_trafo * node_trafo;
 		mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -192,7 +192,7 @@ namespace import {
 			else {
 				// object with control mesh vertices and faces
 				// -> load data from Assimp import
-				subd::object o(mesh_ai, name_ai.C_Str());
+				subd::object o(mesh_ai, subd_type_patches, name_ai.C_Str());
 
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex
@@ -211,50 +211,101 @@ namespace import {
 				// Subdivide object
 				o.mesh.subdivide(subdiv_level);
 
-				// Add "dummy triangles" to the scene representing the extent of the patches.
-				// These are used to identify and include the second level patch BVHs when
-				// building the first level BVH
-				auto &patches = o.mesh.patches;
-				int patch_offset = rtgi_scene.patches.size();
-				for (int p = 0; p < patches.size(); p++) {
-					auto &patch = patches[p];
-					patch.material_id = material_id;
 
-					auto &root_bvh_node = patch.nodes[patch.bvh_node];
-					rtgi_scene.scene_bounds.grow(root_bvh_node.box);
+				if (subd_type_patches) {
 
-					triangle dummy_tri;
-					vertex v;
-					v.pos = root_bvh_node.box.min;
-					rtgi_scene.vertices.push_back(v);
-					dummy_tri.a = rtgi_scene.vertices.size()-1;
+					// Add "dummy triangles" to the scene representing the extent of the patches.
+					// These are used to identify and include the second level patch BVHs when
+					// building the first level BVH
+					auto &patches = o.mesh.patches;
+					int patch_offset = rtgi_scene.patches.size();
+					for (int p = 0; p < patches.size(); p++) {
+						auto &patch = patches[p];
+						patch.material_id = material_id;
 
-					v.pos = root_bvh_node.box.max;
-					rtgi_scene.vertices.push_back(v);
-					dummy_tri.b = rtgi_scene.vertices.size()-1;
+						auto &root_bvh_node = patch.nodes[patch.bvh_node];
+						rtgi_scene.scene_bounds.grow(root_bvh_node.box);
 
-					// Add again, because only extent of the volume is relevant, not the tri itself
-					rtgi_scene.vertices.push_back(v);
-					dummy_tri.c = rtgi_scene.vertices.size()-1;
+						triangle dummy_tri;
+						vertex v;
+						v.pos = root_bvh_node.box.min;
+						rtgi_scene.vertices.push_back(v);
+						dummy_tri.a = rtgi_scene.vertices.size()-1;
 
-					dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+						v.pos = root_bvh_node.box.max;
+						rtgi_scene.vertices.push_back(v);
+						dummy_tri.b = rtgi_scene.vertices.size()-1;
 
-					rtgi_scene.triangles.push_back(dummy_tri);
+						// Add again, because only extent of the volume is relevant, not the tri itself
+						rtgi_scene.vertices.push_back(v);
+						dummy_tri.c = rtgi_scene.vertices.size()-1;
+
+						dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+
+						rtgi_scene.triangles.push_back(dummy_tri);
+					}
+
+					// Store patches into scene
+					for (auto &patch : patches) {
+						rtgi_scene.patches.push_back(patch);
+						subd::subd_patch &scene_patch =
+							rtgi_scene.patches[rtgi_scene.patches.size()-1];
+
+						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
+						node.set_secondary_value(node.get_secondary_value() + patch_offset);
+					}
+				}
+				else {
+
+					// triangulate quad faces
+					o.mesh.triangulate();
+
+					// serialize vertices
+					vector<vertex> serialized_verts;
+					for (int i = 0; i < o.mesh.faces.size(); i++) {
+						subd::face &f = o.mesh.faces[i];
+						for (int j = 0; j < f.verts.size(); j++) {
+							subd::vertex_config &v_cfg = f.verts[j];
+							vertex v;
+							v.pos = o.mesh.vertices[v_cfg.pos].pos;
+							v.tc = o.mesh.tex_coords[v_cfg.tc];
+							v.norm = o.mesh.vertices[v_cfg.pos].norm;
+							serialized_verts.push_back(v);
+						}
+					}
+
+					// store data in scene
+					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+						// cut off ctrl_vertex to regular vertex
+						vertex vertex = serialized_verts[i];
+						rtgi_scene.vertices.push_back(vertex);
+						rtgi_scene.scene_bounds.grow(vertex.pos);
+					}
+
+					for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+						triangle triangle;
+						triangle.a = index_offset + i;
+						triangle.b = index_offset + i+1;
+						triangle.c = index_offset + i+2;
+						// test if geom normal agrees with shading normals
+						// if not, flip winding order
+						auto a = rtgi_scene.vertices[triangle.a];
+						auto b = rtgi_scene.vertices[triangle.b];
+						auto c = rtgi_scene.vertices[triangle.c];
+						if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+							std::swap(triangle.b, triangle.c);
+						// append
+						triangle.material_id = material_id;
+						rtgi_scene.triangles.push_back(triangle);
+					}
+
 				}
 
-				// Store patches into scene
-				for (auto &patch : patches) {
-					rtgi_scene.patches.push_back(patch);
-					subd::subd_patch &scene_patch =
-						rtgi_scene.patches[rtgi_scene.patches.size()-1];
-
-					subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
-					node.set_secondary_value(node.get_secondary_value() + patch_offset);
-				}
 			}
+			
 		}
 		
 		for (int i = 0; i < node_ai->mNumChildren; i++)
-			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level);
+			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level, subd_type_patches);
 	}
 }

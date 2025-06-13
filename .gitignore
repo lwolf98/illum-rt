@@ -19,7 +19,7 @@ libgi/libgi.a
 test.obj
 *.a
 
-*.png
+#*.png
 config.h.in
 configure~
 INSTALL
@@ -33,6 +33,7 @@ configure~
 embedded-ptx-code.cpp
 embedded-ptx-code.ptx
 
+out_subds/
 render-data/sibenik/
 render-data/sponza/
 render-data/dragon/

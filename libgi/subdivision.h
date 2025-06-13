@@ -181,11 +181,14 @@ namespace subd {
 		edge_list edges;
 		edge_list creases;
 		std::vector<subd_patch> patches;
+		bool storage_type_patches;
 		int get_vert_id(glm::vec3 v_pos);
 		void update();
 		void subdivide(uint32_t level);
 		void calculate_vertex_normals();
 		void triangulate();
+
+		mesh() : storage_type_patches(true) { }
 
 	private:
 		void subdivide_internal(uint32_t end_level);
@@ -208,16 +211,19 @@ namespace subd {
 		struct mesh mesh;
 
 		object() : name(""), material("") {}
-		object(aiMesh *mesh_ai, std::string mat_name = "") : object() {
+		object(aiMesh *mesh_ai, bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
+			mesh.storage_type_patches = subd_type_patches;
 			init_object(mesh_ai);
 		}
-		object(const tinyusdz::GeomMesh *usd_mesh, std::string mat_name = "") : object() {
+		object(const tinyusdz::GeomMesh *usd_mesh, bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
+			mesh.storage_type_patches = subd_type_patches;
 			init_object(usd_mesh);
 		}
-		object(const pxr::UsdGeomMesh &usd_mesh, std::string mat_name = "") : object() {
+		object(const pxr::UsdGeomMesh &usd_mesh, bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
+			mesh.storage_type_patches = subd_type_patches;
 			init_object(usd_mesh);
 		}
 		bool has_material() { return material != ""; }
@@ -225,6 +231,7 @@ namespace subd {
 		void write_obj(bool write_normals, std::string mtllib_path = "") {
 			write_obj("out_" + name + ".obj", write_normals);
 		}
+		void load_into_scene(::scene *rtgi_scene);
 
 	private:
 		void init_object(aiMesh *mesh_ai);

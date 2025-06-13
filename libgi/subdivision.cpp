@@ -546,22 +546,24 @@ namespace subd {
 
 		// TODO: handling for extraordinary faces/nodes (harder to predict exact size)
 		// reserve space for every subd patch
-		patches.reserve(faces.size());
+		if (storage_type_patches) {
+			patches.reserve(faces.size());
 
-		for (uint32_t i = 0; i < faces.size(); ++i) {
-			face &face = faces[i];
-			if (face.size() == 4) {
-				// Initialize patches for quad base faces.
-				// Other n-gon base faces need to be treated
-				// differently in the subdivision process.
-				faces[i].patch_id = patches.size();
-				patches.emplace_back(level);
+			for (uint32_t i = 0; i < faces.size(); ++i) {
+				face &face = faces[i];
+				if (face.size() == 4) {
+					// Initialize patches for quad base faces.
+					// Other n-gon base faces need to be treated
+					// differently in the subdivision process.
+					faces[i].patch_id = patches.size();
+					patches.emplace_back(level);
+				}
 			}
 		}
 
 		for (uint32_t l = 1; l <= level; ++l) {
 			subdivide_internal(level);
-			if (subd_debug) {
+			if (subd_debug && storage_type_patches) {
 				for (auto patch : patches) {
 					patch.print_verts();
 					patch.print_vert_tcs();
@@ -569,18 +571,20 @@ namespace subd {
 			}
 		}
 
-		for (int i = 0; i < patches.size(); i++) {
-			auto &patch = patches[i];
-			patch.build_bvh();
-			//patch.nodes[patch.bvh_node].triangle = ((uint32_t)-1) - i;
+		if (storage_type_patches) {
+			for (int i = 0; i < patches.size(); i++) {
+				auto &patch = patches[i];
+				patch.build_bvh();
+				//patch.nodes[patch.bvh_node].triangle = ((uint32_t)-1) - i;
 
-			// Set patch ref inside patch root node.
-			// In case the root node is also the (only) leaf node
-			// the information of the subd quad position in the patch
-			// (morton code) will be overridden inside the leaf node.
-			// This happens only if the patch is of level 0,
-			// thus holding only one subd quad with position (x=0, y=0).
-			patch.nodes[patch.bvh_node].set_secondary_value(i);
+				// Set patch ref inside patch root node.
+				// In case the root node is also the (only) leaf node
+				// the information of the subd quad position in the patch
+				// (morton code) will be overridden inside the leaf node.
+				// This happens only if the patch is of level 0,
+				// thus holding only one subd quad with position (x=0, y=0).
+				patch.nodes[patch.bvh_node].set_secondary_value(i);
+			}
 		}
 
 		calculate_vertex_normals();
@@ -782,11 +786,13 @@ namespace subd {
 					new_mesh.tex_coords.push_back(tc_face);
 				}
 
-				if (n != 4) {
-					assert(end_level >= 1);
-					uint32_t patch_level = end_level-1;
-					patches.resize(patches.size() + n, patch_level);
+				if (storage_type_patches) {
+					if (n != 4) {
+						assert(end_level >= 1);
+						uint32_t patch_level = end_level-1;
+						patches.resize(patches.size() + n, patch_level);
 
+					}
 				}
 
 				for (int j = 0; j < n; j++) {
@@ -816,104 +822,107 @@ namespace subd {
 						std::cout << "E2: " << vertices[vert_ids[3]].pos << std::endl;
 					}
 
-					// Init patches for irregular faces
-					int irregular_patch_id = -1;
-					if (n != 4) {
-						irregular_patch_id = patches.size() - n + j;
-						patch_opt = &patches[irregular_patch_id];
-					}
-
-					assert(patch_opt != nullptr);
-					subd_patch &patch = *patch_opt;
-
-					uint32_t start_id = 0;
-					if (n == 4) {
-						if (j == 1) start_id = patch.vert_right(start_id);
-						if (j == 3) start_id = patch.vert_down(start_id);
-						if (j == 2) start_id = patch.vert_down_right(start_id);
-					}
-
-					new_f.patch_id = irregular_patch_id < 0 ? f.patch_id : irregular_patch_id;
-					if (n == 4) {
-						uint32_t base_x = f.patch_x * 2;
-						uint32_t base_y = f.patch_y * 2;
-						if (j == 0) {
-							new_f.patch_x = base_x + 0;
-							new_f.patch_y = base_y + 0;
-						}
-						else if (j == 1) {
-							new_f.patch_x = base_x + 1;
-							new_f.patch_y = base_y + 0;
-						}
-						else if (j == 2) {
-							new_f.patch_x = base_x + 1;
-							new_f.patch_y = base_y + 1;
-						}
-						else if (j == 3) {
-							new_f.patch_x = base_x + 0;
-							new_f.patch_y = base_y + 1;
-						}
-					}
-					else {
-						new_f.patch_x = 0;
-						new_f.patch_y = 0;
-					}
-
 					uint32_t v_id[4];
 					v_id[0] = ((4-j + 0)%4+4)%4;
 					v_id[1] = ((4-j + 1)%4+4)%4;
 					v_id[2] = ((4-j - 1)%4+4)%4;
 					v_id[3] = ((4-j - 2)%4+4)%4;
-					uint32_t final_id = patch.len() * new_f.patch_y + new_f.patch_x;
-					ctrl_vertex *vert = &vertices[vert_ids[v_id[0]]];
-					vert->patch_positions.push_back({new_f.patch_id, final_id});
-					patch.verts[final_id] = *vert;
-					if (has_texture)
-						patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
 
-					if (subd_debug) {
-						cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
-						cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
-					}
-					
-					uint32_t tmp_id;
-					if (j == 1 || j == 2 || n != 4) {
-						tmp_id = quad_id+patch.vert_right(start_id);
-						vert = &vertices[vert_ids[v_id[1]]];
-						vert->patch_positions.push_back({new_f.patch_id, tmp_id});
-						patch.verts[tmp_id] = *vert;
+					if (storage_type_patches) {
+						// Init patches for irregular faces
+						int irregular_patch_id = -1;
+						if (n != 4) {
+							irregular_patch_id = patches.size() - n + j;
+							patch_opt = &patches[irregular_patch_id];
+						}
+
+						assert(patch_opt != nullptr);
+						subd_patch &patch = *patch_opt;
+
+						uint32_t start_id = 0;
+						if (n == 4) {
+							if (j == 1) start_id = patch.vert_right(start_id);
+							if (j == 3) start_id = patch.vert_down(start_id);
+							if (j == 2) start_id = patch.vert_down_right(start_id);
+						}
+
+						new_f.patch_id = irregular_patch_id < 0 ? f.patch_id : irregular_patch_id;
+						if (n == 4) {
+							uint32_t base_x = f.patch_x * 2;
+							uint32_t base_y = f.patch_y * 2;
+							if (j == 0) {
+								new_f.patch_x = base_x + 0;
+								new_f.patch_y = base_y + 0;
+							}
+							else if (j == 1) {
+								new_f.patch_x = base_x + 1;
+								new_f.patch_y = base_y + 0;
+							}
+							else if (j == 2) {
+								new_f.patch_x = base_x + 1;
+								new_f.patch_y = base_y + 1;
+							}
+							else if (j == 3) {
+								new_f.patch_x = base_x + 0;
+								new_f.patch_y = base_y + 1;
+							}
+						}
+						else {
+							new_f.patch_x = 0;
+							new_f.patch_y = 0;
+						}
+
+						uint32_t final_id = patch.len() * new_f.patch_y + new_f.patch_x;
+						ctrl_vertex *vert = &vertices[vert_ids[v_id[0]]];
+						vert->patch_positions.push_back({new_f.patch_id, final_id});
+						patch.verts[final_id] = *vert;
 						if (has_texture)
-							patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
+							patch.verts[final_id].tc = new_mesh.tex_coords[tex_ids[v_id[0]]];
 
 						if (subd_debug) {
-							cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
-							cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+							cout << "Write ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << vertices[vert_ids[v_id[0]]].pos << endl;
+							cout << "Write TC ( " << final_id%patch.len() << " | " << final_id/patch.len() << " ): " << patch.verts[final_id].tc << endl;
 						}
-					}
-					if (j == 2 || j == 3 || n != 4) {
-						tmp_id = quad_id+patch.vert_down(start_id);
-						vert = &vertices[vert_ids[v_id[2]]];
-						vert->patch_positions.push_back({new_f.patch_id, tmp_id});
-						patch.verts[tmp_id] = *vert;
-						if (has_texture)
-							patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
-
-						if (subd_debug)	 {
-							cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
-							cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
-						}
-					}
-					if (j == 2 || n != 4) {
-						tmp_id = quad_id+patch.vert_down_right(start_id);
-						vert = &vertices[vert_ids[v_id[3]]];
-						vert->patch_positions.push_back({new_f.patch_id, tmp_id});
-						patch.verts[tmp_id] = *vert;
-						if (has_texture)
-							patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
 						
-						if (subd_debug) {
-							cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
-							cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+						uint32_t tmp_id;
+						if (j == 1 || j == 2 || n != 4) {
+							tmp_id = quad_id+patch.vert_right(start_id);
+							vert = &vertices[vert_ids[v_id[1]]];
+							vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+							patch.verts[tmp_id] = *vert;
+							if (has_texture)
+								patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[1]]];
+
+							if (subd_debug) {
+								cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[1]]].pos << endl;
+								cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+							}
+						}
+						if (j == 2 || j == 3 || n != 4) {
+							tmp_id = quad_id+patch.vert_down(start_id);
+							vert = &vertices[vert_ids[v_id[2]]];
+							vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+							patch.verts[tmp_id] = *vert;
+							if (has_texture)
+								patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[2]]];
+
+							if (subd_debug)	 {
+								cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[2]]].pos << endl;
+								cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+							}
+						}
+						if (j == 2 || n != 4) {
+							tmp_id = quad_id+patch.vert_down_right(start_id);
+							vert = &vertices[vert_ids[v_id[3]]];
+							vert->patch_positions.push_back({new_f.patch_id, tmp_id});
+							patch.verts[tmp_id] = *vert;
+							if (has_texture)
+								patch.verts[tmp_id].tc = new_mesh.tex_coords[tex_ids[v_id[3]]];
+							
+							if (subd_debug) {
+								cout << "Write ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << vertices[vert_ids[v_id[3]]].pos << endl;
+								cout << "Write TC ( " << tmp_id%patch.len() << " | " << tmp_id/patch.len() << " ): " << patch.verts[tmp_id].tc << endl;
+							}
 						}
 					}
 
@@ -1251,8 +1260,11 @@ namespace subd {
 
 			vert.norm *= 1.f/vert.face_ids.size();
 			vert.norm = glm::normalize(vert.norm);
-			for (auto &position : vert.patch_positions)
-				patches[position.first].verts[position.second].norm = vert.norm;
+			if (storage_type_patches) {
+				for (auto &position : vert.patch_positions)
+					patches[position.first].verts[position.second].norm = vert.norm;
+
+			}
 			
 			has_normals = true;
 
@@ -1366,4 +1378,56 @@ namespace subd {
 			normals.push_back(new_mesh.normals[i]);
 		}
 	}
+
+	// TODO: finish implementation
+	/*void object::load_into_scene(scene *rtgi_scene) {
+		// triangulate quad faces
+		mesh.triangulate();
+
+		// serialize vertices
+		vector<vertex> serialized_verts;
+		for (int i = 0; i < mesh.faces.size(); i++) {
+			subd::face &f = mesh.faces[i];
+			for (int j = 0; j < f.verts.size(); j++) {
+				subd::vertex_config &v_cfg = f.verts[j];
+				vertex v;
+				v.pos = mesh.vertices[v_cfg.pos].pos;
+				v.tc = mesh.tex_coords[v_cfg.tc];
+				v.norm = mesh.vertices[v_cfg.pos].norm;
+				serialized_verts.push_back(v);
+			}
+		}
+
+		// store data in scene
+		for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+			// cut off ctrl_vertex to regular vertex
+			vertex vertex = serialized_verts[i];
+			vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
+			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+			vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
+			if (mesh_ai->HasTextureCoords(0))
+				vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
+			else
+				vertex.tc = vec2(0,0);
+			rtgi_scene.vertices.push_back(vertex);
+			rtgi_scene.scene_bounds.grow(vertex.pos);
+		}
+
+		for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+			triangle triangle;
+			triangle.a = index_offset + i;
+			triangle.b = index_offset + i+1;
+			triangle.c = index_offset + i+2;
+			// test if geom normal agrees with shading normals
+			// if not, flip winding order
+			auto a = rtgi_scene.vertices[triangle.a];
+			auto b = rtgi_scene.vertices[triangle.b];
+			auto c = rtgi_scene.vertices[triangle.c];
+			if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+				std::swap(triangle.b, triangle.c);
+			// append
+			triangle.material_id = material_id;
+			rtgi_scene.triangles.push_back(triangle);
+		}
+	}*/
 }

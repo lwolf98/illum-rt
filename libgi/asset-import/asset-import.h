@@ -16,11 +16,12 @@ namespace import {
 		const std::string &name;
 		const glm::mat4 &trafo;
 		const uint subdiv_level;
+		const bool subdiv_type_patches;
 		std::filesystem::path filepath;
 
 		public:
-		asset_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
-			: name(name), trafo(trafo), subdiv_level(subdiv_level) {}
+		asset_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true)
+			: name(name), trafo(trafo), subdiv_level(subdiv_level), subdiv_type_patches(subdiv_type_patches) {}
 		virtual ~asset_importer() {}
 
 		virtual void load_scene(const std::filesystem::path& path) = 0;
@@ -33,8 +34,8 @@ namespace import {
 		const aiScene* scene_ai;
 
 		public:
-		assimp_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
-			: asset_importer(name, trafo, subdiv_level) {}
+		assimp_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true)
+			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches) {}
 		~assimp_importer() {}
 
 		void load_scene(const std::filesystem::path& path) override;
@@ -51,8 +52,8 @@ namespace import {
 		void traverse_shader_inputs(const pxr::UsdShadeShader &shader, int level, material &material);
 
 		public:
-		usd_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
-			: asset_importer(name, trafo, subdiv_level) {}
+		usd_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true)
+			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches) {}
 		~usd_importer() {}
 
 		void load_scene(const std::filesystem::path& path) override;
@@ -61,8 +62,8 @@ namespace import {
 
 	class objx_importer : public asset_importer {
 		public:
-		objx_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0)
-			: asset_importer(name, trafo, subdiv_level) {}
+		objx_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true)
+			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches) {}
 		~objx_importer() {}
 
 		void load_scene(const std::filesystem::path& path) override;

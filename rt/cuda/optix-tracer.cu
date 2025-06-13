@@ -243,71 +243,74 @@ namespace wf::cuda
 
 
 		/* Build triangle GAS */
+		OptixTraversableHandle triangles_handle = 0;
 
-		// Triangle input data
-		std::vector<OptixBuildInput> triangle_inputs = { OptixBuildInput{} };
-		triangle_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
-		
-		CUdeviceptr vertices = static_cast<CUdeviceptr>(scene->vertex_pos);
-		CUdeviceptr triangles = static_cast<CUdeviceptr>(scene->triangles);
-		
-		OptixBuildInputTriangleArray &triangle_array = triangle_inputs[0].triangleArray;
-		triangle_array.vertexFormat = OptixVertexFormat::OPTIX_VERTEX_FORMAT_FLOAT3;
-		triangle_array.vertexBuffers = &vertices;
-		triangle_array.vertexStrideInBytes = sizeof(vertex_t);
-		triangle_array.numVertices = scene->vertex_pos.size;
+		if (scene->triangles.size > 0) {
+			// Triangle input data
+			std::vector<OptixBuildInput> triangle_inputs = { OptixBuildInput{} };
+			triangle_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
+			
+			CUdeviceptr vertices = static_cast<CUdeviceptr>(scene->vertex_pos);
+			CUdeviceptr triangles = static_cast<CUdeviceptr>(scene->triangles);
+			
+			OptixBuildInputTriangleArray &triangle_array = triangle_inputs[0].triangleArray;
+			triangle_array.vertexFormat = OptixVertexFormat::OPTIX_VERTEX_FORMAT_FLOAT3;
+			triangle_array.vertexBuffers = &vertices;
+			triangle_array.vertexStrideInBytes = sizeof(vertex_t);
+			triangle_array.numVertices = scene->vertex_pos.size;
 
-		triangle_array.indexFormat = OptixIndicesFormat::OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
-		triangle_array.indexBuffer = triangles;
-		triangle_array.indexStrideInBytes = sizeof(triangle_t);
-		triangle_array.numIndexTriplets = scene->triangles.size;
+			triangle_array.indexFormat = OptixIndicesFormat::OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
+			triangle_array.indexBuffer = triangles;
+			triangle_array.indexStrideInBytes = sizeof(triangle_t);
+			triangle_array.numIndexTriplets = scene->triangles.size;
 
-		uint32_t triangle_array_flags[2] = {0, 0};
-		triangle_array.flags = triangle_array_flags;
+			uint32_t triangle_array_flags[2] = {0, 0};
+			triangle_array.flags = triangle_array_flags;
 
-		std::vector<uint32_t> custom_sbt_indices_tris(scene->triangles.size, 0);
-		global_memory_buffer<uint32_t> custom_sbt_index_buffer_tris("tmp_sbt_indices_tris", 0);
-		custom_sbt_index_buffer_tris.upload(custom_sbt_indices_tris);
-		CUdeviceptr d_sbt_indices_tris = (CUdeviceptr)custom_sbt_index_buffer_tris;
-		triangle_array.numSbtRecords = 1;
-		triangle_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices_tris;
-		triangle_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
-		triangle_array.sbtIndexOffsetStrideInBytes = 0;
+			std::vector<uint32_t> custom_sbt_indices_tris(scene->triangles.size, 0);
+			global_memory_buffer<uint32_t> custom_sbt_index_buffer_tris("tmp_sbt_indices_tris", 0);
+			custom_sbt_index_buffer_tris.upload(custom_sbt_indices_tris);
+			CUdeviceptr d_sbt_indices_tris = (CUdeviceptr)custom_sbt_index_buffer_tris;
+			triangle_array.numSbtRecords = 1;
+			triangle_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices_tris;
+			triangle_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+			triangle_array.sbtIndexOffsetStrideInBytes = 0;
 
-		OptixTraversableHandle triangles_handle = build_gas(scene, triangle_inputs, optix_accel_build_options, accel_struct_buffer_tris);
-		//return triangles_handle;
+			triangles_handle = build_gas(scene, triangle_inputs, optix_accel_build_options, accel_struct_buffer_tris);
+		}
 
 		/* Build custom primitives GAS */
+		OptixTraversableHandle custom_prims_handle = 0;
+		if (scene->patch_root_nodes.size > 0) {
+			// SubD grid data
+			std::vector<OptixBuildInput> custom_prim_inputs = { OptixBuildInput{} };
+			custom_prim_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
+			
+			//CUdeviceptr patches = static_cast<CUdeviceptr>(scene->patches);
+			CUdeviceptr aabb_roots = static_cast<CUdeviceptr>(scene->patch_root_nodes);
 
-		// SubD grid data
-		std::vector<OptixBuildInput> custom_prim_inputs = { OptixBuildInput{} };
-		custom_prim_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
-		
-		//CUdeviceptr patches = static_cast<CUdeviceptr>(scene->patches);
-		CUdeviceptr aabb_roots = static_cast<CUdeviceptr>(scene->patch_root_nodes);
+			OptixBuildInputCustomPrimitiveArray &custom_prim_array = custom_prim_inputs[0].customPrimitiveArray;
+			//custom_prim_array.aabbBuffers = &patches;
+			//custom_prim_array.strideInBytes = sizeof(subd_patch);
+			//custom_prim_array.numPrimitives = scene->patches.size;
+			custom_prim_array.aabbBuffers = &aabb_roots;
+			custom_prim_array.strideInBytes = sizeof(aabb);
+			custom_prim_array.numPrimitives = scene->patch_root_nodes.size;
 
-		OptixBuildInputCustomPrimitiveArray &custom_prim_array = custom_prim_inputs[0].customPrimitiveArray;
-		//custom_prim_array.aabbBuffers = &patches;
-		//custom_prim_array.strideInBytes = sizeof(subd_patch);
-		//custom_prim_array.numPrimitives = scene->patches.size;
-		custom_prim_array.aabbBuffers = &aabb_roots;
-		custom_prim_array.strideInBytes = sizeof(aabb);
-		custom_prim_array.numPrimitives = scene->patch_root_nodes.size;
+			uint32_t custom_prim_flags[2] = {OPTIX_GEOMETRY_FLAG_NONE, OPTIX_GEOMETRY_FLAG_NONE};
+			custom_prim_array.flags = custom_prim_flags;
 
-		uint32_t custom_prim_flags[2] = {OPTIX_GEOMETRY_FLAG_NONE, OPTIX_GEOMETRY_FLAG_NONE};
-		custom_prim_array.flags = custom_prim_flags;
+			std::vector<uint32_t> custom_sbt_indices(scene->patch_root_nodes.size, 1);
+			global_memory_buffer<uint32_t> custom_sbt_index_buffer("tmp_sbt_indices", 0);
+			custom_sbt_index_buffer.upload(custom_sbt_indices);
+			CUdeviceptr d_sbt_indices = (CUdeviceptr)custom_sbt_index_buffer;
+			custom_prim_array.numSbtRecords = 1;
+			custom_prim_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices; //1
+			custom_prim_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
+			custom_prim_array.sbtIndexOffsetStrideInBytes = 0;
 
-		std::vector<uint32_t> custom_sbt_indices(scene->patch_root_nodes.size, 1);
-		global_memory_buffer<uint32_t> custom_sbt_index_buffer("tmp_sbt_indices", 0);
-		custom_sbt_index_buffer.upload(custom_sbt_indices);
-		CUdeviceptr d_sbt_indices = (CUdeviceptr)custom_sbt_index_buffer;
-		custom_prim_array.numSbtRecords = 1;
-		custom_prim_array.sbtIndexOffsetBuffer = 0; //d_sbt_indices; //1
-		custom_prim_array.sbtIndexOffsetSizeInBytes = sizeof(uint32_t);
-		custom_prim_array.sbtIndexOffsetStrideInBytes = 0;
-
-		OptixTraversableHandle custom_prims_handle = build_gas(scene, custom_prim_inputs, optix_accel_build_options, accel_struct_buffer_patches);
-		//return custom_prims_handle;
+			custom_prims_handle = build_gas(scene, custom_prim_inputs, optix_accel_build_options, accel_struct_buffer_patches);
+		}
 
 		/* Create IAS from GASs */
 
@@ -318,32 +321,42 @@ namespace wf::cuda
 			0.f, 0.f, 1.f, 0.f
 		};
 
-		OptixInstance triangles_instance = {};
-		memcpy(triangles_instance.transform, identity_transform, sizeof(float)*12);
-		triangles_instance.traversableHandle = triangles_handle;
-		triangles_instance.sbtOffset = 0;
-		triangles_instance.instanceId = 0;
-		triangles_instance.visibilityMask = 255;
-		triangles_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+		std::vector<OptixInstance> instances;
 
-		OptixInstance custom_prims_instance = {};
-		memcpy(custom_prims_instance.transform, identity_transform, sizeof(float)*12);
-		custom_prims_instance.traversableHandle = custom_prims_handle;
-		custom_prims_instance.sbtOffset = 1;
-		custom_prims_instance.instanceId = 1;
-		custom_prims_instance.visibilityMask = 255;
-		custom_prims_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+		if (triangles_handle != 0) {
+			OptixInstance triangles_instance = {};
+			memcpy(triangles_instance.transform, identity_transform, sizeof(float)*12);
+			triangles_instance.traversableHandle = triangles_handle;
+			triangles_instance.sbtOffset = 0;
+			triangles_instance.instanceId = 0;
+			triangles_instance.visibilityMask = 255;
+			triangles_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
 
-		optix_ias_instances.upload({ triangles_instance, custom_prims_instance });
+			instances.push_back(triangles_instance);
+		}
+
+		if (custom_prims_handle != 0) {
+			OptixInstance custom_prims_instance = {};
+			memcpy(custom_prims_instance.transform, identity_transform, sizeof(float)*12);
+			custom_prims_instance.traversableHandle = custom_prims_handle;
+			custom_prims_instance.sbtOffset = 1;
+			custom_prims_instance.instanceId = 1;
+			custom_prims_instance.visibilityMask = 255;
+			custom_prims_instance.flags = OPTIX_INSTANCE_FLAG_NONE;
+
+			instances.push_back(custom_prims_instance);
+		}
+
+		optix_ias_instances.upload(instances);
 
 		// Build IAS
 		std::vector<OptixBuildInput> instance_inputs = { OptixBuildInput{} };
 		instance_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_INSTANCES;
 		
-		CUdeviceptr instances = static_cast<CUdeviceptr>(optix_ias_instances);
+		CUdeviceptr d_instances = static_cast<CUdeviceptr>(optix_ias_instances);
 		
 		auto &instance_array = instance_inputs[0].instanceArray;
-		instance_array.instances = instances;
+		instance_array.instances = d_instances;
 		instance_array.numInstances = 2;
 		instance_array.instanceStride = sizeof(OptixInstance);
 		optix_accel_traversable_handle = build_gas(scene, instance_inputs, optix_accel_build_options, accel_struct_buffer_ias);

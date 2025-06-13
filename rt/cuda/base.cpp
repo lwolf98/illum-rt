@@ -138,13 +138,15 @@ namespace wf {
 
 			}
 
-			patches.upload(device_patches);
-			patch_nodes.upload(device_nodes);
-			patch_root_nodes.upload(device_root_nodes);
+			if (device_patches.size() > 0) {
+				patches.upload(device_patches);
+				patch_nodes.upload(device_nodes);
+				patch_root_nodes.upload(device_root_nodes);
 
-			patch_vertex_pos.upload(tmp_p);
-			patch_vertex_norm.upload(tmp_n);
-			patch_vertex_tc.upload(tmp_t);
+				patch_vertex_pos.upload(tmp_p);
+				patch_vertex_norm.upload(tmp_n);
+				patch_vertex_tc.upload(tmp_t);
+			}
 
 			// load scene_refs object
 
