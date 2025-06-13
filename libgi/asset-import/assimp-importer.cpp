@@ -278,13 +278,6 @@ namespace import {
 					for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
 						// cut off ctrl_vertex to regular vertex
 						vertex vertex = serialized_verts[i];
-						vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
-						// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
-						vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
-						if (mesh_ai->HasTextureCoords(0))
-							vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
-						else
-							vertex.tc = vec2(0,0);
 						rtgi_scene.vertices.push_back(vertex);
 						rtgi_scene.scene_bounds.grow(vertex.pos);
 					}
