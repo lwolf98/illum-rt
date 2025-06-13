@@ -1378,4 +1378,56 @@ namespace subd {
 			normals.push_back(new_mesh.normals[i]);
 		}
 	}
+
+	// TODO: finish implementation
+	/*void object::load_into_scene(scene *rtgi_scene) {
+		// triangulate quad faces
+		mesh.triangulate();
+
+		// serialize vertices
+		vector<vertex> serialized_verts;
+		for (int i = 0; i < mesh.faces.size(); i++) {
+			subd::face &f = mesh.faces[i];
+			for (int j = 0; j < f.verts.size(); j++) {
+				subd::vertex_config &v_cfg = f.verts[j];
+				vertex v;
+				v.pos = mesh.vertices[v_cfg.pos].pos;
+				v.tc = mesh.tex_coords[v_cfg.tc];
+				v.norm = mesh.vertices[v_cfg.pos].norm;
+				serialized_verts.push_back(v);
+			}
+		}
+
+		// store data in scene
+		for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+			// cut off ctrl_vertex to regular vertex
+			vertex vertex = serialized_verts[i];
+			vertex.pos = glm::vec3(transform * vec4(vertex.pos, 1.f));
+			// Normals are transformed like this instead https://stackoverflow.com/questions/59833642/loading-a-collada-dae-model-from-assimp-shows-incorrect-normals
+			vertex.norm = normalize(glm::vec3(normal_transform * vec4(vertex.norm, 1.f)));
+			if (mesh_ai->HasTextureCoords(0))
+				vertex.tc = glm::vec2(uv_trafo * vec3(vertex.tc, 1.f));
+			else
+				vertex.tc = vec2(0,0);
+			rtgi_scene.vertices.push_back(vertex);
+			rtgi_scene.scene_bounds.grow(vertex.pos);
+		}
+
+		for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+			triangle triangle;
+			triangle.a = index_offset + i;
+			triangle.b = index_offset + i+1;
+			triangle.c = index_offset + i+2;
+			// test if geom normal agrees with shading normals
+			// if not, flip winding order
+			auto a = rtgi_scene.vertices[triangle.a];
+			auto b = rtgi_scene.vertices[triangle.b];
+			auto c = rtgi_scene.vertices[triangle.c];
+			if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+				std::swap(triangle.b, triangle.c);
+			// append
+			triangle.material_id = material_id;
+			rtgi_scene.triangles.push_back(triangle);
+		}
+	}*/
 }

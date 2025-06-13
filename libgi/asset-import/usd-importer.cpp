@@ -348,48 +348,93 @@ namespace import {
 					}
 				}
 				else {
-					// Add "dummy triangles" to the scene representing the extent of the patches.
-					// These are used to identify and include the second level patch BVHs when
-					// building the first level BVH
-					auto &patches = o.mesh.patches;
-					int patch_offset = scene.patches.size();
-					for (int p = 0; p < patches.size(); p++) {
-						auto &patch = patches[p];
-						patch.material_id = material_id;
 
-						auto &root_bvh_node = patch.nodes[patch.bvh_node];
-						scene.scene_bounds.grow(root_bvh_node.box);
+					if (subdiv_type_patches) {
+						// Add "dummy triangles" to the scene representing the extent of the patches.
+						// These are used to identify and include the second level patch BVHs when
+						// building the first level BVH
+						auto &patches = o.mesh.patches;
+						int patch_offset = scene.patches.size();
+						for (int p = 0; p < patches.size(); p++) {
+							auto &patch = patches[p];
+							patch.material_id = material_id;
 
-						triangle dummy_tri;
-						vertex v;
-						v.pos = root_bvh_node.box.min;
-						scene.vertices.push_back(v);
-						dummy_tri.a = scene.vertices.size()-1;
+							auto &root_bvh_node = patch.nodes[patch.bvh_node];
+							scene.scene_bounds.grow(root_bvh_node.box);
 
-						v.pos = root_bvh_node.box.max;
-						scene.vertices.push_back(v);
-						dummy_tri.b = scene.vertices.size()-1;
+							triangle dummy_tri;
+							vertex v;
+							v.pos = root_bvh_node.box.min;
+							scene.vertices.push_back(v);
+							dummy_tri.a = scene.vertices.size()-1;
 
-						// Add again, because only extent of the volume is relevant, not the tri itself
-						scene.vertices.push_back(v);
-						dummy_tri.c = scene.vertices.size()-1;
+							v.pos = root_bvh_node.box.max;
+							scene.vertices.push_back(v);
+							dummy_tri.b = scene.vertices.size()-1;
 
-						dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+							// Add again, because only extent of the volume is relevant, not the tri itself
+							scene.vertices.push_back(v);
+							dummy_tri.c = scene.vertices.size()-1;
 
-						scene.triangles.push_back(dummy_tri);
+							dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
+
+							scene.triangles.push_back(dummy_tri);
+						}
+
+						// Store patches into scene
+						for (auto &patch : patches) {
+							scene.patches.push_back(patch);
+							subd::subd_patch &scene_patch =
+								scene.patches[scene.patches.size()-1];
+
+							subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
+							node.set_secondary_value(node.get_secondary_value() + patch_offset);
+						}
 					}
+					else {
+						// triangulate quad faces
+						o.mesh.triangulate();
 
-					// Store patches into scene
-					for (auto &patch : patches) {
-						scene.patches.push_back(patch);
-						subd::subd_patch &scene_patch =
-							scene.patches[scene.patches.size()-1];
+						// serialize vertices
+						vector<vertex> serialized_verts;
+						for (int i = 0; i < o.mesh.faces.size(); i++) {
+							subd::face &f = o.mesh.faces[i];
+							for (int j = 0; j < f.verts.size(); j++) {
+								subd::vertex_config &v_cfg = f.verts[j];
+								vertex v;
+								v.pos = o.mesh.vertices[v_cfg.pos].pos;
+								v.tc = o.mesh.tex_coords[v_cfg.tc];
+								v.norm = o.mesh.vertices[v_cfg.pos].norm;
+								serialized_verts.push_back(v);
+							}
+						}
 
-						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
-						node.set_secondary_value(node.get_secondary_value() + patch_offset);
+						// store data in scene
+						for (uint32_t i = 0; i < serialized_verts.size(); ++i) {
+							// cut off ctrl_vertex to regular vertex
+							vertex vertex = serialized_verts[i];
+							scene.vertices.push_back(vertex);
+							scene.scene_bounds.grow(vertex.pos);
+						}
+
+						for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
+							triangle triangle;
+							triangle.a = index_offset + i;
+							triangle.b = index_offset + i+1;
+							triangle.c = index_offset + i+2;
+							// test if geom normal agrees with shading normals
+							// if not, flip winding order
+							auto a = scene.vertices[triangle.a];
+							auto b = scene.vertices[triangle.b];
+							auto c = scene.vertices[triangle.c];
+							if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
+								std::swap(triangle.b, triangle.c);
+							// append
+							triangle.material_id = material_id;
+							scene.triangles.push_back(triangle);
+						}
 					}
 				}
-
 			}
 			else {
 				std::cout << "No mesh: " << prim.GetPath() << std::endl;

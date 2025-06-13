@@ -231,6 +231,7 @@ namespace subd {
 		void write_obj(bool write_normals, std::string mtllib_path = "") {
 			write_obj("out_" + name + ".obj", write_normals);
 		}
+		void load_into_scene(::scene *rtgi_scene);
 
 	private:
 		void init_object(aiMesh *mesh_ai);

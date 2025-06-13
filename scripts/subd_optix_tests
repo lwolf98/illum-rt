@@ -23,17 +23,31 @@ modeltrafo scale 0.2 0.2 0.2
 
 # debug
 load render-data/subd/knife_usd/knife.usda
+#load render-data/subd/knife_obj/knife.obj
 modeltrafo shift 3 0 0
-load render-data/subd/knife_usd/knife.usda subd_level 3 subd_type patches
+load render-data/subd/knife_usd/knife.usda subd_level 3 subd_type tris
+#load render-data/subd/knife_obj/knife.obj subd_level 3 subd_type tris
 modeltrafo shift -3 0 0
 
 #load render-data/subd/basic_tests/quad_tri_test.obj
 load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
 
-#skylight load render-data/skylight-sunset.floats 10
+modeltrafo shift 0 -10 0
+modeltrafo scale 100 100 100
+load render-data/local/cartoon-dragon/uploads_files_3574512_dragon_lowOBJ.obj
+modeltrafo shift 0.1 0 0
+#load render-data/local/cartoon-dragon/uploads_files_3574512_dragon_lowOBJ.obj subd_level 1
+modeltrafo shift -0.1 0 0
+modeltrafo scale 0.01 0.01 0.01
+modeltrafo shift 0 10 0
+
+skylight load render-data/skylight-sunset.floats 10
 
 material select Light
 material emissive 5 5 5
+
+material select body
+material emissive 50 5 5
 
 # Pos 1
 #at -3 0 0
