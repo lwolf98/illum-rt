@@ -335,3 +335,70 @@ __forceinline__ __device__ int vmax_max (int a, int b, int c) {
     asm("vmax.s32.s32.s32.max %0, %1, %2, %3;" : "=r"(val) : "r"(a), "r"(b), "r"(c));
     return val;
 }
+
+namespace wf {
+    namespace cuda {
+        static __device__ float3 f3(const float4 &v) { return make_float3(v.x, v.y, v.z); }
+
+        struct __align__(16) diff_geom {
+            __device__ __inline__ diff_geom(const wf::cuda::tri_is &is, const wf::cuda::scene_refs *params) {
+                if (is.is_tri())
+                    init_tri(is, params);
+                else
+                    init_custom_prim(is, params);
+            }
+
+            float2 tc;
+            float3 x;
+            float3 ng, ns;
+            const wf::cuda::material *mat;
+
+        private:
+            __device__ __forceinline__ void init_base(const float3 vertex_pos_a, const float3 vertex_pos_b, const float3 vertex_pos_c,
+                                                        const float3 vertex_norm_a, const float3 vertex_norm_b, const float3 vertex_norm_c,
+                                                        const float2 vertex_tc_a, const float2 vertex_tc_b, const float2 vertex_tc_c,
+                                                        const float2 barycentrics, const wf::cuda::material *mat) {
+
+                float alpha = 1.f - barycentrics.x - barycentrics.y;
+                x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
+                tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
+                ns = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
+                ng = cross(vertex_pos_b-vertex_pos_a, vertex_pos_c-vertex_pos_a);
+                normalize(ng);
+                this->mat = mat;
+            }
+
+            __device__ __forceinline__ void init_tri(const wf::cuda::tri_is &is, const wf::cuda::scene_refs *params) {
+                const unsigned int primitive_index = is.ref();
+                const uint4 triangle = params->triangles[primitive_index];
+                const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+                init_base(
+                    f3(params->vertex_pos[triangle.x]), f3(params->vertex_pos[triangle.y]), f3(params->vertex_pos[triangle.z]),
+                    f3(params->vertex_norm[triangle.x]), f3(params->vertex_norm[triangle.y]), f3(params->vertex_norm[triangle.z]),
+                    params->vertex_tc[triangle.x], params->vertex_tc[triangle.y], params->vertex_tc[triangle.z],
+                    barycentrics, &params->materials[triangle.w]
+                );
+            }
+
+            __device__ __forceinline__ void init_custom_prim(const wf::cuda::tri_is &is, const wf::cuda::scene_refs *params) {
+                uint32_t patch_ref = is.ref(); //((uint32_t)-1) - is.ref();
+                bool upper = is.is_upper_tri() > 0;
+                int32_t subd_quad_ref = is.quad_ref();
+
+                const wf::cuda::subd_patch patch = params->patches[patch_ref];
+                const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+
+                const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+                init_base(
+                    f3(params->patch_vertex_pos[tri.x]), f3(params->patch_vertex_pos[tri.y]), f3(params->patch_vertex_pos[tri.z]),
+                    f3(params->patch_vertex_norm[tri.x]), f3(params->patch_vertex_norm[tri.y]), f3(params->patch_vertex_norm[tri.z]),
+                    params->patch_vertex_tc[tri.x], params->patch_vertex_tc[tri.y], params->patch_vertex_tc[tri.z],
+                    barycentrics, &params->materials[tri.w]
+                );
+
+                assert(tc.x >= 0 && tc.x <= 1);
+                assert(tc.y >= 0 && tc.y <= 1);
+            }
+        };   
+    }
+}

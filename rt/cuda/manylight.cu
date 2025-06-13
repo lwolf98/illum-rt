@@ -8,6 +8,7 @@
 #include "libgi/objdraw.h"
 
 #include "cuda-operators.h"
+#include "trace-helper.cuh"
 
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
@@ -19,7 +20,6 @@ namespace wf::cuda {
 	static const bool pointlight_attenuation = false;
 
 	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
-	static __device__ float3 f3(const float4 &v);
 
 	static void vpl_stats(const vpldata *vpls, const int size) {
 		vec4 col(0);
@@ -79,8 +79,6 @@ namespace wf::cuda {
 	//TODO-ML: use util functions centralized; (frame_res copied from bounce.cu)
 	const float eps = 1e-4f; // see rt.h
 	static int2 frame_res() { auto r = rc->resolution(); return {r.x,r.y}; }
-	
-	static __device__ float3 f3(const float4 &v) { return make_float3(v.x, v.y, v.z); }
 
 	static __device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm) {
 		float3 a = f3(vert_norm[tri.x]);
@@ -105,11 +103,16 @@ namespace wf::cuda {
 			}
 			return f3(mat.albedo);
 		}
+		static __device__ float3 albedo(const wf::cuda::diff_geom &dg) {
+			if (dg.mat->albedo_tex > 0) {
+				return f3(tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y));
+			}
+			return f3(dg.mat->albedo);
+		}
 
-		static __device__ float3 lambertian_reflection(float3 w_o, float3 w_i, float3 ns,
-												uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			if (!same_hemisphere(w_i, ns)) return make_float3(0,0,0);
-			return one_over_pi * albedo(tri, hit, mat, vertex_tc);
+		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
+			if (!same_hemisphere(w_i, dg.ns)) return make_float3(0,0,0);
+			return one_over_pi * albedo(dg);
 		}
 
 		#define sqr(x) ((x)*(x))
@@ -129,27 +132,26 @@ namespace wf::cuda {
 		}
 		#undef sqr
 
-		static __device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, float3 ns,
-											  uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			if (!same_hemisphere(ns, w_i)) return make_float3(0,0,0); // should be ng
-			const float NdotV = cdot(ns, w_o);
-			const float NdotL = cdot(ns, w_i);
+		
+		static __device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
+			if (!same_hemisphere(dg.ns, w_i)) return make_float3(0,0,0); // should be ng
+			const float NdotV = cdot(dg.ns, w_o);
+			const float NdotL = cdot(dg.ns, w_i);
 			if (NdotV == 0.f || NdotV == 0.f) return make_float3(0,0,0);
 			float3 H = (w_o + w_i); normalize(H);
-			const float NdotH = cdot(ns, H);
+			const float NdotH = cdot(dg.ns, H);
 			const float HdotL = cdot(H, w_i);
-			const float F = fresnel_dielectric(HdotL, 1.f, mat.ior);
-			const float D = ggx_d(NdotH, mat.roughness);
-			const float G = ggx_g1(NdotV, mat.roughness) * ggx_g1(NdotL, mat.roughness);
+			const float F = fresnel_dielectric(HdotL, 1.f, dg.mat->ior);
+			const float D = ggx_d(NdotH, dg.mat->roughness);
+			const float G = ggx_g1(NdotV, dg.mat->roughness) * ggx_g1(NdotL, dg.mat->roughness);
 			const float microfacet = (F * D * G) / (4 * abs(NdotV) * abs(NdotL));
 			return make_float3(microfacet,microfacet,microfacet);
 		}
 
-		static __device__ float3 layered_gtr2(float3 w_o, float3 w_i, float3 ns,
-									   uint4 tri, const tri_is &hit, const material &mat, float2 *vertex_tc) {
-			const float F = fresnel_dielectric(absdot(ns, w_o), 1.0f, mat.ior);
-			float3 diff = lambertian_reflection(w_o, w_i, ns, tri, hit, mat, vertex_tc);
-			float3 spec = gtr_coat_reflection(w_o, w_i, ns, tri, hit, mat, vertex_tc);
+		static __device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg) {
+			const float F = fresnel_dielectric(absdot(dg.ns, w_o), 1.0f, dg.mat->ior);
+			float3 diff = lambertian_reflection(w_o, w_i, dg);
+			float3 spec = gtr_coat_reflection(w_o, w_i, dg);
 			return (1.0f-F)*diff + F*spec;
 		}
 
@@ -431,6 +433,7 @@ namespace wf::cuda {
 										   float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
 										   int *vpl_store_offset, int depth,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
+										   scene_refs *refs,
 										   float2 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -453,23 +456,25 @@ namespace wf::cuda {
 			float t_max = -FLT_MAX;
 			float pdf = one_over_pi;
 			float3 throughput { 0,0,0 };
+			diff_geom vpl_dg(vpl_is, refs);
 			if (vpl_is.valid()) {
 				uint4 vpl_tri = triangles[vpl_is.ref()];
 				material vpl_mat = materials[vpl_tri.w];
 
 				float2 xi = random[(ray_index+1)%res.x];
 				float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
-				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
-				flip_normals_to_ray(vpl_ng, f3(vpl_w_in));
-				w_o = align(sampled_dir, vpl_ng);
+				float3 &vpl_ns = vpl_dg.ns;
+				flip_normals_to_ray(vpl_ns, f3(vpl_w_in));
+				w_o = align(sampled_dir, vpl_ns);
 				org = f3(vpl_pos);
 				t_max = FLT_MAX;
 
-				pdf *= cdot(w_o, vpl_ng);
-				float3 f = lambertian_reflection(w_o, -f3(vpl_w_in), vpl_ng, vpl_tri, vpl_is, vpl_mat, vertex_tc);
+				pdf *= cdot(w_o, vpl_ns);
+				float3 f = layered_gtr2(w_o, -f3(vpl_w_in), vpl_dg);
+				//float3 f = lambertian_reflection(w_o, -f3(vpl_w_in), vpl_dg);
 
 				// Setup the throughput for the next VPL
-				float D = cdot(w_o, vpl_ng); //D_v_j(v_j+1)
+				float D = cdot(w_o, vpl_ns); //D_v_j(v_j+1)
 				throughput = light_throughput[ray_index] * D*f/pdf; //throughput for v_j+1
 
 				/*if (x < 20) {
@@ -513,6 +518,7 @@ namespace wf::cuda {
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->vertex_tc.device_memory,
 										  pf->sd->materials.device_memory,
+										  pf->sd->refs.device_memory,
 										  rng.random_numbers);
 
 		if (synchronize) CHECK_CUDA_ERROR(cudaDeviceSynchronize(), "");
@@ -945,6 +951,7 @@ namespace wf::cuda {
 										   float4 *shadowrays, tri_is *shadow_hits,
 										   float4 *framebuffer,
 										   uint4 *triangles, float4 *vert_norm, float2 *vertex_tc, material *materials,
+										   scene_refs *refs,
 										   //float4 *sampled_vpls_col, float4 *sampled_vpls_pos, float4 *sampled_vpls_w_in, tri_is *sampled_vpls_is,
 										   float4 *vpls_col, float4 *vpls_pos, float4 *vpls_w_in, tri_is *vpls_is,
 										   int *vpl_indices,
@@ -977,6 +984,8 @@ namespace wf::cuda {
 			float3 test_ref {0,0,0};
 			float3 test_is {0,0,0};
 			if (hit.valid() && !shadow_hit.valid() && vpl_is.valid()) {
+				diff_geom vpl_dg(vpl_is, refs);
+				diff_geom x_dg(hit, refs);
 				/*if (x < 20)
 				printf("SMP2:%d:0: VPL col: (%f|%f|%f|%f), VPL pos: (%f|%f|%f|%f)\n",
 					x,
@@ -990,26 +999,24 @@ namespace wf::cuda {
 				float3 x_w_o = -f3(camrays[2*ray_index+1]);
 				float3 x_w_i = f3(shadowray_dir);
 				uint4  x_tri = triangles[hit.ref()];
-				float3 x_ng  = hit_ng(hit, x_tri, vert_norm);
-				material x_mat = materials[x_tri.w];
-				//float3 f_x = layered_gtr2(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
-				float3 f_x = lambertian_reflection(x_w_o, x_w_i, x_ng, x_tri, hit, x_mat, vertex_tc);
+				float3 &x_ns  = x_dg.ns;
+				float3 f_x = layered_gtr2(x_w_o, x_w_i, x_dg);
+				//float3 f_x = lambertian_reflection(x_w_o, x_w_i, x_dg);
 
 				// brdf at vpl (v)
 				float3 vpl_w_o = -f3(shadowray_dir);
 				float3 vpl_w_i = -f3(vpls_w_in[vpl_indices[ray_index]]);
 				uint4 vpl_tri = triangles[vpl_is.ref()];
-				float3 vpl_ng  = hit_ng(vpl_is, vpl_tri, vert_norm);
-				material vpl_mat = materials[vpl_tri.w];
-				//float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
-				float3 f_v = lambertian_reflection(vpl_w_o, vpl_w_i, vpl_ng, vpl_tri, shadow_hit, vpl_mat, vertex_tc);
+				float3 &vpl_ns  = vpl_dg.ns;
+				float3 f_v = layered_gtr2(vpl_w_o, vpl_w_i, vpl_dg);
+				//float3 f_v = lambertian_reflection(vpl_w_o, vpl_w_i, vpl_dg);
 
 				//float t = shadowray_dir.w;
 				float3 from = f3(camrays[ray_index*2+0]) + hit.t * -x_w_o;
 				float t = length(f3(vpls_pos[vpl_indices[ray_index]]) - from);
 
-				float D_x = cdot(x_ng, f3(shadowray_dir)); // D_x(v)
-				float D_v = cdot(vpl_ng, -f3(shadowray_dir)); // D_v(x)
+				float D_x = cdot(x_ns, f3(shadowray_dir)); // D_x(v)
+				float D_v = cdot(vpl_ns, -f3(shadowray_dir)); // D_v(x)
 
 				float G;
 				if (pointlight_attenuation) {
@@ -1032,7 +1039,7 @@ namespace wf::cuda {
 				radiance *= scale[0];
 
 				// testing
-				test_normal = vpl_ng;
+				test_normal = vpl_ns;
 				if (test_normal.x < 0) test_normal.x = test_normal.x * -1.f;
 				if (test_normal.y < 0) test_normal.y = test_normal.y * -1.f;
 				if (test_normal.z < 0) test_normal.z = test_normal.z * -1.f;
@@ -1117,6 +1124,7 @@ namespace wf::cuda {
 										  pf->sd->vertex_norm.device_memory,
 										  pf->sd->vertex_tc.device_memory,
 										  pf->sd->materials.device_memory,
+										  pf->sd->refs.device_memory,
 										  vpls->col.device_memory,
 										  vpls->pos.device_memory,
 										  vpls->w_in.device_memory,

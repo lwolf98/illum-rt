@@ -5,7 +5,7 @@ up 0 1 0
 #sppx 1
 #sppx 256
 #sppx 1024
-sppx 4096
+sppx 40960
 resolution 960 540
 
 default-brdf layered-gtr2
@@ -87,7 +87,7 @@ raytracer optix
 add-scene-step build accel struct
 algo manylight-wf
 #is light paths 4096 length 10 g 0.1 vps 1
-is light paths 512 length 10 g 0.1 vps 1
+is light paths 512 length 10 g 0.0001 vps 1
 commit
 
 run

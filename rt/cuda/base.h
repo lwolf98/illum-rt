@@ -30,8 +30,7 @@ namespace wf {
 			void stop(const std::string &name) override;
 			void synchronize() override;
 		};
-
-
+		
 		struct __align__(16) tri_is {
 			float t;
 			float beta;

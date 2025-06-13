@@ -3,7 +3,7 @@
 up 0 1 0
 
 #sppx 1024
-sppx 4096
+sppx 40960
 resolution 960 540
 
 default-brdf layered-gtr2
