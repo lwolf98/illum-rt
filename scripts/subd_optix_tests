@@ -88,6 +88,7 @@ add-scene-step build accel struct
 algo manylight-wf
 #is light paths 4096 length 10 g 0.1 vps 1
 is light paths 512 length 10 g 0.0001 vps 1
+outfile out_subds/subd-ml_cuda.png
 commit
 
 run
