@@ -1031,7 +1031,7 @@ namespace subd {
 		edges.clear();
 
 		// 1. Edge collection (Map, parallel)
-		vector<edge> buckets[faces.size()];
+		vector<vector<edge>> buckets(faces.size());
 		{
 			time_this_block(topology_edge_collect);
 
