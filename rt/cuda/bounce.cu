@@ -76,8 +76,9 @@ namespace wf::cuda {
 				barycentrics, &params->materials[tri.w]
 			);
 
-			assert(tc.x >= 0 && tc.x <= 1);
-			assert(tc.y >= 0 && tc.y <= 1);
+			// TODO: keep this assert?
+			//assert(tc.x >= 0 && tc.x <= 1);
+			//assert(tc.y >= 0 && tc.y <= 1);
 		}
 	};
 

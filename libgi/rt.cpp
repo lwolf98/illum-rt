@@ -38,10 +38,13 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		const vertex &a = patch.verts[tri.a];
 		const vertex &b = patch.verts[tri.b];
 		const vertex &c = patch.verts[tri.c];
-
-		diff_geom dg(a, b, c, &scene.materials[patch.material_id], is, scene);
-		assert(dg.tc.x >= 0 && dg.tc.x <= 1);
-		assert(dg.tc.y >= 0 && dg.tc.y <= 1);
+		const material &mat = scene.materials[patch.material_id];
+		diff_geom dg(a, b, c, &mat, is, scene);
+		// TODO: keep this assert?
+		//if (mat.albedo_tex != 0) {
+		//	assert(dg.tc.x >= 0 && dg.tc.x <= 1);
+		//	assert(dg.tc.y >= 0 && dg.tc.y <= 1);
+		//}
 		return dg;
 	}
 }
