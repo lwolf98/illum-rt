@@ -16,9 +16,7 @@
  */
 #endif
 struct subd_naive_bvh : public individual_ray_tracer {
-	
-
-	std::vector<subd::node> nodes;
+	std::vector<subd::base_node> nodes;
 	uint32_t root;
 	bool debug = false;
 	void build(::scene *scene);
@@ -26,4 +24,5 @@ private:
 	uint32_t subdivide(std::vector<triangle> &triangles, std::vector<vertex> &vertices, uint32_t start, uint32_t end);
 	triangle_intersection closest_hit(const ray &ray) override;
 	bool any_hit(const ray &ray) override;
+	void traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest);
 };

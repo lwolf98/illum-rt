@@ -30,7 +30,7 @@ modeltrafo scale 0.2 0.2 0.2
 modeltrafo shift 13 0 -23
 load render-data/subd/knife_obj/knife.obj
 modeltrafo shift 3 0 0
-load render-data/subd/knife_obj/knife.obj subd_level 3 subd_type tris
+load render-data/subd/knife_obj/knife.obj subd_level 3 subd_type patches
 #load render-data/subd/knife_obj/knife.obj
 modeltrafo shift -3 0 0
 modeltrafo shift -13 0 23

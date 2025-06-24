@@ -99,10 +99,9 @@ namespace subd {
 		uint size() { return verts.size(); }
 	};
 
-	struct node {
+	struct base_node {
 		aabb box;
-		uint32_t left = (uint32_t)-1;
-		uint32_t right = (uint32_t)-1;
+		uint32_t left, right;
 		uint32_t triangle = (uint32_t)-1;
 		//! is the node an inner node (as opposed to a leaf)
 		bool inner() const { return triangle == (uint32_t)-1; }
@@ -121,15 +120,47 @@ namespace subd {
 		bool is_only_subd_root() const {
 			return !inner() && !is_subd_leaf();
 		}
+	};
+
+	struct patch_node {
+		aabb box;
+		uint32_t node_1 = (uint32_t)-1;
+		uint32_t node_2 = (uint32_t)-1;
+		uint32_t node_3 = (uint32_t)-1;
+		uint32_t node_4 = (uint32_t)-1;
+		uint32_t patch_ref = (uint32_t)-1;
+		//! is the node an inner node (as opposed to a leaf)
+		bool inner() const { return patch_ref == (uint32_t)-1; }
+		/*void set_secondary_value(uint32_t val) {
+			triangle = ((uint32_t)-1) - (val + 1);
+		}
+		uint32_t get_secondary_value() const {
+			return ((uint32_t)-1) - (triangle + 1);
+		}*/
+		bool is_subd_leaf() const {
+			return node_1 >= (uint32_t)-2 && node_2 >= (uint32_t)-2
+					&& node_3 >= (uint32_t)-2 && node_4 >= (uint32_t)-2;
+		}
+		bool is_subd_root_and_leaf() const {
+			return node_1 == (uint32_t)-2 && node_2 == (uint32_t)-2
+					&& node_3 == (uint32_t)-2 && node_4 == (uint32_t)-2;
+		}
+		bool is_only_subd_root() const {
+			return !inner() && !is_subd_leaf();
+		}
 		void set_subd_root_and_leaf(bool flag = true) {
 			if (flag) {
-				left = (uint32_t)-2;
-				right = (uint32_t)-2;
+				node_1 = (uint32_t)-2;
+				node_2 = (uint32_t)-2;
+				node_3 = (uint32_t)-2;
+				node_4 = (uint32_t)-2;
 			}
 			else {
 				if (is_subd_root_and_leaf()) {
-					left = (uint32_t)-1;
-					right = (uint32_t)-1;
+					node_1 = (uint32_t)-1;
+					node_2 = (uint32_t)-1;
+					node_3 = (uint32_t)-1;
+					node_4 = (uint32_t)-1;
 				}
 			}
 		}
@@ -138,7 +169,7 @@ namespace subd {
 	struct subd_patch {
 		std::vector<vertex> verts;
 		uint32_t bvh_node;
-		std::vector<node> nodes;
+		std::vector<patch_node> nodes;
 		uint32_t material_id;
 		uint32_t subd_level;
 

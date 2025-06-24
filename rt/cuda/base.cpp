@@ -107,16 +107,18 @@ namespace wf {
 				#pragma omp parallel for
 				for (int j = 0; j < patch.nodes.size(); ++j) {
 					patch_node device_node;
-					const subd::node &node = patch.nodes[j];
+					const subd::patch_node &node = patch.nodes[j];
 					device_node.min = f4(node.box.min);
 					device_node.max = f4(node.box.max);
-					device_node.left = node.left;
-					device_node.right = node.right;
+					device_node.node_1 = node.node_1;
+					device_node.node_2 = node.node_2;
+					device_node.node_3 = node.node_3;
+					device_node.node_4 = node.node_4;
 					if (!node.is_subd_leaf()) {
 						device_node.left += offset;
 						device_node.right += offset;
 					}
-					device_node.triangle = node.triangle;
+					device_node.patch_ref = node.patch_ref;
 
 					//device_nodes.push_back(device_node);
 					device_nodes[offset + j] = device_node;

@@ -583,7 +583,8 @@ namespace subd {
 				// (morton code) will be overridden inside the leaf node.
 				// This happens only if the patch is of level 0,
 				// thus holding only one subd quad with position (x=0, y=0).
-				patch.nodes[patch.bvh_node].set_secondary_value(i);
+				//patch.nodes[patch.bvh_node].set_secondary_value(i);
+				patch.nodes[patch.bvh_node].patch_ref = i;
 			}
 		}
 
