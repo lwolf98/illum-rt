@@ -96,32 +96,29 @@ void subd_patch::build_bvh() {
 		int len = pow(2,(subd_level-i));
 		int off = 0;
 		if (i > 0) {
-			off = nodes_count - 3 * geometric_series(subd_level-i, 4) + 2;
+			off = nodes_count - geometric_series(subd_level-i, 4);
 		}
 		for (int y_base = 0; y_base < len; y_base+=2) {
 			for (int x_base = 0; x_base < len; x_base+=2) {
-				int step = 1;
-				if (i > 0)
-					step = 3;
-				int x = x_base * step;
-				int y = y_base * step;
+				int x = x_base;
+				int y = y_base;
 
 				patch_node current_node;
 
 				patch_node &lower_node_1 = nodes[off + y*len+x];
-				patch_node &lower_node_2 = nodes[off + y*len+(x+step)];
-				patch_node &lower_node_3 = nodes[off + (y+step)*len+x];
-				patch_node &lower_node_4 = nodes[off + (y+step)*len+(x+step)];
+				patch_node &lower_node_2 = nodes[off + y*len+(x+1)];
+				patch_node &lower_node_3 = nodes[off + (y+1)*len+x];
+				patch_node &lower_node_4 = nodes[off + (y+1)*len+(x+1)];
 
 				current_node.box.grow(lower_node_1.box);
 				current_node.box.grow(lower_node_2.box);
 				current_node.box.grow(lower_node_3.box);
 				current_node.box.grow(lower_node_4.box);
 
-				current_node.node_1 = off + y*len+x;			// upper left
-				current_node.node_2 = off + y*len+(x+step);		// upper right
-				current_node.node_3 = (y+step)*len+x;			// lower left
-				current_node.node_4 = (y+step)*len+(x+step);	// lower right
+				current_node.node_1 = off + y*len+x;				// upper left
+				current_node.node_2 = off + y*len+(x+1);			// upper right
+				current_node.node_3 = off + (y+1)*len+x;			// lower left
+				current_node.node_4 = off + (y+1)*len+(x+1);	// lower right
 
 				nodes.emplace_back(current_node);
 

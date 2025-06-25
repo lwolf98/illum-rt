@@ -127,19 +127,21 @@ namespace wf::cuda {
 		auto &patch = launch_params.patches[id];
 		//printf("%d:%d\n", id, patch.subd_level);
 		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
-		//printf("right:%d, left:%d\n", root_node.right, root_node.left);
-		if (debug) printf("Root node ref: %d, L: %d, R: %d\n", patch.bvh_node, root_node.left, root_node.right);
+		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
 
 		uint32_t stack[25];
 		int32_t sp = -1;
 		//stack[0] = patch.bvh_node;
-		bool is_root_and_leaf = root_node.left == (uint32_t)-2 && root_node.right == (uint32_t)-2;
+		bool is_root_and_leaf = root_node.nodes.x == (uint32_t)-2 && root_node.nodes.y == (uint32_t)-2
+			&& root_node.nodes.z == (uint32_t)-2 && root_node.nodes.w == (uint32_t)-2;
 		if (is_root_and_leaf) {
 			stack[++sp] = patch.bvh_node;
 		}
 		else {
-			stack[++sp] = root_node.left;
-			stack[++sp] = root_node.right;
+			stack[++sp] = root_node.nodes.x;
+			stack[++sp] = root_node.nodes.y;
+			stack[++sp] = root_node.nodes.z;
+			stack[++sp] = root_node.nodes.w;
 		}
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
@@ -152,12 +154,14 @@ namespace wf::cuda {
 		while (sp >= 0) {
 			if (debug) printf("\n");
 			auto &node = launch_params.patch_nodes[stack[sp--]];
-			bool is_leaf = node.left >= (uint32_t)-2 && node.right >= (uint32_t)-2;
+			bool is_leaf = node.nodes.x >= (uint32_t)-2 && node.nodes.y >= (uint32_t)-2
+				&& node.nodes.z >= (uint32_t)-2 && node.nodes.w >= (uint32_t)-2;
 
 			if (is_leaf) {
 				uint32_t quad_ref = 0;
 				if (!is_root_and_leaf) // is only leaf
-					quad_ref = ((uint32_t)-1) - (node.triangle + 1); //resolve encoded
+					quad_ref = node.quad_ref;
+					//quad_ref = ((uint32_t)-1) - (node.triangle + 1); //resolve encoded
 
 				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);
@@ -221,7 +225,7 @@ namespace wf::cuda {
 				
 			}
 			else {
-				if (debug) printf("Node ref: %d, L: %d, R: %d\n", stack[sp+1], node.left, node.right);
+				if (debug) printf("Node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", stack[sp+1], node.nodes.x, node.nodes.y, node.nodes.z, node.nodes.w);
 				float3 node_min = f4_to_f3(node.min);
 				float3 node_max = f4_to_f3(node.max);
 
@@ -232,8 +236,10 @@ namespace wf::cuda {
 
 				if (hit && t < closest_t) {
 					if (debug) printf("hit node!!!!!!\n");
-					stack[++sp] = node.left;
-					stack[++sp] = node.right;
+					stack[++sp] = node.nodes.x;
+					stack[++sp] = node.nodes.y;
+					stack[++sp] = node.nodes.z;
+					stack[++sp] = node.nodes.w;
 				}
 				else if (debug) printf("didn't hit node...\n");
 			}

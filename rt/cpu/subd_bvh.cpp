@@ -190,79 +190,89 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &node = patch.nodes[patch.bvh_node];
+	const auto &root_node = patch.nodes[patch.bvh_node];
 
 	uint32_t stack[25];
 	int32_t sp = 3;
-	stack[0] = node.node_1;
-	stack[1] = node.node_2;
-	stack[2] = node.node_3;
-	stack[3] = node.node_4;
 
-	if (node.is_only_subd_root()) {
-		if (debug) std::cout << "Subd root node" << std::endl;
-		// branch: hit subd patch root node
-		patch_ref = node.patch_ref; //.get_secondary_value();
-		float dist;
-		if (intersect(node.box, ray, dist)) {
-			if (dist < closest.t) {
-				stack[++sp] = node.node_1;
-				stack[++sp] = node.node_2;
-				stack[++sp] = node.node_3;
-				stack[++sp] = node.node_4;
-				if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
-			}
-			else {
-				if (debug) std::cout << "Not closer, not updated" << std::endl;
-			}
-		}
-		else {
-			if (debug) std::cout << "No intersect, not updated" << std::endl;
-		}
+	if (root_node.is_only_subd_root()) {
+		stack[0] = root_node.node_1;
+		stack[1] = root_node.node_2;
+		stack[2] = root_node.node_3;
+		stack[3] = root_node.node_4;
 	}
 	else {
-		// branch: hit subd patch leaf node (subd quad)
-		if (debug) std::cout << "Subd leaf" << std::endl;
-		//if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
-		if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
+		stack[0] = patch.bvh_node;
+	}
 
-		uint32_t morton_code = 0;
-		if (!node.is_subd_root_and_leaf())
-			morton_code = node.patch_ref;
-			//morton_code = node.get_secondary_value();
+	while (sp >= 0) {
+		const auto &node = patch.nodes[stack[sp--]];
 
-		/*if (node.is_subd_root_and_leaf()) {
-			// Special handling if subd root node is also the leaf node
-			patch_ref = node.get_secondary_value();
+		if (node.inner()) {
+			if (debug) std::cout << "Subd root node" << std::endl;
+			// branch: hit subd patch root node
+			//patch_ref = node.patch_ref; //.get_secondary_value();
+			float dist;
+			if (intersect(node.box, ray, dist)) {
+				if (dist < closest.t) {
+					stack[++sp] = node.node_1;
+					stack[++sp] = node.node_2;
+					stack[++sp] = node.node_3;
+					stack[++sp] = node.node_4;
+					if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
+				}
+				else {
+					if (debug) std::cout << "Not closer, not updated" << std::endl;
+				}
+			}
+			else {
+				if (debug) std::cout << "No intersect, not updated" << std::endl;
+			}
 		}
 		else {
-			// Regular case
-			morton_code = node.get_secondary_value();
-		}*/
-		if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
-		if (debug) std::cout << "morton_code: " << morton_code << std::endl;
+			// branch: hit subd patch leaf node (subd quad)
+			if (debug) std::cout << "Subd leaf" << std::endl;
+			//if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
+			if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
 
-		assert(patch_ref >= 0);
-		subd::subd_patch &patch = scene->patches[patch_ref];
-		std::array<triangle, 2> tris = patch.tris(morton_code);
-		for (int i = 0; i < 2; i++) {
-			if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
-				if (intersection.t < closest.t) {
-					assert(morton_code <= patch.verts.size());
-					closest = intersection;
-					closest.ref = ((uint32_t)-1) - patch_ref;
-					closest.subd_quad_ref = morton_code + 1;
-					if (i == 1)
-						closest.subd_quad_ref *= -1;
+			uint32_t morton_code = 0;
+			if (!node.is_subd_root_and_leaf())
+				morton_code = node.patch_ref; //TODO: different name for patch_ref when it is used for different purposes
+				//morton_code = node.get_secondary_value();
 
-					if (debug) std::cout << "Closest updated!!!" << std::endl;
-					break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
+			/*if (node.is_subd_root_and_leaf()) {
+				// Special handling if subd root node is also the leaf node
+				patch_ref = node.get_secondary_value();
+			}
+			else {
+				// Regular case
+				morton_code = node.get_secondary_value();
+			}*/
+			if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
+			if (debug) std::cout << "morton_code: " << morton_code << std::endl;
+
+			assert(patch_ref >= 0);
+			subd::subd_patch &patch = scene->patches[patch_ref];
+			std::array<triangle, 2> tris = patch.tris(morton_code);
+			for (int i = 0; i < 2; i++) {
+				if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
+					if (intersection.t < closest.t) {
+						assert(morton_code <= patch.verts.size());
+						closest = intersection;
+						closest.ref = ((uint32_t)-1) - patch_ref;
+						closest.subd_quad_ref = morton_code + 1;
+						if (i == 1)
+							closest.subd_quad_ref *= -1;
+
+						if (debug) std::cout << "Closest updated!!!" << std::endl;
+						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
+					}
+					else
+						if (debug) std::cout << "Not closer, not updated" << std::endl;
 				}
 				else
-					if (debug) std::cout << "Not closer, not updated" << std::endl;
+					if (debug) std::cout << "No intersect, not updated" << std::endl;
 			}
-			else
-				if (debug) std::cout << "No intersect, not updated" << std::endl;
 		}
 	}
 }

@@ -388,9 +388,12 @@ namespace wf {
 		struct patch_node {
 			float4 min;
 			float4 max;
-			uint32_t left = (uint32_t)-1;
-			uint32_t right = (uint32_t)-1;
-			uint32_t triangle = (uint32_t)-1;
+			uint4 nodes;
+			uint32_t quad_ref; // only set in leaf nodes
+
+			patch_node() :
+				nodes{(uint32_t)-1, (uint32_t)-1, (uint32_t)-1, (uint32_t)-1},
+				quad_ref((uint32_t)-1) {}
 		};
 
 		struct subd_patch {
