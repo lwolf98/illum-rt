@@ -193,16 +193,16 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	const auto &root_node = patch.nodes[patch.bvh_node];
 
 	uint32_t stack[25];
-	int32_t sp = 3;
+	int32_t sp = -1;
 
 	if (root_node.is_only_subd_root()) {
-		stack[0] = root_node.node_1;
-		stack[1] = root_node.node_2;
-		stack[2] = root_node.node_3;
-		stack[3] = root_node.node_4;
+		stack[++sp] = root_node.node_1;
+		stack[++sp] = root_node.node_2;
+		stack[++sp] = root_node.node_3;
+		stack[++sp] = root_node.node_4;
 	}
 	else {
-		stack[0] = patch.bvh_node;
+		stack[++sp] = patch.bvh_node;
 	}
 
 	while (sp >= 0) {

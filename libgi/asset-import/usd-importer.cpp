@@ -382,15 +382,16 @@ namespace import {
 						}
 
 						// Store patches into scene
-						scene.patches.insert(scene.patches.end(), patches.begin(), patches.end());
-						/*for (auto &patch : patches) {
+						//scene.patches.insert(scene.patches.end(), patches.begin(), patches.end());
+						for (auto &patch : patches) {
 							scene.patches.push_back(patch);
 							subd::subd_patch &scene_patch =
 								scene.patches[scene.patches.size()-1];
 
-							subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
-							node.set_secondary_value(node.get_secondary_value() + patch_offset);
-						}*/
+							// Setting the patch_ref and offset is only required for CPU variant for its BVH build
+							subd::patch_node &node = scene_patch.nodes[scene_patch.bvh_node];
+							node.patch_ref += patch_offset;
+						}
 					}
 					else {
 						// triangulate quad faces
