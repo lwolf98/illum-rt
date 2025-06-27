@@ -170,12 +170,12 @@ namespace wf::cuda {
 				uint4 tri_1 = patch.subd_tri(quad_ref, false);
 				if (debug) printf("Tri 0: %d %d %d\n", tri_0.x, tri_0.y, tri_0.z);
 				if (debug) printf("Tri 1: %d %d %d\n", tri_1.x, tri_1.y, tri_1.z);
-				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]); //patch.start_index + 
-				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]); //patch.start_index + 
-				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]); //patch.start_index + 
-				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]); //patch.start_index + 
-				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]); //patch.start_index + 
-				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]); //patch.start_index + 
+				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]);
+				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]);
+				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]);
+				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]);
+				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]);
+				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]);
 				if (debug) {
 					printf("t_min: %f, t_max: %f\n", tmin, tmax);
 					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
