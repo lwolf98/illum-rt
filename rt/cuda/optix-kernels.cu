@@ -104,6 +104,30 @@ namespace wf::cuda {
 		if (DBG_PRINT) printf("any hit patches\n");
 	};
 
+	//TODO: find better place for these functions
+	static __forceinline__ __device__ int geometric_series(int iterations, int base) {
+		return (1-pow(base, iterations+1))/(1-base);
+	}
+
+	static uint32_t __forceinline__ __device__ child_node_base(
+			uint32_t subd_level,
+			uint32_t index
+		) {
+			uint32_t trav_level = (uint32_t) (0.5f*log2f(index));
+			uint32_t nodes_count = geometric_series(subd_level-1, 4) + pow(4, subd_level);
+			index = nodes_count - index - 1; // invert indexing
+
+			//uint32_t nodes_count = geometric_series(subd_level-1, 4) + (1 << 2*subd_level);
+			uint32_t off_current_level = geometric_series(trav_level, 4) - 1;
+			uint32_t off_child_level = geometric_series(trav_level+1, 4) - 1;
+			uint32_t idx_current_relative = index - off_current_level;
+			uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+			uint32_t index_child = off_child_level + idx_child_relative;
+			index_child = nodes_count - index_child - 1; // invert indexing
+			return index_child;
+	}
+	//TODO end: until here
+
 	extern "C" __global__ void __intersection__patches() {
 		//TODO: implement
 		if (DBG_PRINT) printf("intersection patches\n");
@@ -126,22 +150,24 @@ namespace wf::cuda {
 		int id = optixGetPrimitiveIndex();
 		auto &patch = launch_params.patches[id];
 		//printf("%d:%d\n", id, patch.subd_level);
+		uint32_t nodes_count = geometric_series(patch.subd_level-1, 4) + pow(4, patch.subd_level);
+		uint32_t node_offset = patch.bvh_node - nodes_count + 1;
 		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
 		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
 
 		uint32_t stack[25];
 		int32_t sp = -1;
-		//stack[0] = patch.bvh_node;
 		bool is_root_and_leaf = root_node.nodes.x == (uint32_t)-2 && root_node.nodes.y == (uint32_t)-2
 			&& root_node.nodes.z == (uint32_t)-2 && root_node.nodes.w == (uint32_t)-2;
 		if (is_root_and_leaf) {
 			stack[++sp] = patch.bvh_node;
 		}
 		else {
-			stack[++sp] = root_node.nodes.x;
-			stack[++sp] = root_node.nodes.y;
-			stack[++sp] = root_node.nodes.z;
-			stack[++sp] = root_node.nodes.w;
+			uint32_t child_base = child_node_base(patch.subd_level, patch.bvh_node - node_offset);
+			stack[++sp] = child_base;
+			stack[++sp] = child_base+1;
+			stack[++sp] = child_base+2;
+			stack[++sp] = child_base+3;
 		}
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
@@ -153,7 +179,8 @@ namespace wf::cuda {
 		int32_t closest_quad_ref = 0;
 		while (sp >= 0) {
 			if (debug) printf("\n");
-			auto &node = launch_params.patch_nodes[stack[sp--]];
+			uint32_t index = stack[sp--];
+			auto &node = launch_params.patch_nodes[node_offset + index];
 			bool is_leaf = node.nodes.x >= (uint32_t)-2 && node.nodes.y >= (uint32_t)-2
 				&& node.nodes.z >= (uint32_t)-2 && node.nodes.w >= (uint32_t)-2;
 
@@ -236,10 +263,11 @@ namespace wf::cuda {
 
 				if (hit && t < closest_t) {
 					if (debug) printf("hit node!!!!!!\n");
-					stack[++sp] = node.nodes.x;
-					stack[++sp] = node.nodes.y;
-					stack[++sp] = node.nodes.z;
-					stack[++sp] = node.nodes.w;
+					uint32_t child_base = child_node_base(patch.subd_level, index);
+					stack[++sp] = child_base;
+					stack[++sp] = child_base+1;
+					stack[++sp] = child_base+2;
+					stack[++sp] = child_base+3;
 				}
 				else if (debug) printf("didn't hit node...\n");
 			}
