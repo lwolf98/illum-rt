@@ -222,7 +222,7 @@ glm::vec4 to_glm_vec4(const aiVector3D &from) {
 // Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
 							std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene *rtgi_scene) {
-	mat4 node_trafo = to_glm(node_ai->mTransformation) * parent_trafo;
+	mat4 node_trafo = parent_trafo * to_glm(node_ai->mTransformation);
 	mat4 transform = model_trafo * node_trafo;
 	mat3 normal_transform = transpose(inverse(mat3(transform)));
 	for (int i = 0; i < node_ai->mNumMeshes; i++) {
