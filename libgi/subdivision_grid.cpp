@@ -62,6 +62,7 @@ uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y)
 	return vert_id + off_y * len() + off_x;
 }
 
+//TODO: explain reason for passing iterations = -1 (happens on subd_level = 0)
 int geometric_series(int iterations, int base) {
 	return (1-pow(base, iterations+1))/(1-base);
 }
@@ -79,9 +80,12 @@ void subd_patch::build_bvh() {
 	//TODO: pre-allocate, e.g. level 3: 1 + 4 + 16 + 64 (2 children: (1+2) + (4+8) + (16+32) + (64))
 	
 	int nodes_count = geometric_series(subd_level-1, 4) + pow(4, subd_level);
-	nodes.reserve(nodes_count);
+	nodes.resize(nodes_count);
+	if (subd_level == 0)
+		std::cout << "";
 
 	int size = (len()-1)*(len()-1);
+	int off_children = geometric_series(subd_level-1, 4);
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
 		uint32_t y = decode_morton(morton >> 1);
@@ -98,41 +102,43 @@ void subd_patch::build_bvh() {
 		uint32_t morton_code = calculate_morton_code(x, y);
 		current_node.patch_ref = morton_code;
 		assert(morton_code <= verts.size());
-		nodes.emplace_back(current_node);
+		nodes[off_children+morton] = current_node;
 	}
 
+	int off = 0;
 	for (int i = 1; i <= subd_level; i++) {
 		int len = pow(2,(subd_level-i));
 		size = len*len;
-		int off = 0;
 		if (i > 1) {
-			off = nodes_count - geometric_series(subd_level-(i-1), 4);
+			off_children = off;
 		}
+		off = geometric_series(subd_level-i-1, 4);
+
 		for (uint32_t i = 0; i < size; ++i) {
 			uint32_t index = i*4;
 
 			patch_node current_node;
 
-			patch_node &lower_node_1 = nodes[off + index];
-			patch_node &lower_node_2 = nodes[off + index+1];
-			patch_node &lower_node_3 = nodes[off + index+2];
-			patch_node &lower_node_4 = nodes[off + index+3];
+			patch_node &lower_node_1 = nodes[off_children + index];
+			patch_node &lower_node_2 = nodes[off_children + index+1];
+			patch_node &lower_node_3 = nodes[off_children + index+2];
+			patch_node &lower_node_4 = nodes[off_children + index+3];
 
 			current_node.box.grow(lower_node_1.box);
 			current_node.box.grow(lower_node_2.box);
 			current_node.box.grow(lower_node_3.box);
 			current_node.box.grow(lower_node_4.box);
 
-			current_node.node_1 = off + index;		// upper left
-			current_node.node_2 = off + index+1;	// upper right
-			current_node.node_3 = off + index+2;	// lower left
-			current_node.node_4 = off + index+3;	// lower right
+			current_node.node_1 = off_children + index;		// upper left
+			current_node.node_2 = off_children + index+1;	// upper right
+			current_node.node_3 = off_children + index+2;	// lower left
+			current_node.node_4 = off_children + index+3;	// lower right
 
-			nodes.emplace_back(current_node);
+			nodes[off+i] = current_node;
 		}
 	}
 
-	bvh_node = nodes.size()-1;
+	bvh_node = 0;
 	if (subd_level == 0)
 		nodes[bvh_node].set_subd_root_and_leaf();
 		

@@ -118,11 +118,9 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 #ifdef COUNT_HITS
 	unsigned int hits = 0;
 #endif
-	//int patch_ref = -1;
 	while (sp >= 0) {
 		if (debug) std::cout << "\nStack pointer: " << sp << std::endl;
 		if (debug) std::cout << "Node position: " << stack[sp] << std::endl;
-		//if (debug) std::cout << "patch_ref (start): " << patch_ref << std::endl;
 		subd::base_node node = nodes[stack[sp--]];
 #ifdef COUNT_HITS
 		hits++;
@@ -165,8 +163,6 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 					if (debug) std::cout << "No intersect, not updated" << std::endl;
 			}
 		}
-
-		//if (debug) std::cout << "patch_ref (end): " << patch_ref << std::endl;
 	}
 #ifdef COUNT_HITS
 	closest.ref = hits;
@@ -194,61 +190,64 @@ static int geometric_series(int iterations, int base) {
 }
 
 uint32_t child_node_base(
-		uint32_t subd_level,
+		uint32_t trav_level,
 		uint32_t index
 	) {
-		uint32_t trav_level = (uint32_t) (0.5f*log2f(index));
-		uint32_t nodes_count = geometric_series(subd_level-1, 4) + pow(4, subd_level);
-		index = nodes_count - index - 1; // invert indexing
-
-		//uint32_t nodes_count = geometric_series(subd_level-1, 4) + (1 << 2*subd_level);
-		uint32_t off_current_level = geometric_series(trav_level, 4) - 1;
-		uint32_t off_child_level = geometric_series(trav_level+1, 4) - 1;
+		uint32_t off_current_level = geometric_series(trav_level-1, 4);
+		uint32_t off_child_level = geometric_series(trav_level, 4);
 		uint32_t idx_current_relative = index - off_current_level;
 		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
 		uint32_t index_child = off_child_level + idx_child_relative;
-		index_child = nodes_count - index_child - 1; // invert indexing
 		return index_child;
+}
+
+uint32_t child_node_base(
+		uint32_t index
+	) {
+		uint32_t trav_level = (uint32_t) (0.5f*log2f(index));
+		return child_node_base(trav_level, index);
 }
 //TODO end: until here
 
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = patch.nodes[patch.bvh_node];
+	const auto &root_node = patch.nodes[0];
 
 	uint32_t stack[25];
-	//const subd::patch_node *stack[25];
 	int32_t sp = -1;
 
-	if (root_node.is_only_subd_root()) {
-		uint32_t child_base = child_node_base(patch.subd_level, patch.bvh_node);
-		stack[++sp] = child_base; //root_node.node_1;
-		stack[++sp] = child_base+1; //root_node.node_2;
-		stack[++sp] = child_base+2; //root_node.node_3;
-		stack[++sp] = child_base+3; //root_node.node_4;
+	bool is_root_and_leaf = patch.subd_level == 0;
+	if (is_root_and_leaf) {
+		stack[++sp] = 0;
 	}
 	else {
-		stack[++sp] = patch.bvh_node; //&patch.nodes[patch.bvh_node];
+		uint32_t child_base = child_node_base(0, 0); // = 1
+		stack[++sp] = child_base;
+		stack[++sp] = child_base+1;
+		stack[++sp] = child_base+2;
+		stack[++sp] = child_base+3;
 	}
 
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
-		const auto &node = patch.nodes[index]; //*stack[sp--];
+		uint32_t trav_level = (uint32_t) (0.5f*log2f(1+3*index));
+		const auto &node = patch.nodes[index];
 
-		if (node.inner()) {
+		bool is_leaf = trav_level == patch.subd_level;
+		if (is_leaf && node.inner())
+			std::cout << "";
+		if (!is_leaf) {
 			if (debug) std::cout << "Subd root node" << std::endl;
 			// branch: hit subd patch root node
-			//patch_ref = node.patch_ref; //.get_secondary_value();
 			float dist;
 			if (intersect(node.box, ray, dist)) {
 				if (dist < closest.t) {
-					//const subd::patch_node *child_base = child_node_base(patch, patch.nodes.data(), 0, 0);
-					uint32_t child_base = child_node_base(patch.subd_level, index);
-					stack[++sp] = child_base; //node.node_1;
-					stack[++sp] = child_base+1; //node.node_2;
-					stack[++sp] = child_base+2; //node.node_3;
-					stack[++sp] = child_base+3; //node.node_4;
+					uint32_t child_base = child_node_base(trav_level, index);
+					stack[++sp] = child_base;
+					stack[++sp] = child_base+1;
+					stack[++sp] = child_base+2;
+					stack[++sp] = child_base+3;
 					if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
 				}
 				else {
@@ -262,22 +261,12 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 		else {
 			// branch: hit subd patch leaf node (subd quad)
 			if (debug) std::cout << "Subd leaf" << std::endl;
-			//if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
 			if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
 
 			uint32_t morton_code = 0;
 			if (!node.is_subd_root_and_leaf())
 				morton_code = node.patch_ref; //TODO: different name for patch_ref when it is used for different purposes
-				//morton_code = node.get_secondary_value();
 
-			/*if (node.is_subd_root_and_leaf()) {
-				// Special handling if subd root node is also the leaf node
-				patch_ref = node.get_secondary_value();
-			}
-			else {
-				// Regular case
-				morton_code = node.get_secondary_value();
-			}*/
 			if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
 			if (debug) std::cout << "morton_code: " << morton_code << std::endl;
 
