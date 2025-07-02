@@ -124,10 +124,6 @@ namespace subd {
 
 	struct patch_node {
 		aabb box;
-		uint32_t node_1 = (uint32_t)-1;
-		uint32_t node_2 = (uint32_t)-1;
-		uint32_t node_3 = (uint32_t)-1;
-		uint32_t node_4 = (uint32_t)-1;
 		uint32_t patch_ref = (uint32_t)-1;
 		//! is the node an inner node (as opposed to a leaf)
 		//bool inner() const { return patch_ref == (uint32_t)-1; }

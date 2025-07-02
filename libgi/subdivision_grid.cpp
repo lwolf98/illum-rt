@@ -129,10 +129,6 @@ void subd_patch::build_bvh() {
 			current_node.box.grow(lower_node_3.box);
 			current_node.box.grow(lower_node_4.box);
 
-			current_node.node_1 = off_children + index;		// upper left
-			current_node.node_2 = off_children + index+1;	// upper right
-			current_node.node_3 = off_children + index+2;	// lower left
-			current_node.node_4 = off_children + index+3;	// lower right
 
 			nodes[off+i] = current_node;
 		}

@@ -142,7 +142,6 @@ namespace wf::cuda {
 		uint32_t nodes_count = geometric_series(patch.subd_level-1, 4) + pow(4, patch.subd_level);
 		uint32_t node_offset = patch.bvh_node_offset;
 		auto &root_node = launch_params.patch_nodes[node_offset];
-		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node_offset, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
 
 		uint32_t stack[25];
 		int32_t sp = -1;
@@ -236,7 +235,6 @@ namespace wf::cuda {
 				}
 			}
 			else {
-				if (debug) printf("Node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", stack[sp+1], node.nodes.x, node.nodes.y, node.nodes.z, node.nodes.w);
 				float3 node_min = f4_to_f3(node.min);
 				float3 node_max = f4_to_f3(node.max);
 

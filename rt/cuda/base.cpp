@@ -111,24 +111,12 @@ namespace wf {
 					const subd::patch_node &node = patch.nodes[j];
 					device_node.min = f4(node.box.min);
 					device_node.max = f4(node.box.max);
-					device_node.nodes.x = node.node_1;
-					device_node.nodes.y = node.node_2;
-					device_node.nodes.z = node.node_3;
-					device_node.nodes.w = node.node_4;
-					//if (!node.is_subd_leaf()) {
-					if (subd_level < patch.subd_level) {
-						device_node.nodes.x += offset;
-						device_node.nodes.y += offset;
-						device_node.nodes.z += offset;
-						device_node.nodes.w += offset;
-					}
 					device_node.quad_ref = node.patch_ref; //TODO: change name of patch_ref field
 
-					//device_nodes.push_back(device_node);
 					device_nodes[offset + j] = device_node;
 				}
 
-				device_patch.start_index = tmp_p.size(); //patch.verts.size();
+				device_patch.start_index = tmp_p.size();
 				uint32_t n_device_verts = tmp_p.size() + patch.verts.size();
 				tmp_p.resize(n_device_verts);
 				tmp_n.resize(n_device_verts);
