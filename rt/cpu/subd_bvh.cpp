@@ -44,7 +44,7 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 			}
 			uint32_t id = patch.bvh_node + offset;*/
 
-			auto &patch_root = patch.nodes[patch.bvh_node];
+			auto &patch_root = patch.nodes[0];
 			subd::base_node copied_node;
 			copied_node.box = patch_root.box;
 			copied_node.set_secondary_value(patch_root.patch_ref);
@@ -235,8 +235,6 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 		const auto &node = patch.nodes[index];
 
 		bool is_leaf = trav_level == patch.subd_level;
-		if (is_leaf && node.inner())
-			std::cout << "";
 		if (!is_leaf) {
 			if (debug) std::cout << "Subd root node" << std::endl;
 			// branch: hit subd patch root node
@@ -264,7 +262,8 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
 
 			uint32_t morton_code = 0;
-			if (!node.is_subd_root_and_leaf())
+			//if (!node.is_subd_root_and_leaf())
+			if (!is_root_and_leaf)
 				morton_code = node.patch_ref; //TODO: different name for patch_ref when it is used for different purposes
 
 			if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;

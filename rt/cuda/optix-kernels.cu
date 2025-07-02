@@ -140,9 +140,9 @@ namespace wf::cuda {
 		int id = optixGetPrimitiveIndex();
 		auto &patch = launch_params.patches[id];
 		uint32_t nodes_count = geometric_series(patch.subd_level-1, 4) + pow(4, patch.subd_level);
-		uint32_t node_offset = patch.bvh_node;
-		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
-		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
+		uint32_t node_offset = patch.bvh_node_offset;
+		auto &root_node = launch_params.patch_nodes[node_offset];
+		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node_offset, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
 
 		uint32_t stack[25];
 		int32_t sp = -1;

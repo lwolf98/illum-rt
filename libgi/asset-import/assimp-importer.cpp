@@ -223,7 +223,7 @@ namespace import {
 						auto &patch = patches[p];
 						patch.material_id = material_id;
 
-						auto &root_bvh_node = patch.nodes[patch.bvh_node];
+						auto &root_bvh_node = patch.nodes[0];
 						rtgi_scene.scene_bounds.grow(root_bvh_node.box);
 
 						triangle dummy_tri;
@@ -252,7 +252,7 @@ namespace import {
 						subd::subd_patch &scene_patch =
 							rtgi_scene.patches[rtgi_scene.patches.size()-1];
 
-						subd::patch_node &node = scene_patch.nodes[scene_patch.bvh_node];
+						subd::patch_node &node = scene_patch.nodes[0];
 						node.patch_ref += patch_offset;
 					}
 				}

@@ -400,7 +400,7 @@ namespace wf {
 			float4 min;
 			float4 max;
 			uint32_t start_index;
-			uint32_t bvh_node;
+			uint32_t bvh_node_offset;
 			uint32_t material_id;
 			uint32_t subd_level;
 

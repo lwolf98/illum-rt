@@ -130,14 +130,14 @@ namespace subd {
 		uint32_t node_4 = (uint32_t)-1;
 		uint32_t patch_ref = (uint32_t)-1;
 		//! is the node an inner node (as opposed to a leaf)
-		bool inner() const { return patch_ref == (uint32_t)-1; }
+		//bool inner() const { return patch_ref == (uint32_t)-1; }
 		/*void set_secondary_value(uint32_t val) {
 			triangle = ((uint32_t)-1) - (val + 1);
 		}
 		uint32_t get_secondary_value() const {
 			return ((uint32_t)-1) - (triangle + 1);
 		}*/
-		bool is_subd_leaf() const {
+		/*bool is_subd_leaf() const {
 			return node_1 >= (uint32_t)-2 && node_2 >= (uint32_t)-2
 					&& node_3 >= (uint32_t)-2 && node_4 >= (uint32_t)-2;
 		}
@@ -163,12 +163,11 @@ namespace subd {
 					node_4 = (uint32_t)-1;
 				}
 			}
-		}
+		}*/
 	};
 
 	struct subd_patch {
 		std::vector<vertex> verts;
-		uint32_t bvh_node;
 		std::vector<patch_node> nodes;
 		uint32_t material_id;
 		uint32_t subd_level;

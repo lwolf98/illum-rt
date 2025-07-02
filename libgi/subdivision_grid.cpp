@@ -138,9 +138,8 @@ void subd_patch::build_bvh() {
 		}
 	}
 
-	bvh_node = 0;
-	if (subd_level == 0)
-		nodes[bvh_node].set_subd_root_and_leaf();
+	//if (subd_level == 0)
+	//	nodes[0].set_subd_root_and_leaf();
 		
 }
 
