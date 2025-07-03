@@ -124,7 +124,6 @@ namespace subd {
 
 	struct patch_node {
 		aabb box;
-		uint32_t patch_ref = (uint32_t)-1;
 		//! is the node an inner node (as opposed to a leaf)
 		//bool inner() const { return patch_ref == (uint32_t)-1; }
 		/*void set_secondary_value(uint32_t val) {
@@ -191,6 +190,7 @@ namespace subd {
 		int get_subd_quad(int morton_code) const;
 		std::array<triangle, 2> tris(int morton_code) const;
 		triangle tri(int morton_code, bool upper) const;
+		uint32_t quad_ref_from_index(uint32_t index) const;
 
 		private:
 		int calculate_morton_code(int x, int y) const;

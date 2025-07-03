@@ -33,21 +33,10 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 			uint32_t patch_ref = ((uint32_t)-1) - triangles[start].material_id;
 			subd::subd_patch &patch = scene->patches[patch_ref];
 
-			/*uint32_t offset = nodes.size();
-			for (auto &node : patch.nodes) {
-				nodes.emplace_back(node);
-				auto &copied_node = nodes[nodes.size()-1];
-				if (copied_node.left < ((uint32_t)-2))
-					copied_node.left += offset;
-				if (copied_node.right < ((uint32_t)-2))
-					copied_node.right += offset;
-			}
-			uint32_t id = patch.bvh_node + offset;*/
-
 			auto &patch_root = patch.nodes[0];
 			subd::base_node copied_node;
 			copied_node.box = patch_root.box;
-			copied_node.set_secondary_value(patch_root.patch_ref);
+			copied_node.set_secondary_value(patch_ref);
 			copied_node.left = (uint32_t)-1;
 			copied_node.right = (uint32_t)-1;
 			nodes.emplace_back(copied_node);
@@ -259,26 +248,28 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 		else {
 			// branch: hit subd patch leaf node (subd quad)
 			if (debug) std::cout << "Subd leaf" << std::endl;
-			if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
+			//if (debug) std::cout << "Secondary value: " << node.patch_ref << std::endl;
 
-			uint32_t morton_code = 0;
+			uint32_t quad_ref = 0;
 			//if (!node.is_subd_root_and_leaf())
-			if (!is_root_and_leaf)
-				morton_code = node.patch_ref; //TODO: different name for patch_ref when it is used for different purposes
+			if (!is_root_and_leaf) {
+				uint32_t off_current_level = geometric_series(trav_level-1, 4);
+				quad_ref = patch.quad_ref_from_index(index - off_current_level);
+			}
 
 			if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
-			if (debug) std::cout << "morton_code: " << morton_code << std::endl;
+			if (debug) std::cout << "quad_ref: " << quad_ref << std::endl;
 
 			assert(patch_ref >= 0);
 			subd::subd_patch &patch = scene->patches[patch_ref];
-			std::array<triangle, 2> tris = patch.tris(morton_code);
+			std::array<triangle, 2> tris = patch.tris(quad_ref);
 			for (int i = 0; i < 2; i++) {
 				if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
 					if (intersection.t < closest.t) {
-						assert(morton_code <= patch.verts.size());
+						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
 						closest.ref = ((uint32_t)-1) - patch_ref;
-						closest.subd_quad_ref = morton_code + 1;
+						closest.subd_quad_ref = quad_ref + 1;
 						if (i == 1)
 							closest.subd_quad_ref *= -1;
 

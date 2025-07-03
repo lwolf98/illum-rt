@@ -174,8 +174,10 @@ namespace wf::cuda {
 
 			if (is_leaf) {
 				uint32_t quad_ref = 0;
-				if (!is_root_and_leaf) // is only leaf
-					quad_ref = node.quad_ref;
+				if (!is_root_and_leaf) { // is only leaf
+					uint32_t off_current_level = geometric_series(trav_level-1, 4);
+					quad_ref = patch.quad_ref_from_index(index - off_current_level);
+				}
 
 				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);

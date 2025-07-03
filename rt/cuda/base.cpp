@@ -111,7 +111,6 @@ namespace wf {
 					const subd::patch_node &node = patch.nodes[j];
 					device_node.min = f4(node.box.min);
 					device_node.max = f4(node.box.max);
-					device_node.quad_ref = node.patch_ref; //TODO: change name of patch_ref field
 
 					device_nodes[offset + j] = device_node;
 				}

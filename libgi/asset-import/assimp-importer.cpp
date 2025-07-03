@@ -251,9 +251,7 @@ namespace import {
 						rtgi_scene.patches.push_back(patch);
 						subd::subd_patch &scene_patch =
 							rtgi_scene.patches[rtgi_scene.patches.size()-1];
-
-						subd::patch_node &node = scene_patch.nodes[0];
-						node.patch_ref += patch_offset;
+							
 					}
 				}
 				else {

@@ -67,6 +67,7 @@ int geometric_series(int iterations, int base) {
 	return (1-pow(base, iterations+1))/(1-base);
 }
 
+//TODO: find better place, maybe inside of subd_patch?
 uint32_t decode_morton(uint morton) {
 	uint32_t x = morton & 0x55555555;
 	x = (x | (x >> 1)) & 0x33333333;
@@ -99,9 +100,6 @@ void subd_patch::build_bvh() {
 		box.grow(verts[vert_down_right(vert_index)].pos);
 		current_node.box = box;
 
-		uint32_t morton_code = calculate_morton_code(x, y);
-		current_node.patch_ref = morton_code;
-		assert(morton_code <= verts.size());
 		nodes[off_children+morton] = current_node;
 	}
 
@@ -129,14 +127,9 @@ void subd_patch::build_bvh() {
 			current_node.box.grow(lower_node_3.box);
 			current_node.box.grow(lower_node_4.box);
 
-
 			nodes[off+i] = current_node;
 		}
-	}
-
-	//if (subd_level == 0)
-	//	nodes[0].set_subd_root_and_leaf();
-		
+	}	
 }
 
 int subd_patch::calculate_morton_code(int x, int y) const {
@@ -182,4 +175,10 @@ triangle subd_patch::tri(int morton_code, bool upper) const {
 	}
 
 	return tri;
+}
+
+uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
+	uint32_t x = decode_morton(index);
+	uint32_t y = decode_morton(index >> 1);
+	return y*len() + x;
 }

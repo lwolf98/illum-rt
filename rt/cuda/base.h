@@ -388,9 +388,6 @@ namespace wf {
 		struct patch_node {
 			float4 min;
 			float4 max;
-			uint32_t quad_ref; // only set in leaf nodes
-
-			patch_node() : quad_ref((uint32_t)-1) {}
 		};
 
 		struct subd_patch {
@@ -430,6 +427,22 @@ namespace wf {
 				}
 
 				return tri;
+			}
+
+			uint32_t __forceinline__ __device__ quad_ref_from_index(uint32_t index) {
+				uint32_t x = decode_morton(index);
+				uint32_t y = decode_morton(index >> 1);
+				return y*len() + x;
+			}
+
+		private:
+			static uint32_t __forceinline__ __device__ decode_morton(uint morton) {
+				uint32_t x = morton & 0x55555555;
+				x = (x | (x >> 1)) & 0x33333333;
+				x = (x | (x >> 2)) & 0x0F0F0F0F;
+				x = (x | (x >> 4)) & 0x00FF00FF;
+				x = (x | (x >> 8)) & 0x0000FFFF;
+				return x;
 			}
 		};
 

@@ -102,14 +102,6 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::close
 			else if (hit_r)
 				stack[++sp] = node.link_r;
 		}
-		/*
-		else if (node.subd_aabb_id != -1) {
-			uint32_t id = node.subd_aabb_id;
-			subd_aabb box = subd_nodes[id];
-			triangle_intersection is = subd_closest_hit(box.bvh, ray);
-			
-		}
-		*/
 		else {
 			for (int i = 0; i < node.tri_count(); ++i) {
 				int tri_idx = triangle_index(node.tri_offset()+i);

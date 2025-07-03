@@ -388,9 +388,6 @@ namespace import {
 							subd::subd_patch &scene_patch =
 								scene.patches[scene.patches.size()-1];
 
-							// Setting the patch_ref and offset is only required for CPU variant for its BVH build
-							subd::patch_node &node = scene_patch.nodes[0];
-							node.patch_ref += patch_offset;
 						}
 					}
 					else {
