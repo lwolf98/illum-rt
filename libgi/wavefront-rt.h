@@ -174,8 +174,8 @@ namespace wf {
 					estimated = true;
 				}
 			}
-	auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
-	std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
+			auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
+			std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
 		}
 		void finalize_frame() override {
 			for (auto *s : frame_finalization_steps) s->run();
