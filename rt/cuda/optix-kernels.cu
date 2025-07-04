@@ -139,23 +139,12 @@ namespace wf::cuda {
 
 		int id = optixGetPrimitiveIndex();
 		auto &patch = launch_params.patches[id];
-		uint32_t nodes_count = geometric_series(patch.subd_level-1, 4) + pow(4, patch.subd_level);
 		uint32_t node_offset = patch.bvh_node_offset;
-		auto &root_node = launch_params.patch_nodes[node_offset];
 
 		uint32_t stack[25];
-		int32_t sp = -1;
+		int32_t sp = 0;
 		bool is_root_and_leaf = patch.subd_level == 0;
-		if (is_root_and_leaf) {
-			stack[++sp] = 0;
-		}
-		else {
-			uint32_t child_base = child_node_base(0, 0); // = 1
-			stack[++sp] = child_base;
-			stack[++sp] = child_base+1;
-			stack[++sp] = child_base+2;
-			stack[++sp] = child_base+3;
-		}
+		stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
 		if (debug) printf("Ray direction: (%f %f %f)\n", ray_direction.x, ray_direction.y, ray_direction.z);
@@ -169,10 +158,27 @@ namespace wf::cuda {
 			uint32_t index = stack[sp--];
 			uint32_t trav_level = (uint32_t) (0.5f*log2f(1+3*index));
 
-			auto &node = launch_params.patch_nodes[node_offset + index];
 			bool is_leaf = trav_level == patch.subd_level;
+			if (!is_leaf) {
+				const auto &node = launch_params.patch_nodes[node_offset + index];
+				float t = FLT_MAX;
 
-			if (is_leaf) {
+				for (int i = 0; i < 4; ++i) {
+					float3 node_min = node.get_min(i);
+					float3 node_max = node.get_max(i);
+					bool hit = intersect_box(node_min, node_max,
+									ray_origin, ray_direction, r_id, r_ood,
+									tmin, tmax, t);
+
+					if (hit && t < closest_t) {
+						if (debug) printf("hit node!!!!!!\n");
+						uint32_t child_base = child_node_base(trav_level, index);
+						stack[++sp] = child_base+i;
+					}
+					else if (debug) printf("didn't hit node...\n");
+				}
+			}
+			else {
 				uint32_t quad_ref = 0;
 				if (!is_root_and_leaf) { // is only leaf
 					uint32_t off_current_level = geometric_series(trav_level-1, 4);
@@ -235,25 +241,6 @@ namespace wf::cuda {
 					closest_t = t;
 					closest_quad_ref = (quad_ref+1) * -1;
 				}
-			}
-			else {
-				float3 node_min = f4_to_f3(node.min);
-				float3 node_max = f4_to_f3(node.max);
-
-				float t = FLT_MAX;
-				bool hit = intersect_box(node_min, node_max,
-								ray_origin, ray_direction, r_id, r_ood,
-								tmin, tmax, t);
-
-				if (hit && t < closest_t) {
-					if (debug) printf("hit node!!!!!!\n");
-					uint32_t child_base = child_node_base(trav_level, index);
-					stack[++sp] = child_base;
-					stack[++sp] = child_base+1;
-					stack[++sp] = child_base+2;
-					stack[++sp] = child_base+3;
-				}
-				else if (debug) printf("didn't hit node...\n");
 			}
 		}
 

@@ -68,7 +68,8 @@ int geometric_series(int iterations, int base) {
 }
 
 //TODO: find better place, maybe inside of subd_patch?
-uint32_t decode_morton(uint morton) {
+//TODO: remove one of the variables (x, morton)
+uint32_t decode_morton(uint32_t morton) {
 	uint32_t x = morton & 0x55555555;
 	x = (x | (x >> 1)) & 0x33333333;
 	x = (x | (x >> 2)) & 0x0F0F0F0F;
@@ -78,56 +79,45 @@ uint32_t decode_morton(uint morton) {
 }
 
 void subd_patch::build_bvh() {
-	//TODO: pre-allocate, e.g. level 3: 1 + 4 + 16 + 64 (2 children: (1+2) + (4+8) + (16+32) + (64))
+	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 	
-	int nodes_count = geometric_series(subd_level-1, 4) + pow(4, subd_level);
+	int nodes_count = geometric_series(subd_level-1, 4);
 	nodes.resize(nodes_count);
-	if (subd_level == 0)
-		std::cout << "";
 
+	int off_children = geometric_series(subd_level-2, 4);
 	int size = (len()-1)*(len()-1);
-	int off_children = geometric_series(subd_level-1, 4);
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
 		uint32_t y = decode_morton(morton >> 1);
 
 		uint32_t vert_index = y*len()+x;
-		patch_node current_node;
 		aabb box;
 		box.grow(verts[vert_index].pos);
 		box.grow(verts[vert_right(vert_index)].pos);
 		box.grow(verts[vert_down(vert_index)].pos);
 		box.grow(verts[vert_down_right(vert_index)].pos);
-		current_node.box = box;
 
-		nodes[off_children+morton] = current_node;
+		if (subd_level > 0)	nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+		else				{ root_box = box; return; }
 	}
 
 	int off = 0;
 	for (int i = 1; i <= subd_level; i++) {
 		int len = pow(2,(subd_level-i));
 		size = len*len;
-		if (i > 1) {
-			off_children = off;
-		}
-		off = geometric_series(subd_level-i-1, 4);
+		if (i > 1)			off_children = off;
+		if (i < subd_level)	off = geometric_series(subd_level-i-2, 4);
 
-		for (uint32_t i = 0; i < size; ++i) {
-			uint32_t index = i*4;
+		for (uint32_t j = 0; j < size; ++j) {
+			const patch_node &child_node = nodes[off_children + j];
+			aabb box;
+			box.grow(child_node.boxes[0]);
+			box.grow(child_node.boxes[1]);
+			box.grow(child_node.boxes[2]);
+			box.grow(child_node.boxes[3]);
 
-			patch_node current_node;
-
-			patch_node &lower_node_1 = nodes[off_children + index];
-			patch_node &lower_node_2 = nodes[off_children + index+1];
-			patch_node &lower_node_3 = nodes[off_children + index+2];
-			patch_node &lower_node_4 = nodes[off_children + index+3];
-
-			current_node.box.grow(lower_node_1.box);
-			current_node.box.grow(lower_node_2.box);
-			current_node.box.grow(lower_node_3.box);
-			current_node.box.grow(lower_node_4.box);
-
-			nodes[off+i] = current_node;
+			if (i < subd_level)	nodes[off+(j>>2)].boxes[j%4] = box;
+			else				root_box = box;
 		}
 	}	
 }

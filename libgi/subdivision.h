@@ -123,7 +123,7 @@ namespace subd {
 	};
 
 	struct patch_node {
-		aabb box;
+		aabb boxes[4];
 		//! is the node an inner node (as opposed to a leaf)
 		//bool inner() const { return patch_ref == (uint32_t)-1; }
 		/*void set_secondary_value(uint32_t val) {
@@ -164,6 +164,7 @@ namespace subd {
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
+		aabb root_box;
 		uint32_t material_id;
 		uint32_t subd_level;
 

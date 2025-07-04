@@ -386,13 +386,63 @@ namespace wf {
 		};
 
 		struct patch_node {
-			float4 min;
-			float4 max;
+			// memory layout and order of the following fields is important!
+			float4 min_1;
+			float4 min_2;
+			float4 min_3;
+			float4 max_1;
+			float4 max_2;
+			float4 max_3;
+
+			void set_min(uint32_t index, const vec3 &v) {
+				assert(index <= 3);
+				if (index == 0)			{ min_1.x = v.x; min_1.y = v.y; min_1.z = v.z; }
+				else if (index == 1)	{ min_1.w = v.x; min_2.x = v.y; min_2.y = v.z; }
+				else if (index == 2)	{ min_2.z = v.x; min_2.w = v.y; min_3.x = v.z; }
+				else					{ min_3.y = v.x; min_3.z = v.y; min_3.w = v.z; }
+			}
+
+			void set_max(uint32_t index, const vec3 &v) {
+				assert(index <= 3);
+				if (index == 0)			{ max_1.x = v.x; max_1.y = v.y; max_1.z = v.z; }
+				else if (index == 1)	{ max_1.w = v.x; max_2.x = v.y; max_2.y = v.z; }
+				else if (index == 2)	{ max_2.z = v.x; max_2.w = v.y; max_3.x = v.z; }
+				else					{ max_3.y = v.x; max_3.z = v.y; max_3.w = v.z; }
+			}
+
+			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				assert(index <= 3);
+				if (index == 0)			return { .x = min_1.x, .y = min_1.y, .z = min_1.z };
+				else if (index == 1)	return { .x = min_1.w, .y = min_2.x, .z = min_2.y };
+				else if (index == 2)	return { .x = min_2.z, .y = min_2.w, .z = min_3.x };
+				else					return { .x = min_3.y, .y = min_3.z, .z = min_3.w };
+			}
+
+			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+				assert(index <= 3);
+				if (index == 0)			return { .x = max_1.x, .y = max_1.y, .z = max_1.z };
+				else if (index == 1)	return { .x = max_1.w, .y = max_2.x, .z = max_2.y };
+				else if (index == 2)	return { .x = max_2.z, .y = max_2.w, .z = max_3.x };
+				else					return { .x = max_3.y, .y = max_3.z, .z = max_3.w };
+			}
+
+			//TODO: is it ok to use these (dynamic) variants?
+			/*float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				assert(index <= 3);
+				uint32_t off = index * 3;
+				float *min_base = (float *)&min_1;
+				return float3 { .x = min_base[off], .y = min_base[off+1], .z = min_base[off+2] };
+			}
+
+			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+				assert(index <= 3);
+				uint32_t off = index * 3;
+				float *max_base = (float *)&max_1;
+				return float3 { .x = max_base[off], .y = max_base[off+1], .z = max_base[off+2] };
+			}*/
 		};
 
 		struct subd_patch {
-			float4 min;
-			float4 max;
 			uint32_t start_index;
 			uint32_t bvh_node_offset;
 			uint32_t material_id;
@@ -436,7 +486,8 @@ namespace wf {
 			}
 
 		private:
-			static uint32_t __forceinline__ __device__ decode_morton(uint morton) {
+			//TODO: remove one of the variables (x, morton)
+			static uint32_t __forceinline__ __device__ decode_morton(uint32_t morton) {
 				uint32_t x = morton & 0x55555555;
 				x = (x | (x >> 1)) & 0x33333333;
 				x = (x | (x >> 2)) & 0x0F0F0F0F;

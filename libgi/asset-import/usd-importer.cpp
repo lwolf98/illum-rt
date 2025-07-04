@@ -359,16 +359,16 @@ namespace import {
 							auto &patch = patches[p];
 							patch.material_id = material_id;
 
-							auto &root_bvh_node = patch.nodes[0];
-							scene.scene_bounds.grow(root_bvh_node.box);
+							const auto &root_box = patch.root_box;
+							scene.scene_bounds.grow(root_box);
 
 							triangle dummy_tri;
 							vertex v;
-							v.pos = root_bvh_node.box.min;
+							v.pos = root_box.min;
 							scene.vertices.push_back(v);
 							dummy_tri.a = scene.vertices.size()-1;
 
-							v.pos = root_bvh_node.box.max;
+							v.pos = root_box.max;
 							scene.vertices.push_back(v);
 							dummy_tri.b = scene.vertices.size()-1;
 
