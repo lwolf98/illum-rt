@@ -173,16 +173,28 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 
 
 //TODO: find better place for these functions
-static int geometric_series(int iterations, int base) {
-	return (1-pow(base, iterations+1))/(1-base);
+/*static uint32_t log2_clz(uint32_t x) {
+	return 31 - __builtin_clz(x);
+}*/
+
+static uint32_t log4_clz(uint32_t x) {
+	return (31 - __builtin_clz(x)) >> 1;
 }
+
+static int geometric_series4(int iterations) {
+	return (1 - (1 << ((iterations+1)<<1))) / (-3);
+}
+
+/*static int geometric_series(int iterations, int base) {
+	return (1-pow(base, iterations+1))/(1-base);
+}*/
 
 uint32_t child_node_base(
 		uint32_t trav_level,
 		uint32_t index
 	) {
-		uint32_t off_current_level = geometric_series(trav_level-1, 4);
-		uint32_t off_child_level = geometric_series(trav_level, 4);
+		uint32_t off_current_level = geometric_series4(trav_level-1);
+		uint32_t off_child_level = geometric_series4(trav_level);
 		uint32_t idx_current_relative = index - off_current_level;
 		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
 		uint32_t index_child = off_child_level + idx_child_relative;
@@ -192,7 +204,7 @@ uint32_t child_node_base(
 uint32_t child_node_base(
 		uint32_t index
 	) {
-		uint32_t trav_level = (uint32_t) (0.5f*log2f(index));
+		uint32_t trav_level = log4_clz(1+3*index);
 		return child_node_base(trav_level, index);
 }
 //TODO end: until here
@@ -210,7 +222,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
-		uint32_t trav_level = (uint32_t) (0.5f*log2f(1+3*index));
+		uint32_t trav_level = log4_clz(1+3*index);
 
 		bool is_leaf = trav_level == patch.subd_level;
 		if (!is_leaf) {
@@ -230,7 +242,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 		else {
 			uint32_t quad_ref = 0;
 			if (!is_root_and_leaf) {
-				uint32_t off_current_level = geometric_series(trav_level-1, 4);
+				uint32_t off_current_level = geometric_series4(trav_level-1);
 				quad_ref = patch.quad_ref_from_index(index - off_current_level);
 			}
 
