@@ -1,0 +1,88 @@
+omp on
+
+up 0 1 0
+
+#sppx 1
+sppx 32
+#sppx 128
+#sppx 256
+#sppx 1024
+#sppx 4096
+resolution 960 540
+
+default-brdf layered-gtr2
+
+modeltrafo shift 0 150 0
+modeltrafo rotate x 3.14
+load render-data/light/plane_sky.obj
+modeltrafo rotate x -3.14
+modeltrafo shift 0 -150 0
+
+modeltrafo scale 5 5 5
+#load render-data/local/sibenik/sibenik-nostaklo.obj
+#load render-data/local/sibenik/sibenik.obj
+modeltrafo scale 0.2 0.2 0.2
+
+# debug
+load render-data/subd/knife_usd/knife.usda
+modeltrafo shift 3 0 0
+load render-data/subd/knife_usd/knife.usda subd_level 4 subd_type patches
+modeltrafo shift -3 0 0
+
+#modeltrafo shift 13 0 -23
+#load render-data/subd/knife_obj/knife.obj
+#modeltrafo shift 3 0 0
+#load render-data/subd/knife_obj/knife.obj subd_level 5 subd_type patches
+##load render-data/subd/knife_obj/knife.obj
+#modeltrafo shift -3 0 0
+#modeltrafo shift -13 0 23
+
+load render-data/subd/basic_tests/quad_tri_test.obj
+#load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
+#load render-data/subd/basic_tests/cubi_open.obj subd_level 3
+#load render-data/subd/basic_tests/cubi.usda
+
+modeltrafo shift 0 -10 0
+modeltrafo scale 100 100 100
+load render-data/subd/cartoon_dragon_obj/dragon_low.obj
+modeltrafo shift 0.1 0 0
+load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2
+modeltrafo shift -0.1 0 0
+modeltrafo scale 0.01 0.01 0.01
+modeltrafo shift 0 10 0
+
+#skylight load render-data/skylight-sunset.floats 10
+
+material select Light
+material emissive 5 5 5
+
+#material select body
+#material emissive 50 5 5
+
+# Pos 1
+#at -3 0 0
+#look 1 0 0
+
+# Pos 2 (Knife)
+at -6.82282 1.2534 0.835015
+look 0.67736 -0.104066 -0.728254
+
+#raytracer naive-bvh
+raytracer subd-naive-bvh
+commit
+#algo primary
+algo direct/mis
+outfile out_subds/subd-direct_cpu.png
+
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+##is cosine
+#outfile out_subds/subd-direct_cuda.png
+#commit
+
+run
