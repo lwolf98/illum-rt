@@ -62,86 +62,64 @@ uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y)
 	return vert_id + off_y * len() + off_x;
 }
 
+//TODO: explain reason for passing iterations = -1 (happens on subd_level = 0)
 int geometric_series(int iterations, int base) {
 	return (1-pow(base, iterations+1))/(1-base);
 }
 
+//TODO: find better place, maybe inside of subd_patch?
+//TODO: remove one of the variables (x, morton)
+uint32_t decode_morton(uint32_t morton) {
+	uint32_t x = morton & 0x55555555;
+	x = (x | (x >> 1)) & 0x33333333;
+	x = (x | (x >> 2)) & 0x0F0F0F0F;
+	x = (x | (x >> 4)) & 0x00FF00FF;
+	x = (x | (x >> 8)) & 0x0000FFFF;
+	return x;
+}
+
 void subd_patch::build_bvh() {
-	//TODO: pre-allocate, e.g. level 3: 1 + 4 + 16 + 64 (2 children: (1+2) + (4+8) + (16+32) + (64))
+	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 	
-	int nodes_count = 3 * geometric_series(subd_level-1, 4) + pow(4, subd_level);
-	nodes.reserve(nodes_count);
-	//int offset = nodes.size() - pow(4, subd_level); //TODO: order nodes
-	for (int y = 0; y < len()-1; y++) {
-		for (int x = 0; x < len()-1; x++) {
-			uint32_t vert_index = y*len()+x;
-			node current_node;
-			aabb box;
-			box.grow(verts[vert_index].pos);
-			box.grow(verts[vert_right(vert_index)].pos);
-			box.grow(verts[vert_down(vert_index)].pos);
-			box.grow(verts[vert_down_right(vert_index)].pos);
-			current_node.box = box;
+	int nodes_count = geometric_series(subd_level-1, 4);
+	nodes.resize(nodes_count);
 
-			uint32_t morton_code = calculate_morton_code(x, y); //0xffffff; //TODO: morton code
-			//current_node.triangle = ((uint32_t)-1) - morton_code;
-			current_node.set_secondary_value(morton_code);
-			assert(morton_code <= verts.size());
-			nodes.emplace_back(current_node);
-		}
+	int off_children = geometric_series(subd_level-2, 4);
+	int size = (len()-1)*(len()-1);
+	for (uint32_t morton = 0; morton < size; ++morton) {
+		uint32_t x = decode_morton(morton);
+		uint32_t y = decode_morton(morton >> 1);
+
+		uint32_t vert_index = y*len()+x;
+		aabb box;
+		box.grow(verts[vert_index].pos);
+		box.grow(verts[vert_right(vert_index)].pos);
+		box.grow(verts[vert_down(vert_index)].pos);
+		box.grow(verts[vert_down_right(vert_index)].pos);
+
+		if (subd_level > 0)	nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+		else				{ root_box = box; return; }
 	}
 
-	for (int i = 0; i < subd_level; i++) {
+	int off = 0;
+	for (int i = 1; i <= subd_level; i++) {
 		int len = pow(2,(subd_level-i));
-		int off = 0;
-		if (i > 0) {
-			off = nodes_count - 3 * geometric_series(subd_level-i, 4) + 2;
+		size = len*len;
+		if (i > 1)			off_children = off;
+		if (i < subd_level)	off = geometric_series(subd_level-i-2, 4);
+
+		for (uint32_t j = 0; j < size; ++j) {
+			const patch_node &child_node = nodes[off_children + j];
+			aabb box;
+			box.grow(child_node.boxes[0]);
+			box.grow(child_node.boxes[1]);
+			box.grow(child_node.boxes[2]);
+			box.grow(child_node.boxes[3]);
+
+			if (i < subd_level)	nodes[off+(j>>2)].boxes[j%4] = box;
+			else				root_box = box;
 		}
-		for (int y_base = 0; y_base < len; y_base+=2) {
-			for (int x_base = 0; x_base < len; x_base+=2) {
-				int step = 1;
-				if (i > 0)
-					step = 3;
-				int x = x_base * step;
-				int y = y_base * step;
-
-				node current_node;
-				node node_l;
-				node node_r;
-
-				node &lower_node_1 = nodes[off + y*len+x];
-				node &lower_node_2 = nodes[off + y*len+(x+step)];
-				node &lower_node_3 = nodes[off + (y+step)*len+x];
-				node &lower_node_4 = nodes[off + (y+step)*len+(x+step)];
-
-				node_l.box.grow(lower_node_1.box);
-				node_l.box.grow(lower_node_2.box);
-				node_l.left = off + y*len+x;
-				node_l.right = off + y*len+(x+step);
-				nodes.emplace_back(node_l);
-				current_node.box.grow(node_l.box);
-				current_node.left = nodes.size()-1;
-
-				node_r.box.grow(lower_node_3.box);
-				node_r.box.grow(lower_node_4.box);
-				node_r.left = off + (y+step)*len+x;
-				node_r.right = off + (y+step)*len+(x+step);
-				nodes.emplace_back(node_r);
-				current_node.box.grow(node_r.box);
-				current_node.right = nodes.size()-1;
-
-				nodes.emplace_back(current_node);
-
-				//if (i == subd_level-1)
-				//	bvh_node = nodes.size()-1;
-
-			}
-		}
-	}
-
-	bvh_node = nodes.size()-1;
-	if (subd_level == 0)
-		nodes[bvh_node].set_subd_root_and_leaf();
+	}	
 }
 
 int subd_patch::calculate_morton_code(int x, int y) const {
@@ -187,4 +165,10 @@ triangle subd_patch::tri(int morton_code, bool upper) const {
 	}
 
 	return tri;
+}
+
+uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
+	uint32_t x = decode_morton(index);
+	uint32_t y = decode_morton(index >> 1);
+	return y*len() + x;
 }

@@ -38,7 +38,6 @@ namespace wf::cuda {
 
         tri_is *prd = per_ray_data<tri_is>();
 
-        //prd->ref = optixGetPrimitiveIndex();
 		prd->set_ref(optixGetPrimitiveIndex());
         const float2 barycentrics = optixGetTriangleBarycentrics();
         
@@ -67,7 +66,6 @@ namespace wf::cuda {
     };
 
 	extern "C" __global__ void __closesthit__patches() {
-		//TODO: implement
 		if (DBG_PRINT) printf("closest hit patches\n");
 		uint3 px_index = optixGetLaunchIndex();
 		bool debug = false;
@@ -80,17 +78,9 @@ namespace wf::cuda {
 
 		tri_is *prd = per_ray_data<tri_is>();
 
-        //const uint32_t u2 = optixGetPayload_2();
-        //const uint32_t u3 = optixGetPayload_3();
-        //debug_info *dbg = reinterpret_cast<debug_info*>(unpack_pointer(u2, u3));
 		optixGetLaunchIndex();
 
-        //prd->ref = ((uint32_t)-1) - optixGetPrimitiveIndex();
 		prd->set_ref(optixGetPrimitiveIndex(), true);
-        //const float2 barycentrics = optixGetTriangleBarycentrics();
-        //
-        //prd->beta = barycentrics.x;
-        //prd->gamma = barycentrics.y;
         prd->beta = __uint_as_float(optixGetAttribute_0()); //0.5f;
         prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
@@ -104,8 +94,44 @@ namespace wf::cuda {
 		if (DBG_PRINT) printf("any hit patches\n");
 	};
 
+	//TODO: find better place for these functions
+	/*static uint32_t __forceinline__ __device__ log2_clz(uint32_t x) {
+		return 31 - __clz(x);
+	}*/
+
+	static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
+		return (31 - __clz(x)) >> 1;
+	}
+
+	static __forceinline__ __device__ int geometric_series4(int iterations) {
+		return (1 - (1 << ((iterations+1)<<1))) / (-3);
+	}
+
+	/*static __forceinline__ __device__ int geometric_series(int iterations, int base) {
+		return (1-pow(base, iterations+1))/(1-base);
+	}*/
+
+	static uint32_t __forceinline__ __device__ child_node_base(
+			uint32_t trav_level,
+			uint32_t index
+		) {
+			uint32_t off_current_level = geometric_series4(trav_level-1);
+			uint32_t off_child_level = geometric_series4(trav_level);
+			uint32_t idx_current_relative = index - off_current_level;
+			uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+			uint32_t index_child = off_child_level + idx_child_relative;
+			return index_child;
+	}
+
+	static uint32_t __forceinline__ __device__ child_node_base(
+			uint32_t index
+		) {
+			uint32_t trav_level = log4_clz(1+3*index);
+			return child_node_base(trav_level, index);
+	}
+	//TODO end: until here
+
 	extern "C" __global__ void __intersection__patches() {
-		//TODO: implement
 		if (DBG_PRINT) printf("intersection patches\n");
 		uint3 px_index = optixGetLaunchIndex();
 		bool debug = false;
@@ -120,27 +146,17 @@ namespace wf::cuda {
 		float3 ray_direction = optixGetObjectRayDirection();
 		float tmin = optixGetRayTmin();
 		float tmax = optixGetRayTmax();
-		float3 r_id = ray_id(ray_direction); //optixGetObjectRayDirection();
-		float3 r_ood = ray_ood(ray_origin, r_id); //optixGetObjectRayOrigin();
+		float3 r_id = ray_id(ray_direction);
+		float3 r_ood = ray_ood(ray_origin, r_id);
 
 		int id = optixGetPrimitiveIndex();
 		auto &patch = launch_params.patches[id];
-		//printf("%d:%d\n", id, patch.subd_level);
-		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
-		//printf("right:%d, left:%d\n", root_node.right, root_node.left);
-		if (debug) printf("Root node ref: %d, L: %d, R: %d\n", patch.bvh_node, root_node.left, root_node.right);
+		uint32_t node_offset = patch.bvh_node_offset;
 
 		uint32_t stack[25];
-		int32_t sp = -1;
-		//stack[0] = patch.bvh_node;
-		bool is_root_and_leaf = root_node.left == (uint32_t)-2 && root_node.right == (uint32_t)-2;
-		if (is_root_and_leaf) {
-			stack[++sp] = patch.bvh_node;
-		}
-		else {
-			stack[++sp] = root_node.left;
-			stack[++sp] = root_node.right;
-		}
+		int32_t sp = 0;
+		bool is_root_and_leaf = patch.subd_level == 0;
+		stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
 		if (debug) printf("Ray direction: (%f %f %f)\n", ray_direction.x, ray_direction.y, ray_direction.z);
@@ -151,27 +167,49 @@ namespace wf::cuda {
 		int32_t closest_quad_ref = 0;
 		while (sp >= 0) {
 			if (debug) printf("\n");
-			auto &node = launch_params.patch_nodes[stack[sp--]];
-			bool is_leaf = node.left >= (uint32_t)-2 && node.right >= (uint32_t)-2;
+			uint32_t index = stack[sp--];
+			uint32_t trav_level = log4_clz(1+3*index);
 
-			if (is_leaf) {
+			bool is_leaf = trav_level == patch.subd_level;
+			if (!is_leaf) {
+				const auto &node = launch_params.patch_nodes[node_offset + index];
+				float t = FLT_MAX;
+
+				for (int i = 0; i < 4; ++i) {
+					float3 node_min = node.get_min(i);
+					float3 node_max = node.get_max(i);
+					bool hit = intersect_box(node_min, node_max,
+									ray_origin, ray_direction, r_id, r_ood,
+									tmin, tmax, t);
+
+					if (hit && t < closest_t) {
+						if (debug) printf("hit node!!!!!!\n");
+						uint32_t child_base = child_node_base(trav_level, index);
+						stack[++sp] = child_base+i;
+					}
+					else if (debug) printf("didn't hit node...\n");
+				}
+			}
+			else {
 				uint32_t quad_ref = 0;
-				if (!is_root_and_leaf) // is only leaf
-					quad_ref = ((uint32_t)-1) - (node.triangle + 1); //resolve encoded
+				if (!is_root_and_leaf) { // is only leaf
+					uint32_t off_current_level = geometric_series4(trav_level-1);
+					quad_ref = patch.quad_ref_from_index(index - off_current_level);
+				}
 
 				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);
 
-				uint4 tri_0 = patch.subd_tri(quad_ref, true); //subd_tri(patch, quad_ref, true);
+				uint4 tri_0 = patch.subd_tri(quad_ref, true);
 				uint4 tri_1 = patch.subd_tri(quad_ref, false);
 				if (debug) printf("Tri 0: %d %d %d\n", tri_0.x, tri_0.y, tri_0.z);
 				if (debug) printf("Tri 1: %d %d %d\n", tri_1.x, tri_1.y, tri_1.z);
-				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]); //patch.start_index + 
-				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]); //patch.start_index + 
-				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]); //patch.start_index + 
-				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]); //patch.start_index + 
-				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]); //patch.start_index + 
-				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]); //patch.start_index + 
+				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]);
+				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]);
+				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]);
+				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]);
+				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]);
+				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]);
 				if (debug) {
 					printf("t_min: %f, t_max: %f\n", tmin, tmax);
 					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
@@ -215,27 +253,6 @@ namespace wf::cuda {
 					closest_t = t;
 					closest_quad_ref = (quad_ref+1) * -1;
 				}
-				
-				//optixReportIntersection(.5f, 0);
-
-				
-			}
-			else {
-				if (debug) printf("Node ref: %d, L: %d, R: %d\n", stack[sp+1], node.left, node.right);
-				float3 node_min = f4_to_f3(node.min);
-				float3 node_max = f4_to_f3(node.max);
-
-				float t = FLT_MAX;
-				bool hit = intersect_box(node_min, node_max,
-								ray_origin, ray_direction, r_id, r_ood,
-								tmin, tmax, t);
-
-				if (hit && t < closest_t) {
-					if (debug) printf("hit node!!!!!!\n");
-					stack[++sp] = node.left;
-					stack[++sp] = node.right;
-				}
-				else if (debug) printf("didn't hit node...\n");
 			}
 		}
 
@@ -289,7 +306,6 @@ namespace wf::cuda {
                    RAY_TYPE_COUNT,
                    SURFACE_RAY_TYPE,
                    u0, u1);
-                   //u2, u3);
 
         launch_params.triangle_intersections[pixel_index] = intersection;
     }

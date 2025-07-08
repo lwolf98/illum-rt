@@ -395,9 +395,6 @@ namespace wf {
                     params->patch_vertex_tc[tri.x], params->patch_vertex_tc[tri.y], params->patch_vertex_tc[tri.z],
                     barycentrics, &params->materials[tri.w]
                 );
-
-                assert(tc.x >= 0 && tc.x <= 1);
-                assert(tc.y >= 0 && tc.y <= 1);
             }
         };   
     }

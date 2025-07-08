@@ -97,32 +97,27 @@ namespace wf {
 				
 				uint32_t offset = device_nodes.size();
 				device_nodes.resize(offset + patch.nodes.size());
-				device_patch.bvh_node = offset + patch.bvh_node;
+				device_patch.bvh_node_offset = offset;
 
-				//TODO: remove min and max from patch when patch_root_nodes structure is used
-				device_patch.min = f4(patch.nodes[patch.bvh_node].box.min);
-				device_patch.max = f4(patch.nodes[patch.bvh_node].box.max);
-				device_root_nodes[i] = patch.nodes[patch.bvh_node].box;
+				device_root_nodes[i] = patch.root_box;
 
 				#pragma omp parallel for
 				for (int j = 0; j < patch.nodes.size(); ++j) {
 					patch_node device_node;
-					const subd::node &node = patch.nodes[j];
-					device_node.min = f4(node.box.min);
-					device_node.max = f4(node.box.max);
-					device_node.left = node.left;
-					device_node.right = node.right;
-					if (!node.is_subd_leaf()) {
-						device_node.left += offset;
-						device_node.right += offset;
-					}
-					device_node.triangle = node.triangle;
+					const subd::patch_node &node = patch.nodes[j];
+					device_node.set_min(0, node.boxes[0].min);
+					device_node.set_min(1, node.boxes[1].min);
+					device_node.set_min(2, node.boxes[2].min);
+					device_node.set_min(3, node.boxes[3].min);
+					device_node.set_max(0, node.boxes[0].max);
+					device_node.set_max(1, node.boxes[1].max);
+					device_node.set_max(2, node.boxes[2].max);
+					device_node.set_max(3, node.boxes[3].max);
 
-					//device_nodes.push_back(device_node);
 					device_nodes[offset + j] = device_node;
 				}
 
-				device_patch.start_index = tmp_p.size(); //patch.verts.size();
+				device_patch.start_index = tmp_p.size();
 				uint32_t n_device_verts = tmp_p.size() + patch.verts.size();
 				tmp_p.resize(n_device_verts);
 				tmp_n.resize(n_device_verts);

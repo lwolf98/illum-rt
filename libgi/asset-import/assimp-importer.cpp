@@ -223,16 +223,16 @@ namespace import {
 						auto &patch = patches[p];
 						patch.material_id = material_id;
 
-						auto &root_bvh_node = patch.nodes[patch.bvh_node];
-						rtgi_scene.scene_bounds.grow(root_bvh_node.box);
+						const auto &root_box = patch.root_box;
+						rtgi_scene.scene_bounds.grow(root_box);
 
 						triangle dummy_tri;
 						vertex v;
-						v.pos = root_bvh_node.box.min;
+						v.pos = root_box.min;
 						rtgi_scene.vertices.push_back(v);
 						dummy_tri.a = rtgi_scene.vertices.size()-1;
 
-						v.pos = root_bvh_node.box.max;
+						v.pos = root_box.max;
 						rtgi_scene.vertices.push_back(v);
 						dummy_tri.b = rtgi_scene.vertices.size()-1;
 
@@ -246,13 +246,12 @@ namespace import {
 					}
 
 					// Store patches into scene
+					//rtgi_scene.patches.insert(rtgi_scene.patches.end(), patches.begin(), patches.end());
 					for (auto &patch : patches) {
 						rtgi_scene.patches.push_back(patch);
 						subd::subd_patch &scene_patch =
 							rtgi_scene.patches[rtgi_scene.patches.size()-1];
-
-						subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
-						node.set_secondary_value(node.get_secondary_value() + patch_offset);
+							
 					}
 				}
 				else {

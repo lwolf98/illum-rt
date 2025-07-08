@@ -575,15 +575,6 @@ namespace subd {
 			for (int i = 0; i < patches.size(); i++) {
 				auto &patch = patches[i];
 				patch.build_bvh();
-				//patch.nodes[patch.bvh_node].triangle = ((uint32_t)-1) - i;
-
-				// Set patch ref inside patch root node.
-				// In case the root node is also the (only) leaf node
-				// the information of the subd quad position in the patch
-				// (morton code) will be overridden inside the leaf node.
-				// This happens only if the patch is of level 0,
-				// thus holding only one subd quad with position (x=0, y=0).
-				patch.nodes[patch.bvh_node].set_secondary_value(i);
 			}
 		}
 

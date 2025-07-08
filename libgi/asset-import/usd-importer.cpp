@@ -359,16 +359,16 @@ namespace import {
 							auto &patch = patches[p];
 							patch.material_id = material_id;
 
-							auto &root_bvh_node = patch.nodes[patch.bvh_node];
-							scene.scene_bounds.grow(root_bvh_node.box);
+							const auto &root_box = patch.root_box;
+							scene.scene_bounds.grow(root_box);
 
 							triangle dummy_tri;
 							vertex v;
-							v.pos = root_bvh_node.box.min;
+							v.pos = root_box.min;
 							scene.vertices.push_back(v);
 							dummy_tri.a = scene.vertices.size()-1;
 
-							v.pos = root_bvh_node.box.max;
+							v.pos = root_box.max;
 							scene.vertices.push_back(v);
 							dummy_tri.b = scene.vertices.size()-1;
 
@@ -382,13 +382,12 @@ namespace import {
 						}
 
 						// Store patches into scene
+						//scene.patches.insert(scene.patches.end(), patches.begin(), patches.end());
 						for (auto &patch : patches) {
 							scene.patches.push_back(patch);
 							subd::subd_patch &scene_patch =
 								scene.patches[scene.patches.size()-1];
 
-							subd::node &node = scene_patch.nodes[scene_patch.bvh_node];
-							node.set_secondary_value(node.get_secondary_value() + patch_offset);
 						}
 					}
 					else {

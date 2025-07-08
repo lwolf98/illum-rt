@@ -33,18 +33,14 @@ uint32_t subd_naive_bvh::subdivide(std::vector<triangle> &triangles, std::vector
 			uint32_t patch_ref = ((uint32_t)-1) - triangles[start].material_id;
 			subd::subd_patch &patch = scene->patches[patch_ref];
 
-			uint32_t offset = nodes.size();
-			for (auto &node : patch.nodes) {
-				nodes.emplace_back(node);
-				auto &copied_node = nodes[nodes.size()-1];
-				if (copied_node.left < ((uint32_t)-2))
-					copied_node.left += offset;
-				if (copied_node.right < ((uint32_t)-2))
-					copied_node.right += offset;
-			}
-			uint32_t id = patch.bvh_node + offset;
+			subd::base_node copied_node;
+			copied_node.box = patch.root_box;
+			copied_node.set_secondary_value(patch_ref);
+			copied_node.left = (uint32_t)-1;
+			copied_node.right = (uint32_t)-1;
+			nodes.emplace_back(copied_node);
 
-			return id;
+			return nodes.size()-1;
 		}
 		uint32_t id = nodes.size();
 		nodes.emplace_back();
@@ -110,12 +106,10 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 #ifdef COUNT_HITS
 	unsigned int hits = 0;
 #endif
-	int patch_ref = -1;
 	while (sp >= 0) {
 		if (debug) std::cout << "\nStack pointer: " << sp << std::endl;
 		if (debug) std::cout << "Node position: " << stack[sp] << std::endl;
-		if (debug) std::cout << "patch_ref (start): " << patch_ref << std::endl;
-		subd::node node = nodes[stack[sp--]];
+		subd::base_node node = nodes[stack[sp--]];
 #ifdef COUNT_HITS
 		hits++;
 #endif
@@ -136,65 +130,10 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 		}
 		else {
 			if (node.triangle > scene->triangles.size()-1) { // if leaf node holds a SubD quad:
-				if (node.is_only_subd_root()) {
-					if (debug) std::cout << "Subd root node" << std::endl;
-					// branch: hit subd patch root node
-					patch_ref = node.get_secondary_value();
-					float dist;
-					if (intersect(node.box, ray, dist)) {
-						if (dist < closest.t) {
-							stack[++sp] = node.left;
-							stack[++sp] = node.right;
-							if (debug) std::cout << "Put two nodes on the stack!!!" << std::endl;
-						}
-						else {
-							if (debug) std::cout << "Not closer, not updated" << std::endl;
-						}
-					}
-					else {
-						if (debug) std::cout << "No intersect, not updated" << std::endl;
-					}
-				}
-				else {
-					// branch: hit subd patch leaf node (subd quad)
-					if (debug) std::cout << "Subd leaf" << std::endl;
-					if (debug) std::cout << "Secondary value: " << node.get_secondary_value() << std::endl;
+				uint32_t patch_ref = node.get_secondary_value();
+				traverse_patch(ray, patch_ref, closest);
 
-					uint32_t morton_code = 0;
-					if (node.is_subd_root_and_leaf()) {
-						// Special handling if subd root node is also the leaf node
-						patch_ref = node.get_secondary_value();
-					}
-					else {
-						// Regular case
-						morton_code = node.get_secondary_value();
-					}
-					if (debug) std::cout << "patch_ref (updated): " << patch_ref << std::endl;
-					if (debug) std::cout << "morton_code: " << morton_code << std::endl;
-
-					assert(patch_ref >= 0);
-					subd::subd_patch &patch = scene->patches[patch_ref];
-					std::array<triangle, 2> tris = patch.tris(morton_code);
-					for (int i = 0; i < 2; i++) {
-						if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
-							if (intersection.t < closest.t) {
-								assert(morton_code <= patch.verts.size());
-								closest = intersection;
-								closest.ref = ((uint32_t)-1) - patch_ref;
-								closest.subd_quad_ref = morton_code + 1;
-								if (i == 1)
-									closest.subd_quad_ref *= -1;
-
-								if (debug) std::cout << "Closest updated!!!" << std::endl;
-								break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
-							}
-							else
-								if (debug) std::cout << "Not closer, not updated" << std::endl;
-						}
-						else
-							if (debug) std::cout << "No intersect, not updated" << std::endl;
-					}
-				}
+				
 			}
 			else {
 				if (debug) std::cout << "Regular leaf" << std::endl;
@@ -212,8 +151,6 @@ triangle_intersection subd_naive_bvh::closest_hit(const ray &ray) {
 					if (debug) std::cout << "No intersect, not updated" << std::endl;
 			}
 		}
-
-		if (debug) std::cout << "patch_ref (end): " << patch_ref << std::endl;
 	}
 #ifdef COUNT_HITS
 	closest.ref = hits;
@@ -234,3 +171,97 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 	return false;
 }
 
+
+//TODO: find better place for these functions
+/*static uint32_t log2_clz(uint32_t x) {
+	return 31 - __builtin_clz(x);
+}*/
+
+static uint32_t log4_clz(uint32_t x) {
+	return (31 - __builtin_clz(x)) >> 1;
+}
+
+static int geometric_series4(int iterations) {
+	return (1 - (1 << ((iterations+1)<<1))) / (-3);
+}
+
+/*static int geometric_series(int iterations, int base) {
+	return (1-pow(base, iterations+1))/(1-base);
+}*/
+
+uint32_t child_node_base(
+		uint32_t trav_level,
+		uint32_t index
+	) {
+		uint32_t off_current_level = geometric_series4(trav_level-1);
+		uint32_t off_child_level = geometric_series4(trav_level);
+		uint32_t idx_current_relative = index - off_current_level;
+		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+		uint32_t index_child = off_child_level + idx_child_relative;
+		return index_child;
+}
+
+uint32_t child_node_base(
+		uint32_t index
+	) {
+		uint32_t trav_level = log4_clz(1+3*index);
+		return child_node_base(trav_level, index);
+}
+//TODO end: until here
+
+void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
+	triangle_intersection intersection;
+	const auto &patch = scene->patches[patch_ref];
+	const auto &root_node = patch.nodes[0];
+
+	uint32_t stack[25];
+	int32_t sp = 0;
+
+	bool is_root_and_leaf = patch.subd_level == 0;
+	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
+
+	while (sp >= 0) {
+		uint32_t index = stack[sp--];
+		uint32_t trav_level = log4_clz(1+3*index);
+
+		bool is_leaf = trav_level == patch.subd_level;
+		if (!is_leaf) {
+			const auto &node = patch.nodes[index];
+			float dist;
+			for (int i = 0; i < 4; ++i) {
+				const aabb &box = node.boxes[i];
+				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
+				if (intersect(box, ray, dist)) {
+					if (dist < closest.t) {
+						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
+						stack[++sp] = child_base+i;
+					}
+				}
+			}
+		}
+		else {
+			uint32_t quad_ref = 0;
+			if (!is_root_and_leaf) {
+				uint32_t off_current_level = geometric_series4(trav_level-1);
+				quad_ref = patch.quad_ref_from_index(index - off_current_level);
+			}
+
+			assert(patch_ref >= 0);
+			std::array<triangle, 2> tris = patch.tris(quad_ref);
+			for (int i = 0; i < 2; i++) {
+				if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
+					if (intersection.t < closest.t) {
+						assert(quad_ref <= patch.verts.size());
+						closest = intersection;
+						closest.ref = ((uint32_t)-1) - patch_ref;
+						closest.subd_quad_ref = quad_ref + 1;
+						if (i == 1)
+							closest.subd_quad_ref *= -1;
+
+						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
+					}
+				}
+			}
+		}
+	}
+}

@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <chrono>
 
 namespace wf {
 
@@ -23,6 +24,36 @@ namespace wf {
 	struct timer : public ::timer {
 		virtual void synchronize() = 0;
 	};
+
+	//! A hacky way to convert ms to a human readable indication of how long this is going to be.
+	//TODO: duplicated from algorithm.cpp, find single location
+	static std::string timediff(unsigned ms) {
+		if (ms > 2000) {
+			ms /= 1000;
+			if (ms > 60) {
+				ms /= 60;
+				if (ms > 121) return "hours";
+				else return std::to_string((int)floor(ms+0.5)) + " min";
+			}
+			else return std::to_string((int)(ms+0.5)) + " sec";
+		}
+		else return std::to_string(ms) + " ms";
+	}
+	static std::string timediff_when(unsigned ms) {
+		if (ms > 2000) {
+			ms /= 1000;
+			if (ms > 200) {
+				ms /= 60;
+				auto done = std::chrono::system_clock::now() + std::chrono::milliseconds(ms*60*1000);
+				auto tt = std::chrono::system_clock::to_time_t(done);
+				auto loc = std::localtime(&tt);
+				char doneat[6];
+				strftime(doneat, 6, "%H:%M", loc);
+				return std::string(", check back at ") + doneat;
+			}
+		}
+		return "";
+	}
 
 	/* This define assumes that /each/ wf step that is executed has a member called 'id'.
 	 *
@@ -171,8 +202,19 @@ namespace wf {
 			return current_sample_index < rc->sppx;	
 		}
 		void compute_samples() override {
-			while(bool run = compute_sample())
+			using namespace std::chrono;
+			auto start = system_clock::now();
+			bool estimated = false;
+			while(bool run = compute_sample()) {
 				run = compute_sample();
+				if (!estimated) {
+					auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
+					std::cout << "Will take around " << timediff(delta_ms*(rc->sppx-1)) << " to complete" << timediff_when(delta_ms*(rc->sppx-1)) << std::endl;	
+					estimated = true;
+				}
+			}
+			auto delta_ms = duration_cast<milliseconds>(system_clock::now() - start).count();
+			std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
 		}
 		void finalize_frame() override {
 			std::cout << "finalize frame!!!" << std::endl;

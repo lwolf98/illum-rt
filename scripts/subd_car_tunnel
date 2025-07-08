@@ -1,0 +1,53 @@
+#omp off
+
+up 0 1 0
+
+#sppx 1024
+sppx 4096
+resolution 960 540
+
+default-brdf layered-gtr2
+
+#load /usr/gralab/render-data/cg-trader/car-track/uploads_files_4001553_car+track.obj
+load /data/temp/wol37689/car-track/car-track.obj
+
+#load render-data/light/dome_light.obj
+
+skylight load render-data/skylight-sunset.floats 10
+
+# Pos Car Track
+at 38.5649 1.49901 -3.01127
+look -0.769501 -0.097961 -0.631088
+
+#raytracer embree
+#commit
+#algo direct/mis
+#outfile out_subds/subd-direct_cpu.png
+
+#raytracer embree
+#commit
+#algo simple-pt
+#path bounce brdf
+#path len 10
+#outfile out_subds/subd-pt_cpu.png
+
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile subd-sibenik-primary_cuda.png
+algo direct-wf
+is light
+outfile out_subds/subd-direct_cuda.png
+commit
+
+# WF setup ML
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+#algo manylight-wf
+##is light paths 4096 length 10 g 0.1 vps 1
+#is light paths 512 length 10 g 0.1 vps 1
+#commit
+
+run
