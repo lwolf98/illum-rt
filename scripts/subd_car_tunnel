@@ -25,11 +25,11 @@ modeltrafo rotate y 1.57
 modeltrafo rotate y -1.57
 modeltrafo shift 0 0 1.125
 
-#load render-data/local/models/car-track/separated/car_base.obj subd_level 1 subd_type patches
-load render-data/local/models/car-track/separated/car_base.obj
+load render-data/local/models/car-track/separated/car_base.obj subd_level 2 subd_type patches
+#load render-data/local/models/car-track/separated/car_base.obj
 load render-data/local/models/car-track/separated/car_tires.obj
 
-#load render-data/local/models/car-track/wall_light.obj
+load render-data/local/models/car-track/wall_light.obj
 #load render-data/light/dome_light.obj
 
 #skylight load render-data/skylight-sunset.floats 10
@@ -55,24 +55,25 @@ look -0.666873 -0.225562 -0.710213
 #path len 10
 #outfile out_subds/car-pt_cpu.png
 
-platform cuda
-raytracer optix
-add-scene-step build accel struct
-#algo primary-wf
-#outfile subd-sibenik-primary_cuda.png
-algo direct-wf
-is light
-outfile out_subds/car-direct_cuda.png
-commit
-
-# WF setup ML
 #platform cuda
 #raytracer optix
 #add-scene-step build accel struct
-#algo manylight-wf
-##is light paths 4096 length 10 g 0.1 vps 1
-#is light paths 512 length 10 g 0.1 vps 1
-#outfile out_subds/car-ml_cuda.png
+##algo primary-wf
+##outfile subd-sibenik-primary_cuda.png
+#algo direct-wf
+#is light
+#outfile out_subds/car-direct_cuda.png
 #commit
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths 4096 length 10 g 0.00001
+#is light paths 4096 length 10 g 0.00001 vps 1
+#is light paths 512 length 10 g 0.00001 vps 1
+outfile out_subds/car-ml_cuda.png
+commit
 
 run

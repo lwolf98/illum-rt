@@ -3,10 +3,10 @@ omp on
 up 0 1 0
 
 #sppx 1
-sppx 32
+#sppx 32
 #sppx 128
 #sppx 256
-#sppx 1024
+sppx 1024
 #sppx 4096
 resolution 960 540
 
@@ -32,7 +32,7 @@ modeltrafo shift -3 0 0
 #modeltrafo shift 13 0 -23
 #load render-data/subd/knife_obj/knife.obj
 #modeltrafo shift 3 0 0
-#load render-data/subd/knife_obj/knife.obj subd_level 5 subd_type patches
+#load render-data/subd/knife_obj/knife.obj subd_level 3 subd_type patches
 ##load render-data/subd/knife_obj/knife.obj
 #modeltrafo shift -3 0 0
 #modeltrafo shift -13 0 23
@@ -84,5 +84,16 @@ outfile out_subds/subd-direct_cpu.png
 ##is cosine
 #outfile out_subds/subd-direct_cuda.png
 #commit
+
+# WF setup ML
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+algo manylight-wf
+is light paths 4096 length 10 g 0.1
+#is light paths 4096 length 10 g 0.1 vps 1
+#is light paths 512 length 10 g 0.1 vps 1
+outfile out_subds/subd-ml_cuda.png
+commit
 
 run
