@@ -34,11 +34,11 @@ done
 #  args=$(echo "$args" | sed -e "s/12/20/g")
 # fi
 
-#echo
-#echo $args
-#echo
-#echo
-nvcc $args #2> /tmp/$USER/nvccwrapper-log
+echo
+echo $args
+echo
+echo
+nvcc -ccbin g++-11 $args #2> /tmp/$USER/nvccwrapper-log
 ret=$?
 
 #cat /tmp/$USER/nvccwrapper-log >> /tmp/$USER/ptxas.log

@@ -147,6 +147,7 @@ namespace subd {
 			const aiFace &f = mesh_ai->mFaces[i];
 			face face;
 
+			if (f.mNumIndices < 3) continue; //TODO: messege/warning for degenerate faces?
 			for (uint32_t j = 0; j < f.mNumIndices; ++j) {
 				vertex_config v;
 				int assimp_vert_id = f.mIndices[j];
@@ -303,6 +304,7 @@ namespace subd {
 		for (uint32_t i = 0; i < usd_face_counts.size(); ++i) {
 			face face;
 
+			if (usd_face_counts[i] < 3) continue;
 			for (uint32_t j = 0; j < usd_face_counts[i]; ++j) {
 				vertex_config v;
 				v.pos = usd_indices[off+j];
