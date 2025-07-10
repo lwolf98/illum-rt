@@ -3,6 +3,8 @@ omp on
 up 0 1 0
 
 #sppx 1
+#sppx 32
+#sppx 128
 #sppx 256
 #sppx 1024
 sppx 4096
@@ -22,32 +24,34 @@ modeltrafo scale 5 5 5
 modeltrafo scale 0.2 0.2 0.2
 
 # debug
-#load render-data/subd/knife_usd/knife.usda
-#modeltrafo shift 3 0 0
-#load render-data/subd/knife_usd/knife.usda subd_level 3 subd_type patches
-#modeltrafo shift -3 0 0
-
-modeltrafo shift 13 0 -23
-load render-data/subd/knife_obj/knife.obj
+load render-data/subd/knife_usd/knife.usda
 modeltrafo shift 3 0 0
-load render-data/subd/knife_obj/knife.obj subd_level 3 subd_type patches
-#load render-data/subd/knife_obj/knife.obj
+load render-data/subd/knife_usd/knife.usda subd_level 4 subd_type patches
 modeltrafo shift -3 0 0
-modeltrafo shift -13 0 23
+
+#modeltrafo shift 13 0 -23
+#load render-data/subd/knife_obj/knife.obj
+#modeltrafo shift 3 0 0
+#load render-data/subd/knife_obj/knife.obj subd_level 5 subd_type patches
+##load render-data/subd/knife_obj/knife.obj
+#modeltrafo shift -3 0 0
+#modeltrafo shift -13 0 23
 
 load render-data/subd/basic_tests/quad_tri_test.obj
 #load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
+#load render-data/subd/basic_tests/cubi_open.obj subd_level 3
+#load render-data/subd/basic_tests/cubi.usda
 
 modeltrafo shift 0 -10 0
 modeltrafo scale 100 100 100
 load render-data/subd/cartoon_dragon_obj/dragon_low.obj
 modeltrafo shift 0.1 0 0
-load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 1
+load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2 subd_type patches
 modeltrafo shift -0.1 0 0
 modeltrafo scale 0.01 0.01 0.01
 modeltrafo shift 0 10 0
 
-skylight load render-data/skylight-sunset.floats 10
+#skylight load render-data/skylight-sunset.floats 10
 
 material select Light
 material emissive 5 5 5
@@ -68,7 +72,7 @@ look 0.67736 -0.104066 -0.728254
 #commit
 ##algo primary
 #algo direct/mis
-#outfile out_grid/grid_test.png
+#outfile out_subds/subd-direct_cpu.png
 
 platform cuda
 raytracer optix

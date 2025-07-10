@@ -7,12 +7,12 @@ sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
-#load render-data/sibenik/sibenik-nostaklo.obj
+#load render-data/local/sibenik/sibenik-nostaklo.obj
 load render-data/local/sibenik/sibenik.obj
 
 #modeltrafo rotate x -1.57
 
-#load render-data/subd/animals/animals.usda subd_level 1
+load render-data/subd/animals/animals.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/dog.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/animals/fox_flat.usda subd_level 1
 #load /home/lukas/Downloads/Models/USD/cars/cars.usda
