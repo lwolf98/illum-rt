@@ -4,32 +4,59 @@ up 0 1 0
 
 #sppx 1024
 sppx 4096
+#sppx 10000
+#sppx 40000
 resolution 960 540
 
 default-brdf layered-gtr2
 
 #load /usr/gralab/render-data/cg-trader/car-track/uploads_files_4001553_car+track.obj
-load /data/temp/wol37689/car-track/car-track.obj
+#load /data/temp/wol37689/car-track/car-track.obj
 
+load render-data/local/models/car-track/tunnel.obj
+#load render-data/local/models/car-track/car_base.obj
+#load render-data/local/models/car-track/car_base.obj subd_level 1
+
+modeltrafo shift 0 0 -1.125
+modeltrafo rotate y 1.57
+#modeltrafo scale 2 2 2
+#load render-data/local/models/car-track/separated/usd/car_base.usdc
+#load render-data/local/models/car-track/separated/usd/car_tires.usdc
+#modeltrafo scale 0.5 0.5 0.5
+modeltrafo rotate y -1.57
+modeltrafo shift 0 0 1.125
+
+load render-data/local/models/car-track/separated/car_base.obj subd_level 2 subd_type patches
+#load render-data/local/models/car-track/separated/car_base.obj
+load render-data/local/models/car-track/separated/car_tires.obj
+
+#load render-data/local/models/car-track/wall_light.obj
 #load render-data/light/dome_light.obj
 
-skylight load render-data/skylight-sunset.floats 10
+#skylight load render-data/skylight-sunset.floats 10
 
 # Pos Car Track
-at 38.5649 1.49901 -3.01127
-look -0.769501 -0.097961 -0.631088
+#at 38.5649 1.49901 -3.01127
+#look -0.769501 -0.097961 -0.631088
+
+#at 2.54321 1.06247 0.269949
+#look -0.800274 -0.173457 -0.573999
+at 2.27836 0.650259 -0.207131
+look -0.666873 -0.225562 -0.710213
+#at 2.28985 0.579038 -1.46857
+#look -0.966933 -0.159197 0.19924
 
 #raytracer embree
 #commit
 #algo direct/mis
-#outfile out_subds/subd-direct_cpu.png
+#outfile out_subds/car-direct_cpu.png
 
 #raytracer embree
 #commit
 #algo simple-pt
 #path bounce brdf
 #path len 10
-#outfile out_subds/subd-pt_cpu.png
+#outfile out_subds/car-pt_cpu.png
 
 platform cuda
 raytracer optix
@@ -38,7 +65,7 @@ add-scene-step build accel struct
 #outfile subd-sibenik-primary_cuda.png
 algo direct-wf
 is light
-outfile out_subds/subd-direct_cuda.png
+outfile out_subds/car-direct_cuda.png
 commit
 
 # WF setup ML
@@ -48,6 +75,7 @@ commit
 #algo manylight-wf
 ##is light paths 4096 length 10 g 0.1 vps 1
 #is light paths 512 length 10 g 0.1 vps 1
+#outfile out_subds/car-ml_cuda.png
 #commit
 
 run
