@@ -2,8 +2,8 @@
 
 up 0 1 0
 
-#sppx 1024
-sppx 4096
+sppx 1024
+#sppx 4096
 #sppx 10000
 #sppx 40000
 resolution 960 540
