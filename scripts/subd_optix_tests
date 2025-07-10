@@ -6,8 +6,8 @@ up 0 1 0
 #sppx 32
 #sppx 128
 #sppx 256
-sppx 1024
-#sppx 4096
+#sppx 1024
+sppx 4096
 resolution 960 540
 
 default-brdf layered-gtr2
@@ -46,7 +46,7 @@ modeltrafo shift 0 -10 0
 modeltrafo scale 100 100 100
 load render-data/subd/cartoon_dragon_obj/dragon_low.obj
 modeltrafo shift 0.1 0 0
-load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2
+load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2 subd_type patches
 modeltrafo shift -0.1 0 0
 modeltrafo scale 0.01 0.01 0.01
 modeltrafo shift 0 10 0
