@@ -405,7 +405,7 @@ namespace wf {
 			uint32_t subd_level;
 
 			__forceinline__ __device__ uint32_t len() const {
-				return std::pow(2, subd_level)+1;
+				return (1 << subd_level)+1;
 			}
 
 			__forceinline__ __device__ int32_t get_subd_quad(int quad_ref) const {

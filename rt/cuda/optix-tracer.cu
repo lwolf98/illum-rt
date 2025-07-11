@@ -444,6 +444,7 @@ namespace wf::cuda
 		optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_NONE;
 		//optix_module_compile_options.optLevel = OPTIX_COMPILE_OPTIMIZATION_LEVEL_0;
 		//optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_FULL;
+		//optix_module_compile_options.debugLevel = OPTIX_COMPILE_DEBUG_LEVEL_MODERATE;
 
 		optix_pipeline_compile_options.traversableGraphFlags = OptixTraversableGraphFlags::OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
 		optix_pipeline_compile_options.usesMotionBlur = false;
