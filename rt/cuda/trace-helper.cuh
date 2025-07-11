@@ -1,7 +1,6 @@
 #pragma once
 #include "kernels.h"
 #include "cuda-operators.h"
-#include "trace-helper.cuh"
 #include "base.h"
 
 #define EPSILON 0.000001 // Moeller-Trumbore triangle intersection
@@ -25,11 +24,11 @@ __forceinline__ __device__ int vmax_min (int a, int b, int c);
 __forceinline__ __device__ int vmin_min (int a, int b, int c);
 __forceinline__ __device__ int vmax_max (int a, int b, int c);
 
-__forceinline__ __device__ float3 f4_to_f3(float4 v) {
+__forceinline__ __device__ float3 f4_to_f3(const float4 &v) {
 	return make_float3(v.x, v.y, v.z);
 }
 
-__forceinline__ __device__ float3 ray_id(float3 ray_d) {
+__forceinline__ __device__ float3 ray_id(const float3 &ray_d) {
 	float3 ray_id;
 	const float ooeps = exp2f(-80.f); // avoid div by zero
 	ray_id.x = 1.0f/ (fabsf(ray_d.x) > ooeps ? ray_d.x : copysignf(ooeps, ray_d.x));
@@ -38,7 +37,8 @@ __forceinline__ __device__ float3 ray_id(float3 ray_d) {
 	return ray_id;
 }
 
-__forceinline__ __device__ float3 ray_ood(float3 ray_o, float3 ray_id) {
+//TODO: float3 as const reference
+__forceinline__ __device__ float3 ray_ood(const float3 &ray_o, const float3 &ray_id) {
 	return make_float3(ray_o.x*ray_id.x, ray_o.y*ray_id.y, ray_o.z*ray_id.z);
 }
 
