@@ -95,16 +95,16 @@ namespace wf::cuda {
 	};
 
 	//TODO: find better place for these functions
-	static __forceinline__ __device__ int geometric_series(int iterations, int base) {
-		return (1-pow(base, iterations+1))/(1-base);
+	static __forceinline__ __device__ int geometric_series4(int iterations) {
+		return (1 - (1 << ((iterations+1)<<1))) / (-3);
 	}
 
 	static uint32_t __forceinline__ __device__ child_node_base(
 			uint32_t trav_level,
 			uint32_t index
 		) {
-			uint32_t off_current_level = geometric_series(trav_level-1, 4);
-			uint32_t off_child_level = geometric_series(trav_level, 4);
+			uint32_t off_current_level = geometric_series4(trav_level-1);
+			uint32_t off_child_level = geometric_series4(trav_level);
 			uint32_t idx_current_relative = index - off_current_level;
 			uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
 			uint32_t index_child = off_child_level + idx_child_relative;
@@ -139,7 +139,6 @@ namespace wf::cuda {
 
 		int id = optixGetPrimitiveIndex();
 		auto &patch = launch_params.patches[id];
-		uint32_t nodes_count = geometric_series(patch.subd_level-1, 4) + pow(4, patch.subd_level);
 		uint32_t node_offset = patch.bvh_node;
 		auto &root_node = launch_params.patch_nodes[patch.bvh_node];
 		if (debug) printf("Root node ref: %d, X: %d, Y: %d, Z: %d, W: %d\n", patch.bvh_node, root_node.nodes.x, root_node.nodes.y, root_node.nodes.z, root_node.nodes.w);
