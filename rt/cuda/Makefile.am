@@ -30,13 +30,13 @@ AM_CPPFLAGS = -I$(top_srcdir)
 GENCODE_FLAGS  = -gencode arch=compute_@compute_cap@,code=sm_@compute_cap@
 NVCC_FLAGS = -Xptxas -v -Xcudafe --diag_suppress=esa_on_defaulted_function_ignored --resource-usage --generate-line-info --use_fast_math
 
-embedded-ptx-code.ptx: optix-kernels.cu
+embedded-ptx-code.ptx: optix-kernels.cu $(noinst_HEADERS)
 	$(top_srcdir)/nvcc-wrapper -std=c++17 --ptx -rdc=true -I. -I../../ $(NVCC_FLAGS) $(AM_CPPFLAGS) $(CPPFLAGS) $(CXXFLAGS) -o $@ $<
 
 embedded-ptx-code.cpp: embedded-ptx-code.ptx
 	(echo "#include \"embedded-ptx-code.h\""; bin2c -c --padd 0 --type char --name embedded_ptx_code $<) > $@
 
-.cu.o:
+.cu.o: $(noinst_HEADERS)
 	$(top_srcdir)/nvcc-wrapper -std=c++17 $(NVCC_FLAGS) $(DEFAULT_INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(CXXFLAGS) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Po -c -o $@ $< -v $(GENCODE_FLAGS)
 
 cuda_deps = $(libcudaraytracing_a_CUDA_SOURCES:%.cu=$(DEPDIR)/%.Po)
