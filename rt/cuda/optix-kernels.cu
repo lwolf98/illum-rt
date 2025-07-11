@@ -95,10 +95,6 @@ namespace wf::cuda {
 	};
 
 	//TODO: find better place for these functions
-	/*static uint32_t __forceinline__ __device__ log2_clz(uint32_t x) {
-		return 31 - __clz(x);
-	}*/
-
 	static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
 		return (31 - __clz(x)) >> 1;
 	}
