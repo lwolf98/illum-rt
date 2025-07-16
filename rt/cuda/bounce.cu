@@ -13,7 +13,7 @@ namespace wf::cuda {
 
 	__device__ float3 f3(const float4 &v) { return make_float3(v.x, v.y, v.z); }
 
-	__device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm) {
+	__device__ float3 hit_ns(const tri_is &hit, const uint4 &tri, const float4 *vert_norm) {
 		float3 a = f3(vert_norm[tri.x]);
 		float3 b = f3(vert_norm[tri.y]);
 		float3 c = f3(vert_norm[tri.z]);
@@ -113,10 +113,10 @@ namespace wf::cuda {
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
-					float3 ng = dg.ng;
+					float3 ns = dg.ns;
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
-					flip_normals_to_ray(ng, cam_dir);
-					w_i = align(sampled_dir, ng);
+					flip_normals_to_ray(ns, cam_dir);
+					w_i = align(sampled_dir, ns);
 					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
 					tmax = FLT_MAX;
 				}
@@ -169,12 +169,11 @@ namespace wf::cuda {
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
-					//TODO: ng or ns (lookup entire file)??
-					float3 ng = dg.ng;
+					float3 ns = dg.ns;
 					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
-					flip_normals_to_ray(ng, cam_dir);
-					w_i = align(sampled_dir, ng);
-					pdf *= cdot(w_i, ng);
+					flip_normals_to_ray(ns, cam_dir);
+					w_i = align(sampled_dir, ns);
+					pdf *= cdot(w_i, ns);
 					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
 					tmax = FLT_MAX;
 				}
