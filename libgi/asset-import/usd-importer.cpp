@@ -30,7 +30,6 @@ namespace import {
 		std::cout << "USD importer load called!" << std::endl;
 
 		// Open the stage (USD file)
-		//UsdStageRefPtr stage = UsdStage::Open(filepath.c_str());
 		stage = UsdStage::Open(filepath.c_str());
 		if (!stage) {
 			std::cerr << "Failed to open USD file: " << filepath.c_str() << std::endl;
@@ -45,13 +44,6 @@ namespace import {
 		TfToken shaderId;
 		shader.GetIdAttr().Get(&shaderId);
 		std::cout << space << "Shader id: " << shaderId << std::endl;
-		/*if (shaderId == "UsdUVTexture") {
-			std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
-			VtValue inputValue;
-			shader.GetInput(TfToken("file")).Get(&inputValue);
-			std::cout << inputValue << std::endl;
-			std::cout << "TESTESTESTESTESTESTESTESTEST" << std::endl;
-		}*/
 
 		// Iterate over shader inputs
 		std::vector<UsdShadeInput> shaderInputs = shader.GetInputs();
