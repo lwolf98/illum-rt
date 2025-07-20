@@ -13,8 +13,6 @@
 #include "framebuffer.h"
 #endif
 
-#include <algorithm>
-#include <cctype>
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -218,19 +216,7 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	if (modelpath == "")
 		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
 
-	/**
-	 * asset_importer importer;
-	 * if ("usd*")
-	 * 		importer = new usd_importer;
-	 * else if ("objx")
-	 * 		importer = new objx_importer;
-	 * else
-	 * 		importer = new assimp_importer;
-	 * 
-	 * importer.load_scene(filepath)
-	 * importer.import(scene)
-	 * 
-	 */
+	// load file by extension
 	std::string extension = modelpath.extension().c_str();
 	std::transform(extension.begin(), extension.end(), extension.begin(),
 		[](unsigned char c) { return std::tolower(c); });
