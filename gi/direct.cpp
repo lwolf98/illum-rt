@@ -282,14 +282,12 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_SKIP_ASS
 		if (auto [is,tp,ok] = find_closest_nonspecular(light_ray); ok)
 			if (is.valid()) {
-				//if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 				if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 					return tp * f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 			}
 #else
 		triangle_intersection is = rc->scene.rt->closest_hit(light_ray);
 		if (is.valid()) {
-			//if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 			if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0))
 				return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 		}
@@ -394,7 +392,6 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #else
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 #endif
-							//if (diff_geom hit_geom(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 							if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								// Need to document this!!!
 								trianglelight tl(rc->scene, is.ref);

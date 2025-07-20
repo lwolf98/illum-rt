@@ -5,7 +5,6 @@
 #include "global-context.h"
 #include "color.h"
 #include "util.h"
-#include "subdivision.h"
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 #include "sampling.h"
 #endif
