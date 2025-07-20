@@ -8,6 +8,7 @@ config.status
 config.h
 config.h.in
 config.h.in~
+INSTALL
 rt/gl/glsl.deps
 configure
 auxx
