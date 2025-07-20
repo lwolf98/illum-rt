@@ -12,11 +12,7 @@ resolution 960 540
 
 default-brdf layered-gtr2
 
-modeltrafo shift 0 150 0
-modeltrafo rotate x 3.14
 load render-data/light/plane_sky.obj
-modeltrafo rotate x -3.14
-modeltrafo shift 0 -150 0
 
 modeltrafo scale 5 5 5
 #load render-data/local/sibenik/sibenik-nostaklo.obj
