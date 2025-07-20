@@ -246,13 +246,7 @@ namespace import {
 					}
 
 					// Store patches into scene
-					//rtgi_scene.patches.insert(rtgi_scene.patches.end(), patches.begin(), patches.end());
-					for (auto &patch : patches) {
-						rtgi_scene.patches.push_back(patch);
-						subd::subd_patch &scene_patch =
-							rtgi_scene.patches[rtgi_scene.patches.size()-1];
-							
-					}
+					rtgi_scene.patches.insert(rtgi_scene.patches.end(), patches.begin(), patches.end());
 				}
 				else {
 

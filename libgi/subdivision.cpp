@@ -46,19 +46,17 @@ namespace subd {
 	/* edge_list implementation */
 
 	uint64_t edge_list::hash(int a, int b) const {
-		//normalize_edge_order(a, b);
-		uint64_t hash_a = a; //std::hash<int>{}(a);
-		uint64_t hash_b = b; //std::hash<int>{}(b);
+		uint64_t hash_a = a;
+		uint64_t hash_b = b;
 		return hash_a << 32 | hash_b;
 	}
 
 	uint64_t edge_list::add(int a, int b, float sharpness) {
 		assert(!initialized);
 		normalize_edge_order(a, b);
-		//edges.push_back(edge(a, b, sharpness));
 		uint64_t hashval = hash(a, b);
 		edges[hashval] = edge(a, b, sharpness);
-		return hashval; //size()-1;
+		return hashval;
 	}
 
 	uint64_t edge_list::add(int a, int b) {
@@ -75,14 +73,6 @@ namespace subd {
 		normalize_edge_order(a, b);
 		uint64_t hashval = hash(a, b);
 		return edges.count(hashval) > 0 ? hashval : (uint64_t)-1;
-
-		/*for (int i = 0; i < size(); i++) {
-			const edge &e = edges[i];
-			if (e.v1 == a && e.v2 == b)
-				return i;
-		}
-		
-		return -1;*/
 	}
 
 	uint64_t edge_list::get_key(const edge &e) const {
@@ -92,7 +82,6 @@ namespace subd {
 	int edge_list::get_index(uint64_t key) const {
 		assert(initialized);
 		assert(edge_indices.count(key) > 0);
-		//return edge_indices[key];
 		auto it = edge_indices.find(key);
 		assert(it != edge_indices.end());
 		return it->second;
@@ -114,18 +103,6 @@ namespace subd {
 	edge& edge_list::get(int a, int b) {
 		return get(hash(a, b));
 	}
-
-	/*edge& edge_list::get_next() {
-		assert(it != edges.end());
-		if (it_reset)  it_reset = false;
-		else        std::advance(it, 1);
-		return it->second;
-	}*/
-
-	/*void edge_list::reset_iterator() {
-		it = edges.begin();
-		reset = true;
-	}*/
 
 	edge& edge_list::get_next(std::map<uint64_t, edge>::iterator &it) {
 		assert(it != edges.end());
@@ -216,10 +193,6 @@ namespace subd {
 			mesh.tex_coords.push_back(vec2(0, 0));
 		}
 
-		// load crease data
-		// TODO!
-		//mesh.creases.push_back(...);
-
 		// load control mesh faces (ctrl_faces)
 		for (uint32_t i = 0; i < mesh_ai->mNumFaces; ++i) {
 			const aiFace &f = mesh_ai->mFaces[i];
@@ -270,10 +243,9 @@ namespace subd {
 			}
 			else {
 				std::cout << "No UVs" << std::endl;
-				}
+			}
 
 			for (const auto &uv : uvs) {
-				//std::cout << "u: " << uv[0] << ", " << uv[1] << std::endl;
 				mesh.tex_coords.push_back(vec2(uv[0], uv[1]));
 			}
 		}
@@ -337,7 +309,7 @@ namespace subd {
 	//
 	// Example usage:
 	// object o;
-	// ...
+	//
 	// o.write_obj("output/subd/out_test_subd.obj", true, "cornell_sibenik.mtl");
 	//
 	void object::write_obj(std::string outfile_path, bool write_normals, std::string mtllib_path) {
@@ -446,7 +418,6 @@ namespace subd {
 	void mesh::update() {
 		time_this_block(mesh_update);
 		// Calculate adjacent edges and faces
-		//edge_list edges;
 		edges.clear();
 		for (uint i = 0; i < faces.size(); i++) {
 			face& f = faces[i];
@@ -464,7 +435,6 @@ namespace subd {
 		// Nothing to do on subdivision level 0
 		assert(level >= 0);
 		if (level == 0) {
-			//update();
 			return;
 		}
 
@@ -509,7 +479,6 @@ namespace subd {
 		mesh new_mesh;
 
 		// Gather face vertices and edges and update vertex information
-		//edge_list edges;
 		vector<vec3> face_vertices;
 		int32_t f1 = 0;
 		{
@@ -538,7 +507,6 @@ namespace subd {
 			auto crease_it = creases.iterator();
 			for (int i = 0; i < creases.size(); i++) {
 				edge &c = creases.get_next(crease_it);
-				//edge &e = edges.get(edges.get_key(c.v1, c.v2));
 				edge &e = edges.get(c.v1, c.v2);
 				e.sharpness = c.sharpness;
 			}
@@ -548,13 +516,10 @@ namespace subd {
 		{
 			time_this_block(calc_cur_edge_verts);
 			// Calculate current edge vertices
-			//std::map<uint64_t, vec3> edge_vertices;
 			auto edge_it = edges.iterator();
 			for (int i = 0; i < edges.size(); i++) {
-			//for (const auto &[_, e] : edges) {
-				edge &e = edges.get_next(edge_it); //edges.get(i);
+				edge &e = edges.get_next(edge_it);
 				edge_vertices.push_back(1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos));
-				//edge_vertices[edges.get_key(e)] = 1.f/2 * (vertices[e.v1].pos+vertices[e.v2].pos);
 
 				if (subd_debug) {
 					cout << "edge: (" << e.v1 << "," << e.v2 << ") f:";
@@ -582,12 +547,10 @@ namespace subd {
 				else if(e.sharpness >= 1.f) {
 					// Infinitely Sharp edge
 					e_new = edge_vertices[i];
-					//e_new = edge_vertices[edges.get_key(e)];
 				}
 				else {
 					// Semi-sharp edge
 					e_new = e.sharpness * edge_vertices[i] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
-					//e_new = e.sharpness * edge_vertices[edges.get_key(e)] + (1-e.sharpness) * calc_smooth_edge_vertex(e, face_vertices);
 				}
 
 				e_news.push_back(e_new);
@@ -868,7 +831,6 @@ namespace subd {
 						ctrl_vertex &v = vertices[vert_ids[0]];
 						uint64_t e_id = edges.get_key(f.verts[j].pos, edge_vert1_id);
 						edge &e = edges.get(e_id);
-						//edge &e = edges.get(f.verts[j].pos, edge_vert1_id);
 						float max_adjacent_sharpness = 0.f;
 						for (uint k = 0; k < v.edge_ids.size(); k++) {
 							if (v.edge_ids[k] != e_id) {
@@ -905,7 +867,6 @@ namespace subd {
 			creases.clear();
 			auto crease_it = new_mesh.creases.iterator();
 			for (int i = 0; i < new_mesh.creases.size(); i++) {
-				//edge &e = new_mesh.creases.get(i);
 				edge &e = new_mesh.creases.get_next(crease_it);
 				if (e.sharpness > 0)
 					creases.add(e.v1, e.v2, e.sharpness);
@@ -923,13 +884,6 @@ namespace subd {
 
 		{
 			// Calculate adjacent edges and faces
-			/*edges.clear();
-			for (uint i = 0; i < faces.size(); i++) {
-				face& f = faces[i];
-				for (uint j = 0; j < f.size(); j++)
-					add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
-			}
-			edges.finish_init();*/
 			update_topology();
 
 			// Normals have been calculated in this method
@@ -955,7 +909,6 @@ namespace subd {
 				face& f = faces[i];
 				auto &bucket = buckets[i];
 				for (uint j = 0; j < f.size(); j++) {
-					//add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 					int a = f.verts[j].pos;
 					int b = f.verts[(j+1)%f.size()].pos;
 					bucket.emplace_back(a<=b ? a:b, a<=b ? b:a, 0.f, i);
@@ -1047,12 +1000,6 @@ namespace subd {
 		if (e_id == ((uint64_t)-1))
 			e_id = edges.add(a, b);
 		
-		/*uint64_t e_id = (uint64_t)-1;
-		if (edges.exists(a, b))
-			e_id = edges.get_key(a, b);
-		else
-			e_id = edges.add(a, b);*/
-		
 		edge &e = edges.get(e_id);
 
 		update_vertex(vertices[a], f_id, e_id);
@@ -1080,7 +1027,6 @@ namespace subd {
 		if (n_faces == 2)
 			return 1.f/4 * (vertices[e.v1].pos + vertices[e.v2].pos + face_vertices[e.face_ids[0]] + face_vertices[e.face_ids[1]]);
 		else if (n_faces == 1)
-			//return edge_vertices[i];
 			return calc_sharp_edge_vertex(e);
 		else if (n_faces > 2) {
 			// TODO: verify if this case is equivalent to literature!
@@ -1103,7 +1049,6 @@ namespace subd {
 	}
 
 	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<vec3> &edge_vertices, const vector<vec3> &face_vertices) {
-	//vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::map<uint64_t, vec3> &edge_vertices, const vector<vec3> &face_vertices) {
 		uint n = v.edge_ids.size();
 		if (n == v.face_ids.size()) {
 			vec3 Q(0), R(0);
@@ -1112,12 +1057,8 @@ namespace subd {
 
 			Q /= n;
 
-			for (uint j = 0; j < n; j++) {
-				/*auto edge_it = edge_vertices.find(v.edge_ids[j]);
-				assert(edge_it != edge_vertices.end());
-				R += edge_it->second;*/
+			for (uint j = 0; j < n; j++)
 				R += edge_vertices[edges.get_index(v.edge_ids[j])];
-			}
 
 			R /= n;
 
@@ -1134,9 +1075,6 @@ namespace subd {
 
 				relevant_edges++;
 
-				/*auto edge_it = edge_vertices.find(v.edge_ids[j]);
-				assert(edge_it != edge_vertices.end());
-				R += edge_it->second;*/
 				R += edge_vertices[edges.get_index(v.edge_ids[j])];
 			}
 

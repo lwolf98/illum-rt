@@ -382,13 +382,7 @@ namespace import {
 						}
 
 						// Store patches into scene
-						//scene.patches.insert(scene.patches.end(), patches.begin(), patches.end());
-						for (auto &patch : patches) {
-							scene.patches.push_back(patch);
-							subd::subd_patch &scene_patch =
-								scene.patches[scene.patches.size()-1];
-
-						}
+						scene.patches.insert(scene.patches.end(), patches.begin(), patches.end());
 					}
 					else {
 						// triangulate quad faces
