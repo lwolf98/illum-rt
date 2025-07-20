@@ -1,6 +1,7 @@
 #include "subdivision.h"
 #include <glm/ext.hpp>
 #include <iomanip>
+#include <iostream>
 
 using namespace subd;
 

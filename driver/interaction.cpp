@@ -15,8 +15,6 @@
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
 
-#include "libgi/test-tinyusdz.h"
-
 #ifndef RTGI_SKIP_WF
 #include "libgi/wavefront-rt.h"
 
@@ -396,13 +394,13 @@ void eval(const std::string &line) {
 		else error("unsupported trafo: " << trafo);
 	}
 	else ifcmd("testusd") {
-		cout << "Test tinyusdz lib:" << endl;
-		testusd();
-	}
-	else ifcmd("testusd2") {
-		string filepath;
-		in >> filepath;
-		testusd2(filepath);
+		//TODO: This is unused code that's only purpose is to force the compiler
+		//to build subdivision.cpp and subdivision_grid.cpp into libgi.a.
+		//Without this line libimport.a would not be able to access it from libgi.a
+		//because it would not be present there.
+		//-> Properly setup linking that this is not required...
+		const pxr::UsdGeomMesh *mesh = nullptr;
+		subd::object obj(*mesh);
 	}
 	else ifcmd("load") {
 		string file, name;

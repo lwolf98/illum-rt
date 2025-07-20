@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <string>
+#include <map>
 #include <assimp/mesh.h>
-#include <tinyusdz.hh>
 #include <pxr/pxr.h>
 #include "rt.h"
 #include "intersect.h"
@@ -243,11 +243,6 @@ namespace subd {
 			mesh.storage_type_patches = subd_type_patches;
 			init_object(mesh_ai);
 		}
-		object(const tinyusdz::GeomMesh *usd_mesh, bool subd_type_patches = true, std::string mat_name = "") : object() {
-			material = mat_name;
-			mesh.storage_type_patches = subd_type_patches;
-			init_object(usd_mesh);
-		}
 		object(const pxr::UsdGeomMesh &usd_mesh, bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
 			mesh.storage_type_patches = subd_type_patches;
@@ -262,7 +257,6 @@ namespace subd {
 
 	private:
 		void init_object(aiMesh *mesh_ai);
-		void init_object(const tinyusdz::GeomMesh *usd_mesh);
 		void init_object(const pxr::UsdGeomMesh &usd_mesh);
 
 	};

@@ -14,8 +14,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					subdivision_grid.cpp \
 					subdivision.cpp \
 					scene.cpp \
-					timer.cpp \
-					test-tinyusdz.cpp
+					timer.cpp
 
 
 #ifndef RTGI_SKIP_BRDF
@@ -44,8 +43,7 @@ noinst_HEADERS = 	algorithm.h \
 					subdivision.h \
 					scene.h \
 					timer.h \
-					util.h \
-					test-tinyusdz.h
+					util.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING

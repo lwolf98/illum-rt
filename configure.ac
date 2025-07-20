@@ -18,7 +18,6 @@ AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On 
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 # libdl is needed by OptiX
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
-AC_CHECK_LIB([tinyusdz], [main], [], [AC_MSG_ERROR([You need to install tinyusdz. It is available on GitHub.])])
 AC_CHECK_LIB([usd_ms], [main], [], [AC_MSG_ERROR([You need to install OpenUSD. It is available on GitHub.])])
 
 AC_CHECK_LIB([assimp], [main], [], [AC_MSG_ERROR([You need to install assimp. On Debian-style distros this is libassimp-dev])])
@@ -78,7 +77,7 @@ AS_IF([test x$have_cuda = xyes],
 AC_ARG_WITH(compute-capability,
             [AS_HELP_STRING([--with-compute-capability], 
                 [Which compute capability sould be used to compile the cuda files. We default to 86 currently, but lower versions might do for the non RTX version.])],
-            compute_cap="$withval", compute_cap="86")
+            compute_cap="$withval", compute_cap="61")
 AC_SUBST([compute_cap])
 
 have_optix=yes
