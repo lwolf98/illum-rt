@@ -245,7 +245,7 @@ namespace import {
 				bool success = stage->GetMetadata(TfToken("upAxis"), &usd_up);
 				const mat4 orientation = get_orientation_trafo(scene.up, usd_up.Get<TfToken>().GetString());
 				const mat4 &model_trafo = trafo;
-				mat4 node_trafo = get_mesh_trafo(mesh) * parent_trafo;
+				mat4 node_trafo = parent_trafo * get_mesh_trafo(mesh);
 				mat4 transform = model_trafo * node_trafo * orientation;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
 
