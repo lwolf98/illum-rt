@@ -136,18 +136,6 @@ triangle_intersection binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::close
 #endif
 }
 
-// TODO: SubD closest hit implementation?
-/*triangle_intersection subd_closest_hit(const bvh &bvh, const ray &ray) {
-	if (innner()) {
-		// same traverse logic
-	}
-	else {
-		assert(depth_level == subd_level);
-
-
-	}
-}*/
-
 template<bbvh_triangle_layout tr_layout, bbvh_esc_mode esc_mode, bool alpha_aware>
 bool binary_bvh_tracer<tr_layout, esc_mode, alpha_aware>::any_hit(const ray &ray) {
 	//time_this_block(any_hit);

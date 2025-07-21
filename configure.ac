@@ -77,7 +77,7 @@ AS_IF([test x$have_cuda = xyes],
 AC_ARG_WITH(compute-capability,
             [AS_HELP_STRING([--with-compute-capability], 
                 [Which compute capability sould be used to compile the cuda files. We default to 86 currently, but lower versions might do for the non RTX version.])],
-            compute_cap="$withval", compute_cap="61")
+            compute_cap="$withval", compute_cap="86")
 AC_SUBST([compute_cap])
 
 have_optix=yes
