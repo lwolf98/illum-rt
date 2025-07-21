@@ -422,7 +422,7 @@ namespace subd {
 		for (uint i = 0; i < faces.size(); i++) {
 			face& f = faces[i];
 			for (uint j = 0; j < f.size(); j++)
-				add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
+				add_edge(f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 		}
 
 		calculate_face_normals();
@@ -493,9 +493,6 @@ namespace subd {
 				face_vertices.push_back(f_new);
 				if (subd_debug)
 					cout << "f_new: (" << f_new.x << ", " << f_new.y << ", " << f_new.z << ")" << endl;
-
-				//for (uint j = 0; j < f.size(); j++)
-				//	add_edge(edges, f.verts[j].pos, f.verts[(j+1)%f.size()].pos, i);
 
 				f1 += f.size();
 			}
@@ -583,7 +580,7 @@ namespace subd {
 					v_sharpness = 1.f/sharp_edge_ids.size() * v_sharpness;
 				
 				uint n_sharp_edges = sharp_edges.size();
-				vec3 v_smooth = calc_vertex_vertex(v, edges, edge_vertices, face_vertices);
+				vec3 v_smooth = calc_vertex_vertex(v, edge_vertices, face_vertices);
 				if (n_sharp_edges <= 1) {
 					// zero or one adjacent sharp edges -> smooth vertex rule
 					v_new = v_smooth;
@@ -995,7 +992,7 @@ namespace subd {
 		}
 	}
 
-	uint64_t mesh::add_edge(edge_list &edges, int a, int b, int f_id) {
+	uint64_t mesh::add_edge(int a, int b, int f_id) {
 		uint64_t e_id = edges.get_key(a, b);
 		if (e_id == ((uint64_t)-1))
 			e_id = edges.add(a, b);
@@ -1048,7 +1045,7 @@ namespace subd {
 		return .5f * (vertices[e.v1].pos + vertices[e.v2].pos);
 	}
 
-	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<vec3> &edge_vertices, const vector<vec3> &face_vertices) {
+	vec3 mesh::calc_vertex_vertex(const ctrl_vertex &v, const std::vector<vec3> &edge_vertices, const vector<vec3> &face_vertices) {
 		uint n = v.edge_ids.size();
 		if (n == v.face_ids.size()) {
 			vec3 Q(0), R(0);

@@ -410,7 +410,6 @@ void eval(const std::string &line) {
 		string load_args;
 		while (!in.eof()) {
 			in >> load_args;
-			//TODO: this is not flexible and covers not all cases...
 			if (load_args == "subd_level") {
 				in >> subd_level;
 			}

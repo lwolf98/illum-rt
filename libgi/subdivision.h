@@ -166,7 +166,6 @@ namespace subd {
 		int get_vert_id(glm::vec3 v_pos);
 		void update();
 		void subdivide(uint32_t level);
-		void calculate_vertex_normals();
 		void triangulate();
 
 		mesh() : storage_type_patches(true) { }
@@ -174,14 +173,15 @@ namespace subd {
 	private:
 		void subdivide_internal(uint32_t end_level);
 		void update_topology();
-		uint64_t add_edge(edge_list &edges, int a, int b, int f_id);
+		uint64_t add_edge(int a, int b, int f_id);
 		void update_vertex(ctrl_vertex &v, int f_id, uint64_t e_id);
 
 		glm::vec3 calc_smooth_edge_vertex(const edge &e, const std::vector<glm::vec3> &face_vertices);
 		glm::vec3 calc_sharp_edge_vertex(const edge &e);
-		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, edge_list &edges, const std::vector<glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
+		glm::vec3 calc_vertex_vertex(const ctrl_vertex &v, const std::vector<glm::vec3> &edge_vertices, const std::vector<glm::vec3> &face_vertices);
 
 		void calculate_face_normals();
+		void calculate_vertex_normals();
 	};
 
 	struct object {
