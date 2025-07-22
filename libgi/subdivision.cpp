@@ -234,22 +234,14 @@ namespace subd {
 		}
 
 		// load texture coordinates
-		if (mesh.has_texture) {
-			UsdGeomPrimvarsAPI primvarsAPI(usd_mesh);
-			UsdGeomPrimvar stPrimvar = primvarsAPI.GetPrimvar(TfToken("st"));
-			VtArray<GfVec2f> uvs;
-			if (stPrimvar && stPrimvar.Get(&uvs)) {
-				std::cout << "Number of UV coordinates: " << uvs.size() << std::endl;
-			}
-			else {
-				std::cout << "No UVs" << std::endl;
-			}
-
-			for (const auto &uv : uvs) {
-				mesh.tex_coords.push_back(vec2(uv[0], uv[1]));
-			}
+		UsdGeomPrimvarsAPI primvarsAPI(usd_mesh);
+		UsdGeomPrimvar stPrimvar = primvarsAPI.GetPrimvar(TfToken("st"));
+		VtArray<GfVec2f> uvs;
+		mesh.has_texture = stPrimvar && stPrimvar.Get(&uvs);
+		for (const auto &uv : uvs) {
+			mesh.tex_coords.push_back(vec2(uv[0], uv[1]));
 		}
-		else {
+		if (!mesh.has_texture) {
 			//TODO: is this required?
 			mesh.tex_coords.push_back(vec2(0, 0));
 		}

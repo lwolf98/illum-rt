@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
@@ -109,10 +110,10 @@ namespace import {
 	* id will be returned.
 	* In case an error occurs and no material could be loaded, -1 is returned.
 	*/
-	int usd_importer::load_material(const UsdGeomMesh &mesh, scene& scene) {
+	int usd_importer::load_material(const UsdPrim &prim, scene& scene) {
 		int material_id = -1;
 
-		UsdShadeMaterialBindingAPI binding(mesh);
+		UsdShadeMaterialBindingAPI binding(prim);
 		UsdRelationship materialRel = binding.GetDirectBindingRel();
 		if (materialRel) {
 			std::vector<SdfPath> materialPaths;
@@ -184,18 +185,6 @@ namespace import {
 		return material_id;
 	}
 
-	glm::mat4 to_glm(const GfMatrix4d &from) {
-		glm::mat4 to;
-
-		for (int col = 0; col < 4; ++col) {
-			for (int row = 0; row < 4; ++row) {
-				to[row][col] = static_cast<float>(from[row][col]);
-			}
-		}
-
-		return to;
-	}
-
 	glm::mat4 get_mesh_trafo(const UsdGeomMesh &mesh) {;
 		UsdGeomXformable xformable(UsdGeomXform(mesh.GetPrim().GetParent()));
 		if (!xformable) {
@@ -210,10 +199,10 @@ namespace import {
 			VtValue opValue;
 			op.Get(&opValue);
 			GfMatrix4d opTransform = op.GetOpTransform(op.GetOpType(), opValue);
-			transform *= opTransform;
+			transform = opTransform * transform;
 		}
 
-		return to_glm(transform);
+		return glm::make_mat4(transform.GetArray());
 	}
 
 	glm::mat4 get_orientation_trafo(glm::vec3 scene_up, std::string usd_up_axis) {
@@ -239,14 +228,14 @@ namespace import {
 				UsdGeomMesh mesh(prim);
 				std::cout << "Found mesh: " << prim.GetPath() << std::endl;
 
-				// Init transormation matrices
+				// Init transformation matrices
 				mat4 parent_trafo(1);
 				VtValue usd_up;
 				bool success = stage->GetMetadata(TfToken("upAxis"), &usd_up);
 				const mat4 orientation = get_orientation_trafo(scene.up, usd_up.Get<TfToken>().GetString());
 				const mat4 &model_trafo = trafo;
 				mat4 node_trafo = parent_trafo * get_mesh_trafo(mesh);
-				mat4 transform = model_trafo * node_trafo * orientation;
+				mat4 transform = model_trafo * orientation * node_trafo;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
 
 				uint32_t index_offset = scene.vertices.size();
@@ -270,11 +259,13 @@ namespace import {
 					uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 				}*/
 
-				// Load material
-				int material_id = load_material(mesh, scene);
+				// Load base mesh material
+				int material_id = load_material(prim, scene);
 				if (material_id == -1)
 					material_id = 0;
 				material_id += material_offset;
+
+				// Load
 
 				// Load geometry as object (preparation for subdivision)
 				subd::object o(mesh, subdiv_type_patches);
@@ -371,6 +362,26 @@ namespace import {
 							dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
 
 							scene.triangles.push_back(dummy_tri);
+						}
+
+						// Assign GeomSubset materials
+						//
+						//	for (subset : mesh.subsets)
+						//		subset_mat_id = load_material(mesh, subset)
+						//		for (index : subset.indices)
+						//			patches[index].material_id = subset_mat_id
+						//
+						vector<UsdGeomSubset> subsets = UsdGeomSubset::GetAllGeomSubsets(mesh);
+						for (const UsdGeomSubset &subset : subsets) {
+							std::cout << "GeomSubset name: " << subset.GetPrim().GetName().GetString() << std::endl;
+
+							int subset_mat_id = load_material(subset.GetPrim(), scene);
+
+							VtIntArray indices;
+							subset.GetIndicesAttr().Get(&indices);
+							for (int face_id : indices) {
+								patches[face_id].material_id = material_offset + subset_mat_id;
+							}
 						}
 
 						// Store patches into scene
