@@ -14,8 +14,6 @@ default-brdf layered-gtr2
 
 load render-data/light/plane_sky.obj
 
-
-
 modeltrafo scale 5 5 5
 #load render-data/local/sibenik/sibenik-nostaklo.obj
 #load render-data/local/sibenik/sibenik.obj
@@ -41,8 +39,10 @@ material emissive 5 5 5
 #load render-data/local/debug/rotate.usda
 #load render-data/local/debug/rotate.obj
 
-load render-data/local/debug/translate.usda subd_level 2
-#load render-data/local/debug/translate.obj
+load render-data/local/debug/translate.usda
+#load render-data/local/debug/translate.usda subd_level 2 subd_type tris
+#load render-data/local/debug/translate.usda subd_level 2
+load render-data/local/debug/translate.obj
 
 # Pos 1
 at -3 0 0

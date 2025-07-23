@@ -80,11 +80,12 @@ namespace subd {
 	struct face {
 		glm::vec3 normal;
 		std::vector<vertex_config> verts;
+		int32_t material_id;
 		int32_t patch_id;
 		uint32_t patch_x;
 		uint32_t patch_y;
 
-		face() : normal(0), patch_id(-1), patch_x(0), patch_y(0) {}
+		face() : normal(0), material_id(-1), patch_id(-1), patch_x(0), patch_y(0) {}
 		uint size() { return verts.size(); }
 	};
 
@@ -122,7 +123,9 @@ namespace subd {
 		uint32_t material_id;
 		uint32_t subd_level;
 
-		subd_patch(uint32_t level) : subd_level(level) {
+		subd_patch(uint32_t level) : subd_patch(level, 0) {}
+		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
+														   material_id(material_id) {
 			uint32_t size = len()*len();
 			//TODO: maybe use resize with init value to avoid own init loop
 			verts.reserve(size);

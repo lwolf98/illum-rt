@@ -2,10 +2,10 @@
 
 up 0 1 0
 
-sppx 1024
+#sppx 1024
 #sppx 4096
 #sppx 10000
-#sppx 40000
+sppx 40000
 resolution 960 540
 
 default-brdf layered-gtr2
@@ -13,7 +13,8 @@ default-brdf layered-gtr2
 #load /usr/gralab/render-data/cg-trader/car-track/uploads_files_4001553_car+track.obj
 #load /data/temp/wol37689/car-track/car-track.obj
 
-load render-data/local/models/car-track/tunnel.obj
+#load render-data/local/models/car-track/tunnel.obj
+load render-data/local/models/car-track/tunnel_own_street.obj
 #load render-data/local/models/car-track/car_base.obj
 #load render-data/local/models/car-track/car_base.obj subd_level 1
 
@@ -35,16 +36,32 @@ load render-data/local/models/car-track/separated/car_tires.obj
 
 #skylight load render-data/skylight-sunset.floats 10
 
+material select body
+#material albedo 0.026047 0.035411 0.040915
+material albedo 0.014 0 0.032
+
+material select Front_Tire
+material albedo 0.1 0.1 0.1
+material roughness 1
+material select Front_Tire.001
+material albedo 0.1 0.1 0.1
+material roughness 1
+
 # Pos Car Track
 #at 38.5649 1.49901 -3.01127
 #look -0.769501 -0.097961 -0.631088
-
 #at 2.54321 1.06247 0.269949
 #look -0.800274 -0.173457 -0.573999
-at 2.27836 0.650259 -0.207131
-look -0.666873 -0.225562 -0.710213
 #at 2.28985 0.579038 -1.46857
 #look -0.966933 -0.159197 0.19924
+
+# Car front
+at 2.27836 0.650259 -0.207131
+look -0.666873 -0.225562 -0.710213
+
+# Car back
+at -2.60088 0.696764 -3.36994
+look 0.809302 -0.146835 -0.568743
 
 #raytracer embree
 #commit

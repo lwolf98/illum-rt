@@ -198,7 +198,7 @@ namespace subd {
 			const aiFace &f = mesh_ai->mFaces[i];
 			face face;
 
-			if (f.mNumIndices < 3) continue; //TODO: messege/warning for degenerate faces?
+			if (f.mNumIndices < 3) continue; //TODO: message/warning for degenerate faces?
 			for (uint32_t j = 0; j < f.mNumIndices; ++j) {
 				vertex_config v;
 				int assimp_vert_id = f.mIndices[j];
@@ -654,16 +654,22 @@ namespace subd {
 				}
 
 				if (storage_type_patches) {
-					if (n != 4) {
+					if (patch_opt)
+						patch_opt->material_id = f.material_id;
+					else if (n != 4) {
+						// Extraordinary faces do not fit in the patch structure.
+						// After the first subdivision these faces are split into n quads, which match the patch structure.
+						// Because of that, n patches are added for every extraordinary face.
 						assert(end_level >= 1);
 						uint32_t patch_level = end_level-1;
-						patches.resize(patches.size() + n, patch_level);
-
+						patches.resize(patches.size() + n, subd_patch(patch_level, f.material_id));
 					}
 				}
 
 				for (int j = 0; j < n; j++) {
 					face new_f;
+					new_f.material_id = f.material_id;
+
 					int edge_vert1_id = f.verts[(j+1)%n].pos;
 					int edge_vert2_id = f.verts[((j-1)%n+n)%n].pos;
 					int vert_ids[4]; // [0] v_vert, [1] e_vert1, [2] f_vert, [3] e_vert2
@@ -1131,7 +1137,6 @@ namespace subd {
 			int n = f.verts.size();
 			int j = -1;
  			int j_max = n*n; // upper bound
-			int original_n = n;
 			while (n > 3) {
 				j++;
 				if (j > j_max) {
@@ -1184,6 +1189,7 @@ namespace subd {
 
 				// create new face (triangle)
 				face new_f;
+				new_f.material_id = f.material_id;
 				new_f.normal = normals[i];
 				new_f.verts.push_back(vertex_config());
 				new_f.verts.push_back(vertex_config());

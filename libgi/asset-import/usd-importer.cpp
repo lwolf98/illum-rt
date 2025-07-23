@@ -33,9 +33,7 @@ namespace import {
 		// Open the stage (USD file)
 		stage = UsdStage::Open(filepath.c_str());
 		if (!stage) {
-			std::cerr << "Failed to open USD file: " << filepath.c_str() << std::endl;
-			//TODO: throw error!
-			return;
+			throw std::runtime_error("ERROR: Failed to load file: " + filepath.string() + "!");
 		}
 	}
 
@@ -95,7 +93,21 @@ namespace import {
 					}
 					else if (shaderInput.GetFullName() == "inputs:diffuseColor") {
 						GfVec3f color = inputValue.Get<GfVec3f>();
-						material.albedo = vec3(color[0], color[1], color[2]);
+						vec3 kd(color[0], color[1], color[2]);
+						if (luma(kd) > 1e-4)
+							material.albedo = kd;
+
+					}
+					else if (shaderInput.GetFullName() == "inputs:specularColor") {
+						GfVec3f color = inputValue.Get<GfVec3f>();
+						vec3 ks(color[0], color[1], color[2]);
+						if (luma(material.albedo) < 1e-4)
+							material.albedo = ks;
+
+					}
+					else if (shaderInput.GetFullName() == "inputs:emissiveColor") {
+						GfVec3f color = inputValue.Get<GfVec3f>();
+						material.emissive = vec3(color[0], color[1], color[2]);
 					}
 
 				}
@@ -143,7 +155,6 @@ namespace import {
 					std::cout << "Material has a surface output connected to: " << surfaceOutput.GetFullName() << std::endl;
 
 					// Now, traverse the connected shader inputs
-					//UsdShadeShader shader = surfaceOutput.GetConnectedSource().GetPrim().GetChild<UsdShadeShader>();
 					UsdShadeConnectableAPI source;
 					TfToken inputName;
 					UsdShadeAttributeType type;
@@ -151,7 +162,6 @@ namespace import {
 						std::cout << "No connected source found for surface output." << std::endl;
 						return -1;
 					}
-					//UsdShadeShader shader = source.GetPrim().GetChild<UsdShadeShader>();
 					UsdShadeShader shader(source.GetPrim());
 					if (shader) {
 						std::cout << "Shader connected to surface output: " << shader.GetPath() << std::endl;
@@ -159,10 +169,14 @@ namespace import {
 						::material new_mat;
 						new_mat.name = material.GetPath().GetName();
 						new_mat.brdf = scene.brdfs["default"];
-						new_mat.albedo = vec4(0, 0, 0, 1.f); // TODO: load albedo
-						new_mat.emissive = vec3(0,0,0); // TODO: load emissive
 						traverse_shader_inputs(shader, 1, new_mat);
+
+						// PBR corrections
+						if (new_mat.ior == 1.0f) new_mat.ior = 1.3;
+						new_mat.albedo = pow(new_mat.albedo, vec3(2.2f, 2.2f, 2.2f));
+
 						scene.materials.push_back(new_mat);
+
 						std::string material_key = material_path.GetString();
 						material_map.insert({ material_key, material_map.size() });
 						material_id = material_map[material_key];
@@ -259,17 +273,32 @@ namespace import {
 					uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 				}*/
 
+				/* Load */
+
+				// Load geometry as object (preparation for subdivision)
+				subd::object o(mesh, subdiv_type_patches);
+
+				// Load materials from mesh's GeomSubsets
+				vector<UsdGeomSubset> subsets = UsdGeomSubset::GetAllGeomSubsets(mesh);
+				for (const UsdGeomSubset &subset : subsets) {
+					int subset_mat_id = load_material(subset.GetPrim(), scene);
+					VtIntArray indices;
+					subset.GetIndicesAttr().Get(&indices);
+					for (int face_id : indices) {
+						o.mesh.faces[face_id].material_id = material_offset + subset_mat_id;
+					}
+				}
+
 				// Load base mesh material
 				int material_id = load_material(prim, scene);
 				if (material_id == -1)
 					material_id = 0;
 				material_id += material_offset;
+				for (auto &f : o.mesh.faces)
+					if (f.material_id == -1)
+						f.material_id = material_id;
 
-				// Load
-
-				// Load geometry as object (preparation for subdivision)
-				subd::object o(mesh, subdiv_type_patches);
-
+				// Apply transformations
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex
 					vert.pos = glm::vec3(transform * vec4(vert.pos, 1.f));
@@ -315,6 +344,8 @@ namespace import {
 
 					for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
 						triangle triangle;
+						triangle.material_id = o.mesh.faces[i/3].material_id;
+
 						triangle.a = index_offset + i;
 						triangle.b = index_offset + i+1;
 						triangle.c = index_offset + i+2;
@@ -325,8 +356,8 @@ namespace import {
 						auto c = scene.vertices[triangle.c];
 						if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
 							std::swap(triangle.b, triangle.c);
+
 						// append
-						triangle.material_id = material_id;
 						scene.triangles.push_back(triangle);
 					}
 				}
@@ -340,7 +371,6 @@ namespace import {
 						int patch_offset = scene.patches.size();
 						for (int p = 0; p < patches.size(); p++) {
 							auto &patch = patches[p];
-							patch.material_id = material_id;
 
 							const auto &root_box = patch.root_box;
 							scene.scene_bounds.grow(root_box);
@@ -362,26 +392,6 @@ namespace import {
 							dummy_tri.material_id = ((uint32_t)-1) - (patch_offset + p); // reference to the patch id
 
 							scene.triangles.push_back(dummy_tri);
-						}
-
-						// Assign GeomSubset materials
-						//
-						//	for (subset : mesh.subsets)
-						//		subset_mat_id = load_material(mesh, subset)
-						//		for (index : subset.indices)
-						//			patches[index].material_id = subset_mat_id
-						//
-						vector<UsdGeomSubset> subsets = UsdGeomSubset::GetAllGeomSubsets(mesh);
-						for (const UsdGeomSubset &subset : subsets) {
-							std::cout << "GeomSubset name: " << subset.GetPrim().GetName().GetString() << std::endl;
-
-							int subset_mat_id = load_material(subset.GetPrim(), scene);
-
-							VtIntArray indices;
-							subset.GetIndicesAttr().Get(&indices);
-							for (int face_id : indices) {
-								patches[face_id].material_id = material_offset + subset_mat_id;
-							}
 						}
 
 						// Store patches into scene
@@ -415,6 +425,8 @@ namespace import {
 
 						for (uint32_t i = 0; i < serialized_verts.size(); i+=3) {
 							triangle triangle;
+							triangle.material_id = o.mesh.faces[i/3].material_id;
+
 							triangle.a = index_offset + i;
 							triangle.b = index_offset + i+1;
 							triangle.c = index_offset + i+2;
@@ -425,8 +437,8 @@ namespace import {
 							auto c = scene.vertices[triangle.c];
 							if (!same_hemisphere(cross(b.pos-a.pos,c.pos-a.pos), (a.norm+b.norm+c.norm)*0.333f))
 								std::swap(triangle.b, triangle.c);
+
 							// append
-							triangle.material_id = material_id;
 							scene.triangles.push_back(triangle);
 						}
 					}
