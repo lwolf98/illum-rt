@@ -9,7 +9,6 @@
 #include <pxr/usd/usd/stage.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdShade/shader.h>
-#include <pxr/usd/usdShade/materialBindingAPI.h>
 
 namespace import {
 	class asset_importer {
