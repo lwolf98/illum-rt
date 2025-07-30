@@ -8,6 +8,7 @@ config.status
 config.h
 config.h.in~
 configure
+rt/gl/glsl.deps
 auxx
 src/rtgi
 out.png
@@ -33,3 +34,4 @@ render-data/dragon/
 render-data/local/
 local/
 .vscode/
+rtgi_*
