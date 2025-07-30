@@ -11,6 +11,7 @@ config.h.in~
 INSTALL
 rt/gl/glsl.deps
 configure
+rt/gl/glsl.deps
 auxx
 src/rtgi
 out.png
@@ -36,3 +37,4 @@ render-data/dragon/
 render-data/local/
 local/
 .vscode/
+rtgi_*
