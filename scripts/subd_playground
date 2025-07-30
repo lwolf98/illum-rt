@@ -1,0 +1,53 @@
+omp on
+
+up 0 1 0
+
+#sppx 128
+sppx 4096
+resolution 960 540
+
+default-brdf layered-gtr2
+
+#load render-data/light/plane_sky.obj
+load render-data/light/dome_light.obj
+
+load render-data/local/playground/playground.obj
+#load render-data/local/playground/dragon_pg.obj
+load render-data/local/playground/dragon_pg.obj subd_level 3
+
+# Playground
+at -28.3647 3.97708 2.01428
+look 0.614746 -0.185145 -0.766687
+
+material select Dome
+material emissive 1 1 1
+
+material select Light
+material emissive 2 2 2
+
+material select body
+#material roughness 0.1
+material albedo 0 0.215 0.047
+
+material select eye_white
+material albedo 0.2 0.2 0.2
+
+##raytracer naive-bvh
+#raytracer subd-naive-bvh
+#commit
+##algo primary
+#algo direct/mis
+#outfile out_subds/subd-direct_cpu.png
+
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile subd-sibenik-primary_cuda.png
+algo direct-wf
+is light
+#is cosine
+outfile out_subds/subd-direct_cuda.png
+commit
+
+run
