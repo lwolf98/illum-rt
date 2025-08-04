@@ -1129,6 +1129,10 @@ namespace subd {
 	//
 	// Reference:
 	// https://wiki.delphigl.com/index.php/Ear_Clipping_Triangulierung
+	//
+	// The implementation is derived from the reference description, but
+	// directly uses 3D coords.
+	// TODO: the current implementation fails at triangulating non-convex n-gons
 	void mesh::triangulate() {
 		mesh new_mesh;
 
