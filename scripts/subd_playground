@@ -4,33 +4,43 @@ up 0 1 0
 
 #sppx 128
 sppx 4096
+#sppx 400000
 resolution 960 540
+#resolution 1920 1200
 
 default-brdf layered-gtr2
 
 #load render-data/light/plane_sky.obj
-load render-data/light/dome_light.obj
+#material select Light
+#material emissive 2 2 2
 
+#load render-data/light/dome_light.obj
+#material select Dome
+#material emissive 1 1 1
+
+# Environment
+load render-data/light/dome_sky.obj
+load render-data/scene/playground/plane_sand.obj
+
+# Scene
 load render-data/scene/playground/playground.obj
-load render-data/scene/playground/dragon_pg.obj
-#load render-data/scene/playground/dragon_pg.obj subd_level 3
 
-# Playground
-at -28.3647 3.97708 2.01428
-look 0.614746 -0.185145 -0.766687
-
-material select Dome
-material emissive 1 1 1
-
-material select Light
-material emissive 2 2 2
+# Cartoon dragon
+#load render-data/scene/playground/dragon_pg.obj
+load render-data/scene/playground/dragon_pg.obj subd_level 3 subd_type patches
 
 material select body
-#material roughness 0.1
 material albedo 0 0.215 0.047
-
 material select eye_white
 material albedo 0.2 0.2 0.2
+material select teeth_white
+material albedo 0.2 0.2 0.2
+material select mouth
+material albedo 0.107 0.025 0.023
+
+# Pos playground bridge
+at -28.4391 3.89833 1.99398
+look 0.610622 -0.183563 -0.770354
 
 ##raytracer naive-bvh
 #raytracer subd-naive-bvh
