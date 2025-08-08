@@ -1,69 +1,50 @@
-omp on
+#omp off
 
 up 0 1 0
 
-#sppx 1
-#sppx 32
-#sppx 128
-#sppx 256
 #sppx 1024
 sppx 4096
+#sppx 100000
 resolution 960 540
 
 default-brdf layered-gtr2
 
+#skylight load render-data/skylight-sunset.floats 10
+#load render-data/light/dome_light.obj
 load render-data/light/plane_sky.obj
 
-modeltrafo scale 5 5 5
-#load render-data/local/sibenik/sibenik-nostaklo.obj
-#load render-data/local/sibenik/sibenik.obj
-modeltrafo scale 0.2 0.2 0.2
-
-# debug
-load render-data/subd/knife_usd/knife.usda
-modeltrafo shift 3 1 0
-load render-data/subd/knife_usd/knife.usda subd_level 4 subd_type patches
-modeltrafo shift -3 -1 0
-
-#modeltrafo shift 13 0 -23
+# Knives
+modeltrafo shift 13 0 -24
 load render-data/subd/knife_obj/knife.obj
+load render-data/subd/knife_usd/knife.usda
+
 modeltrafo shift 3 1 0
-load render-data/subd/knife_obj/knife.obj subd_level 4 subd_type patches
-##load render-data/subd/knife_obj/knife.obj
+load render-data/subd/knife_obj/knife.obj subd_level 4 subd_type tris
+load render-data/subd/knife_usd/knife.usda subd_level 4 subd_type tris
 modeltrafo shift -3 -1 0
-#modeltrafo shift -13 0 23
+modeltrafo shift -13 0 24
 
+# Texture test
+modeltrafo shift 12 0 2
 load render-data/subd/basic_tests/quad_tri_test.obj
-#load render-data/subd/basic_tests/quad_tri_test.obj subd_level 5
-#load render-data/subd/basic_tests/cubi_open.obj subd_level 3
-#load render-data/subd/basic_tests/cubi.usda
+modeltrafo shift 0 0 4
+load render-data/subd/basic_tests/quad_tri_test.obj subd_level 3 subd_type tris
+modeltrafo shift 0 0 -4
+modeltrafo shift -12 0 -2
 
-#modeltrafo shift 0 -10 0
+# Cartoon dragon
+modeltrafo shift 0 -5 0
 modeltrafo scale 100 100 100
 load render-data/subd/cartoon_dragon_obj/dragon_low.obj
 modeltrafo shift 0.1 0 0
-load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2 subd_type patches
+load render-data/subd/cartoon_dragon_obj/dragon_low.obj subd_level 2 subd_type tris
 modeltrafo shift -0.1 0 0
 modeltrafo scale 0.01 0.01 0.01
-#modeltrafo shift 0 10 0
+modeltrafo shift 0 5 0
 
-#skylight load render-data/skylight-sunset.floats 10
-
-material select Light
-material emissive 5 5 5
-
-#material select body
-#material emissive 50 5 5
-
-# Pos 1
-#at -3 0 0
-#look 1 0 0
-
-# Pos 2 (Knife)
-at -6.82282 1.2534 0.835015
-look 0.67736 -0.104066 -0.728254
-at -16.4018 2.19682 21.3284
-look 0.858096 -0.289292 -0.424243
+# Pos Overview
+at -8.98391 2.90919 5.00198
+look 0.797373 -0.346276 -0.494256
 
 ##raytracer naive-bvh
 #raytracer subd-naive-bvh
