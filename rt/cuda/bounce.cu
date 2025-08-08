@@ -87,6 +87,10 @@ namespace wf::cuda {
 	// 
 
 	namespace k {
+		__device__ float4 albedo4(const diff_geom &dg, float2 *vertex_tc);
+		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc);
+		__device__ float4 emissive_albedo4(const diff_geom &dg);
+
 		static __device__ bool not_black(float4 c) {
 			return c.x != 0 || c.y != 0 || c.z != 0;
 		}
@@ -109,7 +113,7 @@ namespace wf::cuda {
 			float tmax = -FLT_MAX;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
@@ -165,7 +169,7 @@ namespace wf::cuda {
 			float pdf = one_over_pi;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
@@ -285,7 +289,7 @@ namespace wf::cuda {
 			float pdf = 0;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + dg.mat->emissive; // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
 				else {
 					float4 xis = random[ray_index];
 					int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf);
@@ -335,11 +339,21 @@ namespace wf::cuda {
 
 	namespace k {
 
-		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc) {
+		__device__ float4 albedo4(const diff_geom &dg, float2 *vertex_tc) {
 			if (dg.mat->albedo_tex > 0) {
-				return f3(tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y));
+				return tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y);
 			}
-			return f3(dg.mat->albedo);
+			return dg.mat->albedo;
+		}
+
+		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc) {
+			return f3(albedo4(dg, vertex_tc));
+		}
+
+		__device__ float4 emissive_albedo4(const diff_geom &dg) {
+			float4 albedo = albedo4(dg, nullptr);
+			if(not_black(albedo))	return albedo * dg.mat->emissive;
+			else					return dg.mat->emissive;
 		}
 
 		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
