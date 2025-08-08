@@ -62,6 +62,8 @@ material emissive 5 5 5
 # Pos 2 (Knife)
 at -6.82282 1.2534 0.835015
 look 0.67736 -0.104066 -0.728254
+at -16.4018 2.19682 21.3284
+look 0.858096 -0.289292 -0.424243
 
 ##raytracer naive-bvh
 #raytracer subd-naive-bvh
