@@ -1,4 +1,4 @@
-omp on
+#omp off
 
 up 0 1 0
 
@@ -10,24 +10,26 @@ resolution 960 540
 
 default-brdf layered-gtr2
 
+# Plane light
 #load render-data/light/plane_sky.obj
 #material select Light
 #material emissive 2 2 2
 
+# Dome light
 #load render-data/light/dome_light.obj
 #material select Dome
 #material emissive 1 1 1
 
 # Environment
 load render-data/light/dome_sky.obj
-load render-data/scene/playground/plane_sand.obj
+load render-data/local/models/playground/plane_sand.obj
 
 # Scene
-load render-data/scene/playground/playground.obj
+load render-data/local/models/playground/playground.obj
 
 # Cartoon dragon
-#load render-data/scene/playground/dragon_pg.obj
-load render-data/scene/playground/dragon_pg.obj subd_level 3 subd_type patches
+#load render-data/local/models/playground/dragon_pg.obj
+load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type patches
 
 material select body
 material albedo 0 0.215 0.047
@@ -42,22 +44,23 @@ material albedo 0.107 0.025 0.023
 at -28.4391 3.89833 1.99398
 look 0.610622 -0.183563 -0.770354
 
-##raytracer naive-bvh
+## CPU Direct
 #raytracer subd-naive-bvh
 #commit
 ##algo primary
 #algo direct/mis
-#outfile out_subds/subd-direct_cpu.png
+#outfile out_subds/playground_direct_cpu.png
 
+# WF GPU Direct
 platform cuda
 raytracer optix
 add-scene-step build accel struct
 #algo primary-wf
-#outfile subd-sibenik-primary_cuda.png
+#outfile out_subds/playground_primary_cuda.png
 algo direct-wf
 is light
 #is cosine
-outfile out_subds/subd-direct_cuda.png
+outfile out_subds/playground_subd-direct_cuda.png
 commit
 
 run

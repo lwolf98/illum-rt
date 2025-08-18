@@ -3,76 +3,73 @@
 up 0 1 0
 
 #sppx 1024
-#sppx 4096
-sppx 10000
+sppx 4096
+#sppx 10000
+#sppx 40000
+#sppx 100000
+#sppx 400000
 resolution 960 540
+#resolution 1920 1080
+#resolution 1920 1200
 
 default-brdf layered-gtr2
 
-#load /usr/gralab/render-data/cg-trader/car-track/uploads_files_4001553_car+track.obj
-#load /data/temp/wol37689/car-track/car-track.obj
+load render-data/light/dome_light.obj
 
-load render-data/local/models/car-track/tunnel.obj
+# Tunnel
+load render-data/local/models/car-track/tunnel_own_street.obj
+
+# Car
+modeltrafo shift 0 0 -3.2
+load render-data/local/models/car-track/car_base.obj subd_level 2 subd_type patches
 #load render-data/local/models/car-track/car_base.obj
-#load render-data/local/models/car-track/car_base.obj subd_level 1
+load render-data/local/models/car-track/car_tires.obj
+modeltrafo shift 0 0 3.2
 
-modeltrafo shift 0 0 -1.125
-modeltrafo rotate y 1.57
-#modeltrafo scale 2 2 2
-#load render-data/local/models/car-track/separated/usd/car_base.usdc
-#load render-data/local/models/car-track/separated/usd/car_tires.usdc
-#modeltrafo scale 0.5 0.5 0.5
-modeltrafo rotate y -1.57
-modeltrafo shift 0 0 1.125
+# Alter materials
+material select body
+material albedo 0.014 0 0.032
+material select Front_Tire
+material albedo 0.1 0.1 0.1
+material roughness 1
+material select Front_Tire.001
+material albedo 0.1 0.1 0.1
+material roughness 1
 
-#load render-data/local/models/car-track/separated/car_base.obj subd_level 1 subd_type patches
-load render-data/local/models/car-track/separated/car_base.obj
-load render-data/local/models/car-track/separated/car_tires.obj
+## Pos Car Track
+# Car front:
+#at 2.41121 0.86248 -3.40024
+#look -0.703297 -0.227215 -0.673608
 
-#load render-data/local/models/car-track/wall_light.obj
-#load render-data/light/dome_light.obj
+# Car back:
+at -2.60088 0.696764 -3.36994
+look 0.809302 -0.146835 -0.568743
 
-#skylight load render-data/skylight-sunset.floats 10
-
-# Pos Car Track
-#at 38.5649 1.49901 -3.01127
-#look -0.769501 -0.097961 -0.631088
-
-#at 2.54321 1.06247 0.269949
-#look -0.800274 -0.173457 -0.573999
-at 2.27836 0.650259 -0.207131
-look -0.666873 -0.225562 -0.710213
-
-#raytracer embree
+## CPU Direct
+##raytracer embree
+#raytracer subd-naive-bvh
 #commit
 #algo direct/mis
-#outfile out_subds/car-direct_cpu.png
+#outfile out_subds/car_direct_cpu.png
 
-#raytracer embree
+## CPU PT
+##raytracer embree
+#raytracer subd-naive-bvh
 #commit
 #algo simple-pt
 #path bounce brdf
 #path len 10
-#outfile out_subds/car-pt_cpu.png
+#outfile out_subds/car_pt_cpu.png
 
+# WF GPU Direct
 platform cuda
 raytracer optix
 add-scene-step build accel struct
 #algo primary-wf
-#outfile subd-sibenik-primary_cuda.png
+#outfile out_subds/car_primary_cuda.png
 algo direct-wf
-is light
-outfile out_subds/car-direct_cuda.png
+is uniform
+outfile out_subds/car_direct_cuda.png
 commit
-
-# WF setup ML
-#platform cuda
-#raytracer optix
-#add-scene-step build accel struct
-#algo manylight-wf
-##is light paths 4096 length 10 g 0.1 vps 1
-#is light paths 512 length 10 g 0.1 vps 1
-#outfile out_subds/car-ml_cuda.png
-#commit
 
 run
