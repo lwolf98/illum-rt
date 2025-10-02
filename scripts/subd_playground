@@ -60,7 +60,7 @@ add-scene-step build accel struct
 algo direct-wf
 is light
 #is cosine
-outfile out_subds/playground_subd-direct_cuda.png
+outfile out_subds/playground_direct_cuda.png
 commit
 
 run

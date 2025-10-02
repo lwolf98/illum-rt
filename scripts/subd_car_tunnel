@@ -45,6 +45,14 @@ material roughness 1
 at -2.60088 0.696764 -3.36994
 look 0.809302 -0.146835 -0.568743
 
+# Car small:
+#at -48.6473 1.29152 2.45238
+#look 0.605046 -0.14085 -0.783633
+
+# No car:
+#at -48.6473 1.29152 2.45238
+#look 0.452643 -0.134632 -0.881469
+
 ## CPU Direct
 ##raytracer embree
 #raytracer subd-naive-bvh
