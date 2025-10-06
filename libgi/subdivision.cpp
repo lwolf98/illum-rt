@@ -304,7 +304,7 @@ namespace subd {
 	//
 	// o.write_obj("output/subd/out_test_subd.obj", true, "cornell_sibenik.mtl");
 	//
-	void object::write_obj(std::string outfile_path, bool write_normals, std::string mtllib_path) {
+	void object::write_obj(std::string outfile_path, bool write_normals, std::string mtllib_path, float n_len) {
 		ofstream outfile;
 		outfile.open(outfile_path);
 		if (mtllib_path != "")
@@ -373,7 +373,7 @@ namespace subd {
 			int i = 1;
 			for (auto &v : mesh.vertices) {
 				outfile << "v " << v.pos.x << " " << v.pos.y << " " << v.pos.z << endl;
-				outfile << "v " << v.pos.x+v.norm.x << " " << v.pos.y+v.norm.y << " " << v.pos.z+v.norm.z << endl;
+				outfile << "v " << v.pos.x+n_len*v.norm.x << " " << v.pos.y+n_len*v.norm.y << " " << v.pos.z+n_len*v.norm.z << endl;
 				outfile << "l " << i << " " << i+1 << endl;
 				i += 2;
 			}
@@ -395,7 +395,7 @@ namespace subd {
 				f_center *= 1.f/face.size();
 
 				outfile << "v " << f_center.x << " " << f_center.y << " " << f_center.z << endl;
-				outfile << "v " << f_center.x+norm.x << " " << f_center.y+norm.y << " " << f_center.z+norm.z << endl;
+				outfile << "v " << f_center.x+n_len*norm.x << " " << f_center.y+n_len*norm.y << " " << f_center.z+n_len*norm.z << endl;
 				outfile << "l " << v_count << " " << v_count+1 << endl;
 				v_count += 2;
 			}
@@ -1228,6 +1228,15 @@ namespace subd {
 		for (uint i = 0; i < new_mesh.faces.size(); i++) {
 			faces.push_back(new_mesh.faces[i]);
 			normals.push_back(new_mesh.normals[i]);
+		}
+	}
+
+	void mesh::displace() {
+		for (uint32_t i = 0; i < vertices.size(); i++) {
+			auto &v = vertices[i];
+			float displacement = 0.02f;
+			displacement = displacement * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
+			v.pos = v.pos + displacement * v.norm;
 		}
 	}
 }

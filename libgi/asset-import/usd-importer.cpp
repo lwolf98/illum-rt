@@ -400,6 +400,9 @@ namespace import {
 					else {
 						// triangulate quad faces
 						o.mesh.triangulate();
+						
+						// apply displacement
+						o.mesh.displace();
 
 						// serialize vertices
 						vector<vertex> serialized_verts;

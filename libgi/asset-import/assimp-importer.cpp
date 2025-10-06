@@ -249,9 +249,11 @@ namespace import {
 					rtgi_scene.patches.insert(rtgi_scene.patches.end(), patches.begin(), patches.end());
 				}
 				else {
-
 					// triangulate quad faces
 					o.mesh.triangulate();
+
+					// apply displacement
+					o.mesh.displace();
 
 					// serialize vertices
 					vector<vertex> serialized_verts;

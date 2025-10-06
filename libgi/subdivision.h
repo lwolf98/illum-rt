@@ -170,6 +170,7 @@ namespace subd {
 		void update();
 		void subdivide(uint32_t level);
 		void triangulate();
+		void displace();
 
 		mesh() : storage_type_patches(true) { }
 
@@ -205,9 +206,9 @@ namespace subd {
 			init_object(usd_mesh);
 		}
 		bool has_material() { return material != ""; }
-		void write_obj(std::string outfile_name, bool write_normals, std::string mtllib_path = "");
-		void write_obj(bool write_normals, std::string mtllib_path = "") {
-			write_obj("out_" + name + ".obj", write_normals);
+		void write_obj(std::string outfile_name, bool write_normals, std::string mtllib_path = "", float n_len = 1.f);
+		void write_obj(bool write_normals, std::string mtllib_path = "", float n_len = 1.f) {
+			write_obj("out_" + name + ".obj", write_normals, mtllib_path, n_len);
 		}
 
 	private:
