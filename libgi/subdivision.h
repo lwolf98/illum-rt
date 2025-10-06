@@ -155,6 +155,7 @@ namespace subd {
 		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
 
+	typedef std::function<glm::vec4(glm::vec2)> sample_tex;
 	struct mesh {
 		bool has_normals;
 		bool has_texture;
@@ -170,13 +171,14 @@ namespace subd {
 		void update();
 		void subdivide(uint32_t level);
 		void triangulate();
-		void displace();
+		void displace(sample_tex sample, float strength);
 
 		mesh() : storage_type_patches(true) { }
 
 	private:
 		void subdivide_internal(uint32_t end_level);
 		void update_topology();
+		void pass_tcs();
 		uint64_t add_edge(int a, int b, int f_id);
 		void update_vertex(ctrl_vertex &v, int f_id, uint64_t e_id);
 

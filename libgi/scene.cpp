@@ -202,7 +202,7 @@ texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &given_path) {
 	return tex;
 }
 
-void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level, const bool subdiv_type_patches) {
+void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level, const bool subdiv_type_patches, const std::filesystem::path &displace_map_path, float displace_strength) {
 	#ifndef RTGI_SKIP_BRDF
 		// initialize brdfs
 		if (brdfs.empty() || brdfs.count("default") == 0) {
@@ -221,18 +221,18 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		[](unsigned char c) { return std::tolower(c); });
 		
 	if (extension.substr(0, 4) == ".usd") {
-		import::usd_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
-		imp.load_scene(modelpath);
+		import::usd_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
+		imp.load_scene(modelpath, displace_map_path);
 		imp.import(*this);
 	}
 	else if (extension == ".objx") {
-		import::objx_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
-		imp.load_scene(modelpath);
+		import::objx_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
+		imp.load_scene(modelpath, displace_map_path);
 		imp.import(*this);
 	}
 	else {
-		import::assimp_importer imp(name, trafo, subdiv_level, subdiv_type_patches);
-		imp.load_scene(modelpath);
+		import::assimp_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
+		imp.load_scene(modelpath, displace_map_path);
 		imp.import(*this);
 	}
 }

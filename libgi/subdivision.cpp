@@ -184,6 +184,7 @@ namespace subd {
 			for (int i = 0; i < mesh_ai->mNumVertices; i++) {
 				aiVector3D &tc = mesh_ai->mTextureCoords[0][i];
 				mesh.tex_coords.push_back(vec2(tc.x, tc.y));
+				mesh.vertices[i].tc = vec2(tc.x, tc.y);
 				if (subd_debug)
 					cout << "Input tc " << i << ": " << vec3(tc.x, tc.y, tc.z) << endl;
 			}
@@ -881,6 +882,9 @@ namespace subd {
 			// Calculate adjacent edges and faces
 			update_topology();
 
+			// Assign single tc to vertices (used for displacement)
+			pass_tcs();
+
 			// Normals have been calculated in this method
 			has_normals = true;
 		}
@@ -1125,6 +1129,15 @@ namespace subd {
 
 	}
 
+	void mesh::pass_tcs() {
+		for (auto &f : faces) {
+			for (auto &vc : f.verts) {
+				auto &v = vertices[vc.pos];
+				v.tc = tex_coords[vc.tc];
+			}
+		}
+	}
+
 	// Ear cutting triangulation
 	//
 	// Reference:
@@ -1231,12 +1244,29 @@ namespace subd {
 		}
 	}
 
-	void mesh::displace() {
+	void mesh::displace(sample_tex sample, float strength) {
+		if (strength == 0.f)
+			return;
+
 		for (uint32_t i = 0; i < vertices.size(); i++) {
-			auto &v = vertices[i];
-			float displacement = 0.02f;
-			displacement = displacement * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
-			v.pos = v.pos + displacement * v.norm;
+		//for (auto &f : faces) {
+			//for (auto &vc : f.verts) {
+				auto &v = vertices[i];
+				//auto &v = vertices[vc.pos];
+				//float height = 0.07f;
+				float displacement = 0.f;
+				if (sample) {
+					vec4 s = sample(v.tc);
+					////vec4 s = sample(tex_coords[v.faces[0].tc]);
+					//vec4 s = sample(tex_coords[vc.tc]);
+					displacement = strength * 1.f/3 * (s.x + s.y + s.z);
+					displacement -= 0.5f * strength;
+				}
+				else {
+					displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
+				}
+				v.pos = v.pos + displacement * v.norm;
+			//}
 		}
 	}
 }

@@ -25,8 +25,8 @@ using namespace glm;
 using namespace std;
 
 namespace import {
-	void usd_importer::load_scene(const std::filesystem::path& filepath) {
-		this->filepath = filepath;
+	void usd_importer::load_scene(const std::filesystem::path& filepath, const std::filesystem::path& displace_map_path) {
+		asset_importer::load_scene(filepath, displace_map_path);
 
 		std::cout << "USD importer load called!" << std::endl;
 
@@ -400,9 +400,9 @@ namespace import {
 					else {
 						// triangulate quad faces
 						o.mesh.triangulate();
-						
+
 						// apply displacement
-						o.mesh.displace();
+						o.mesh.displace(nullptr, displace_strength);
 
 						// serialize vertices
 						vector<vertex> serialized_verts;

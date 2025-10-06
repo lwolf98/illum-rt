@@ -24,7 +24,8 @@ using namespace std;
 
 namespace import {
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches);
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches,
+								const texture2d<vec4>* displace_tex, float displace_strength);
 
 	inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
@@ -44,8 +45,8 @@ namespace import {
 		return glm::vec4(from.x, from.y, from.z, 1.0f);
 	}
 
-	void assimp_importer::load_scene(const std::filesystem::path& filepath) {
-		this->filepath = filepath;
+	void assimp_importer::load_scene(const std::filesystem::path& filepath, const std::filesystem::path& displace_map_path) {
+		asset_importer::load_scene(filepath, displace_map_path);
 
 		unsigned int flags;  // | aiProcess_FlipUVs  // TODO assimp
 		if (subdiv_level == 0) {
@@ -118,15 +119,21 @@ namespace import {
 		int light_prims = 0;
 		std::vector<std::tuple<int,int,int>> light_geom;
 
+		// load displacement map
+		texture2d<vec4>* displace_tex = displace_map_path != "" ?
+										load_image4f(displace_map_path)
+										: nullptr;
+
 		// load meshes
-		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level, subdiv_type_patches);
+		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level, subdiv_type_patches, displace_tex, displace_strength);
 		
 	}
 
 	// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 	// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches) {
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches,
+								const texture2d<vec4>* displace_tex, float displace_strength) {
 		mat4 node_trafo = parent_trafo * to_glm(node_ai->mTransformation);
 		mat4 transform = model_trafo * node_trafo;
 		mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -253,7 +260,19 @@ namespace import {
 					o.mesh.triangulate();
 
 					// apply displacement
-					o.mesh.displace();
+					//o.mesh.displace(nullptr);
+					//o.mesh.displace(displace_tex->sample);
+					/*if (displace_tex) {
+						o.mesh.displace([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						});
+					}*/
+					o.mesh.displace(displace_tex ?
+						subd::sample_tex([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						})
+						: subd::sample_tex(nullptr),
+						displace_strength);
 
 					// serialize vertices
 					vector<vertex> serialized_verts;
@@ -301,6 +320,6 @@ namespace import {
 		}
 		
 		for (int i = 0; i < node_ai->mNumChildren; i++)
-			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level, subd_type_patches);
+			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level, subd_type_patches, displace_tex, displace_strength);
 	}
 }
