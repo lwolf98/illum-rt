@@ -184,7 +184,7 @@ namespace subd {
 			for (int i = 0; i < mesh_ai->mNumVertices; i++) {
 				aiVector3D &tc = mesh_ai->mTextureCoords[0][i];
 				mesh.tex_coords.push_back(vec2(tc.x, tc.y));
-				mesh.vertices[i].tc = vec2(tc.x, tc.y);
+				mesh.vertices[vert_map[i]].tc = vec2(tc.x, tc.y);
 				if (subd_debug)
 					cout << "Input tc " << i << ": " << vec3(tc.x, tc.y, tc.z) << endl;
 			}
