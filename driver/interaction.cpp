@@ -404,8 +404,10 @@ void eval(const std::string &line) {
 	}
 	else ifcmd("load") {
 		string file, name;
+		string displace_map;
 		int subd_level = 0;
 		bool subd_patches = true;
+		float strength = 0.f; // strength 0 means no displacement
 		in >> file;
 		string load_args;
 		while (!in.eof()) {
@@ -423,12 +425,25 @@ void eval(const std::string &line) {
 			else if (load_args == "name") {
 				in >> name;
 			}
+			else if (load_args == "displace") {
+				if (strength == 0.f)
+					strength = 0.1f; // default displacement strength
+
+				std::string displace_param;
+				in >> displace_param;
+				if (displace_param != "random")
+					displace_map = displace_param;
+					
+			}
+			else if (load_args == "strength") {
+				in >> strength;
+			}
 			else {
 				name = load_args;
 			}
 		}
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name, modelmatrix, subd_level, subd_patches);
+		scene.add(file, name, modelmatrix, subd_level, subd_patches, displace_map, strength);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {

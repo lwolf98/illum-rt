@@ -220,6 +220,16 @@ namespace import {
 
 
 				if (subd_type_patches) {
+					// apply displacement
+					o.mesh.displace(displace_tex ?
+					subd::sample_tex([&](vec2 tc) {
+						return displace_tex->sample(tc);
+					})
+					: subd::sample_tex(nullptr),
+					displace_strength);
+
+					// build second level BVH for each patch
+					o.mesh.build_patch_bvhs();
 
 					// Add "dummy triangles" to the scene representing the extent of the patches.
 					// These are used to identify and include the second level patch BVHs when
@@ -273,6 +283,8 @@ namespace import {
 						})
 						: subd::sample_tex(nullptr),
 						displace_strength);
+
+					//o.write_obj("out_spike.obj", true, "", 0.2);
 
 					// serialize vertices
 					vector<vertex> serialized_verts;

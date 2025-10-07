@@ -172,6 +172,14 @@ namespace subd {
 		void subdivide(uint32_t level);
 		void triangulate();
 		void displace(sample_tex sample, float strength);
+		void build_patch_bvhs() {
+			if (storage_type_patches) {
+				for (int i = 0; i < patches.size(); i++) {
+					auto &patch = patches[i];
+					patch.build_bvh();
+				}
+			}
+		}
 
 		mesh() : storage_type_patches(true) { }
 

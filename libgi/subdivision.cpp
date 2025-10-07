@@ -458,13 +458,6 @@ namespace subd {
 			}
 		}
 
-		if (storage_type_patches) {
-			for (int i = 0; i < patches.size(); i++) {
-				auto &patch = patches[i];
-				patch.build_bvh();
-			}
-		}
-
 		calculate_vertex_normals();
 	}
 
@@ -1252,8 +1245,6 @@ namespace subd {
 		//for (auto &f : faces) {
 			//for (auto &vc : f.verts) {
 				auto &v = vertices[i];
-				//auto &v = vertices[vc.pos];
-				//float height = 0.07f;
 				float displacement = 0.f;
 				if (sample) {
 					vec4 s = sample(v.tc);
@@ -1265,8 +1256,30 @@ namespace subd {
 				else {
 					displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
 				}
-				v.pos = v.pos + displacement * v.norm;
+				v.pos += displacement * v.norm;
 			//}
 		}
+
+		if (storage_type_patches) {
+			for (auto &patch : patches) {
+				for (auto &v : patch.verts) {
+					float displacement = 0.f;
+					if (sample) {
+						vec4 s = sample(v.tc);
+						////vec4 s = sample(tex_coords[v.faces[0].tc]);
+						//vec4 s = sample(tex_coords[vc.tc]);
+						displacement = strength * 1.f/3 * (s.x + s.y + s.z);
+						displacement -= 0.5f * strength;
+					}
+					else {
+						displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
+					}
+					v.pos += displacement * v.norm;
+				}
+			}
+		}
+
+		update();
+		//calculate_vertex_normals();
 	}
 }

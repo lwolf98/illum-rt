@@ -363,7 +363,23 @@ namespace import {
 				}
 				else {
 
+					// load displacement map
+					texture2d<vec4>* displace_tex = displace_map_path != "" ?
+													load_image4f(displace_map_path)
+													: nullptr;
+
 					if (subdiv_type_patches) {
+						// apply displacement
+						o.mesh.displace(displace_tex ?
+						subd::sample_tex([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						})
+						: subd::sample_tex(nullptr),
+						displace_strength);
+
+						// build second level BVH for each patch
+						o.mesh.build_patch_bvhs();
+
 						// Add "dummy triangles" to the scene representing the extent of the patches.
 						// These are used to identify and include the second level patch BVHs when
 						// building the first level BVH
@@ -402,7 +418,12 @@ namespace import {
 						o.mesh.triangulate();
 
 						// apply displacement
-						o.mesh.displace(nullptr, displace_strength);
+						o.mesh.displace(displace_tex ?
+						subd::sample_tex([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						})
+						: subd::sample_tex(nullptr),
+						displace_strength);
 
 						// serialize vertices
 						vector<vertex> serialized_verts;
