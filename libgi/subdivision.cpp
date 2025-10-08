@@ -408,10 +408,17 @@ namespace subd {
 
 	/* mesh implementation */
 
-	void mesh::update() {
+	void mesh::update(bool clear) {
 		time_this_block(mesh_update);
+		if (clear) {
+			edges.clear();
+			for (auto &v : vertices) {
+				v.edge_ids.clear();
+				v.face_ids.clear();
+			}
+		}
+
 		// Calculate adjacent edges and faces
-		edges.clear();
 		for (uint i = 0; i < faces.size(); i++) {
 			face& f = faces[i];
 			for (uint j = 0; j < f.size(); j++)
@@ -1087,6 +1094,7 @@ namespace subd {
 	}
 
 	void mesh::calculate_face_normals() {
+		normals.clear();
 		for (int i = 0; i < faces.size(); i++) {
 			const face &f = faces[i];
 			glm::vec3 u = vertices[f.verts[0].pos].pos - vertices[f.verts[1].pos].pos;
@@ -1279,7 +1287,6 @@ namespace subd {
 			}
 		}
 
-		update();
-		//calculate_vertex_normals();
+		update(true);
 	}
 }

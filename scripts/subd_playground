@@ -29,15 +29,20 @@ load render-data/local/models/playground/playground.obj
 
 # Cartoon dragon
 #load render-data/local/models/playground/dragon_pg.obj
-#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.02
+load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.04
 #load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace render-data/displace/map1.png strength 0.6
 
 #load render-data/displace/magic_plane.obj subd_level 1
-#load render-data/displace/magic_plane.obj subd_level 3 subd_type tris
+#load render-data/displace/magic_plane.obj subd_level 4 subd_type tris displace render-data/displace/map2.png strength 0.5
 #load render-data/displace/magic_plane.obj subd_level 2 subd_type tris displace render-data/displace/map1.png strength 1.0
+#load render-data/displace/plane_ref.usda
+#load out_spike.obj
 
-load render-data/displace/cube.obj subd_level 2 subd_type tris displace render-data/displace/map2.png strength 0.5
+#load render-data/displace/cube.obj subd_level 4 subd_type patches displace render-data/displace/map2.png strength 0.5
 #load render-data/displace/cube.obj subd_level 1
+#load render-data/displace/test_ref.usda
+#load out_spike.obj
+load render-data/displace/cube.obj subd_level 6 subd_type patches displace random strength 0.7
 
 #load render-data/displace/cube.usda subd_level 4 subd_type tris
 #load render-data/displace/cube.usda subd_level 4 subd_type patches displace render-data/displace/map2.png strength 0.5
@@ -57,8 +62,8 @@ at -28.4391 3.89833 1.99398
 look 0.610622 -0.183563 -0.770354
 
 # Pos debug displacement plane
-at -3.54953 0.806178 4.99113
-look 0.933423 -0.115461 -0.339691
+#at -3.54953 0.806178 4.99113
+#look 0.933423 -0.115461 -0.339691
 
 ## CPU Direct
 #raytracer subd-naive-bvh

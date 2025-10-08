@@ -168,7 +168,7 @@ namespace subd {
 		std::vector<subd_patch> patches;
 		bool storage_type_patches;
 		int get_vert_id(glm::vec3 v_pos);
-		void update();
+		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
 		void displace(sample_tex sample, float strength);
