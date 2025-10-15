@@ -1,7 +1,9 @@
 #include "subdivision.h"
 #include <glm/ext.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 
 using namespace subd;
 
@@ -79,8 +81,102 @@ uint32_t decode_morton(uint32_t morton) {
 	return x;
 }
 
-void subd_patch::build_bvh() {
+class bvh_writer {
+	std::string path;
+	std::ofstream outfile;
+	uint32_t next_level;
+	uint32_t v_off;
+	glm::mat3 M_trafo;
+
+public:
+	bvh_writer(std::string outfile_path) : path(outfile_path), next_level(0), v_off(0), M_trafo(1) { }
+
+	~bvh_writer() {
+		outfile.close();
+	}
+
+	void start_bvh() {
+		if (next_level == 0) {
+			outfile.open(path);
+			outfile << "o Level_" << next_level << std::endl;
+			next_level++;
+		}
+	}
+
+	void set_trafo(glm::mat3 trafo) {
+		M_trafo = trafo;
+	}
+
+	void new_level() {
+		if (next_level >= 1) {
+			outfile << "o Level_" << next_level << std::endl;
+			next_level++;
+		}
+	}
+
+	void print_box(aabb box) {
+		vec3 v_1 = M_trafo * vec3(box.min.x, box.min.y, box.min.z);
+		vec3 v_2 = M_trafo * vec3(box.max.x, box.min.y, box.min.z);
+		vec3 v_3 = M_trafo * vec3(box.max.x, box.max.y, box.min.z);
+		vec3 v_4 = M_trafo * vec3(box.min.x, box.max.y, box.min.z);
+		vec3 v_5 = M_trafo * vec3(box.min.x, box.min.y, box.max.z);
+		vec3 v_6 = M_trafo * vec3(box.max.x, box.min.y, box.max.z);
+		vec3 v_7 = M_trafo * vec3(box.max.x, box.max.y, box.max.z);
+		vec3 v_8 = M_trafo * vec3(box.min.x, box.max.y, box.max.z);
+
+		//outfile << "v " << box.min.x << " " << box.min.y << " " << box.min.z << std::endl;
+		//outfile << "v " << box.max.x << " " << box.min.y << " " << box.min.z << std::endl;
+		//outfile << "v " << box.max.x << " " << box.max.y << " " << box.min.z << std::endl;
+		//outfile << "v " << box.min.x << " " << box.max.y << " " << box.min.z << std::endl;
+		//outfile << "v " << box.min.x << " " << box.min.y << " " << box.max.z << std::endl;
+		//outfile << "v " << box.max.x << " " << box.min.y << " " << box.max.z << std::endl;
+		//outfile << "v " << box.max.x << " " << box.max.y << " " << box.max.z << std::endl;
+		//outfile << "v " << box.min.x << " " << box.max.y << " " << box.max.z << std::endl;
+
+		outfile << "v " << v_1.x << " " << v_1.y << " " << v_1.z << std::endl;
+		outfile << "v " << v_2.x << " " << v_2.y << " " << v_2.z << std::endl;
+		outfile << "v " << v_3.x << " " << v_3.y << " " << v_3.z << std::endl;
+		outfile << "v " << v_4.x << " " << v_4.y << " " << v_4.z << std::endl;
+		outfile << "v " << v_5.x << " " << v_5.y << " " << v_5.z << std::endl;
+		outfile << "v " << v_6.x << " " << v_6.y << " " << v_6.z << std::endl;
+		outfile << "v " << v_7.x << " " << v_7.y << " " << v_7.z << std::endl;
+		outfile << "v " << v_8.x << " " << v_8.y << " " << v_8.z << std::endl;
+		
+		//outfile << "f " << "1 2 3 4" << std::endl;
+		//outfile << "f " << "5 6 7 8" << std::endl;
+		//outfile << "f " << "1 2 6 5" << std::endl;
+		//outfile << "f " << "2 6 7 3" << std::endl;
+		//outfile << "f " << "4 3 7 8" << std::endl;
+		//outfile << "f " << "5 1 4 8" << std::endl;
+
+		outfile << "f " << v_off+1 << " " << v_off+2 << " " << v_off+3 << " " << v_off+4 << std::endl;
+		outfile << "f " << v_off+5 << " " << v_off+6 << " " << v_off+7 << " " << v_off+8 << std::endl;
+		outfile << "f " << v_off+1 << " " << v_off+2 << " " << v_off+6 << " " << v_off+5 << std::endl;
+		outfile << "f " << v_off+2 << " " << v_off+6 << " " << v_off+7 << " " << v_off+3 << std::endl;
+		outfile << "f " << v_off+4 << " " << v_off+3 << " " << v_off+7 << " " << v_off+8 << std::endl;
+		outfile << "f " << v_off+5 << " " << v_off+1 << " " << v_off+4 << " " << v_off+8 << std::endl;
+		outfile << std::endl;
+
+		v_off += 8;
+	}
+};
+
+glm::mat3 trafo_matrix(vec3 a, vec3 b) {
+	//glm::mat3 M_default(1);
+	a = normalize(a);
+	b = normalize(b);
+	vec3 c = normalize(cross(a, b));
+	glm::mat3 M_target(a, b, c);
+	glm::mat3 M_trafo = inverse(M_target); // * M_default;
+	return M_trafo;
+}
+
+void subd_patch::build_bvh(bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
+
+	bvh_writer writer("dbg_bvh/patch_x.obj");
+	if (debug)
+		writer.start_bvh();
 	
 	int nodes_count = geometric_series(subd_level-1, 4);
 	nodes.resize(nodes_count);
@@ -92,18 +188,46 @@ void subd_patch::build_bvh() {
 		uint32_t y = decode_morton(morton >> 1);
 
 		uint32_t vert_index = y*len()+x;
-		aabb box;
-		box.grow(verts[vert_index].pos);
-		box.grow(verts[vert_right(vert_index)].pos);
-		box.grow(verts[vert_down(vert_index)].pos);
-		box.grow(verts[vert_down_right(vert_index)].pos);
 
-		if (subd_level > 0)	nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+		glm::mat3 T = trafo_matrix(
+			verts[vert_right(vert_index)].pos - verts[vert_down_right(vert_index)].pos,
+			verts[vert_down(vert_index)].pos - verts[vert_down_right(vert_index)].pos
+		);
+		//glm::mat3 T = glm::mat3(vec3(2,0,0), vec3(0,2,0), vec3(0,0,2));
+		//glm::mat3 T = glm::mat3(glm::rotate(glm::mat4(1.f), glm::radians(45.0f), vec3(0,1,0)));
+		glm::mat3 T_inv = inverse(T);
+		writer.set_trafo(T_inv);
+		
+		aabb box;
+		//box.grow(verts[vert_index].pos);
+		//box.grow(verts[vert_right(vert_index)].pos);
+		//box.grow(verts[vert_down(vert_index)].pos);
+		//box.grow(verts[vert_down_right(vert_index)].pos);
+		box.grow(T * verts[vert_index].pos);
+		box.grow(T * verts[vert_right(vert_index)].pos);
+		box.grow(T * verts[vert_down(vert_index)].pos);
+		box.grow(T * verts[vert_down_right(vert_index)].pos);
+
+		if (debug)
+			writer.print_box(box);
+
+		//box.min = T_inv * box.min;
+		//box.max = T_inv * box.max;
+
+		if (subd_level > 0) {
+			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+			nodes[off_children+(morton>>2)].trafos[morton%4] = T_inv;
+		}
 		else				{ root_box = box; return; }
 	}
 
+	writer.set_trafo(glm::mat3(1.f));
+
 	int off = 0;
 	for (int i = 1; i <= subd_level; i++) {
+		if (debug)
+			writer.new_level();
+
 		int len = pow(2,(subd_level-i));
 		size = len*len;
 		if (i > 1)			off_children = off;
@@ -112,12 +236,17 @@ void subd_patch::build_bvh() {
 		for (uint32_t j = 0; j < size; ++j) {
 			const patch_node &child_node = nodes[off_children + j];
 			aabb box;
-			box.grow(child_node.boxes[0]);
-			box.grow(child_node.boxes[1]);
-			box.grow(child_node.boxes[2]);
-			box.grow(child_node.boxes[3]);
+			box.grow(child_node.boxes[0], child_node.trafos[0]);
+			box.grow(child_node.boxes[1], child_node.trafos[1]);
+			box.grow(child_node.boxes[2], child_node.trafos[2]);
+			box.grow(child_node.boxes[3], child_node.trafos[3]);
+			if (debug)
+				writer.print_box(box);
 
-			if (i < subd_level)	nodes[off+(j>>2)].boxes[j%4] = box;
+			if (i < subd_level) {
+				nodes[off+(j>>2)].boxes[j%4] = box;
+				nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
+			}
 			else				root_box = box;
 		}
 	}	

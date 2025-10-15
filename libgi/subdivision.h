@@ -114,6 +114,7 @@ namespace subd {
 
 	struct patch_node {
 		aabb boxes[4];
+		glm::mat3 trafos[4]; //TODO: store else where and more memory efficient
 	};
 
 	struct subd_patch {
@@ -144,13 +145,14 @@ namespace subd {
 		uint32_t vert_down(uint32_t vert_id) const;
 		uint32_t vert_down_right(uint32_t vert_id) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
-		void build_bvh();
+		void build_bvh(bool debug = false);
 		int get_subd_quad(int morton_code) const;
 		std::array<triangle, 2> tris(int morton_code) const;
 		triangle tri(int morton_code, bool upper) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
 
 		private:
+		uint32_t align_level = 2;
 		int calculate_morton_code(int x, int y) const;
 		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
@@ -176,7 +178,8 @@ namespace subd {
 			if (storage_type_patches) {
 				for (int i = 0; i < patches.size(); i++) {
 					auto &patch = patches[i];
-					patch.build_bvh();
+					//patch.build_bvh();
+					patch.build_bvh(true);
 				}
 			}
 		}

@@ -13,6 +13,16 @@ struct aabb {
 		min = glm::min(other.min, min);
 		max = glm::max(other.max, max);
 	}
+	void grow(const aabb &oa_box, const glm::mat3 &trafo) {
+		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.max.z));
+	}
 };
 
 // See Shirley (2nd Ed.), pp. 206. (library or excerpt online)
