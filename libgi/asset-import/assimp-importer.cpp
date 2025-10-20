@@ -231,6 +231,8 @@ namespace import {
 					// build second level BVH for each patch
 					o.mesh.build_patch_bvhs();
 
+					o.write_obj("dbg_bvh/surface.obj", false);
+
 					// Add "dummy triangles" to the scene representing the extent of the patches.
 					// These are used to identify and include the second level patch BVHs when
 					// building the first level BVH

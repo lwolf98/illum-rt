@@ -141,9 +141,9 @@ namespace subd {
 		void print_vert_tcs() const;
 		uint32_t len() const;
 		uint32_t len(uint32_t level) const;
-		uint32_t vert_right(uint32_t vert_id) const;
-		uint32_t vert_down(uint32_t vert_id) const;
-		uint32_t vert_down_right(uint32_t vert_id) const;
+		uint32_t vert_right(uint32_t vert_id, uint32_t step = 1) const;
+		uint32_t vert_down(uint32_t vert_id, uint32_t step = 1) const;
+		uint32_t vert_down_right(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
 		void build_bvh(bool debug = false);
 		int get_subd_quad(int morton_code) const;
@@ -152,7 +152,7 @@ namespace subd {
 		uint32_t quad_ref_from_index(uint32_t index) const;
 
 		private:
-		uint32_t align_level = 2;
+		uint32_t align_level = 1;
 		int calculate_morton_code(int x, int y) const;
 		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};

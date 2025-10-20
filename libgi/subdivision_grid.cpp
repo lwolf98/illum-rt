@@ -1,6 +1,7 @@
 #include "subdivision.h"
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -49,16 +50,16 @@ uint32_t subd_patch::len() const {
 
 // TODO: check for illegal operations?
 // e.g. call vert_right on a vert that lies on the right edge...
-uint32_t subd_patch::vert_right(uint32_t vert_id) const {
-	return vert_id+1;
+uint32_t subd_patch::vert_right(uint32_t vert_id, uint32_t step) const {
+	return vert_id+step;
 }
 
-uint32_t subd_patch::vert_down(uint32_t vert_id) const {
-	return vert_id + len();
+uint32_t subd_patch::vert_down(uint32_t vert_id, uint32_t step) const {
+	return vert_id + step*len();
 }
 
-uint32_t subd_patch::vert_down_right(uint32_t vert_id) const {
-	return vert_id + len() + 1;
+uint32_t subd_patch::vert_down_right(uint32_t vert_id, uint32_t step) const {
+	return vert_id + step*len() + step;
 }
 
 uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const {
@@ -166,13 +167,17 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 	a = normalize(a);
 	b = normalize(b);
 	vec3 c = normalize(cross(a, b));
-	glm::mat3 M_target(a, b, c);
+	vec3 n = normalize(cross(b, c));
+	//glm::mat3 M_target(a, b, c);
+	glm::mat3 M_target(b, c, n);
 	glm::mat3 M_trafo = inverse(M_target); // * M_default;
 	return M_trafo;
 }
 
 void subd_patch::build_bvh(bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
+
+	uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)
 
 	bvh_writer writer("dbg_bvh/patch_x.obj");
 	if (debug)
@@ -186,12 +191,23 @@ void subd_patch::build_bvh(bool debug) {
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
 		uint32_t y = decode_morton(morton >> 1);
+		uint32_t x_block = x / block_len;
+		uint32_t y_block = y / block_len;
 
 		uint32_t vert_index = y*len()+x;
+		uint32_t block_index = y_block*len()+x_block;
 
-		glm::mat3 T = trafo_matrix(
+		/*glm::mat3 T = trafo_matrix(
 			verts[vert_right(vert_index)].pos - verts[vert_down_right(vert_index)].pos,
 			verts[vert_down(vert_index)].pos - verts[vert_down_right(vert_index)].pos
+		);*/
+		/*glm::mat3 T = trafo_matrix(
+			verts[vert_down(vert_index)].pos - verts[vert_index].pos,
+			verts[vert_right(vert_index)].pos - verts[vert_index].pos
+		);*/
+		glm::mat3 T = trafo_matrix(
+			verts[vert_down(block_index, block_len)].pos - verts[block_index].pos,
+			verts[vert_right(block_index, block_len)].pos - verts[block_index].pos
 		);
 		//glm::mat3 T = glm::mat3(vec3(2,0,0), vec3(0,2,0), vec3(0,0,2));
 		//glm::mat3 T = glm::mat3(glm::rotate(glm::mat4(1.f), glm::radians(45.0f), vec3(0,1,0)));
@@ -214,6 +230,16 @@ void subd_patch::build_bvh(bool debug) {
 		//box.min = T_inv * box.min;
 		//box.max = T_inv * box.max;
 
+		glm::mat3 T_inv_inv = inverse(T_inv);
+		/*if (T == T_inv_inv)
+			std::cout << std::endl;
+		else
+			std::cout << std::endl;
+
+		std::cout << "T: " << std::endl << glm::to_string(T) << std::endl;
+		std::cout << "T_inv: " << std::endl << glm::to_string(T_inv) << std::endl;
+		std::cout << "T_inv_inv: " << std::endl << glm::to_string(T_inv_inv) << std::endl;*/
+
 		if (subd_level > 0) {
 			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
 			nodes[off_children+(morton>>2)].trafos[morton%4] = T_inv;
@@ -221,7 +247,7 @@ void subd_patch::build_bvh(bool debug) {
 		else				{ root_box = box; return; }
 	}
 
-	writer.set_trafo(glm::mat3(1.f));
+	//writer.set_trafo(glm::mat3(1.f));
 
 	int off = 0;
 	for (int i = 1; i <= subd_level; i++) {
@@ -236,18 +262,51 @@ void subd_patch::build_bvh(bool debug) {
 		for (uint32_t j = 0; j < size; ++j) {
 			const patch_node &child_node = nodes[off_children + j];
 			aabb box;
-			box.grow(child_node.boxes[0], child_node.trafos[0]);
-			box.grow(child_node.boxes[1], child_node.trafos[1]);
-			box.grow(child_node.boxes[2], child_node.trafos[2]);
-			box.grow(child_node.boxes[3], child_node.trafos[3]);
-			if (debug)
-				writer.print_box(box);
 
-			if (i < subd_level) {
-				nodes[off+(j>>2)].boxes[j%4] = box;
-				nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
+			if (i <= (subd_level-align_level)) {
+				//glm::mat3 T_inv = child_node.trafos[0];
+				//glm::mat3 T = inverse(T_inv);
+				box.grow(child_node.boxes[0]);
+				box.grow(child_node.boxes[1]);
+				box.grow(child_node.boxes[2]);
+				box.grow(child_node.boxes[3]);
+				if (debug) {
+					writer.print_box(box);
+					writer.set_trafo(child_node.trafos[0]);
+				}
+
+				if (i < subd_level) {
+					nodes[off+(j>>2)].boxes[j%4] = box;
+					nodes[off+(j>>2)].trafos[j%4] = child_node.trafos[0];
+				}
+				else				root_box = box;
 			}
-			else				root_box = box;
+			else {
+				box.grow(child_node.boxes[0], child_node.trafos[0]);
+				box.grow(child_node.boxes[1], child_node.trafos[1]);
+				box.grow(child_node.boxes[2], child_node.trafos[2]);
+				box.grow(child_node.boxes[3], child_node.trafos[3]);
+				if (debug) {
+					writer.print_box(box);
+					writer.set_trafo(glm::mat3(1.f));
+				}
+
+				if (i < subd_level) {
+					nodes[off+(j>>2)].boxes[j%4] = box;
+					nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
+				}
+				else				root_box = box;
+			}
+			
+
+			/*if (i < subd_level) {
+				nodes[off+(j>>2)].boxes[j%4] = box;
+				if (i <= (subd_level-align_level))
+					nodes[off+(j>>2)].trafos[j%4] = child_node.trafos[0];
+				else
+					nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
+			}
+			else				root_box = box;*/
 		}
 	}	
 }

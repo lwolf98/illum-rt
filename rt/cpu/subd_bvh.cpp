@@ -209,7 +209,7 @@ uint32_t child_node_base(
 }
 //TODO end: until here
 
-void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
+void subd_naive_bvh::traverse_patch(const ray &rayy, uint32_t patch_ref, triangle_intersection &closest) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
 	const auto &root_node = patch.nodes[0];
@@ -230,8 +230,11 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			float dist;
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
+				if (node.trafos[i][0].x != 1)
+					std::cout << std::endl;
+				auto transformed_ray = ray(inverse(node.trafos[i]) * rayy.o, inverse(node.trafos[i]) * rayy.d);
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
-				if (intersect(box, ray, dist)) {
+				if (intersect(box, transformed_ray, dist)) {
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 						stack[++sp] = child_base+i;
@@ -249,7 +252,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			assert(patch_ref >= 0);
 			std::array<triangle, 2> tris = patch.tris(quad_ref);
 			for (int i = 0; i < 2; i++) {
-				if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
+				if (intersect(tris[i], patch.verts.data(), rayy, intersection)) {
 					if (intersection.t < closest.t) {
 						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
