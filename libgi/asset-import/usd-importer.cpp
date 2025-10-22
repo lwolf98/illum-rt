@@ -25,15 +25,13 @@ using namespace glm;
 using namespace std;
 
 namespace import {
-	void usd_importer::load_scene(const std::filesystem::path& filepath, const std::filesystem::path& displace_map_path) {
-		asset_importer::load_scene(filepath, displace_map_path);
-
+	void usd_importer::load_scene() {
 		std::cout << "USD importer load called!" << std::endl;
 
 		// Open the stage (USD file)
-		stage = UsdStage::Open(filepath.c_str());
+		stage = UsdStage::Open(cfg.model_path.c_str());
 		if (!stage) {
-			throw std::runtime_error("ERROR: Failed to load file: " + filepath.string() + "!");
+			throw std::runtime_error("ERROR: Failed to load file: " + cfg.model_path.string() + "!");
 		}
 	}
 
@@ -79,7 +77,7 @@ namespace import {
 					if (shaderInput.GetFullName() == "inputs:file") {
 						std::cout << space << "DONE: Assign texture file" << std::endl;
 						std::string tex_path = inputValue.Get<SdfAssetPath>().GetAssetPath();
-						filesystem::path p = filepath.parent_path() / tex_path.erase(0, 2);
+						filesystem::path p = cfg.model_path.parent_path() / tex_path.erase(0, 2);
 						material.albedo_tex = load_image4f(p);
 						std::cout << "Filepath: " << p << std::endl;
 					}
@@ -247,7 +245,7 @@ namespace import {
 				VtValue usd_up;
 				bool success = stage->GetMetadata(TfToken("upAxis"), &usd_up);
 				const mat4 orientation = get_orientation_trafo(scene.up, usd_up.Get<TfToken>().GetString());
-				const mat4 &model_trafo = trafo;
+				const mat4 &model_trafo = cfg.model_matrix;
 				mat4 node_trafo = parent_trafo * get_mesh_trafo(mesh);
 				mat4 transform = model_trafo * orientation * node_trafo;
 				mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -276,7 +274,7 @@ namespace import {
 				/* Load */
 
 				// Load geometry as object (preparation for subdivision)
-				subd::object o(mesh, subdiv_type_patches);
+				subd::object o(mesh, cfg.subd_type_patches);
 
 				// Load materials from mesh's GeomSubsets
 				vector<UsdGeomSubset> subsets = UsdGeomSubset::GetAllGeomSubsets(mesh);
@@ -314,9 +312,9 @@ namespace import {
 					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
 				// Subdivide object
-				o.mesh.subdivide(subdiv_level);
+				o.mesh.subdivide(cfg.subd_level);
 
-				if (subdiv_level == 0) {
+				if (cfg.subd_level == 0) {
 					// Triangulate quad faces
 					o.mesh.triangulate();
 
@@ -364,21 +362,21 @@ namespace import {
 				else {
 
 					// load displacement map
-					texture2d<vec4>* displace_tex = displace_map_path != "" ?
-													load_image4f(displace_map_path)
+					texture2d<vec4>* displace_tex = cfg.displacement_map != "" ?
+													load_image4f(cfg.displacement_map)
 													: nullptr;
 
-					if (subdiv_type_patches) {
+					if (cfg.subd_type_patches) {
 						// apply displacement
 						o.mesh.displace(displace_tex ?
 						subd::sample_tex([&](vec2 tc) {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
-						displace_strength);
+						  cfg.displacement_strength);
 
 						// build second level BVH for each patch
-						o.mesh.build_patch_bvhs();
+						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
 
 						// Add "dummy triangles" to the scene representing the extent of the patches.
 						// These are used to identify and include the second level patch BVHs when
@@ -423,7 +421,7 @@ namespace import {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
-						displace_strength);
+						  cfg.displacement_strength);
 
 						// serialize vertices
 						vector<vertex> serialized_verts;

@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "intersect.h"
 #include "material.h"
+#include "load.h"
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
 #include "discrete_distributions.h"
 #endif
@@ -168,7 +169,7 @@ struct scene {
 		modelpaths.push_back("");
 	}
 	~scene();
-	void add(const std::filesystem::path &path, const std::string &name, const glm::mat4 &trafo = glm::mat4(), const uint subdiv_level = 0, const bool subdiv_type_patches = true, const std::filesystem::path &displace_map_path = "", float displace_strength = 0.f);
+	void add(const load_config &cfg);
 	
 	std::vector<std::filesystem::path> modelpaths;
 	void add_modelpath(const std::filesystem::path &p);

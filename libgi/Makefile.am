@@ -38,6 +38,7 @@ noinst_HEADERS = 	algorithm.h \
 					framebuffer.h \
 					intersect.h \
 					material.h \
+					load.h \
 					random.h \
 					rt.h \
 					subdivision.h \

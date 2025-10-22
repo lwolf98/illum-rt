@@ -145,14 +145,13 @@ namespace subd {
 		uint32_t vert_down(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_down_right(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
-		void build_bvh(bool debug = false);
+		void build_bvh(int32_t align_level, bool debug = false);
 		int get_subd_quad(int morton_code) const;
 		std::array<triangle, 2> tris(int morton_code) const;
 		triangle tri(int morton_code, bool upper) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
 
 		private:
-		uint32_t align_level = 2;
 		int calculate_morton_code(int x, int y) const;
 		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
@@ -169,17 +168,17 @@ namespace subd {
 		edge_list creases;
 		std::vector<subd_patch> patches;
 		bool storage_type_patches;
+
 		int get_vert_id(glm::vec3 v_pos);
 		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
 		void displace(sample_tex sample, float strength);
-		void build_patch_bvhs() {
+		void build_patch_bvhs(uint32_t align_level) {
 			if (storage_type_patches) {
 				for (int i = 0; i < patches.size(); i++) {
 					auto &patch = patches[i];
-					//patch.build_bvh();
-					patch.build_bvh(true);
+					patch.build_bvh(align_level, true);
 				}
 			}
 		}

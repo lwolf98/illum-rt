@@ -14,6 +14,7 @@
 #include "libgi/algorithm.h"
 #include "libgi/framebuffer.h"
 #include "libgi/context.h"
+#include "libgi/load.h"
 
 #ifndef RTGI_SKIP_WF
 #include "libgi/wavefront-rt.h"
@@ -403,47 +404,60 @@ void eval(const std::string &line) {
 		subd::object obj(*mesh);
 	}
 	else ifcmd("load") {
-		string file, name;
+		load_config cfg;
+		cfg.model_matrix = modelmatrix;
+		//load_config cfg { .model_matrix = modelmatrix };
+		/*string file, name;
 		string displace_map;
 		int subd_level = 0;
 		bool subd_patches = true;
 		float strength = 0.f; // strength 0 means no displacement
-		in >> file;
+		*/
+		in >> cfg.model_path;
 		string load_args;
 		while (!in.eof()) {
 			in >> load_args;
 			if (load_args == "subd_level") {
-				in >> subd_level;
+				in >> cfg.subd_level;
+				if (cfg.bvh_align_level < 0)
+					cfg.bvh_align_level = cfg.subd_level;
+
 			}
 			else if (load_args == "subd_type") {
 				string type;
 				in >> type;
-				if (type == "patches")		subd_patches = true;
-				else if (type == "tris")	subd_patches = false;
+				if (type == "patches")		cfg.subd_type_patches = true;
+				else if (type == "tris")	cfg.subd_type_patches = false;
 				else						error("Wrong subd_type, use 'tris' or 'patches'");
 			}
 			else if (load_args == "name") {
-				in >> name;
+				in >> cfg.name;
 			}
 			else if (load_args == "displace") {
-				if (strength == 0.f)
-					strength = 0.1f; // default displacement strength
+				if (cfg.displacement_strength == 0.f)
+					cfg.displacement_strength = 0.1f; // default displacement strength
 
 				std::string displace_param;
 				in >> displace_param;
 				if (displace_param != "random")
-					displace_map = displace_param;
+					cfg.displacement_map = displace_param;
 					
 			}
 			else if (load_args == "strength") {
-				in >> strength;
+				in >> cfg.displacement_strength;
+			}
+			else if (load_args == "align_level") {
+				in >> cfg.bvh_align_level;
 			}
 			else {
-				name = load_args;
+				cfg.name = load_args;
 			}
 		}
 		check_in_complete("Syntax error, requires a file name (no spaces, sorry) and (optionally) a name");
-		scene.add(file, name, modelmatrix, subd_level, subd_patches, displace_map, strength);
+		if (cfg.model_path.string() == "")
+			error("Syntax error, requires a file name");
+
+		scene.add(cfg);
 		uc.scene_touched_at = uc.cmdid;
 	}
 	else ifcmd("modelpath") {

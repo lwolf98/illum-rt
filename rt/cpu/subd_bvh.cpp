@@ -230,8 +230,6 @@ void subd_naive_bvh::traverse_patch(const ray &rayy, uint32_t patch_ref, triangl
 			float dist;
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
-				if (node.trafos[i][0].x != 1)
-					std::cout << std::endl;
 				auto transformed_ray = ray(inverse(node.trafos[i]) * rayy.o, inverse(node.trafos[i]) * rayy.d);
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				if (intersect(box, transformed_ray, dist)) {

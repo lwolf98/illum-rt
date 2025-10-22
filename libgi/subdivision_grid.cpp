@@ -177,10 +177,7 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 	return M_trafo;
 }
 
-void subd_patch::build_bvh(bool debug) {
-	//TMP-Debug:
-	align_level = 1;
-
+void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 
 	uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)

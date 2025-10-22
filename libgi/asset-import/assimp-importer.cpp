@@ -24,8 +24,9 @@ using namespace std;
 
 namespace import {
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches,
-								const texture2d<vec4>* displace_tex, float displace_strength);
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene,
+								const load_config &cfg,
+								const texture2d<vec4>* displace_tex);
 
 	inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
 
@@ -45,11 +46,9 @@ namespace import {
 		return glm::vec4(from.x, from.y, from.z, 1.0f);
 	}
 
-	void assimp_importer::load_scene(const std::filesystem::path& filepath, const std::filesystem::path& displace_map_path) {
-		asset_importer::load_scene(filepath, displace_map_path);
-
+	void assimp_importer::load_scene() {
 		unsigned int flags;  // | aiProcess_FlipUVs  // TODO assimp
-		if (subdiv_level == 0) {
+		if (cfg.subd_level == 0) {
 			flags = aiProcess_GenNormals;
 			flags |= aiProcess_Triangulate;
 		} else {
@@ -57,9 +56,9 @@ namespace import {
 			flags |= aiProcess_DropNormals;
 		}
 
-		scene_ai = importer.ReadFile(filepath.string(), flags);
+		scene_ai = importer.ReadFile(cfg.model_path.string(), flags);
 		if (!scene_ai) // handle error
-			throw std::runtime_error("ERROR: Failed to load file: " + filepath.string() + "!");
+			throw std::runtime_error("ERROR: Failed to load file: " + cfg.model_path.string() + "!");
 
 	}
 
@@ -77,7 +76,7 @@ namespace import {
 			aiColor3D col;
 			auto mat_ai = scene_ai->mMaterials[i];
 			mat_ai->Get(AI_MATKEY_NAME, name_ai);
-			if (name != "") material.name = name + "/" + name_ai.C_Str();
+			if (cfg.name != "") material.name = cfg.name + "/" + name_ai.C_Str();
 			else            material.name = name_ai.C_Str();
 			
 			vec3 kd(0), ks(0), ke(0);
@@ -96,12 +95,12 @@ namespace import {
 			if (mat_ai->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
 				aiString path_ai;
 				mat_ai->GetTexture(aiTextureType_DIFFUSE, 0, &path_ai);
-				filesystem::path p = filepath.parent_path() / path_ai.C_Str();
+				filesystem::path p = cfg.model_path.parent_path() / path_ai.C_Str();
 
 				if (mat_ai->GetTextureCount(aiTextureType_OPACITY) > 0) {
 					aiString mask_path_ai;
 					mat_ai->GetTexture(aiTextureType_OPACITY, 0, &mask_path_ai);
-					filesystem::path mask_path = filepath.parent_path() / mask_path_ai.C_Str();
+					filesystem::path mask_path = cfg.model_path.parent_path() / mask_path_ai.C_Str();
 					material.albedo_tex = load_image4f(p, &mask_path);
 				} else {
 					material.albedo_tex = load_image4f(p);
@@ -120,20 +119,21 @@ namespace import {
 		std::vector<std::tuple<int,int,int>> light_geom;
 
 		// load displacement map
-		texture2d<vec4>* displace_tex = displace_map_path != "" ?
-										load_image4f(displace_map_path)
+		texture2d<vec4>* displace_tex = cfg.displacement_map != "" ?
+										load_image4f(cfg.displacement_map)
 										: nullptr;
 
 		// load meshes
-		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), trafo, material_offset, light_geom, light_prims, scene, subdiv_level, subdiv_type_patches, displace_tex, displace_strength);
+		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), cfg.model_matrix, material_offset, light_geom, light_prims, scene, cfg, displace_tex);
 		
 	}
 
 	// from https://stackoverflow.com/questions/73611341/assimp-gltf-meshes-not-properly-scaled
 	// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
-								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene, const uint subdiv_level, const bool subd_type_patches,
-								const texture2d<vec4>* displace_tex, float displace_strength) {
+								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene,
+								const load_config &cfg,
+								const texture2d<vec4>* displace_tex) {
 		mat4 node_trafo = parent_trafo * to_glm(node_ai->mTransformation);
 		mat4 transform = model_trafo * node_trafo;
 		mat3 normal_transform = transpose(inverse(mat3(transform)));
@@ -160,7 +160,7 @@ namespace import {
 			if (mat_ai->Get(AI_MATKEY_UVTRANSFORM(aiTextureType_BASE_COLOR, 0), uvt) == AI_SUCCESS)
 				uv_trafo = glm::translate(glm::rotate(glm::scale(uv_trafo, vec2(uvt.mScaling.x,uvt.mScaling.y)), uvt.mRotation), vec2(uvt.mTranslation.x,uvt.mTranslation.y));
 			
-			if (subdiv_level == 0) {
+			if (cfg.subd_level == 0) {
 				for (uint32_t i = 0; i < mesh_ai->mNumVertices; ++i) {
 					vertex vertex;
 					vertex.pos = glm::vec3(transform * to_glm_vec4(mesh_ai->mVertices[i]));
@@ -199,7 +199,7 @@ namespace import {
 			else {
 				// object with control mesh vertices and faces
 				// -> load data from Assimp import
-				subd::object o(mesh_ai, subd_type_patches, name_ai.C_Str());
+				subd::object o(mesh_ai, cfg.subd_type_patches, name_ai.C_Str());
 
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex
@@ -216,20 +216,20 @@ namespace import {
 					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
 				// Subdivide object
-				o.mesh.subdivide(subdiv_level);
+				o.mesh.subdivide(cfg.subd_level);
 
 
-				if (subd_type_patches) {
+				if (cfg.subd_type_patches) {
 					// apply displacement
 					o.mesh.displace(displace_tex ?
 					subd::sample_tex([&](vec2 tc) {
 						return displace_tex->sample(tc);
 					})
 					: subd::sample_tex(nullptr),
-					displace_strength);
+					cfg.displacement_strength);
 
 					// build second level BVH for each patch
-					o.mesh.build_patch_bvhs();
+					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
 
 					o.write_obj("dbg_bvh/surface.obj", false);
 
@@ -284,7 +284,7 @@ namespace import {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
-						displace_strength);
+						cfg.displacement_strength);
 
 					//o.write_obj("out_spike.obj", true, "", 0.2);
 
@@ -334,6 +334,6 @@ namespace import {
 		}
 		
 		for (int i = 0; i < node_ai->mNumChildren; i++)
-			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, subdiv_level, subd_type_patches, displace_tex, displace_strength);
+			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, cfg, displace_tex);
 	}
 }
