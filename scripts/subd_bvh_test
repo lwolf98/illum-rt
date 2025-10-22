@@ -34,7 +34,7 @@ load render-data/light/dome_sky.obj
 
 # Test models
 #load render-data/local/bvh/surface.obj
-load render-data/local/bvh/surface.obj subd_level 2
+load render-data/local/bvh/surface.obj subd_level 4
 
 #material select body
 #material albedo 0 0.215 0.047

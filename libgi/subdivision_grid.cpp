@@ -85,12 +85,15 @@ uint32_t decode_morton(uint32_t morton) {
 class bvh_writer {
 	std::string path;
 	std::ofstream outfile;
+	std::string name;
 	uint32_t next_level;
 	uint32_t v_off;
 	glm::mat3 M_trafo;
 
 public:
-	bvh_writer(std::string outfile_path) : path(outfile_path), next_level(0), v_off(0), M_trafo(1) { }
+	bvh_writer(std::string outfile_path, std::string name)
+		: path(outfile_path), name(name),
+		  next_level(0), v_off(0), M_trafo(1) { }
 
 	~bvh_writer() {
 		outfile.close();
@@ -99,7 +102,7 @@ public:
 	void start_bvh() {
 		if (next_level == 0) {
 			outfile.open(path);
-			outfile << "o Level_" << next_level << std::endl;
+			outfile << "o " << name << "_Level_" << next_level << std::endl;
 			next_level++;
 		}
 	}
@@ -110,7 +113,7 @@ public:
 
 	void new_level() {
 		if (next_level >= 1) {
-			outfile << "o Level_" << next_level << std::endl;
+			outfile << "o " << name << "_Level_" << next_level << std::endl;
 			next_level++;
 		}
 	}
@@ -175,11 +178,14 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 }
 
 void subd_patch::build_bvh(bool debug) {
+	//TMP-Debug:
+	align_level = 1;
+
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 
 	uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)
 
-	bvh_writer writer("dbg_bvh/patch_x.obj");
+	bvh_writer writer("dbg_bvh/patch_x.obj", "S" + std::to_string(subd_level) + "_A" + std::to_string(align_level));
 	if (debug)
 		writer.start_bvh();
 	
@@ -271,8 +277,8 @@ void subd_patch::build_bvh(bool debug) {
 				box.grow(child_node.boxes[2]);
 				box.grow(child_node.boxes[3]);
 				if (debug) {
-					writer.print_box(box);
 					writer.set_trafo(child_node.trafos[0]);
+					writer.print_box(box);
 				}
 
 				if (i < subd_level) {
@@ -287,8 +293,8 @@ void subd_patch::build_bvh(bool debug) {
 				box.grow(child_node.boxes[2], child_node.trafos[2]);
 				box.grow(child_node.boxes[3], child_node.trafos[3]);
 				if (debug) {
-					writer.print_box(box);
 					writer.set_trafo(glm::mat3(1.f));
+					writer.print_box(box);
 				}
 
 				if (i < subd_level) {

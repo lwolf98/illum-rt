@@ -152,7 +152,7 @@ namespace subd {
 		uint32_t quad_ref_from_index(uint32_t index) const;
 
 		private:
-		uint32_t align_level = 1;
+		uint32_t align_level = 2;
 		int calculate_morton_code(int x, int y) const;
 		tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
