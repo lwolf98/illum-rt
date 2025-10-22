@@ -180,6 +180,8 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 
+	bool align_boxes = align_level >= 0 && align_level <= subd_level;
+
 	uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)
 
 	bvh_writer writer("dbg_bvh/patch_x.obj", "S" + std::to_string(subd_level) + "_A" + std::to_string(align_level));
@@ -200,28 +202,16 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		uint32_t vert_index = y*len()+x;
 		uint32_t block_index = y_block*len()+x_block;
 
-		/*glm::mat3 T = trafo_matrix(
-			verts[vert_right(vert_index)].pos - verts[vert_down_right(vert_index)].pos,
-			verts[vert_down(vert_index)].pos - verts[vert_down_right(vert_index)].pos
-		);*/
-		/*glm::mat3 T = trafo_matrix(
-			verts[vert_down(vert_index)].pos - verts[vert_index].pos,
-			verts[vert_right(vert_index)].pos - verts[vert_index].pos
-		);*/
-		glm::mat3 T = trafo_matrix(
-			verts[vert_down(block_index, block_len)].pos - verts[block_index].pos,
-			verts[vert_right(block_index, block_len)].pos - verts[block_index].pos
-		);
-		//glm::mat3 T = glm::mat3(vec3(2,0,0), vec3(0,2,0), vec3(0,0,2));
-		//glm::mat3 T = glm::mat3(glm::rotate(glm::mat4(1.f), glm::radians(45.0f), vec3(0,1,0)));
-		glm::mat3 T_inv = inverse(T);
+		glm::mat3 T = align_boxes ?
+			trafo_matrix(
+				verts[vert_down(block_index, block_len)].pos - verts[block_index].pos,
+				verts[vert_right(block_index, block_len)].pos - verts[block_index].pos
+			)
+			: glm::mat3(1);
+		glm::mat3 T_inv = align_boxes ? inverse(T) : glm::mat3(1);
 		writer.set_trafo(T_inv);
 		
 		aabb box;
-		//box.grow(verts[vert_index].pos);
-		//box.grow(verts[vert_right(vert_index)].pos);
-		//box.grow(verts[vert_down(vert_index)].pos);
-		//box.grow(verts[vert_down_right(vert_index)].pos);
 		box.grow(T * verts[vert_index].pos);
 		box.grow(T * verts[vert_right(vert_index)].pos);
 		box.grow(T * verts[vert_down(vert_index)].pos);

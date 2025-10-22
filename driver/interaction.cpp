@@ -419,9 +419,10 @@ void eval(const std::string &line) {
 			in >> load_args;
 			if (load_args == "subd_level") {
 				in >> cfg.subd_level;
-				if (cfg.bvh_align_level < 0)
-					cfg.bvh_align_level = cfg.subd_level;
-
+				if (cfg.bvh_align_level < 0) {
+					// default: align_level higher than subd_level and therefore ignored (if not set afterwards)
+					cfg.bvh_align_level = cfg.subd_level+1;
+				}
 			}
 			else if (load_args == "subd_type") {
 				string type;
