@@ -120,6 +120,7 @@ namespace subd {
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
+		std::vector<glm::mat3> trafos;
 		aabb root_box;
 		uint32_t material_id;
 		uint32_t subd_level;

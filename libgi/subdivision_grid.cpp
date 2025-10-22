@@ -181,8 +181,9 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 
 	bool align_boxes = align_level >= 0 && align_level <= subd_level;
-
 	uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)
+	if (align_boxes)
+		trafos.reserve((align_level+1)*(align_level+1));
 
 	bvh_writer writer("dbg_bvh/patch_x.obj", "S" + std::to_string(subd_level) + "_A" + std::to_string(align_level));
 	if (debug)
