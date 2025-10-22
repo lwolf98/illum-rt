@@ -35,6 +35,7 @@ load render-data/light/dome_sky.obj
 # Test models
 #load render-data/local/bvh/surface.obj
 load render-data/local/bvh/surface.obj subd_level 4 align_level 2
+load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
 
 #material select body
 #material albedo 0 0.215 0.047
