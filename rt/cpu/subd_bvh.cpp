@@ -173,9 +173,9 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 
 
 //TODO: find better place for these functions
-/*static uint32_t log2_clz(uint32_t x) {
+static uint32_t log2_clz(uint32_t x) {
 	return 31 - __builtin_clz(x);
-}*/
+}
 
 static uint32_t log4_clz(uint32_t x) {
 	return (31 - __builtin_clz(x)) >> 1;
@@ -220,9 +220,27 @@ void subd_naive_bvh::traverse_patch(const ray &rayy, uint32_t patch_ref, triangl
 	bool is_root_and_leaf = patch.subd_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
+	//int32_t align_level = log2_clz(patch.trafos.size());
+
+	ray transformed_ray = rayy;
+
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
 		uint32_t trav_level = log4_clz(1+3*index);
+
+		if (trav_level == patch.align_level && false) {
+			//const glm::mat3 &trafo = patch.trafos[index - child_node_base(index)];
+			const glm::mat3 &trafo = patch.trafos[index - 1];
+			transformed_ray = ray(
+				inverse(trafo) * rayy.o,
+				inverse(trafo) * rayy.d
+			);
+			//transformed_ray = rayy;
+		}
+		//if (trav_level == 1)
+		//	transformed_ray = rayy;
+		else if (trav_level < patch.align_level)
+			transformed_ray = rayy;
 
 		bool is_leaf = trav_level == patch.subd_level;
 		if (!is_leaf) {
@@ -230,7 +248,16 @@ void subd_naive_bvh::traverse_patch(const ray &rayy, uint32_t patch_ref, triangl
 			float dist;
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
-				auto transformed_ray = ray(inverse(node.trafos[i]) * rayy.o, inverse(node.trafos[i]) * rayy.d);
+				if (trav_level == patch.align_level-1) {
+					//const glm::mat3 &trafo = patch.trafos[index - child_node_base(index)];
+					const glm::mat3 &trafo = patch.trafos[(index-0) + i];
+					transformed_ray = ray(
+						inverse(trafo) * rayy.o,
+						inverse(trafo) * rayy.d
+					);
+					//transformed_ray = rayy;
+				}
+				//transformed_ray = ray(inverse(node.trafos[i]) * rayy.o, inverse(node.trafos[i]) * rayy.d);
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				if (intersect(box, transformed_ray, dist)) {
 					if (dist < closest.t) {

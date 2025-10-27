@@ -351,6 +351,8 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 #ifndef RTGI_SKIP_ASS
+	if (x == 662 && y == 187)
+		std::cout << std::endl;
 	auto [closest,tp,valid] = find_closest_nonspecular(view_ray);
 	if (valid && closest.valid()) {
 #else

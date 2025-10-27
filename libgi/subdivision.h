@@ -124,6 +124,7 @@ namespace subd {
 		aabb root_box;
 		uint32_t material_id;
 		uint32_t subd_level;
+		int32_t align_level;
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
