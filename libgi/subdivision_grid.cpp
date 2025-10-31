@@ -177,6 +177,56 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 	return M_trafo;
 }
 
+// logical operation:
+// x - (x % n), given: n must be a power of 2
+inline uint32_t truncate_to_block(uint32_t x, uint32_t n) {
+	return x & ~(n-1);
+	//return x - (x % n);
+	//return x / n;
+}
+
+void subd_subpatch::build_bvh() {
+
+}
+
+/*void subd_patch::build_bvh(int32_t align_level, bool debug) {
+	this->align_level = align_level;
+	bool align_boxes = align_level >= 0 && align_level <= subd_level;
+	int size = (len()-1)*(len()-1);
+
+	if (align_boxes) {
+		uint32_t level_diff = subd_level - align_level;
+		uint32_t blocks = 1 << 2*level_diff; // 4^(subd_level-align_level)
+		uint32_t block_step = 1 << 2*align_level; // 4^align_level
+		uint32_t block_len = 1 << (subd_level - align_level); // 2^(subd_level-align_level)
+		subpatches.resize(blocks);
+
+		for (uint32_t morton = 0; morton < blocks; morton++) {
+			uint32_t block_start = morton * block_step;
+			uint32_t x = decode_morton(block_start);
+			uint32_t y = decode_morton(block_start >> 1);
+			uint32_t vert_index = y*len()+x;
+
+			//uint32_t x_block = x / block_len;
+			//uint32_t y_block = y / block_len;
+			//uint32_t block_index = y_block*len()+x_block;
+
+			glm::mat3 T = trafo_matrix(
+					verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos,
+					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
+				)
+				: glm::mat3(1);
+			glm::mat3 T_inv = inverse(T); //TODO: equal to transpose here?
+
+			subd_subpatch &sub = subpatches[morton];
+			sub.trafo = T_inv;
+			sub.subd_level = subd_level - align_level;
+			sub.parent = this;
+			//sub.root_box = ... // calc. later, right?
+		}
+	}
+}*/
+
 void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	//TODO: pre-allocate, e.g. level 4: 1 + 4 + 16 + 64 = 85
 
@@ -194,16 +244,12 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		for (uint32_t morton = 0; morton < size; morton+=block_step) {
 			uint32_t x = decode_morton(morton);
 			uint32_t y = decode_morton(morton >> 1);
-			uint32_t x_block = x / block_len;
-			uint32_t y_block = y / block_len;
-
 			uint32_t vert_index = y*len()+x;
-			uint32_t block_index = y_block*len()+x_block;
 
 			glm::mat3 T = align_boxes ?
 				trafo_matrix(
-					verts[vert_down(block_index, block_len)].pos - verts[block_index].pos,
-					verts[vert_right(block_index, block_len)].pos - verts[block_index].pos
+					verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos,
+					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
 				)
 				: glm::mat3(1);
 			glm::mat3 T_inv = align_boxes ? inverse(T) : glm::mat3(1);
@@ -225,8 +271,8 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
 		uint32_t y = decode_morton(morton >> 1);
-		uint32_t x_block = x / block_len;
-		uint32_t y_block = y / block_len;
+		uint32_t x_block = truncate_to_block(x, block_len);
+		uint32_t y_block = truncate_to_block(y, block_len);
 
 		uint32_t vert_index = y*len()+x;
 		uint32_t block_index = y_block*len()+x_block;
@@ -238,6 +284,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			)
 			: glm::mat3(1);
 		glm::mat3 T_inv = align_boxes ? inverse(T) : glm::mat3(1);
+		std::cout << "Trafo (" << morton << "):\t" << glm::to_string(T_inv) << std::endl;
 		writer.set_trafo(T_inv);
 		
 		aabb box;
