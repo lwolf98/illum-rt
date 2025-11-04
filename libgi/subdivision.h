@@ -122,11 +122,13 @@ namespace subd {
 		std::vector<patch_node> nodes;
 		//uint32_t patch_ref;
 		const subd_patch *parent;
+		uint32_t vert_start;
 		glm::mat3 trafo;
 		aabb root_box;
 		uint32_t subd_level;
 
-		void build_bvh();
+		void build_bvh(bool debug = false);
+		uint32_t len() const;
 	};
 
 	struct subd_patch {
