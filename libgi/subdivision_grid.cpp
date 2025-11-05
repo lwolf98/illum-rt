@@ -41,7 +41,8 @@ void subd_patch::print_vert_tcs() const {
 }
 
 uint32_t subd_patch::len(uint32_t level) const {
-	return std::pow(2, level)+1;
+	//return std::pow(2, level)+1;
+	return (1 << level) + 1; // 2^subd_level + 1
 }
 
 uint32_t subd_patch::len() const {
@@ -91,6 +92,9 @@ class bvh_writer {
 	uint32_t next_level;
 
 public:
+	std::string name_ext;
+
+public:
 	bvh_writer(std::string outfile_path, std::string name)
 		: path(outfile_path), name(name),
 		  next_level(0), v_off(0), M_trafo(1) { }
@@ -102,7 +106,7 @@ public:
 	void start_bvh() {
 		if (next_level == 0) {
 			outfile.open(path);
-			outfile << "o " << name << "_Level_" << next_level << std::endl;
+			outfile << "o " << name << name_ext << "_Level_" << next_level << std::endl;
 			next_level++;
 		}
 	}
@@ -113,13 +117,17 @@ public:
 
 	void new_level() {
 		if (next_level >= 1) {
-			outfile << "o " << name << "_Level_" << next_level << std::endl;
 			next_level++;
+			new_object();
 		}
 	}
 
+	void new_object() {
+		outfile << "o " << name << name_ext << "_Level_" << (next_level-1) << std::endl;	
+	}
+
 	void set_level(uint32_t level) {
-		outfile << "o " << name << "_Level_" << level << std::endl;
+		outfile << "o " << name << name_ext << "_Level_" << level << std::endl;
 		next_level = level+1;
 	}
 
@@ -192,7 +200,7 @@ inline uint32_t truncate_to_block(uint32_t x, uint32_t n) {
 
 uint32_t subd_subpatch::len() const {
 	//return std::pow(2, subd_level)+1;
-	return (1 << subd_level) + 1;
+	return (1 << subd_level) + 1; // 2^subd_level + 1
 }
 
 static bvh_writer *writer = nullptr;
@@ -248,7 +256,7 @@ void subd_subpatch::build_bvh(bool debug) {
 		if (debug)
 			writer->new_level();
 
-		int len = pow(2,(subd_level-i));
+		int len = 1 << (subd_level-i); // 2^(subd_level-i);
 		size = len*len;
 		if (i > 1)			off_children = off;
 		if (i < subd_level)	off = geometric_series(subd_level-i-2, 4);
@@ -281,6 +289,7 @@ void subd_subpatch::build_bvh(bool debug) {
 void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	if (debug) {
 		writer = new bvh_writer("dbg_bvh/patch_x.obj", "S" + std::to_string(subd_level) + "_A" + std::to_string(align_level));
+		writer->name_ext = "_aligned";
 		writer->start_bvh();
 	}
 
@@ -298,13 +307,19 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	 * 	level	4	|	|		_|
 	 */
 
-	this->align_level = align_level;
-	bool align_boxes = align_level >= 0 && align_level <= subd_level;
+	//this->align_level = align_level;
+	this->align_boxes = align_level >= 0 && align_level <= subd_level;
+	this->align_level = align_boxes ? align_level : subd_level;
+	//if (!align_boxes)
+	//	align_level = subd_level;
 
 	uint32_t blocks = 1 << 2 * align_level;				// 4^align_level
-	subpatches.resize(blocks);
+	if (align_boxes)
+		subpatches.resize(blocks);
 
-	int nodes_count = geometric_series(align_level, 4);
+	int nodes_count = align_boxes ?
+						geometric_series(align_level, 4)
+					  : geometric_series(subd_level-1, 4);
 	nodes.resize(nodes_count);
 
 	uint32_t aligned_subd_level = subd_level - align_level;
@@ -331,14 +346,16 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			//uint32_t y_block = y / block_len;
 			//uint32_t block_index = y_block*len()+x_block;
 
-			glm::mat3 T = trafo_matrix(
+			// base from one corner
+			/*glm::mat3 T = trafo_matrix(
 					verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos,
 					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
-				);
-			/*glm::mat3 T = trafo_matrix(
+				);*/
+			// base from averaged diagonales
+			glm::mat3 T = trafo_matrix(
 					verts[vert_down_right(vert_index, block_len)].pos - verts[vert_index].pos,
 					verts[vert_down(vert_index, block_len)].pos - verts[vert_right(vert_index)].pos
-				);*/
+				);
 			//glm::mat3 T_inv = inverse(T); //TODO: equal to transpose here?
 
 			subd_subpatch &sub = subpatches[morton];
@@ -364,13 +381,18 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	}
 
 	if (debug) {
-		writer->new_level();
+		//writer->new_level();
 		writer->set_trafo(glm::mat3(1.f));
+		writer->name_ext = "_ax_aligned";
+		writer->new_object();
 	}
 
 	int off_children = geometric_series(align_level-2, 4);
+	uint32_t bottom_size = align_boxes ?
+							subpatches.size()
+						  : 1 << 2 * subd_level;
 	//int size = (len()-1)*(len()-1);
-	for (uint32_t morton = 0; morton < subpatches.size(); ++morton) {
+	for (uint32_t morton = 0; morton < bottom_size; ++morton) {
 		aabb box;
 		if (align_boxes) {
 			// BVH with object-aligned boxes:
@@ -422,10 +444,9 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 
 	int off = 0;
 	for (int i = 1; i <= align_level; i++) {
-		if (debug)
-			writer->new_level();
+		if (debug) writer->new_level();
 
-		int len = pow(2,(align_level-i));
+		int len = 1 << (align_level-i); // 2^(subd_level-i);
 		uint32_t size = len*len;
 		if (i > 1)			off_children = off;
 		if (i < align_level)	off = geometric_series(align_level-i-2, 4);
@@ -433,51 +454,14 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		for (uint32_t j = 0; j < size; ++j) {
 			const patch_node &child_node = nodes[off_children + j];
 			aabb box;
+			box.grow(child_node.boxes[0]);
+			box.grow(child_node.boxes[1]);
+			box.grow(child_node.boxes[2]);
+			box.grow(child_node.boxes[3]);
+			if (debug) writer->print_box(box);
 
-			/*if (i <= align_level) {
-				//glm::mat3 T_inv = child_node.trafos[0];
-				//glm::mat3 T = inverse(T_inv);
-				box.grow(child_node.boxes[0]);
-				box.grow(child_node.boxes[1]);
-				box.grow(child_node.boxes[2]);
-				box.grow(child_node.boxes[3]);
-				//if (debug) {
-				//	writer.set_trafo(child_node.trafos[0]);
-				//	writer.print_box(box);
-				//}
-
-				if (i < align_level) {
-					nodes[off+(j>>2)].boxes[j%4] = box;
-					nodes[off+(j>>2)].trafos[j%4] = child_node.trafos[0];
-				}
-				else				root_box = box;
-			}
-			else {*/
-				box.grow(child_node.boxes[0]);
-				box.grow(child_node.boxes[1]);
-				box.grow(child_node.boxes[2]);
-				box.grow(child_node.boxes[3]);
-				if (debug) {
-					//writer.set_trafo(glm::mat3(1.f));
-					writer->print_box(box);
-				}
-
-				if (i < align_level) {
-					nodes[off+(j>>2)].boxes[j%4] = box;
-					//nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
-				}
-				else				root_box = box;
-			//}
-			
-
-			//if (i < subd_level) {
-			//	nodes[off+(j>>2)].boxes[j%4] = box;
-			//	if (i <= (subd_level-align_level))
-			//		nodes[off+(j>>2)].trafos[j%4] = child_node.trafos[0];
-			//	else
-			//		nodes[off+(j>>2)].trafos[j%4] = glm::mat3(1.f);
-			//}
-			//else				root_box = box;
+			if (i < align_level)	nodes[off+(j>>2)].boxes[j%4] = box;
+			else					root_box = box;
 		}
 	}
 
@@ -574,7 +558,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		if (debug)
 			writer.new_level();
 
-		int len = pow(2,(subd_level-i));
+		int len = 1 << (subd_level-i); // 2^(subd_level-i);
 		size = len*len;
 		if (i > 1)			off_children = off;
 		if (i < subd_level)	off = geometric_series(subd_level-i-2, 4);
@@ -677,8 +661,18 @@ triangle subd_patch::tri(int morton_code, bool upper) const {
 	return tri;
 }
 
-uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
+uint32_t subd_patch::quad_ref_from_index(uint32_t index, uint32_t level) const {
 	uint32_t x = decode_morton(index);
 	uint32_t y = decode_morton(index >> 1);
-	return y*len() + x;
+	return y*len(level) + x;
+}
+
+uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
+	return quad_ref_from_index(index, subd_level);
+}
+
+uint32_t subd_patch::subpatch_ref_from_index(uint32_t index) const {
+	uint32_t x = decode_morton(index);
+	uint32_t y = decode_morton(index >> 1);
+	return y*(len(align_level)-1) + x;
 }

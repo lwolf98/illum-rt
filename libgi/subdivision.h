@@ -140,6 +140,7 @@ namespace subd {
 		uint32_t material_id;
 		uint32_t subd_level;
 		int32_t align_level;
+		bool align_boxes;
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
@@ -166,7 +167,9 @@ namespace subd {
 		int get_subd_quad(int morton_code) const;
 		std::array<triangle, 2> tris(int morton_code) const;
 		triangle tri(int morton_code, bool upper) const;
+		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
+		uint32_t subpatch_ref_from_index(uint32_t index) const;
 
 		private:
 		int calculate_morton_code(int x, int y) const;
