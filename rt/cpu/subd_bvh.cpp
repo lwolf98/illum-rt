@@ -260,8 +260,8 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			}
 
 			if (patch.align_boxes) {
-				uint32_t subpatch_index = patch.subpatch_ref_from_index(relative_index);
-				traverse_subpatch(ray, patch.subpatches[subpatch_index], closest, patch);
+				//uint32_t subpatch_index = patch.subpatch_ref_from_index(relative_index);
+				traverse_subpatch(ray, patch.subpatches[relative_index], closest, patch_ref);
 			}
 			else {
 				uint32_t quad_ref = is_root_and_leaf ? 0 : quad_ref = patch.quad_ref_from_index(relative_index);
@@ -286,16 +286,13 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	}
 }
 
-void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, const subd::subd_patch &dbg_patch) {
-	/**
-	 * root_node = subpatch.nodes[0]
-	 */
-
+void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	triangle_intersection intersection;
+	// ---- REVIEW: check if *subdpatch.parent is correct and if not why?
 	//const auto &patch = *subpatch.parent; //scene->patches[patch_ref];
-	const auto &patch = dbg_patch;
+	const auto &patch = scene->patches[patch_ref];
 	const auto &root_node = subpatch.nodes[0];
-	assert(&patch == &dbg_patch);
+	//assert(&patch == &dbg_patch);
 	//assert(subpatch.parent == &dbg_patch);
 
 	// ---- REVIEW size
@@ -334,19 +331,21 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 						stack[++sp] = child_base+i;
+						if (trav_level == 1)
+							std::cout << "";
 					}
 				}
 			}
 		}
 		else {
-			uint32_t quad_ref = 0;
+			uint32_t quad_ref = subpatch.vert_start;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
 				uint32_t relative_index = index - off_current_level;
 				//quad_ref = patch.quad_ref_from_index(index - off_current_level);
 				//uint32_t quad_index = subpatch.vert_start + relative_index;
 				//quad_ref = patch.quad_ref_from_index(quad_index);
-				quad_ref = subpatch.vert_start + patch.quad_ref_from_index(relative_index);
+				quad_ref += patch.quad_ref_from_index(relative_index);
 				if (quad_ref > 19)
 					std::cout << "";
 				if (relative_index == 3)
@@ -362,7 +361,8 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					if (intersection.t < closest.t) {
 						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
-						//---- REVIEW: closest.ref = ((uint32_t)-1) - patch_ref;
+						//uint32_t patch_ref = &patch - &scene->patches[0];
+						closest.ref = ((uint32_t)-1) - patch_ref;
 						closest.subd_quad_ref = quad_ref + 1;
 						if (i == 1)
 							closest.subd_quad_ref *= -1;

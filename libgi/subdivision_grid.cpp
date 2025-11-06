@@ -309,7 +309,10 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 
 	//this->align_level = align_level;
 	this->align_boxes = align_level >= 0 && align_level <= subd_level;
-	this->align_level = align_boxes ? align_level : subd_level;
+	if (!align_boxes)
+		align_level = subd_level;
+	this->align_level = align_level;
+
 	//if (!align_boxes)
 	//	align_level = subd_level;
 
@@ -318,7 +321,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		subpatches.resize(blocks);
 
 	int nodes_count = align_boxes ?
-						geometric_series(align_level, 4)
+						geometric_series(align_level-1, 4)
 					  : geometric_series(subd_level-1, 4);
 	nodes.resize(nodes_count);
 
@@ -361,7 +364,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			subd_subpatch &sub = subpatches[morton];
 			sub.vert_start = vert_index;
 			sub.trafo = T; //T_inv;
-			sub.subd_level = subd_level - align_level;
+			sub.subd_level = aligned_subd_level;
 			sub.parent = this;
 			//sub.root_box = ... // calc. later, right?
 		}
@@ -431,7 +434,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 
 		//glm::mat3 T_inv_inv = inverse(T_inv);
 
-		if (subd_level > 0) {
+		if (align_level > 0) {
 			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
 			//nodes[off_children+(morton>>2)].trafos[morton%4] = inverse(sub.trafo);
 		}
@@ -446,7 +449,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	for (int i = 1; i <= align_level; i++) {
 		if (debug) writer->new_level();
 
-		int len = 1 << (align_level-i); // 2^(subd_level-i);
+		int len = 1 << (align_level-i); // 2^(align_level-i);
 		uint32_t size = len*len;
 		if (i > 1)			off_children = off;
 		if (i < align_level)	off = geometric_series(align_level-i-2, 4);
