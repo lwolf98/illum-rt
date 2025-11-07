@@ -185,10 +185,6 @@ static int geometric_series4(int iterations) {
 	return (1 - (1 << ((iterations+1)<<1))) / (-3);
 }
 
-/*static int geometric_series(int iterations, int base) {
-	return (1-pow(base, iterations+1))/(1-base);
-}*/
-
 uint32_t child_node_base(
 		uint32_t trav_level,
 		uint32_t index
@@ -238,8 +234,6 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				if (intersect(box, ray, dist)) {
 					if (dist < closest.t) {
-						if (trav_level == 1)
-							std::cout << "";
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 						stack[++sp] = child_base+i;
 					}
@@ -247,20 +241,13 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			}
 		}
 		else {
-			//uint32_t quad_ref = 0;
 			uint32_t relative_index = 0;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
 				relative_index = index - off_current_level;
-				//quad_ref = patch.quad_ref_from_index(index - off_current_level, patch.align_level);
-				//if (quad_ref > patch.subpatches.size()-1)
-				//	std::cout << "";
-				//if (patch.quad_ref_from_index(relative_index) > patch.subpatches.size()-1)
-				//	std::cout << patch.quad_ref_from_index(relative_index) << std::endl;
 			}
 
 			if (patch.align_boxes) {
-				//uint32_t subpatch_index = patch.subpatch_ref_from_index(relative_index);
 				traverse_subpatch(ray, patch.subpatches[relative_index], closest, patch_ref);
 			}
 			else {
@@ -288,12 +275,8 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	triangle_intersection intersection;
-	// ---- REVIEW: check if *subdpatch.parent is correct and if not why?
-	//const auto &patch = *subpatch.parent; //scene->patches[patch_ref];
 	const auto &patch = scene->patches[patch_ref];
 	const auto &root_node = subpatch.nodes[0];
-	//assert(&patch == &dbg_patch);
-	//assert(subpatch.parent == &dbg_patch);
 
 	// ---- REVIEW size
 	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
@@ -301,16 +284,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	uint32_t stack[max_size];
 	int32_t sp = 0;
 
-	//REVIEW: check this case:
 	bool is_root_and_leaf = subpatch.subd_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
-	//int32_t align_level = log2_clz(patch.trafos.size());
-
-	/*ray transformed_ray = ray(
-						inverse(subpatch.trafo) * rayy.o,
-						inverse(subpatch.trafo) * rayy.d
-					);*/
 	ray transformed_ray = ray(
 						subpatch.trafo * rayy.o,
 						subpatch.trafo * rayy.d
@@ -331,8 +307,6 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 						stack[++sp] = child_base+i;
-						if (trav_level == 1)
-							std::cout << "";
 					}
 				}
 			}
@@ -342,26 +316,15 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
 				uint32_t relative_index = index - off_current_level;
-				//quad_ref = patch.quad_ref_from_index(index - off_current_level);
-				//uint32_t quad_index = subpatch.vert_start + relative_index;
-				//quad_ref = patch.quad_ref_from_index(quad_index);
 				quad_ref += patch.quad_ref_from_index(relative_index);
-				if (quad_ref > 19)
-					std::cout << "";
-				if (relative_index == 3)
-					std::cout << "";
-				if (subpatch.vert_start == 2)
-					std::cout << "";
 			}
 
-			//---- REVIEW: assert(patch_ref >= 0);
 			std::array<triangle, 2> tris = patch.tris(quad_ref);
 			for (int i = 0; i < 2; i++) {
 				if (intersect(tris[i], patch.verts.data(), rayy, intersection)) {
 					if (intersection.t < closest.t) {
 						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
-						//uint32_t patch_ref = &patch - &scene->patches[0];
 						closest.ref = ((uint32_t)-1) - patch_ref;
 						closest.subd_quad_ref = quad_ref + 1;
 						if (i == 1)

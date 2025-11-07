@@ -114,20 +114,17 @@ namespace subd {
 
 	struct patch_node {
 		aabb boxes[4];
-		glm::mat3 trafos[4]; //TODO: store else where and more memory efficient
 	};
 
 	struct subd_patch;
 	struct subd_subpatch {
 		std::vector<patch_node> nodes;
-		//uint32_t patch_ref;
-		const subd_patch *parent;
 		uint32_t vert_start;
 		glm::mat3 trafo;
 		aabb root_box;
 		uint32_t subd_level;
 
-		void build_bvh(bool debug = false);
+		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
 	};
 
