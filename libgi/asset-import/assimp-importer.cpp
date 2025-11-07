@@ -231,7 +231,16 @@ namespace import {
 					// build second level BVH for each patch
 					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
 
-					o.write_obj("dbg_bvh/surface.obj", false);
+					//TMP: Debugging
+					{
+						//o.mesh.patches[2].export_bvh("dbg_bvh/patch_2.obj");
+						uint32_t out_patches = o.mesh.patches.size();
+						if (out_patches > 20) out_patches = 20;
+						for (uint32_t id = 0; id < o.mesh.patches.size(); id++)
+							o.mesh.patches[id].export_bvh("dbg_bvh/patch_" + to_string(id) + ".obj");
+
+						o.write_obj("dbg_bvh/surface.obj", false);
+					}
 
 					// Add "dummy triangles" to the scene representing the extent of the patches.
 					// These are used to identify and include the second level patch BVHs when

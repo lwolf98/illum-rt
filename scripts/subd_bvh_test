@@ -2,8 +2,9 @@
 
 up 0 1 0
 
+sppx 1
 #sppx 128
-sppx 4096
+#sppx 4096
 #sppx 400000
 resolution 960 540
 #resolution 1920 1200
@@ -34,7 +35,7 @@ load render-data/light/dome_sky.obj
 
 # Test models
 #load render-data/local/bvh/surface.obj
-load render-data/local/bvh/surface.obj subd_level 4 align_level 2
+load render-data/local/bvh/surface.obj subd_level 2 align_level 1
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
 
 # Frog
@@ -42,6 +43,8 @@ load render-data/local/bvh/surface.obj subd_level 4 align_level 2
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
+#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2 align_level 1
+#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 #material select body
 #material albedo 0 0.215 0.047
@@ -64,6 +67,8 @@ look 0.713304 -0.04213 0.699588
 
 # Pos frog
 #at -26.5161 0.373078 45.1841
+#look 0.599129 -0.023018 -0.800322
+#at -7.84849 -0.111552 32.8653
 #look 0.599129 -0.023018 -0.800322
 
 # CPU Direct

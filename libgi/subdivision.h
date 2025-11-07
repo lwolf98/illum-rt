@@ -114,15 +114,30 @@ namespace subd {
 
 	struct patch_node {
 		aabb boxes[4];
-		glm::mat3 trafos[4]; //TODO: store else where and more memory efficient
+	};
+
+	struct subd_patch;
+	struct subd_subpatch {
+		std::vector<patch_node> nodes;
+		uint32_t vert_start;
+		glm::mat3 trafo;
+		aabb root_box;
+		uint32_t subd_level;
+
+		void build_bvh(const subd_patch *parent, bool debug = false);
+		uint32_t len() const;
 	};
 
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
+		std::vector<glm::mat3> trafos;
+		std::vector<subd_subpatch> subpatches;
 		aabb root_box;
 		uint32_t material_id;
 		uint32_t subd_level;
+		int32_t align_level;
+		bool align_boxes;
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
@@ -137,8 +152,6 @@ namespace subd {
 			}
 		}
 
-		void print_verts() const;
-		void print_vert_tcs() const;
 		uint32_t len() const;
 		uint32_t len(uint32_t level) const;
 		uint32_t vert_right(uint32_t vert_id, uint32_t step = 1) const;
@@ -149,7 +162,13 @@ namespace subd {
 		int get_subd_quad(int morton_code) const;
 		std::array<triangle, 2> tris(int morton_code) const;
 		triangle tri(int morton_code, bool upper) const;
+		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
+		uint32_t subpatch_ref_from_index(uint32_t index) const;
+
+		void print_verts() const;
+		void print_vert_tcs() const;
+		void export_bvh(const std::string &path) const;
 
 		private:
 		int calculate_morton_code(int x, int y) const;

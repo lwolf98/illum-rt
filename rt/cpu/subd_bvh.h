@@ -25,4 +25,5 @@ private:
 	triangle_intersection closest_hit(const ray &ray) override;
 	bool any_hit(const ray &ray) override;
 	void traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest);
+	void traverse_subpatch(const ray &ray, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref);
 };
