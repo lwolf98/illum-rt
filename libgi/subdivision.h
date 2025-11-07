@@ -152,8 +152,6 @@ namespace subd {
 			}
 		}
 
-		void print_verts() const;
-		void print_vert_tcs() const;
 		uint32_t len() const;
 		uint32_t len(uint32_t level) const;
 		uint32_t vert_right(uint32_t vert_id, uint32_t step = 1) const;
@@ -167,6 +165,10 @@ namespace subd {
 		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
 		uint32_t subpatch_ref_from_index(uint32_t index) const;
+
+		void print_verts() const;
+		void print_vert_tcs() const;
+		void export_bvh(const std::string &path) const;
 
 		private:
 		int calculate_morton_code(int x, int y) const;
