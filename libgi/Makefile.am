@@ -40,6 +40,7 @@ noinst_HEADERS = 	algorithm.h \
 					material.h \
 					load.h \
 					random.h \
+					subdivision-helper.h \
 					rt.h \
 					subdivision.h \
 					scene.h \

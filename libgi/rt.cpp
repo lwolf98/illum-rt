@@ -30,8 +30,8 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 	}
 	else {
 		uint32_t patch_ref = ((uint32_t)-1) - is.ref;
-		bool upper = is.subd_quad_ref > 0;
-		uint32_t subd_quad_ref = abs(is.subd_quad_ref) - 1;
+		bool upper = is.subd_quad_ref.is_upper_tri();
+		uint32_t subd_quad_ref = is.subd_quad_ref.ref();
 		const subd::subd_patch &patch = scene.patches[patch_ref];
 		triangle tri = patch.tri(subd_quad_ref, upper);
 

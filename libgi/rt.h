@@ -5,6 +5,8 @@
 #include <string>
 #include <ostream>
 
+#include "libgi/subdivision-helper.h"
+
 using glm::vec3;
 using glm::vec2;
 using glm::vec4;
@@ -54,7 +56,7 @@ struct triangle_intersection {
 	typedef unsigned int uint;
 	float t, beta, gamma;
 	uint ref;
-	int subd_quad_ref;
+	subd::quad_ref subd_quad_ref;
 	triangle_intersection() : t(FLT_MAX), ref(0) {
 	}
 	explicit triangle_intersection(uint t) : t(FLT_MAX), ref(t) {

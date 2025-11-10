@@ -260,9 +260,10 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 							assert(quad_ref <= patch.verts.size());
 							closest = intersection;
 							closest.ref = ((uint32_t)-1) - patch_ref;
-							closest.subd_quad_ref = quad_ref + 1;
-							if (i == 1)
-								closest.subd_quad_ref *= -1;
+
+							closest.subd_quad_ref.set_ref(quad_ref);
+							closest.subd_quad_ref.set_level(0);
+								closest.subd_quad_ref.set_upper_tri(i == 0);
 
 							break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 						}
@@ -326,9 +327,10 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
 						closest.ref = ((uint32_t)-1) - patch_ref;
-						closest.subd_quad_ref = quad_ref + 1;
-						if (i == 1)
-							closest.subd_quad_ref *= -1;
+
+						closest.subd_quad_ref.set_ref(quad_ref);
+						closest.subd_quad_ref.set_level(0);
+							closest.subd_quad_ref.set_upper_tri(i == 0);
 
 						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 					}
