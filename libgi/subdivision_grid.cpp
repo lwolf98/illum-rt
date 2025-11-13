@@ -167,9 +167,14 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 	a = normalize(a);
 	b = normalize(b);
 	vec3 c = normalize(cross(a, b));
-	vec3 n = normalize(cross(b, c));
+
+	// non-orthogonal base
 	//glm::mat3 M_target(a, b, c);
+
+	// orthogonal base
+	vec3 n = normalize(cross(b, c));
 	glm::mat3 M_target(b, c, n);
+
 	glm::mat3 M_trafo = inverse(M_target); // * M_default;
 	return M_trafo;
 }

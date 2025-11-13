@@ -263,7 +263,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 
 							closest.subd_quad_ref.set_ref(quad_ref);
 							closest.subd_quad_ref.set_level(0);
-								closest.subd_quad_ref.set_upper_tri(i == 0);
+							closest.subd_quad_ref.set_upper_tri(i == 0);
 
 							break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 						}
@@ -307,7 +307,21 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				if (intersect(box, transformed_ray, dist)) {
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
-						stack[++sp] = child_base+i;
+						if (trav_level < subpatch.subd_level-1) {
+							stack[++sp] = child_base+i;
+						}
+						else {
+							closest.t = dist;
+							closest.beta = 0;
+							closest.gamma = 0;
+							closest.ref = ((uint32_t)-1) - patch_ref;
+
+							//closest.subd_quad_ref.set_ref(1);
+							uint32_t off_current_level = geometric_series4(trav_level);
+							uint32_t relative_index = (child_base+i) - off_current_level;
+							uint32_t quad_ref = subpatch.vert_start + patch.quad_ref_from_index(relative_index);
+							closest.subd_quad_ref.set_ref(quad_ref);
+						}
 					}
 				}
 			}
@@ -330,7 +344,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 
 						closest.subd_quad_ref.set_ref(quad_ref);
 						closest.subd_quad_ref.set_level(0);
-							closest.subd_quad_ref.set_upper_tri(i == 0);
+						closest.subd_quad_ref.set_upper_tri(i == 0);
 
 						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 					}

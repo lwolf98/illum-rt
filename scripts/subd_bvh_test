@@ -4,6 +4,7 @@ up 0 1 0
 
 sppx 1
 #sppx 128
+#sppx 1024
 #sppx 4096
 #sppx 400000
 resolution 960 540
@@ -21,6 +22,10 @@ default-brdf layered-gtr2
 #material select Dome
 #material emissive 1 1 1
 
+#modeltrafo shift 0 -10 0
+#load render-data/local/bvh/surface.obj
+#modeltrafo shift 0 10 0
+
 # Environment
 load render-data/light/dome_sky.obj
 #load render-data/local/models/playground/plane_sand.obj
@@ -35,8 +40,13 @@ load render-data/light/dome_sky.obj
 
 # Test models
 #load render-data/local/bvh/surface.obj
-load render-data/local/bvh/surface.obj subd_level 2 align_level 1
+#load render-data/local/bvh/surface.obj subd_level 1 align_level 0
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
+
+#load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 0
+#load render-data/local/dbg_approx/two_planes.obj subd_level 2 align_level 1
+#load render-data/local/dbg_approx/two_planes_combined.obj subd_level 7 align_level 1
+load render-data/local/dbg_approx/cube.obj subd_level 4 align_level 0
 
 # Frog
 #load render-data/local/models/monsterfrog/monsterfrog_mapped.obj
@@ -44,7 +54,7 @@ load render-data/local/bvh/surface.obj subd_level 2 align_level 1
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2 align_level 1
-#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
+#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 1 align_level 0 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 #material select body
 #material albedo 0 0.215 0.047
@@ -65,9 +75,15 @@ load render-data/local/bvh/surface.obj subd_level 2 align_level 1
 at -1.85527 0.806178 -2.77014
 look 0.713304 -0.04213 0.699588
 
+# Pos number plane
+#at -0.458907 2.11309 1.29086
+#look 0.077323 -0.876971 -0.474281
+at 0.204476 1.86327 5.34461
+look 0.115416 -0.510952 -0.851826
+
 # Pos frog
-#at -26.5161 0.373078 45.1841
-#look 0.599129 -0.023018 -0.800322
+at -26.5161 0.373078 45.1841
+look 0.599129 -0.023018 -0.800322
 #at -7.84849 -0.111552 32.8653
 #look 0.599129 -0.023018 -0.800322
 
