@@ -472,9 +472,12 @@ triangle subd_patch::tri(int morton_code, bool upper) const {
 		tri.c = vert_right(quad_id);
 	}
 	else {
-		tri.a = vert_down(quad_id);
-		tri.b = vert_down_right(quad_id);
-		tri.c = vert_right(quad_id);
+		//tri.a = vert_down(quad_id);
+		//tri.b = vert_down_right(quad_id);
+		//tri.c = vert_right(quad_id);
+		tri.a = vert_down_right(quad_id);
+		tri.b = vert_right(quad_id);
+		tri.c = vert_down(quad_id);
 	}
 
 	return tri;

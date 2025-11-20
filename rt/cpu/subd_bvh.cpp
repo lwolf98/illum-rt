@@ -274,6 +274,64 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	}
 }
 
+void bary_calc(aabb box, ray ray, triangle_intersection &is) {
+	vec3 hit = ray.o + is.t * ray.d;
+	float width = box.max.x - box.min.x;
+	float height = box.max.z - box.min.z;
+	vec3 hit_relative = hit - box.min;
+	vec2 hit_xy(hit_relative.x, hit_relative.z);
+	hit_xy.x = hit_xy.x / width;
+	hit_xy.y = hit_xy.y / height;
+	assert(hit_xy.x >= 0 && hit_xy.x <= 1);
+	assert(hit_xy.y >= 0 && hit_xy.y <= 1);
+
+	//is.beta = //hit_xy.x;
+	//is.gamma = //hit_xy.y;
+	//is.subd_quad_ref.set_upper_tri(true);
+	//is.subd_quad_ref.set_upper_tri(hit_xy.y > hit_xy.x);
+	//is.subd_quad_ref.set_upper_tri(hit_xy.y > -hit_xy.x + 1);
+
+	bool upper_tri = hit_xy.y > hit_xy.x;
+	//bool upper_tri = hit_xy.y > -hit_xy.x + 1;
+	is.subd_quad_ref.set_upper_tri(upper_tri);
+	is.subd_quad_ref.set_level(1);
+	vec2 hit_xy_;
+	if (upper_tri) {
+		//glm::mat2 M(vec2(0,1), vec2(-1,0));
+		//hit_xy_ = M * hit_xy;
+		//is.beta = 1 - hit_xy_.x;
+		//is.gamma = hit_xy_.y;
+
+		//--------
+
+		//is.beta = hit_xy.y;
+		//is.gamma = 1 - hit_xy.x;
+
+		is.beta = hit_xy.x;
+		is.gamma = hit_xy.y;
+	}
+	else {
+		glm::mat2 M(vec2(1,1), vec2(-1, 0));
+
+		//glm::mat2 M(vec2(1,-1), vec2(1, 0));
+
+		//glm::mat2 M(vec2(0,1), vec2(-1, 1));
+		//glm::mat2 M(vec2(0,-1), vec2(1, 1));
+		hit_xy_ = M * hit_xy;
+
+		is.beta = hit_xy_.x;
+		is.gamma = 1 - hit_xy_.y;
+
+		is.beta = 1 - hit_xy.x;
+		is.gamma = 1 - hit_xy.y;
+
+		//is.beta = hit_xy.y;
+		//is.gamma = 1 - hit_xy.x;
+	}
+	assert(is.beta >= 0 && is.beta <= 1);
+	assert(is.gamma >= 0 && is.gamma <= 1);
+}
+
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
@@ -312,9 +370,11 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						}
 						else {
 							closest.t = dist;
-							closest.beta = 0;
-							closest.gamma = 0;
 							closest.ref = ((uint32_t)-1) - patch_ref;
+							bary_calc(box, transformed_ray, closest);
+
+							//closest.beta = 0.3f;
+							//closest.gamma = 0.3f;
 
 							//closest.subd_quad_ref.set_ref(1);
 							uint32_t off_current_level = geometric_series4(trav_level);
