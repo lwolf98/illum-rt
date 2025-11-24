@@ -186,6 +186,9 @@ struct scene {
 	void release_rt();
 	void use(individual_ray_tracer *new_rt);
 	void print_memory_stats();
+	bool is_patch(uint32_t prim_ref) {
+		return prim_ref > triangles.size();
+	}
 };
 
 // std::vector<triangle> scene_triangles();

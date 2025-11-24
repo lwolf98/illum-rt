@@ -4,6 +4,7 @@
 #include <utility>
 #include <string>
 #include <ostream>
+#include <sstream>
 
 #include "libgi/subdivision-helper.h"
 
@@ -74,6 +75,19 @@ struct triangle_intersection {
 		bc.y = beta;
 		bc.z = gamma;
 		return bc;
+	}
+
+	std::string to_string() {
+		std::ostringstream stream;
+		stream	<< "tri ref: " << ref << " (patch ref: " << ((uint32_t)-1) - ref << ")" << std::endl
+		
+				<< "quad ref: " << subd_quad_ref.ref()
+				<< ", tri pos: " << (subd_quad_ref.is_upper_tri() ? "u" : "l") << std::endl
+
+				<< "t: " << (t == FLT_MAX ? "invalid" : std::to_string(t))
+				<< ", beta: " << beta << ", gamma: " << gamma
+				<< ", (alpha: " << (1-beta-gamma) << ")";
+		return stream.str();
 	}
 };
 

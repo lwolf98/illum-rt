@@ -1,9 +1,10 @@
-#omp off
+omp off
 
 up 0 1 0
 
-#sppx 1
-sppx 128
+sppx 1
+#sppx 10
+#sppx 128
 #sppx 1024
 #sppx 4096
 #sppx 400000
@@ -26,8 +27,11 @@ default-brdf layered-gtr2
 #load render-data/local/bvh/surface.obj
 #modeltrafo shift 0 10 0
 
+# Point light
+pointlight pos 0 10 0 col 10 10 10
+
 # Environment
-load render-data/light/dome_sky.obj
+#load render-data/light/dome_sky.obj
 #load render-data/local/models/playground/plane_sand.obj
 
 # Scene
@@ -43,11 +47,16 @@ load render-data/light/dome_sky.obj
 #load render-data/local/bvh/surface.obj subd_level 1 align_level 0
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
 
-load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 0
+#load render-data/local/dbg_approx/test_plane.obj subd_level 8 align_level 7
+#load render-data/local/dbg_approx/test_plane_rotated.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 0
+modeltrafo shift 0 0 -2
+load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 1 align_level 0
+#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 1 align_level 1
+modeltrafo shift 0 0 2
 #load render-data/local/dbg_approx/cube.obj subd_level 1 align_level 0
-#load render-data/local/dbg_approx/cube2.obj subd_level 1 align_level 0
+#load render-data/local/dbg_approx/cube2.obj subd_level 3 align_level 0
 
 # Frog
 #load render-data/local/models/monsterfrog/monsterfrog_mapped.obj
@@ -55,7 +64,7 @@ load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 0
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
 #load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 2 align_level 1
-#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 1 align_level 0 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
+#load /data/home/wol37689/dev/models/monsterfrog_mine/monsterfrog.obj subd_level 5 align_level 1 displace /data/home/wol37689/dev/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 #material select body
 #material albedo 0 0.215 0.047
@@ -77,10 +86,10 @@ look 0.610622 -0.183563 -0.770354
 #look 0.713304 -0.04213 0.699588
 
 # Pos number plane
-at -0.458907 2.11309 1.29086
-look 0.077323 -0.876971 -0.474281
-#at 0.204476 1.86327 5.34461
-#look 0.115416 -0.510952 -0.851826
+#at -0.458907 2.11309 1.29086
+#look 0.077323 -0.876971 -0.474281
+at 0.204476 1.86327 5.34461
+look 0.115416 -0.510952 -0.851826
 
 # Number cube
 #at -9.3126 0.763892 -2.51368
@@ -95,8 +104,10 @@ look 0.077323 -0.876971 -0.474281
 # CPU Direct
 raytracer subd-naive-bvh
 commit
-#algo primary
-algo direct/mis
+algo local
+#algo direct
+#is cosine
+#algo direct/mis
 outfile out_subds/playground_direct_cpu.png
 
 # WF GPU Direct

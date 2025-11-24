@@ -464,7 +464,7 @@ triangle subd_patch::tri(int morton_code, bool upper) const {
 
 	//TODO:
 	// get subd quad by morton code rather than the currently used position code?
-	int quad_id = get_subd_quad(morton_code);
+	int quad_id = get_subd_quad(morton_code); //TODO/REVIEW: restructure to actually pass morton code or else drop this conversion
 	tri.material_id = material_id;
 	if (upper) {
 		tri.a = quad_id;

@@ -10,7 +10,8 @@ diff_geom::diff_geom(const vertex &a, const vertex &b, const vertex &c,
  : x ((1.0f-is.beta-is.gamma)*a.pos  + is.beta*b.pos  + is.gamma*c.pos),
    ns(normalize((1.0f-is.beta-is.gamma)*a.norm + is.beta*b.norm + is.gamma*c.norm)),
    tc((1.0f-is.beta-is.gamma)*a.tc   + is.beta*b.tc   + is.gamma*c.tc),
-   ng(normalize(cross(b.pos-a.pos, c.pos-a.pos))),
+   //ng(normalize(cross(b.pos-a.pos, c.pos-a.pos))),
+   ng(normalize(cross(c.pos-a.pos, b.pos-a.pos))),
    tri(is.ref),
    mat(m) {
 }
@@ -33,11 +34,21 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		bool upper = is.subd_quad_ref.is_upper_tri();
 		uint32_t subd_quad_ref = is.subd_quad_ref.ref();
 		const subd::subd_patch &patch = scene.patches[patch_ref];
-		triangle tri = patch.tri(subd_quad_ref, upper);
 
-		const vertex &a = patch.verts[tri.a];
-		const vertex &b = patch.verts[tri.b];
-		const vertex &c = patch.verts[tri.c];
+		vertex a, b, c;
+		if (true) {
+			// exact geometry
+			triangle tri = patch.tri(subd_quad_ref, upper);
+			//const vertex &a = patch.verts[tri.a];
+			//const vertex &b = patch.verts[tri.b];
+			//const vertex &c = patch.verts[tri.c];
+			a = patch.verts[tri.a];
+			b = patch.verts[tri.b];
+			c = patch.verts[tri.c];
+		}
+		else {
+
+		}
 		const material &mat = scene.materials[patch.material_id];
 		diff_geom dg(a, b, c, &mat, is, scene);
 		// TODO: keep this assert?

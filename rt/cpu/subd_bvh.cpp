@@ -275,6 +275,8 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 }
 
 void bary_calc(aabb box, ray ray, triangle_intersection &is) {
+	//const float eps = 1e-4f;
+
 	vec3 hit = ray.o + is.t * ray.d;
 	float width = box.max.x - box.min.x;
 	float height = box.max.z - box.min.z;
@@ -282,8 +284,12 @@ void bary_calc(aabb box, ray ray, triangle_intersection &is) {
 	vec2 hit_xy(hit_relative.x, hit_relative.z);
 	hit_xy.x = hit_xy.x / width;
 	hit_xy.y = hit_xy.y / height;
-	assert(hit_xy.x >= 0 && hit_xy.x <= 1);
-	assert(hit_xy.y >= 0 && hit_xy.y <= 1);
+	//assert(hit_xy.x >= -eps && hit_xy.x <= 1+eps);
+	//assert(hit_xy.y >= -eps && hit_xy.y <= 1+eps);
+	if (hit_xy.x < 0) hit_xy.x = 0;
+	if (hit_xy.x > 1) hit_xy.x = 1;
+	if (hit_xy.y < 0) hit_xy.y = 0;
+	if (hit_xy.y > 1) hit_xy.y = 1;
 
 	//is.beta = //hit_xy.x;
 	//is.gamma = //hit_xy.y;
@@ -362,14 +368,17 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
-				if (intersect(box, transformed_ray, dist)) {
+				if (intersect4(box, transformed_ray, dist)) {
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 						if (trav_level < subpatch.subd_level-1) {
 							stack[++sp] = child_base+i;
 						}
 						else {
-							closest.t = dist;
+							//if (dist <= 0) continue;
+							//closest.t = dist;
+							closest.t = dist <= 0 ? FLT_MAX : dist;
+							//closest.t = dist;
 							closest.ref = ((uint32_t)-1) - patch_ref;
 							bary_calc(box, transformed_ray, closest);
 

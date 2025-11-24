@@ -130,9 +130,13 @@ bool recursive_algorithm::compute_sample() {
 		for (int y = 0; y < render_res.y; y++) {
 			unsigned real_x = x * rc->preview_offset + current_preview_offset.x;
 			unsigned real_y = y * rc->preview_offset + current_preview_offset.y;
-			if (real_x < res.x && real_y < res.y)
-				rc->framebuffer.add(real_x, real_y, sample_pixel(real_x, real_y));
+			if (real_x < res.x && real_y < res.y) {
+				vec3 color = sample_pixel(real_x, real_y);
+				if (current_sample_index == rc->sppx-1) //TMP/DEBUG
+					rc->framebuffer.add(real_x, real_y, color);
+			}
 		}
+
 	
 #ifdef HAVE_GL
 	if (preview_window) {
