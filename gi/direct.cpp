@@ -21,7 +21,7 @@
 using namespace glm;
 using namespace std;
 
-#define WITH_OBJ_DEBUG
+//#define WITH_OBJ_DEBUG
 
 #ifdef WITH_OBJ_DEBUG
 def_obj_debug;
@@ -97,7 +97,8 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+				//radiance = dg.mat->emissive;
+				radiance = dg.emissive_albedo();
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
@@ -314,7 +315,9 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #endif
 
 void direct_light::finalize_frame() {
+	#ifdef WITH_OBJ_DEBUG
 	finalize_obj_debug
+	#endif
 
 	if (rc->enable_denoising) {
 		rc->framebuffer_albedo.color.for_each([](unsigned int x, unsigned int y) {
@@ -387,15 +390,16 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 			//return radiance;
 			
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+				//radiance = dg.mat->emissive;
+				radiance = dg.emissive_albedo();
 			}
 			else {
 				brdf *brdf = dg.mat->brdf;
 					
 				float pdf_light = 0,
 					  pdf_brdf = 0;
-				//if (current_sample_index < rc->sppx/2-1) {
-				if (true) {
+				if (current_sample_index < rc->sppx/2-1) {
+				//if (true) {
 					auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
 					light *l = rc->scene.lights[l_id];
 					auto [shadow_ray,l_col,pdf] = l->sample_Li(dg, rc->rng.uniform_float2());
@@ -405,15 +409,18 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					#endif
 					if (l_col != vec3(0)) {
 						//std::cout << shadow_ray.t_min << " " << shadow_ray.t_max << std::endl;
+						shadow_ray.t_min = 0.1f; //DEBUG
 						auto is = rc->scene.rt->closest_hit(shadow_ray);
 						//auto is = rc->scene.rt->any_hit(shadow_ray);
 						if (x == debug_pixel_x && y == debug_pixel_y) {
 							std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
+							#ifdef WITH_OBJ_DEBUG
 							if (is.valid()) {
 								//*ow << obj::icosphere(shadow_ray.o);
 								//ow << obj::icosphere(shadow_ray.o + shadow_ray.d * is.t);
 								*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * is.t);
 							}
+							#endif
 						}
 						if (!is.valid() || is.t > shadow_ray.t_max) // TODO why is this not anyhit?
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
@@ -425,6 +432,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					auto [w_i, f, pdf, _] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
 					if (pdf == 0 && f == vec3(0)) break; // this will loop forever as balance will become 0 (in case pdf==0 originates from geometry (shading normals))
 					ray light_ray(dg.x, w_i);
+					light_ray.t_min = 0.1f; //DEBUG
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 #ifndef RTGI_SKIP_ASS
@@ -477,7 +485,9 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 		if (rc->scene.sky)
 			radiance = rc->scene.sky->Le(view_ray);
 #endif
+#ifdef WITH_OBJ_DEBUG
 	finalize_obj_debug
+#endif
 #ifndef RTGI_SKIP_ASS
 	return radiance*tp;
 #else

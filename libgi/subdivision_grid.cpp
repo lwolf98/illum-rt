@@ -68,8 +68,11 @@ uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y)
 }
 
 //TODO: explain reason for passing iterations = -1 (happens on subd_level = 0)
-int geometric_series(int iterations, int base) {
+/*int geometric_series(int iterations, int base) {
 	return (1-pow(base, iterations+1))/(1-base);
+}*/
+static int geometric_series4(int iterations) {
+	return (1 - (1 << ((iterations+1)<<1))) / (-3);
 }
 
 //TODO: find better place, maybe inside of subd_patch?
@@ -81,6 +84,19 @@ uint32_t decode_morton(uint32_t morton) {
 	x = (x | (x >> 4)) & 0x00FF00FF;
 	x = (x | (x >> 8)) & 0x0000FFFF;
 	return x;
+}
+
+uint32_t encode_morton(uint32_t x, uint32_t y) {
+	auto spread_bits = [](uint32_t v) {
+		v &= 0x0000FFFF; // clear upper bits
+		v = (v | (v << 8)) & 0x00FF00FF;
+		v = (v | (v << 4)) & 0x0F0F0F0F;
+		v = (v | (v << 2)) & 0x33333333;
+		v = (v | (v << 1)) & 0x55555555;
+		return v;
+	};
+
+	return spread_bits(x) | (spread_bits(y) << 1);
 }
 
 class bvh_writer {
@@ -200,10 +216,10 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	//uint32_t block_step = block_len * block_len;
 	int size = (len()-1)*(len()-1);
 	
-	int nodes_count = geometric_series(subd_level-1, 4);
+	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
-	int off_children = geometric_series(subd_level-2, 4);
+	int off_children = geometric_series4(subd_level-2);
 	//int size = (len()-1)*(len()-1);
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
@@ -232,7 +248,7 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 		int len = 1 << (subd_level-i); // 2^(subd_level-i);
 		size = len*len;
 		if (i > 1)			off_children = off;
-		if (i < subd_level)	off = geometric_series(subd_level-i-2, 4);
+		if (i < subd_level)	off = geometric_series4(subd_level-i-2);
 
 		for (uint32_t j = 0; j < size; ++j) {
 			const patch_node &child_node = nodes[off_children + j];
@@ -280,8 +296,8 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		subpatches.resize(blocks);
 
 	int nodes_count = align_boxes ?
-						geometric_series(align_level-1, 4)
-					  : geometric_series(subd_level-1, 4);
+						geometric_series4(align_level-1)
+					  : geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
 	/* Create subpatches and BL-BVHs */
@@ -321,7 +337,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 
 
 	/* Create first level of TL-BVH */
-	int off_children = geometric_series(align_level-2, 4);
+	int off_children = geometric_series4(align_level-2);
 	uint32_t bottom_size = align_boxes ?
 							subpatches.size()
 						  : 1 << 2 * subd_level;
@@ -367,7 +383,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		int len = 1 << (align_level-i); // 2^(align_level-i);
 		uint32_t size = len*len;
 		if (i > 1)			off_children = off;
-		if (i < align_level)	off = geometric_series(align_level-i-2, 4);
+		if (i < align_level)	off = geometric_series4(align_level-i-2);
 
 		for (uint32_t j = 0; j < size; ++j) {
 			const patch_node &child_node = nodes[off_children + j];
@@ -394,7 +410,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 	writer.print_box(root_box);
 	for (int32_t level = 0; level < align_level; level++) {
 		writer.new_level();
-		uint32_t child_node_base = geometric_series(level-1, 4);
+		uint32_t child_node_base = geometric_series4(level-1);
 		uint32_t size = 1 << 2*level; // 4^level
 		for (uint32_t morton = 0; morton < size; morton++) {
 			const patch_node &node = nodes[child_node_base + morton];
@@ -420,7 +436,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 
 	for (int32_t level = 0; level < aligned_subd_level; level++) {
 		writer.new_level();
-		uint32_t child_node_base = geometric_series(level-1, 4);
+		uint32_t child_node_base = geometric_series4(level-1);
 		uint32_t size = 1 << 2*level; // 4^level
 		for (const auto &sub : subpatches) {
 			writer.set_trafo(inverse(sub.trafo));
@@ -435,49 +451,49 @@ void subd_patch::export_bvh(const std::string &path) const {
 
 }
 
-int subd_patch::calculate_morton_code(int x, int y) const {
+/*int subd_patch::calculate_morton_code(int x, int y) const {
 	// Note: currently only working with index, is morton code neccessary?
 	return y * len() + x;
-}
+}*/
 
-tuple<int, int> subd_patch::evaluate_morton_code(int morton_code) const {
+/*tuple<int, int> subd_patch::evaluate_morton_code(int morton_code) const {
 	// Note: currently only working with index, is morton code neccessary?
 	int x = morton_code % len();
 	int y = morton_code / len();
 	return {x, y};
-}
+}*/
 
-int subd_patch::get_subd_quad(int morton_code) const {
-	auto [x, y] = evaluate_morton_code(morton_code);
+/*int subd_patch::get_subd_quad(int vert_quad_id) const {
+	auto [x, y] = evaluate_morton_code(vert_quad_id);
 	return y * len() + x;
-}
+}*/
 
-std::array<triangle, 2> subd_patch::tris(int morton_code) const {
+std::array<triangle, 2> subd_patch::tris(int vert_quad_id) const {
 	return {
-		tri(morton_code, true),
-		tri(morton_code, false)
+		tri(vert_quad_id, true),
+		tri(vert_quad_id, false)
 	};
 }
 
-triangle subd_patch::tri(int morton_code, bool upper) const {
+triangle subd_patch::tri(int vert_quad_id, bool upper) const {
 	triangle tri;
 
 	//TODO:
 	// get subd quad by morton code rather than the currently used position code?
-	int quad_id = get_subd_quad(morton_code); //TODO/REVIEW: restructure to actually pass morton code or else drop this conversion
+	//int quad_id = get_subd_quad(vert_quad_id); //TODO/REVIEW: restructure to actually pass morton code or else drop this conversion
 	tri.material_id = material_id;
 	if (upper) {
-		tri.a = quad_id;
-		tri.b = vert_down(quad_id);
-		tri.c = vert_right(quad_id);
+		tri.a = vert_quad_id;
+		tri.b = vert_down(vert_quad_id);
+		tri.c = vert_right(vert_quad_id);
 	}
 	else {
-		//tri.a = vert_down(quad_id);
-		//tri.b = vert_down_right(quad_id);
-		//tri.c = vert_right(quad_id);
-		tri.a = vert_down_right(quad_id);
-		tri.b = vert_right(quad_id);
-		tri.c = vert_down(quad_id);
+		//tri.a = vert_down(vert_quad_id);
+		//tri.b = vert_down_right(vert_quad_id);
+		//tri.c = vert_right(vert_quad_id);
+		tri.a = vert_down_right(vert_quad_id);
+		tri.b = vert_right(vert_quad_id);
+		tri.c = vert_down(vert_quad_id);
 	}
 
 	return tri;
@@ -493,8 +509,42 @@ uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
 	return quad_ref_from_index(index, subd_level);
 }
 
-uint32_t subd_patch::subpatch_ref_from_index(uint32_t index) const {
+/*uint32_t subd_patch::subpatch_ref_from_index(uint32_t index) const {
 	uint32_t x = decode_morton(index);
 	uint32_t y = decode_morton(index >> 1);
 	return y*(len(align_level)-1) + x;
+}*/
+
+uint32_t subd_patch::index_from_quad_ref(uint32_t vert_quad_id) const {
+	uint32_t x = vert_quad_id % len(); //TODO/REVIEW: switch / and % to shift operations
+	uint32_t y = vert_quad_id / len();
+	return encode_morton(x, y);
+}
+
+const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
+	assert(subpatches.size() > 0);
+	//uint32_t subpatch_size = patch.subpatches[0].len() - 1;
+	//subpatch_size *= subpatch_size;
+
+	uint32_t aligned_subd_level = subpatches[0].subd_level;
+	uint32_t subpatch_id = index >> 2*aligned_subd_level; // divide by subpatch size (#quads in subpatch)
+	return subpatches[subpatch_id];
+}
+
+/*const aabb &subd_patch::box_from_index(const subd_subpatch &subpatch, uint32_t index) const {
+	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
+	uint32_t quad_ref_local = index & modulo_mask;
+	return subpatch.box_from_index(quad_ref_local);
+}*/
+
+const aabb &subd_subpatch::box_from_index(uint32_t index) const {
+	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
+	uint32_t quad_ref_local = index & modulo_mask;
+	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
+	//if (quad_ref_local & 0x3 != 0) //DEBUG
+	//	std::cout << "";
+	uint32_t box_index = quad_ref_local & 0x3;
+	//box_index = box_index == 2 ? 3 : (box_index == 3 ? 2 : box_index);
+	//box_index = 0;
+	return nodes[node_index].boxes[box_index];
 }

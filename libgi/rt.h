@@ -99,6 +99,8 @@ class material;
  *  That is, a locally flat, infinitessimally small part of a surface.
  */
 struct diff_geom {
+	vertex dbg_v_a, dbg_v_b, dbg_v_c;
+	vertex dbg_g_a, dbg_g_b, dbg_g_c;
 	const vec3 x;           // position in space
 	vec3 ng, ns;            // geometric normal, shading normal, TODO: currently set to be equal!
 	const vec2 tc;          // texture coordinate
@@ -107,8 +109,9 @@ struct diff_geom {
 	diff_geom(const triangle_intersection &is, const scene &scene);
 	static diff_geom init(const triangle_intersection &is, const scene &scene);
 
-	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
-	float opacity() const; // evaluates the surface opacity (including texture lookup)
+	vec3 albedo() const;			// evaluates the surface albedo (including texture lookup)
+	vec3 emissive_albedo() const;	// evaluates the surface albedo considering the emissive value(including texture lookup)
+	float opacity() const;			// evaluates the surface opacity (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);

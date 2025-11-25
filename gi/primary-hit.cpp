@@ -61,6 +61,8 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 		std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
 
 	if (closest.valid()) {
+		diff_geom dg = diff_geom::init(closest, rc->scene);
+
 		if (x == debug_pixel_x && y == debug_pixel_y) {
 			*ow << obj::line(view_ray.o, view_ray.o + view_ray.d * closest.t);
 			if (rc->scene.is_patch(closest.ref)) {
@@ -69,13 +71,19 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 				const vertex &a = patch.verts[tri.a];
 				const vertex &b = patch.verts[tri.b];
 				const vertex &c = patch.verts[tri.c];
-				*ow << obj::line(a.pos, b.pos);
-				*ow << obj::line(b.pos, c.pos);
-				*ow << obj::line(c.pos, a.pos);
+				//*ow << obj::line(a.pos, b.pos);
+				//*ow << obj::line(b.pos, c.pos);
+				//*ow << obj::line(c.pos, a.pos);
+				*ow << obj::line(dg.dbg_v_a.pos, dg.dbg_v_b.pos);
+				*ow << obj::line(dg.dbg_v_b.pos, dg.dbg_v_c.pos);
+				*ow << obj::line(dg.dbg_v_c.pos, dg.dbg_v_a.pos);
+
+				*ow << obj::line(dg.dbg_g_a.pos, dg.dbg_g_b.pos);
+				*ow << obj::line(dg.dbg_g_b.pos, dg.dbg_g_c.pos);
+				*ow << obj::line(dg.dbg_g_c.pos, dg.dbg_g_a.pos);
 			}
 		}
 
-		diff_geom dg = diff_geom::init(closest, rc->scene);
 		brdf *brdf = dg.mat->brdf;
 		assert(!rc->scene.lights.empty());
 		pointlight *pl = dynamic_cast<pointlight*>(rc->scene.lights[0]);
@@ -88,6 +96,7 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 
 		ray shadow_ray(dg.x, w_i);
 		shadow_ray.length_exclusive(d);
+		//shadow_ray.t_min = 0.1f; //TODO: self intersection problem with boxes!
 		triangle_intersection is = rc->scene.rt->closest_hit(shadow_ray);
 		if (x == debug_pixel_x && y == debug_pixel_y) {
 			std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
@@ -96,6 +105,10 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 			*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * t);
 		}
 		//if (!rc->scene.rt->any_hit(shadow_ray))
+
+		//DEBUG:
+		//return dg.albedo();
+
 		if (!is.valid())
 			radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
 #else

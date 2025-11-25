@@ -132,7 +132,7 @@ bool recursive_algorithm::compute_sample() {
 			unsigned real_y = y * rc->preview_offset + current_preview_offset.y;
 			if (real_x < res.x && real_y < res.y) {
 				vec3 color = sample_pixel(real_x, real_y);
-				if (current_sample_index == rc->sppx-1) //TMP/DEBUG
+				//if (current_sample_index == rc->sppx-1) //TMP/DEBUG
 					rc->framebuffer.add(real_x, real_y, color);
 			}
 		}

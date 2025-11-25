@@ -126,6 +126,7 @@ namespace subd {
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
+		const aabb &box_from_index(uint32_t local_index) const;
 	};
 
 	struct subd_patch {
@@ -159,20 +160,26 @@ namespace subd {
 		uint32_t vert_down_right(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
 		void build_bvh(int32_t align_level, bool debug = false);
-		int get_subd_quad(int morton_code) const;
-		std::array<triangle, 2> tris(int morton_code) const;
-		triangle tri(int morton_code, bool upper) const;
+		std::array<triangle, 2> tris(int vert_quad_id) const;
+		triangle tri(int vert_quad_id, bool upper) const;
+
+		// Index operations
+		//int get_subd_quad(int vert_quad_id) const;
 		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
-		uint32_t subpatch_ref_from_index(uint32_t index) const;
+		//uint32_t subpatch_ref_from_index(uint32_t index) const;
+		uint32_t index_from_quad_ref(uint32_t vert_quad_id) const;
+
+		const subd_subpatch &subpatch_from_index(uint32_t index) const;
+		//const aabb &box_from_index(const subd_subpatch &subpatch, uint32_t index) const;
 
 		void print_verts() const;
 		void print_vert_tcs() const;
 		void export_bvh(const std::string &path) const;
 
-		private:
-		int calculate_morton_code(int x, int y) const;
-		tuple<int, int> evaluate_morton_code(int morton_code) const;
+		//private:
+		//int calculate_morton_code(int x, int y) const;
+		//tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
 
 	typedef std::function<glm::vec4(glm::vec2)> sample_tex;

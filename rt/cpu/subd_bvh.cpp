@@ -297,8 +297,8 @@ void bary_calc(aabb box, ray ray, triangle_intersection &is) {
 	//is.subd_quad_ref.set_upper_tri(hit_xy.y > hit_xy.x);
 	//is.subd_quad_ref.set_upper_tri(hit_xy.y > -hit_xy.x + 1);
 
-	bool upper_tri = hit_xy.y > hit_xy.x;
-	//bool upper_tri = hit_xy.y > -hit_xy.x + 1;
+	//bool upper_tri = hit_xy.y > hit_xy.x;
+	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
 	is.subd_quad_ref.set_upper_tri(upper_tri);
 	is.subd_quad_ref.set_level(1);
 	vec2 hit_xy_;
@@ -336,6 +336,12 @@ void bary_calc(aabb box, ray ray, triangle_intersection &is) {
 	}
 	assert(is.beta >= 0 && is.beta <= 1);
 	assert(is.gamma >= 0 && is.gamma <= 1);
+	//assert(is.beta + is.gamma >= 0);
+	//assert(is.beta + is.gamma <= 1);
+
+	//DEBUG:
+	//is.beta = hit_xy.x;
+	//is.gamma = hit_xy.y;
 }
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
@@ -388,8 +394,14 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 							//closest.subd_quad_ref.set_ref(1);
 							uint32_t off_current_level = geometric_series4(trav_level);
 							uint32_t relative_index = (child_base+i) - off_current_level;
-							uint32_t quad_ref = subpatch.vert_start + patch.quad_ref_from_index(relative_index);
-							closest.subd_quad_ref.set_ref(quad_ref);
+							uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+														+ relative_index;
+
+							//uint32_t quad_ref = subpatch.vert_start + patch.quad_ref_from_index(relative_index);
+							//closest.subd_quad_ref.set_ref(quad_ref);
+							//closest.subd_quad_ref.set_level(0);
+							closest.subd_quad_ref.set_ref(quad_ref_morton);
+							closest.subd_quad_ref.set_level(1); //TODO/REVIEW: update level field/method, level seems to not be required
 						}
 					}
 				}
