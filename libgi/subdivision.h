@@ -14,6 +14,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
+#define BOX_APPROXIMATION
+
 namespace subd {
 	struct edge {
 		int v1, v2;
@@ -129,6 +131,13 @@ namespace subd {
 		const aabb &box_from_index(uint32_t local_index) const;
 	};
 
+#ifdef BOX_APPROXIMATION
+	struct patch_vertex {
+		glm::vec2 tc;
+		glm::vec3 norm;
+	};
+#endif
+
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
@@ -139,6 +148,9 @@ namespace subd {
 		uint32_t subd_level;
 		int32_t align_level;
 		bool align_boxes;
+#ifdef BOX_APPROXIMATION
+		patch_vertex data[4];
+#endif
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
@@ -165,6 +177,7 @@ namespace subd {
 
 		// Index operations
 		//int get_subd_quad(int vert_quad_id) const;
+		std::tuple<uint32_t, uint32_t> xy_from_index(uint32_t index) const;
 		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
 		//uint32_t subpatch_ref_from_index(uint32_t index) const;
@@ -176,6 +189,11 @@ namespace subd {
 		void print_verts() const;
 		void print_vert_tcs() const;
 		void export_bvh(const std::string &path) const;
+
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+		std::tuple<float, float> global_uvs(quad_ref quad_ref, float local_u, float loacl_v) const;
+#endif
 
 		//private:
 		//int calculate_morton_code(int x, int y) const;
@@ -208,6 +226,9 @@ namespace subd {
 				}
 			}
 		}
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+#endif
 
 		mesh() : storage_type_patches(true) { }
 

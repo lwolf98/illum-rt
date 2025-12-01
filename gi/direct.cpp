@@ -22,7 +22,6 @@ using namespace glm;
 using namespace std;
 
 //#define WITH_OBJ_DEBUG
-
 #ifdef WITH_OBJ_DEBUG
 def_obj_debug;
 #endif
@@ -97,7 +96,6 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
-				//radiance = dg.mat->emissive;
 				radiance = dg.emissive_albedo();
 			}
 			else {
@@ -315,9 +313,9 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #endif
 
 void direct_light::finalize_frame() {
-	#ifdef WITH_OBJ_DEBUG
+#ifdef WITH_OBJ_DEBUG
 	finalize_obj_debug
-	#endif
+#endif
 
 	if (rc->enable_denoising) {
 		rc->framebuffer_albedo.color.for_each([](unsigned int x, unsigned int y) {
@@ -362,20 +360,8 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
-	//if (x == 642 && y == 342) // good case
-	//if (x == 642 && y == 400) // fail case
-	//if (x == 601 && y == 258)
-
-	//if (x == 298 && y == 75)
-	//if (x == 262 && y == 223)
-	//if (x == 577 && y == 154) // artifact!
-	//	std::cout << "---" << std::endl;
 #ifndef RTGI_SKIP_ASS
 	auto [closest,tp,valid] = find_closest_nonspecular(view_ray);
-	//if (x == 275 && y == 197)
-	//if (x == 352 && y == 197)
-	//if (x == 403 && y == 247)
-	//if (x == 325 && y == 245)
 	if (x == debug_pixel_x && y == debug_pixel_y)
 		std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
 	if (valid && closest.valid()) {
@@ -384,13 +370,9 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	if (closest.valid()) {
 #endif
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
-			//diff_geom dg(closest, rc->scene);
 			diff_geom dg = diff_geom::init(closest, rc->scene);
-			//radiance = dg.albedo();
-			//return radiance;
 			
 			if (dg.mat->emissive != vec3(0)) {
-				//radiance = dg.mat->emissive;
 				radiance = dg.emissive_albedo();
 			}
 			else {
@@ -399,7 +381,6 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 				float pdf_light = 0,
 					  pdf_brdf = 0;
 				if (current_sample_index < rc->sppx/2-1) {
-				//if (true) {
 					auto [l_id, l_pdf] = rc->scene.light_distribution->sample_index(rc->rng.uniform_float());
 					light *l = rc->scene.lights[l_id];
 					auto [shadow_ray,l_col,pdf] = l->sample_Li(dg, rc->rng.uniform_float2());
@@ -408,24 +389,19 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
 					#endif
 					if (l_col != vec3(0)) {
-						//std::cout << shadow_ray.t_min << " " << shadow_ray.t_max << std::endl;
 						shadow_ray.t_min = 0.1f; //DEBUG
 						auto is = rc->scene.rt->closest_hit(shadow_ray);
-						//auto is = rc->scene.rt->any_hit(shadow_ray);
 						if (x == debug_pixel_x && y == debug_pixel_y) {
 							std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
-							#ifdef WITH_OBJ_DEBUG
+#ifdef WITH_OBJ_DEBUG
 							if (is.valid()) {
-								//*ow << obj::icosphere(shadow_ray.o);
-								//ow << obj::icosphere(shadow_ray.o + shadow_ray.d * is.t);
 								*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * is.t);
 							}
-							#endif
+#endif
 						}
 						if (!is.valid() || is.t > shadow_ray.t_max) // TODO why is this not anyhit?
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
-						//else 
-						//	std::cout << is.t << std::endl;
+
 					}
 				}
 				else {

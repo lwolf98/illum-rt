@@ -41,7 +41,6 @@ void subd_patch::print_vert_tcs() const {
 }
 
 uint32_t subd_patch::len(uint32_t level) const {
-	//return std::pow(2, level)+1;
 	return (1 << level) + 1; // 2^subd_level + 1
 }
 
@@ -68,9 +67,6 @@ uint32_t subd_patch::vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y)
 }
 
 //TODO: explain reason for passing iterations = -1 (happens on subd_level = 0)
-/*int geometric_series(int iterations, int base) {
-	return (1-pow(base, iterations+1))/(1-base);
-}*/
 static int geometric_series4(int iterations) {
 	return (1 - (1 << ((iterations+1)<<1))) / (-3);
 }
@@ -179,7 +175,6 @@ public:
 };
 
 glm::mat3 trafo_matrix(vec3 a, vec3 b) {
-	//glm::mat3 M_default(1);
 	a = normalize(a);
 	b = normalize(b);
 	vec3 c = normalize(cross(a, b));
@@ -191,7 +186,7 @@ glm::mat3 trafo_matrix(vec3 a, vec3 b) {
 	vec3 n = normalize(cross(b, c));
 	glm::mat3 M_target(b, c, n);
 
-	glm::mat3 M_trafo = inverse(M_target); // * M_default;
+	glm::mat3 M_trafo = inverse(M_target);
 	return M_trafo;
 }
 
@@ -204,7 +199,6 @@ inline uint32_t truncate_to_block(uint32_t x, uint32_t n) {
 }
 
 uint32_t subd_subpatch::len() const {
-	//return std::pow(2, subd_level)+1;
 	return (1 << subd_level) + 1; // 2^subd_level + 1
 }
 
@@ -212,15 +206,12 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	glm::mat3 &T = trafo;
 	glm::mat3 T_inv = inverse(trafo);
 	const auto &verts = parent->verts;
-	//uint32_t len = 1 << subd_level; // 2^subd_level
-	//uint32_t block_step = block_len * block_len;
 	int size = (len()-1)*(len()-1);
 	
 	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
 	int off_children = geometric_series4(subd_level-2);
-	//int size = (len()-1)*(len()-1);
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
 		uint32_t y = decode_morton(morton >> 1);
@@ -254,8 +245,6 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 			const patch_node &child_node = nodes[off_children + j];
 			aabb box;
 
-			//glm::mat3 T_inv = child_node.trafos[0];
-			//glm::mat3 T = inverse(T_inv);
 			box.grow(child_node.boxes[0]);
 			box.grow(child_node.boxes[1]);
 			box.grow(child_node.boxes[2]);
@@ -451,23 +440,6 @@ void subd_patch::export_bvh(const std::string &path) const {
 
 }
 
-/*int subd_patch::calculate_morton_code(int x, int y) const {
-	// Note: currently only working with index, is morton code neccessary?
-	return y * len() + x;
-}*/
-
-/*tuple<int, int> subd_patch::evaluate_morton_code(int morton_code) const {
-	// Note: currently only working with index, is morton code neccessary?
-	int x = morton_code % len();
-	int y = morton_code / len();
-	return {x, y};
-}*/
-
-/*int subd_patch::get_subd_quad(int vert_quad_id) const {
-	auto [x, y] = evaluate_morton_code(vert_quad_id);
-	return y * len() + x;
-}*/
-
 std::array<triangle, 2> subd_patch::tris(int vert_quad_id) const {
 	return {
 		tri(vert_quad_id, true),
@@ -477,10 +449,6 @@ std::array<triangle, 2> subd_patch::tris(int vert_quad_id) const {
 
 triangle subd_patch::tri(int vert_quad_id, bool upper) const {
 	triangle tri;
-
-	//TODO:
-	// get subd quad by morton code rather than the currently used position code?
-	//int quad_id = get_subd_quad(vert_quad_id); //TODO/REVIEW: restructure to actually pass morton code or else drop this conversion
 	tri.material_id = material_id;
 	if (upper) {
 		tri.a = vert_quad_id;
@@ -488,9 +456,6 @@ triangle subd_patch::tri(int vert_quad_id, bool upper) const {
 		tri.c = vert_right(vert_quad_id);
 	}
 	else {
-		//tri.a = vert_down(vert_quad_id);
-		//tri.b = vert_down_right(vert_quad_id);
-		//tri.c = vert_right(vert_quad_id);
 		tri.a = vert_down_right(vert_quad_id);
 		tri.b = vert_right(vert_quad_id);
 		tri.c = vert_down(vert_quad_id);
@@ -499,21 +464,22 @@ triangle subd_patch::tri(int vert_quad_id, bool upper) const {
 	return tri;
 }
 
-uint32_t subd_patch::quad_ref_from_index(uint32_t index, uint32_t level) const {
+std::tuple<uint32_t, uint32_t> subd_patch::xy_from_index(uint32_t index) const {
 	uint32_t x = decode_morton(index);
 	uint32_t y = decode_morton(index >> 1);
+	return {x, y};
+}
+
+uint32_t subd_patch::quad_ref_from_index(uint32_t index, uint32_t level) const {
+	//uint32_t x = decode_morton(index);
+	//uint32_t y = decode_morton(index >> 1);
+	auto [x, y] = xy_from_index(index);
 	return y*len(level) + x;
 }
 
 uint32_t subd_patch::quad_ref_from_index(uint32_t index) const {
 	return quad_ref_from_index(index, subd_level);
 }
-
-/*uint32_t subd_patch::subpatch_ref_from_index(uint32_t index) const {
-	uint32_t x = decode_morton(index);
-	uint32_t y = decode_morton(index >> 1);
-	return y*(len(align_level)-1) + x;
-}*/
 
 uint32_t subd_patch::index_from_quad_ref(uint32_t vert_quad_id) const {
 	uint32_t x = vert_quad_id % len(); //TODO/REVIEW: switch / and % to shift operations
@@ -523,28 +489,59 @@ uint32_t subd_patch::index_from_quad_ref(uint32_t vert_quad_id) const {
 
 const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
 	assert(subpatches.size() > 0);
-	//uint32_t subpatch_size = patch.subpatches[0].len() - 1;
-	//subpatch_size *= subpatch_size;
-
 	uint32_t aligned_subd_level = subpatches[0].subd_level;
 	uint32_t subpatch_id = index >> 2*aligned_subd_level; // divide by subpatch size (#quads in subpatch)
 	return subpatches[subpatch_id];
 }
 
-/*const aabb &subd_patch::box_from_index(const subd_subpatch &subpatch, uint32_t index) const {
-	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
-	uint32_t quad_ref_local = index & modulo_mask;
-	return subpatch.box_from_index(quad_ref_local);
-}*/
-
 const aabb &subd_subpatch::box_from_index(uint32_t index) const {
 	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
 	uint32_t quad_ref_local = index & modulo_mask;
 	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
-	//if (quad_ref_local & 0x3 != 0) //DEBUG
-	//	std::cout << "";
 	uint32_t box_index = quad_ref_local & 0x3;
-	//box_index = box_index == 2 ? 3 : (box_index == 3 ? 2 : box_index);
-	//box_index = 0;
 	return nodes[node_index].boxes[box_index];
 }
+
+#ifdef BOX_APPROXIMATION
+void subd_patch::prepare_box_approximation() {
+	// Store patch corner vertex data
+	uint32_t step = len() - 1;
+	const vertex *corners[4];
+	corners[0] = &verts[0];
+	corners[1] = &verts[vert_right(0, step)];
+	corners[2] = &verts[vert_down(0, step)];
+	corners[3] = &verts[vert_down_right(0, step)];
+	for (uint32_t i = 0; i < 4; ++i) {
+		data[i].tc = corners[i]->tc;
+		data[i].norm = corners[i]->norm;
+	}
+
+	// Remove actual geometry data in box approximation
+	//patch.verts.clear();
+	//patch.verts.shrink_to_fit();
+
+	// Clear and deallocate vertex memory
+	// reference: https://cplusplus.com/reference/vector/vector/clear/
+	std::vector<vertex>().swap(verts);
+}
+
+std::tuple<float, float> subd_patch::global_uvs(quad_ref quad_ref, float local_u, float local_v) const {
+	uint32_t quad_len = len() - 1;
+	auto [x, y] = xy_from_index(quad_ref.ref());
+	float global_u = x * 1.f/quad_len;
+	float global_v = y * 1.f/quad_len;
+
+	float step = 1.f / quad_len;
+	if (quad_ref.is_upper_tri()) {
+		global_u += step * local_v;
+		global_v += step * local_u;
+	}
+	else {
+		// Use local_v with global_u and local_u with global_v to align uv orientation
+		global_u += step * (1.f - local_v);
+		global_v += step * (1.f - local_u);
+	}
+
+	return {global_u, global_v};
+}
+#endif

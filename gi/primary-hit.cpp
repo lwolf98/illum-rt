@@ -21,7 +21,6 @@ using namespace glm;
 using namespace std;
 
 #define WITH_OBJ_DEBUG
-
 #ifdef WITH_OBJ_DEBUG
 def_obj_debug;
 #endif
@@ -44,15 +43,11 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
+#ifdef WITH_OBJ_DEBUG
 	start_obj_debug(x, y, "/tmp/debug_" + std::to_string(current_sample_index) + ".obj");
-	/*if (debug_pixel(x, y)) {
-		debug = true;
-		ow = new obj::obj_writer("/tmp/debug_" + std::to_string(current_sample_index) + ".obj");
-	}
-	else debug = false;*/
-
 	if (debug)
 		*ow << obj::object("path");
+#endif
 
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
@@ -63,6 +58,7 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 	if (closest.valid()) {
 		diff_geom dg = diff_geom::init(closest, rc->scene);
 
+#ifdef WITH_OBJ_DEBUG
 		if (x == debug_pixel_x && y == debug_pixel_y) {
 			*ow << obj::line(view_ray.o, view_ray.o + view_ray.d * closest.t);
 			if (rc->scene.is_patch(closest.ref)) {
@@ -71,18 +67,16 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 				const vertex &a = patch.verts[tri.a];
 				const vertex &b = patch.verts[tri.b];
 				const vertex &c = patch.verts[tri.c];
-				//*ow << obj::line(a.pos, b.pos);
-				//*ow << obj::line(b.pos, c.pos);
-				//*ow << obj::line(c.pos, a.pos);
 				*ow << obj::line(dg.dbg_v_a.pos, dg.dbg_v_b.pos);
 				*ow << obj::line(dg.dbg_v_b.pos, dg.dbg_v_c.pos);
 				*ow << obj::line(dg.dbg_v_c.pos, dg.dbg_v_a.pos);
 
-				*ow << obj::line(dg.dbg_g_a.pos, dg.dbg_g_b.pos);
-				*ow << obj::line(dg.dbg_g_b.pos, dg.dbg_g_c.pos);
-				*ow << obj::line(dg.dbg_g_c.pos, dg.dbg_g_a.pos);
+				//*ow << obj::line(dg.dbg_g_a.pos, dg.dbg_g_b.pos);
+				//*ow << obj::line(dg.dbg_g_b.pos, dg.dbg_g_c.pos);
+				//*ow << obj::line(dg.dbg_g_c.pos, dg.dbg_g_a.pos);
 			}
 		}
+#endif
 
 		brdf *brdf = dg.mat->brdf;
 		assert(!rc->scene.lights.empty());
@@ -96,7 +90,6 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 
 		ray shadow_ray(dg.x, w_i);
 		shadow_ray.length_exclusive(d);
-		//shadow_ray.t_min = 0.1f; //TODO: self intersection problem with boxes!
 		triangle_intersection is = rc->scene.rt->closest_hit(shadow_ray);
 		if (x == debug_pixel_x && y == debug_pixel_y) {
 			std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
@@ -104,10 +97,6 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 			if (!is.valid()) t = 10.f;
 			*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * t);
 		}
-		//if (!rc->scene.rt->any_hit(shadow_ray))
-
-		//DEBUG:
-		//return dg.albedo();
 
 		if (!is.valid())
 			radiance = pl->power() * brdf->f(dg, w_o, w_i) / (d*d);
@@ -117,7 +106,6 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 	}
 
-	//finalize_obj_debug
 	return radiance;
 }
 #endif

@@ -5,7 +5,6 @@
 
 using namespace glm;
 
-	
 diff_geom::diff_geom(const vertex &a, const vertex &b, const vertex &c,
 					 const material *m, const triangle_intersection &is, const scene &scene)
  : x ((1.0f-is.beta-is.gamma)*a.pos  + is.beta*b.pos  + is.gamma*c.pos),
@@ -37,70 +36,50 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		uint32_t subd_quad_ref = is.subd_quad_ref.ref();
 		const subd::subd_patch &patch = scene.patches[patch_ref];
 
-		bool box_approximation = is.subd_quad_ref.level();
+		//bool box_approximation = is.subd_quad_ref.level();
 		vertex a, b, c;
-		vertex dbg_a, dbg_b, dbg_c;
-		if (box_approximation) {
-			// approximate geometry by bounding boxes
+		//vertex dbg_a, dbg_b, dbg_c;
+		//if (box_approximation) {
 
-			uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
-			triangle tri = patch.tri(vert_quad_ref, upper);
-			a = patch.verts[tri.a];
-			b = patch.verts[tri.b];
-			c = patch.verts[tri.c];
-			dbg_a = a, dbg_b = b, dbg_c = c;
+#ifdef BOX_APPROXIMATION
+		// approximate geometry by bounding boxes
 
+		uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
+		triangle tri = patch.tri(vert_quad_ref, upper);
+		//a = patch.verts[tri.a];
+		//b = patch.verts[tri.b];
+		//c = patch.verts[tri.c];
+		//dbg_a = a, dbg_b = b, dbg_c = c;
 
-
-			//if (patch_ref == 0 && subd_quad_ref == 3)
-			//	std::cout << "";
-
-			//assert(patch.subpatches.size() > 0);
-			//uint32_t subpatch_size = patch.subpatches[0].len() - 1;
-			//subpatch_size *= subpatch_size;
-
-			//uint32_t aligned_subd_level = subpatches[0].subd_level;
-			//uint32_t subpatch_id = subd_quad_ref >> 2*aligned_subd_level; // divide by subpatch size (#quads in subpatch)
-			//const subd::subd_patch &subpatch = patch.subpatches[subpatch_id];
-			const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
-
-			//uint32_t modulo_mask = ~(0xFFFFFFFF << 2*aligned_subd_level);
-			//uint32_t quad_ref_local = subd_quad_ref & modulo_mask;
-			//uint32_t node_index = (quad_ref_local >> 2) + geom_series4(aligned_subd_level);
-			//uint32_t box_index = quad_ref_local & 0x11;
-			//const aabb &box = subpatch.nodes[node_index].boxes[box_index];
-			const aabb &box = subpatch.box_from_index(subd_quad_ref);
-
-			//std::cout << box.min << " --- " << box.max << std::endl;
-
-			//const glm::mat3 &M = subpatch.trafo;
-			const glm::mat3 &M = glm::inverse(subpatch.trafo);
-			if (upper) {
-				//c.pos = M * vec3(box.min.x, box.min.y, box.min.z);
-				//a.pos = M * vec3(box.max.x, box.min.y, box.min.z);
-				//b.pos = M * vec3(box.max.x, box.min.y, box.max.z);
-				a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
-				b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
-				c.pos = M * vec3(box.min.x, box.max.y, box.max.z);
-			}
-			else {
-				a.pos = M * vec3(box.max.x, box.max.y, box.max.z);
-				b.pos = M * vec3(box.min.x, box.max.y, box.max.z);
-				c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
-			}
+		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
+		const aabb &box = is.subd_quad_ref.level() == 2 ?
+								  subpatch.root_box
+								: subpatch.box_from_index(subd_quad_ref);
+		const glm::mat3 &M = glm::inverse(subpatch.trafo);
+		if (upper) {
+			a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
+			b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
+			c.pos = M * vec3(box.min.x, box.max.y, box.max.z);
 		}
 		else {
-			// exact geometry
-
-			triangle tri = patch.tri(subd_quad_ref, upper);
-			//const vertex &a = patch.verts[tri.a];
-			//const vertex &b = patch.verts[tri.b];
-			//const vertex &c = patch.verts[tri.c];
-			a = patch.verts[tri.a];
-			b = patch.verts[tri.b];
-			c = patch.verts[tri.c];
-			dbg_a = a, dbg_b = b, dbg_c = c;
+			a.pos = M * vec3(box.max.x, box.max.y, box.max.z);
+			b.pos = M * vec3(box.min.x, box.max.y, box.max.z);
+			c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
 		}
+
+		//}
+		//else {
+
+#else
+		// exact geometry
+
+		triangle tri = patch.tri(subd_quad_ref, upper);
+		a = patch.verts[tri.a];
+		b = patch.verts[tri.b];
+		c = patch.verts[tri.c];
+		//dbg_a = a, dbg_b = b, dbg_c = c;
+		//}
+#endif
 		const material &mat = scene.materials[patch.material_id];
 		diff_geom dg(a, b, c, &mat, is, scene);
 		// TODO: keep this assert?
@@ -109,13 +88,28 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		//	assert(dg.tc.y >= 0 && dg.tc.y <= 1);
 		//}
 
-		{
+		/*{
 			//DEBUG:
 			triangle tri = patch.tri(subd_quad_ref, upper);
 			dg.dbg_g_a = dbg_a;
 			dg.dbg_g_b = dbg_b;
 			dg.dbg_g_c = dbg_c;
-		}
+		}*/
+
+		//REVIEW: put somewhere more suitable...
+		auto [u, v] = patch.global_uvs(is.subd_quad_ref, is.beta, is.gamma);
+		assert(u >= 0 && u <= 1);
+		assert(v >= 0 && v <= 1);
+		glm::vec2 u1 = patch.data[0].tc + (patch.data[1].tc - patch.data[0].tc) * u;
+		glm::vec2 u2 = patch.data[2].tc + (patch.data[3].tc - patch.data[2].tc) * u;
+		dg.tc = u1 + (u2 - u1) * v;
+		//glm::vec2 uv = u1 + (u2 - u1) * v;
+		//dg.tc = glm::vec2(uv.y, uv.x);
+
+		//TODO: interpolate normal, REVIW: correct like that??
+		glm::vec3 n1 = patch.data[0].norm + (patch.data[1].norm - patch.data[0].norm) * u;
+		glm::vec3 n2 = patch.data[2].norm + (patch.data[3].norm - patch.data[2].norm) * u;
+		dg.ns = n1 + (n2 - n1) * v;
 
 		return dg;
 	}

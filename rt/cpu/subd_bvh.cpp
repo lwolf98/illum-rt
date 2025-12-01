@@ -219,8 +219,6 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	bool is_root_and_leaf = patch.align_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
-	//int32_t align_level = log2_clz(patch.trafos.size());
-
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
 		uint32_t trav_level = log4_clz(1+3*index);
@@ -291,57 +289,22 @@ void bary_calc(aabb box, ray ray, triangle_intersection &is) {
 	if (hit_xy.y < 0) hit_xy.y = 0;
 	if (hit_xy.y > 1) hit_xy.y = 1;
 
-	//is.beta = //hit_xy.x;
-	//is.gamma = //hit_xy.y;
-	//is.subd_quad_ref.set_upper_tri(true);
-	//is.subd_quad_ref.set_upper_tri(hit_xy.y > hit_xy.x);
-	//is.subd_quad_ref.set_upper_tri(hit_xy.y > -hit_xy.x + 1);
-
-	//bool upper_tri = hit_xy.y > hit_xy.x;
 	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
 	is.subd_quad_ref.set_upper_tri(upper_tri);
 	is.subd_quad_ref.set_level(1);
 	vec2 hit_xy_;
 	if (upper_tri) {
-		//glm::mat2 M(vec2(0,1), vec2(-1,0));
-		//hit_xy_ = M * hit_xy;
-		//is.beta = 1 - hit_xy_.x;
-		//is.gamma = hit_xy_.y;
-
-		//--------
-
-		//is.beta = hit_xy.y;
-		//is.gamma = 1 - hit_xy.x;
-
 		is.beta = hit_xy.x;
 		is.gamma = hit_xy.y;
 	}
 	else {
-		glm::mat2 M(vec2(1,1), vec2(-1, 0));
-
-		//glm::mat2 M(vec2(1,-1), vec2(1, 0));
-
-		//glm::mat2 M(vec2(0,1), vec2(-1, 1));
-		//glm::mat2 M(vec2(0,-1), vec2(1, 1));
-		hit_xy_ = M * hit_xy;
-
-		is.beta = hit_xy_.x;
-		is.gamma = 1 - hit_xy_.y;
-
 		is.beta = 1 - hit_xy.x;
 		is.gamma = 1 - hit_xy.y;
-
-		//is.beta = hit_xy.y;
-		//is.gamma = 1 - hit_xy.x;
 	}
 	assert(is.beta >= 0 && is.beta <= 1);
 	assert(is.gamma >= 0 && is.gamma <= 1);
-	//assert(is.beta + is.gamma >= 0);
-	//assert(is.beta + is.gamma <= 1);
-
-	//DEBUG:
-	//is.beta = hit_xy.x;
-	//is.gamma = hit_xy.y;
+	assert(is.beta + is.gamma >= 0);
+	assert(is.beta + is.gamma <= 1);
 }
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
@@ -377,37 +340,34 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				if (intersect4(box, transformed_ray, dist)) {
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
+#ifndef BOX_APPROXIMATION
+						stack[++sp] = child_base+i;
+#else
 						if (trav_level < subpatch.subd_level-1) {
 							stack[++sp] = child_base+i;
 						}
 						else {
-							//if (dist <= 0) continue;
-							//closest.t = dist;
+							//box_approximation(subpatch.vert_start, dist, patch_ref, child_base+i, trav_level, transformed_ray, box, closest);
+
 							closest.t = dist <= 0 ? FLT_MAX : dist;
-							//closest.t = dist;
 							closest.ref = ((uint32_t)-1) - patch_ref;
 							bary_calc(box, transformed_ray, closest);
 
-							//closest.beta = 0.3f;
-							//closest.gamma = 0.3f;
-
-							//closest.subd_quad_ref.set_ref(1);
 							uint32_t off_current_level = geometric_series4(trav_level);
 							uint32_t relative_index = (child_base+i) - off_current_level;
 							uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
 														+ relative_index;
 
-							//uint32_t quad_ref = subpatch.vert_start + patch.quad_ref_from_index(relative_index);
-							//closest.subd_quad_ref.set_ref(quad_ref);
-							//closest.subd_quad_ref.set_level(0);
 							closest.subd_quad_ref.set_ref(quad_ref_morton);
 							closest.subd_quad_ref.set_level(1); //TODO/REVIEW: update level field/method, level seems to not be required
 						}
+#endif
 					}
 				}
 			}
 		}
 		else {
+#ifndef BOX_APPROXIMATION
 			uint32_t quad_ref = subpatch.vert_start;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
@@ -431,6 +391,18 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					}
 				}
 			}
+#else
+			float dist;
+			if (intersect4(subpatch.root_box, transformed_ray, dist)) {
+				closest.t = dist <= 0 ? FLT_MAX : dist;
+				closest.ref = ((uint32_t)-1) - patch_ref;
+				bary_calc(subpatch.root_box, transformed_ray, closest);
+
+				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
+				closest.subd_quad_ref.set_ref(quad_ref_morton);
+				closest.subd_quad_ref.set_level(2); //TODO/REVIEW: update level field/method, level seems to not be required
+			}
+#endif
 		}
 	}
 }

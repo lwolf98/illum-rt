@@ -100,10 +100,10 @@ class material;
  */
 struct diff_geom {
 	vertex dbg_v_a, dbg_v_b, dbg_v_c;
-	vertex dbg_g_a, dbg_g_b, dbg_g_c;
+	//vertex dbg_g_a, dbg_g_b, dbg_g_c;
 	const vec3 x;           // position in space
 	vec3 ng, ns;            // geometric normal, shading normal, TODO: currently set to be equal!
-	const vec2 tc;          // texture coordinate
+	vec2 tc;          // texture coordinate
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
 	diff_geom(const triangle_intersection &is, const scene &scene);
