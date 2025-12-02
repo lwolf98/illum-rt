@@ -4,6 +4,7 @@
 #include <utility>
 #include <string>
 #include <ostream>
+#include <sstream>
 
 #include "libgi/subdivision-helper.h"
 
@@ -75,6 +76,19 @@ struct triangle_intersection {
 		bc.z = gamma;
 		return bc;
 	}
+
+	std::string to_string() {
+		std::ostringstream stream;
+		stream	<< "tri ref: " << ref << " (patch ref: " << ((uint32_t)-1) - ref << ")" << std::endl
+		
+				<< "quad ref: " << subd_quad_ref.ref()
+				<< ", tri pos: " << (subd_quad_ref.is_upper_tri() ? "u" : "l") << std::endl
+
+				<< "t: " << (t == FLT_MAX ? "invalid" : std::to_string(t))
+				<< ", beta: " << beta << ", gamma: " << gamma
+				<< ", (alpha: " << (1-beta-gamma) << ")";
+		return stream.str();
+	}
 };
 
 class scene;
@@ -85,16 +99,19 @@ class material;
  *  That is, a locally flat, infinitessimally small part of a surface.
  */
 struct diff_geom {
+	vertex dbg_v_a, dbg_v_b, dbg_v_c;
+	//vertex dbg_g_a, dbg_g_b, dbg_g_c;
 	const vec3 x;           // position in space
 	vec3 ng, ns;            // geometric normal, shading normal, TODO: currently set to be equal!
-	const vec2 tc;          // texture coordinate
+	vec2 tc;          // texture coordinate
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
 	diff_geom(const triangle_intersection &is, const scene &scene);
 	static diff_geom init(const triangle_intersection &is, const scene &scene);
 
-	vec3 albedo() const;   // evaluates the surface albedo (including texture lookup)
-	float opacity() const; // evaluates the surface opacity (including texture lookup)
+	vec3 albedo() const;			// evaluates the surface albedo (including texture lookup)
+	vec3 emissive_albedo() const;	// evaluates the surface albedo considering the emissive value(including texture lookup)
+	float opacity() const;			// evaluates the surface opacity (including texture lookup)
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);

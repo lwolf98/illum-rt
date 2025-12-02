@@ -242,6 +242,10 @@ namespace import {
 						o.write_obj("render-data/local/dbg_bvh/surface.obj", false);
 					}
 
+#ifdef BOX_APPROXIMATION
+					o.mesh.prepare_box_approximation();
+#endif
+
 					// Add "dummy triangles" to the scene representing the extent of the patches.
 					// These are used to identify and include the second level patch BVHs when
 					// building the first level BVH

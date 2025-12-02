@@ -23,6 +23,7 @@ public:
 class local_illumination : public recursive_algorithm {
 public:
 	glm::vec3 sample_pixel(uint32_t x, uint32_t y) override;
+	void finalize_frame() override;
 };
 #endif
 
