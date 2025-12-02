@@ -36,10 +36,8 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		uint32_t subd_quad_ref = is.subd_quad_ref.ref();
 		const subd::subd_patch &patch = scene.patches[patch_ref];
 
-		//bool box_approximation = is.subd_quad_ref.level();
 		vertex a, b, c;
 		//vertex dbg_a, dbg_b, dbg_c;
-		//if (box_approximation) {
 
 #ifdef BOX_APPROXIMATION
 		// approximate geometry by bounding boxes
@@ -52,10 +50,9 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		//dbg_a = a, dbg_b = b, dbg_c = c;
 
 		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
-		const aabb &box = is.subd_quad_ref.level() == 2 ?
-								  subpatch.root_box
-								: subpatch.box_from_index(subd_quad_ref);
+		const aabb &box = subpatch.box_from_index(subd_quad_ref);
 		const glm::mat3 &M = glm::inverse(subpatch.trafo);
+		
 		if (upper) {
 			a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
 			b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
@@ -67,9 +64,6 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 			c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
 		}
 
-		//}
-		//else {
-
 #else
 		// exact geometry
 
@@ -78,7 +72,6 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		b = patch.verts[tri.b];
 		c = patch.verts[tri.c];
 		//dbg_a = a, dbg_b = b, dbg_c = c;
-		//}
 #endif
 		const material &mat = scene.materials[patch.material_id];
 		diff_geom dg(a, b, c, &mat, is, scene);
@@ -96,6 +89,7 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 			dg.dbg_g_c = dbg_c;
 		}*/
 
+#ifdef BOX_APPROXIMATION
 		//REVIEW: put somewhere more suitable...
 		auto [u, v] = patch.global_uvs(is.subd_quad_ref, is.beta, is.gamma);
 		assert(u >= 0 && u <= 1);
@@ -103,13 +97,12 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		glm::vec2 u1 = patch.data[0].tc + (patch.data[1].tc - patch.data[0].tc) * u;
 		glm::vec2 u2 = patch.data[2].tc + (patch.data[3].tc - patch.data[2].tc) * u;
 		dg.tc = u1 + (u2 - u1) * v;
-		//glm::vec2 uv = u1 + (u2 - u1) * v;
-		//dg.tc = glm::vec2(uv.y, uv.x);
 
 		//TODO: interpolate normal, REVIW: correct like that??
 		glm::vec3 n1 = patch.data[0].norm + (patch.data[1].norm - patch.data[0].norm) * u;
 		glm::vec3 n2 = patch.data[2].norm + (patch.data[3].norm - patch.data[2].norm) * u;
 		dg.ns = n1 + (n2 - n1) * v;
+#endif
 
 		return dg;
 	}

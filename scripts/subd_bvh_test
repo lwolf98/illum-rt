@@ -53,14 +53,15 @@ load render-data/local/models/playground/plane_sand.obj
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 0
 modeltrafo shift 0 0 -2
-#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 1
-#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 1 align_level 1
-#load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 5 align_level 0
+#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 2
+#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 0
+#load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
+#load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 5 align_level 5
 modeltrafo shift 0 0 2
 #load render-data/local/dbg_approx/cube.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/cube2.obj subd_level 3 align_level 0
 #load render-data/local/dbg_approx/mixed_prims.obj subd_level 1
-#load render-data/local/dbg_approx/mixed_prims_tex.obj subd_level 8 align_level 0
+load render-data/local/dbg_approx/mixed_prims_tex.obj subd_level 2 align_level 2
 
 # Frog
 #load render-data/local/models/monsterfrog/monsterfrog_mapped.obj
@@ -68,7 +69,7 @@ modeltrafo shift 0 0 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 align_level 0
-load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 5 align_level 5 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
+#load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 5 align_level 5 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 #material select body
 #material albedo 0 0.215 0.047
@@ -90,8 +91,8 @@ look 0.610622 -0.183563 -0.770354
 #look 0.713304 -0.04213 0.699588
 
 # Pos number plane
-#at -0.458907 2.11309 1.29086
-#look 0.077323 -0.876971 -0.474281
+at -0.458907 2.11309 1.29086
+look 0.077323 -0.876971 -0.474281
 #at 0.204476 1.86327 5.34461
 #look 0.115416 -0.510952 -0.851826
 

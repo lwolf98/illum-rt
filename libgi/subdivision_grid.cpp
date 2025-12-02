@@ -275,8 +275,9 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 	 * 	level	4	|	|		_|
 	 */
 
-	this->align_boxes = align_level >= 0 && align_level <= subd_level;
-	if (!align_boxes)
+	// REVIEW: Check the configuration of these fields
+	this->align_boxes = align_level >= 0;
+	if (align_level > subd_level)
 		align_level = subd_level;
 	this->align_level = align_level;
 
@@ -307,10 +308,16 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
 				);*/
 			// base from averaged diagonales
-			glm::mat3 T = trafo_matrix(
-					verts[vert_down_right(vert_index, block_len)].pos - verts[vert_index].pos,
-					verts[vert_down(vert_index, block_len)].pos - verts[vert_right(vert_index)].pos
-				);
+			/*glm::mat3 T = trafo_matrix(
+					verts[vert_down(vert_index, block_len)].pos - verts[vert_right(vert_index)].pos,
+					verts[vert_down_right(vert_index, block_len)].pos - verts[vert_index].pos
+				);*/
+			// base from averaged opposite sides
+			vec3 ab = verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos;
+			vec3 dc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_right(vert_index, block_len)].pos;
+			vec3 ad = verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos;
+			vec3 bc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_down(vert_index, block_len)].pos;
+			glm::mat3 T = trafo_matrix(ab + dc, ad + bc);
 			//glm::mat3 T_inv = inverse(T); //TODO: equal to transpose here?
 
 			subd_subpatch &sub = subpatches[morton];
@@ -471,8 +478,6 @@ std::tuple<uint32_t, uint32_t> subd_patch::xy_from_index(uint32_t index) const {
 }
 
 uint32_t subd_patch::quad_ref_from_index(uint32_t index, uint32_t level) const {
-	//uint32_t x = decode_morton(index);
-	//uint32_t y = decode_morton(index >> 1);
 	auto [x, y] = xy_from_index(index);
 	return y*len(level) + x;
 }
@@ -495,6 +500,8 @@ const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
 }
 
 const aabb &subd_subpatch::box_from_index(uint32_t index) const {
+	if (subd_level == 0) return root_box;
+
 	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
 	uint32_t quad_ref_local = index & modulo_mask;
 	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
@@ -533,13 +540,12 @@ std::tuple<float, float> subd_patch::global_uvs(quad_ref quad_ref, float local_u
 
 	float step = 1.f / quad_len;
 	if (quad_ref.is_upper_tri()) {
-		global_u += step * local_v;
-		global_v += step * local_u;
+		global_u += step * local_u;
+		global_v += step * local_v;
 	}
 	else {
-		// Use local_v with global_u and local_u with global_v to align uv orientation
-		global_u += step * (1.f - local_v);
-		global_v += step * (1.f - local_u);
+		global_u += step * (1.f - local_u);
+		global_v += step * (1.f - local_v);
 	}
 
 	return {global_u, global_v};

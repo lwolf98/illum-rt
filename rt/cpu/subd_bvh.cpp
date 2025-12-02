@@ -260,7 +260,6 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 							closest.ref = ((uint32_t)-1) - patch_ref;
 
 							closest.subd_quad_ref.set_ref(quad_ref);
-							closest.subd_quad_ref.set_level(0);
 							closest.subd_quad_ref.set_upper_tri(i == 0);
 
 							break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
@@ -291,7 +290,6 @@ void bary_calc(aabb box, ray ray, triangle_intersection &is) {
 
 	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
 	is.subd_quad_ref.set_upper_tri(upper_tri);
-	is.subd_quad_ref.set_level(1);
 	vec2 hit_xy_;
 	if (upper_tri) {
 		is.beta = hit_xy.x;
@@ -359,7 +357,6 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 														+ relative_index;
 
 							closest.subd_quad_ref.set_ref(quad_ref_morton);
-							closest.subd_quad_ref.set_level(1); //TODO/REVIEW: update level field/method, level seems to not be required
 						}
 #endif
 					}
@@ -384,7 +381,6 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						closest.ref = ((uint32_t)-1) - patch_ref;
 
 						closest.subd_quad_ref.set_ref(quad_ref);
-						closest.subd_quad_ref.set_level(0);
 						closest.subd_quad_ref.set_upper_tri(i == 0);
 
 						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
@@ -400,7 +396,6 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 
 				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
 				closest.subd_quad_ref.set_ref(quad_ref_morton);
-				closest.subd_quad_ref.set_level(2); //TODO/REVIEW: update level field/method, level seems to not be required
 			}
 #endif
 		}
