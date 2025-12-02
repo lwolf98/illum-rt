@@ -233,14 +233,18 @@ namespace import {
 
 					//TMP: Debugging
 					{
-						//o.mesh.patches[2].export_bvh("dbg_bvh/patch_2.obj");
+						//o.mesh.patches[2].export_bvh("render-data/local/dbg_bvh/patch_2.obj");
 						uint32_t out_patches = o.mesh.patches.size();
 						if (out_patches > 20) out_patches = 20;
 						for (uint32_t id = 0; id < out_patches; id++)
-							o.mesh.patches[id].export_bvh("dbg_bvh/patch_" + to_string(id) + ".obj");
+							o.mesh.patches[id].export_bvh("render-data/local/dbg_bvh/patch_" + to_string(id) + ".obj");
 
-						o.write_obj("dbg_bvh/surface.obj", false);
+						o.write_obj("render-data/local/dbg_bvh/surface.obj", false);
 					}
+
+#ifdef BOX_APPROXIMATION
+					o.mesh.prepare_box_approximation();
+#endif
 
 					// Add "dummy triangles" to the scene representing the extent of the patches.
 					// These are used to identify and include the second level patch BVHs when

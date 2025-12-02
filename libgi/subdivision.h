@@ -14,6 +14,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
+#define BOX_APPROXIMATION
+
 namespace subd {
 	struct edge {
 		int v1, v2;
@@ -126,7 +128,15 @@ namespace subd {
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
+		const aabb &box_from_index(uint32_t local_index) const;
 	};
+
+#ifdef BOX_APPROXIMATION
+	struct patch_vertex {
+		glm::vec2 tc;
+		glm::vec3 norm;
+	};
+#endif
 
 	struct subd_patch {
 		std::vector<vertex> verts;
@@ -138,6 +148,9 @@ namespace subd {
 		uint32_t subd_level;
 		int32_t align_level;
 		bool align_boxes;
+#ifdef BOX_APPROXIMATION
+		patch_vertex data[4];
+#endif
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
@@ -159,20 +172,32 @@ namespace subd {
 		uint32_t vert_down_right(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
 		void build_bvh(int32_t align_level, bool debug = false);
-		int get_subd_quad(int morton_code) const;
-		std::array<triangle, 2> tris(int morton_code) const;
-		triangle tri(int morton_code, bool upper) const;
+		std::array<triangle, 2> tris(int vert_quad_id) const;
+		triangle tri(int vert_quad_id, bool upper) const;
+
+		// Index operations
+		//int get_subd_quad(int vert_quad_id) const;
+		std::tuple<uint32_t, uint32_t> xy_from_index(uint32_t index) const;
 		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;
-		uint32_t subpatch_ref_from_index(uint32_t index) const;
+		//uint32_t subpatch_ref_from_index(uint32_t index) const;
+		uint32_t index_from_quad_ref(uint32_t vert_quad_id) const;
+
+		const subd_subpatch &subpatch_from_index(uint32_t index) const;
+		//const aabb &box_from_index(const subd_subpatch &subpatch, uint32_t index) const;
 
 		void print_verts() const;
 		void print_vert_tcs() const;
 		void export_bvh(const std::string &path) const;
 
-		private:
-		int calculate_morton_code(int x, int y) const;
-		tuple<int, int> evaluate_morton_code(int morton_code) const;
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+		std::tuple<float, float> global_uvs(quad_ref quad_ref, float local_u, float loacl_v) const;
+#endif
+
+		//private:
+		//int calculate_morton_code(int x, int y) const;
+		//tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
 
 	typedef std::function<glm::vec4(glm::vec2)> sample_tex;
@@ -201,6 +226,9 @@ namespace subd {
 				}
 			}
 		}
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+#endif
 
 		mesh() : storage_type_patches(true) { }
 

@@ -21,6 +21,7 @@
 using namespace glm;
 using namespace std;
 
+//#define WITH_OBJ_DEBUG
 #ifdef WITH_OBJ_DEBUG
 def_obj_debug;
 #endif
@@ -95,7 +96,7 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+				radiance = dg.emissive_albedo();
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
@@ -312,6 +313,10 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #endif
 
 void direct_light::finalize_frame() {
+#ifdef WITH_OBJ_DEBUG
+	finalize_obj_debug
+#endif
+
 	if (rc->enable_denoising) {
 		rc->framebuffer_albedo.color.for_each([](unsigned int x, unsigned int y) {
 			rc->framebuffer_albedo.color.data[y * rc->framebuffer_albedo.color.w + x] /= rc->sppx;
@@ -347,22 +352,28 @@ bool direct_light::interprete(const std::string &command, std::istringstream &in
 // this should be improved upon
 #endif
 vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
+#ifdef WITH_OBJ_DEBUG
+	start_obj_debug(x, y, "/tmp/debug.obj");
+	if (debug)
+		*ow << obj::object("path");
+#endif
 #ifndef RTGI_SKIP_DIRECT_MIS_IMPL
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 #ifndef RTGI_SKIP_ASS
 	auto [closest,tp,valid] = find_closest_nonspecular(view_ray);
+	if (x == debug_pixel_x && y == debug_pixel_y)
+		std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
 	if (valid && closest.valid()) {
 #else
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (closest.valid()) {
 #endif
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
-			//diff_geom dg(closest, rc->scene);
 			diff_geom dg = diff_geom::init(closest, rc->scene);
 			
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+				radiance = dg.emissive_albedo();
 			}
 			else {
 				brdf *brdf = dg.mat->brdf;
@@ -377,14 +388,27 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					#ifndef BAD_MIS
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
 					#endif
-					if (l_col != vec3(0))
-						if (auto is = rc->scene.rt->closest_hit(shadow_ray); !is.valid() || is.t > shadow_ray.t_max) // TODO why is this not anyhit?
+					if (l_col != vec3(0)) {
+						shadow_ray.t_min = 0.1f; //DEBUG
+						auto is = rc->scene.rt->closest_hit(shadow_ray);
+						if (x == debug_pixel_x && y == debug_pixel_y) {
+							std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
+#ifdef WITH_OBJ_DEBUG
+							if (is.valid()) {
+								*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * is.t);
+							}
+#endif
+						}
+						if (!is.valid() || is.t > shadow_ray.t_max) // TODO why is this not anyhit?
 							radiance = l_col * brdf->f(dg, -view_ray.d, shadow_ray.d) * cdot(shadow_ray.d, dg.ns);
+
+					}
 				}
 				else {
 					auto [w_i, f, pdf, _] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
 					if (pdf == 0 && f == vec3(0)) break; // this will loop forever as balance will become 0 (in case pdf==0 originates from geometry (shading normals))
 					ray light_ray(dg.x, w_i);
+					light_ray.t_min = 0.1f; //DEBUG
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 #ifndef RTGI_SKIP_ASS
@@ -436,6 +460,9 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	else
 		if (rc->scene.sky)
 			radiance = rc->scene.sky->Le(view_ray);
+#endif
+#ifdef WITH_OBJ_DEBUG
+	finalize_obj_debug
 #endif
 #ifndef RTGI_SKIP_ASS
 	return radiance*tp;

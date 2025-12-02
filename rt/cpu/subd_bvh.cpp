@@ -219,8 +219,6 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	bool is_root_and_leaf = patch.align_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
-	//int32_t align_level = log2_clz(patch.trafos.size());
-
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
 		uint32_t trav_level = log4_clz(1+3*index);
@@ -262,8 +260,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 							closest.ref = ((uint32_t)-1) - patch_ref;
 
 							closest.subd_quad_ref.set_ref(quad_ref);
-							closest.subd_quad_ref.set_level(0);
-								closest.subd_quad_ref.set_upper_tri(i == 0);
+							closest.subd_quad_ref.set_upper_tri(i == 0);
 
 							break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 						}
@@ -272,6 +269,40 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			}
 		}
 	}
+}
+
+void bary_calc(aabb box, ray ray, triangle_intersection &is) {
+	//const float eps = 1e-4f;
+
+	vec3 hit = ray.o + is.t * ray.d;
+	float width = box.max.x - box.min.x;
+	float height = box.max.z - box.min.z;
+	vec3 hit_relative = hit - box.min;
+	vec2 hit_xy(hit_relative.x, hit_relative.z);
+	hit_xy.x = hit_xy.x / width;
+	hit_xy.y = hit_xy.y / height;
+	//assert(hit_xy.x >= -eps && hit_xy.x <= 1+eps);
+	//assert(hit_xy.y >= -eps && hit_xy.y <= 1+eps);
+	if (hit_xy.x < 0) hit_xy.x = 0;
+	if (hit_xy.x > 1) hit_xy.x = 1;
+	if (hit_xy.y < 0) hit_xy.y = 0;
+	if (hit_xy.y > 1) hit_xy.y = 1;
+
+	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
+	is.subd_quad_ref.set_upper_tri(upper_tri);
+	vec2 hit_xy_;
+	if (upper_tri) {
+		is.beta = hit_xy.x;
+		is.gamma = hit_xy.y;
+	}
+	else {
+		is.beta = 1 - hit_xy.x;
+		is.gamma = 1 - hit_xy.y;
+	}
+	assert(is.beta >= 0 && is.beta <= 1);
+	assert(is.gamma >= 0 && is.gamma <= 1);
+	assert(is.beta + is.gamma >= 0);
+	assert(is.beta + is.gamma <= 1);
 }
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
@@ -304,15 +335,36 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
-				if (intersect(box, transformed_ray, dist)) {
+				if (intersect4(box, transformed_ray, dist)) {
 					if (dist < closest.t) {
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
+#ifndef BOX_APPROXIMATION
 						stack[++sp] = child_base+i;
+#else
+						if (trav_level < subpatch.subd_level-1) {
+							stack[++sp] = child_base+i;
+						}
+						else {
+							//box_approximation(subpatch.vert_start, dist, patch_ref, child_base+i, trav_level, transformed_ray, box, closest);
+
+							closest.t = dist <= 0 ? FLT_MAX : dist;
+							closest.ref = ((uint32_t)-1) - patch_ref;
+							bary_calc(box, transformed_ray, closest);
+
+							uint32_t off_current_level = geometric_series4(trav_level);
+							uint32_t relative_index = (child_base+i) - off_current_level;
+							uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+														+ relative_index;
+
+							closest.subd_quad_ref.set_ref(quad_ref_morton);
+						}
+#endif
 					}
 				}
 			}
 		}
 		else {
+#ifndef BOX_APPROXIMATION
 			uint32_t quad_ref = subpatch.vert_start;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
@@ -329,13 +381,23 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						closest.ref = ((uint32_t)-1) - patch_ref;
 
 						closest.subd_quad_ref.set_ref(quad_ref);
-						closest.subd_quad_ref.set_level(0);
-							closest.subd_quad_ref.set_upper_tri(i == 0);
+						closest.subd_quad_ref.set_upper_tri(i == 0);
 
 						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 					}
 				}
 			}
+#else
+			float dist;
+			if (intersect4(subpatch.root_box, transformed_ray, dist)) {
+				closest.t = dist <= 0 ? FLT_MAX : dist;
+				closest.ref = ((uint32_t)-1) - patch_ref;
+				bary_calc(subpatch.root_box, transformed_ray, closest);
+
+				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
+				closest.subd_quad_ref.set_ref(quad_ref_morton);
+			}
+#endif
 		}
 	}
 }

@@ -378,6 +378,10 @@ namespace import {
 						// build second level BVH for each patch
 						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
 
+#ifdef BOX_APPROXIMATION
+						o.mesh.prepare_box_approximation();
+#endif
+
 						// Add "dummy triangles" to the scene representing the extent of the patches.
 						// These are used to identify and include the second level patch BVHs when
 						// building the first level BVH
