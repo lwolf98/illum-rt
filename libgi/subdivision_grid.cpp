@@ -2,6 +2,7 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <Eigen/Dense>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -93,6 +94,41 @@ uint32_t encode_morton(uint32_t x, uint32_t y) {
 	};
 
 	return spread_bits(x) | (spread_bits(y) << 1);
+}
+
+inline glm::mat3 compute_homography(const std::vector<glm::vec2> input, const std::vector<glm::vec2> target) {
+	using namespace Eigen;
+
+	MatrixXd A(8, 8);
+	VectorXd b(8);
+
+	for (uint32_t i = 0; i < 4; ++i) {
+		const glm::vec2 in = input[i];
+		const glm::vec2 tar = target[i];
+		A.row(0+i) << in.x,  in.y,  1.f,   0.f,   0.f,  0.f,  -tar.x*in.x,  -tar.x*in.y;
+		A.row(4+i) <<  0.f,   0.f,  0.f,  in.x,  in.y,  1.f,  -tar.y*in.x,  -tar.y*in.y;
+
+		b.row(0+i) << tar.x;
+		b.row(4+i) << tar.y;
+	}
+
+	VectorXd x(8);
+	x = A.fullPivLu().solve(b);
+
+	return glm::mat3 {
+		x[0], x[3], x[6],	// column 0
+		x[1], x[4], x[7],	// column 1
+		x[2], x[5], 1.f		// column 2
+	};
+}
+
+inline glm::vec2 xz(glm::vec3 xyz) {
+	return glm::vec2(xyz.x, xyz.z);
+}
+
+inline glm::vec3 project(const glm::vec3 &a, const glm::mat3 &proj) {
+	glm::vec3 tmp = proj * glm::vec3(a.x, a.z, 1.f);
+	return glm::vec3(tmp.x/tmp.z, a.y, tmp.y/tmp.z);
 }
 
 class bvh_writer {
@@ -302,24 +338,37 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			uint32_t y = decode_morton(block_start >> 1);
 			uint32_t vert_index = y*len()+x;
 
-			// base from one corner
-			/*glm::mat3 T = trafo_matrix(
-					verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos,
-					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
-				);*/
-			// base from averaged diagonales
-			/*glm::mat3 T = trafo_matrix(
-					verts[vert_down(vert_index, block_len)].pos - verts[vert_right(vert_index)].pos,
-					verts[vert_down_right(vert_index, block_len)].pos - verts[vert_index].pos
-				);*/
-			// base from averaged opposite sides
-			vec3 ab = verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos;
-			vec3 dc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_right(vert_index, block_len)].pos;
-			vec3 ad = verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos;
-			vec3 bc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_down(vert_index, block_len)].pos;
-			glm::mat3 T = trafo_matrix(ab + dc, ad + bc);
-			//glm::mat3 T_inv = inverse(T); //TODO: equal to transpose here?
+			// base vertices
+			const vec3 &a = verts[vert_index].pos;
+			const vec3 &b = verts[vert_down(vert_index, block_len)].pos;
+			const vec3 &c = verts[vert_down_right(vert_index, block_len)].pos;
+			const vec3 &d = verts[vert_right(vert_index, block_len)].pos;
 
+			// base from one corner
+			//glm::mat3 T = trafo_matrix(b-a, d-a);
+
+			// base from averaged diagonales
+			//glm::mat3 T = trafo_matrix(b-d, c-a);
+
+			// base from averaged opposite sides
+			glm::mat3 T = trafo_matrix((b-a) + (c-d), (d-a) + (c-b));
+
+			// Calculate projection matrix
+			std::vector<glm::vec2> input;
+			input.emplace_back(xz(T * a));
+			input.emplace_back(xz(T * b));
+			input.emplace_back(xz(T * d));
+			input.emplace_back(xz(T * c));
+			std::vector<glm::vec2> target;
+			target.emplace_back(-1.f, -1.f);
+			target.emplace_back(1.f, -1.f);
+			target.emplace_back(-1.f, 1.f);
+			target.emplace_back(1.f, 1.f);
+			glm::mat3 proj = compute_homography(input, target);
+
+			// TODO: use proj
+
+			// Init subpatch
 			subd_subpatch &sub = subpatches[morton];
 			sub.vert_start = vert_index;
 			sub.trafo = T;

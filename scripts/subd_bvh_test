@@ -53,7 +53,7 @@ load render-data/local/models/playground/plane_sand.obj
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 0
 modeltrafo shift 0 0 -2
-#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 2
+load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 5 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 5 align_level 5
@@ -61,7 +61,7 @@ modeltrafo shift 0 0 2
 #load render-data/local/dbg_approx/cube.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/cube2.obj subd_level 3 align_level 0
 #load render-data/local/dbg_approx/mixed_prims.obj subd_level 1
-load render-data/local/dbg_approx/mixed_prims_tex.obj subd_level 2 align_level 2
+#load render-data/local/dbg_approx/mixed_prims_tex.obj subd_level 2 align_level 0
 
 # Frog
 #load render-data/local/models/monsterfrog/monsterfrog_mapped.obj
@@ -106,8 +106,8 @@ look -0.019479 -0.990068 -0.13923
 # Debug mixed prims
 #at 0.394560009 36.6007347 3.11262989
 #look -0.0194789991 -0.990068018 -0.139229998
-at -4.47906 3.49792 6.83002
-look -0.019479 -0.990068 -0.13923
+#at -4.47906 3.49792 6.83002
+#look -0.019479 -0.990068 -0.13923
 
 # Pos frog
 #at -26.5161 0.373078 45.1841
@@ -125,7 +125,7 @@ raytracer subd-naive-bvh
 commit
 #algo local
 #algo direct
-#is cosine
+#is light
 algo direct/mis
 outfile out_subds/playground_direct_cpu.png
 
