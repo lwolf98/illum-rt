@@ -2,6 +2,11 @@
 
 #include "rt.h"
 
+static inline glm::vec3 project_(const glm::vec3 &a, const glm::mat3 &proj) {
+	glm::vec3 tmp = proj * glm::vec3(a.x, a.z, 1.f);
+	return glm::vec3(tmp.x/tmp.z, a.y, tmp.y/tmp.z);
+}
+
 struct aabb {
 	vec3 min, max;
 	aabb() : min(FLT_MAX), max(-FLT_MAX) {}
@@ -13,15 +18,15 @@ struct aabb {
 		min = glm::min(other.min, min);
 		max = glm::max(other.max, max);
 	}
-	void grow(const aabb &oa_box, const glm::mat3 &trafo) {
-		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.min.z));
-		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.min.z));
-		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.min.z));
-		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.min.z));
-		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.max.z));
-		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.max.z));
-		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.max.z));
-		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.max.z));
+	void grow(const aabb &oa_box, const glm::mat3 &trafo, const glm::mat3 &proj) {
+		grow(trafo * project_(vec3(oa_box.min.x, oa_box.min.y, oa_box.min.z), proj));
+		grow(trafo * project_(vec3(oa_box.max.x, oa_box.min.y, oa_box.min.z), proj));
+		grow(trafo * project_(vec3(oa_box.max.x, oa_box.max.y, oa_box.min.z), proj));
+		grow(trafo * project_(vec3(oa_box.min.x, oa_box.max.y, oa_box.min.z), proj));
+		grow(trafo * project_(vec3(oa_box.min.x, oa_box.min.y, oa_box.max.z), proj));
+		grow(trafo * project_(vec3(oa_box.max.x, oa_box.min.y, oa_box.max.z), proj));
+		grow(trafo * project_(vec3(oa_box.max.x, oa_box.max.y, oa_box.max.z), proj));
+		grow(trafo * project_(vec3(oa_box.min.x, oa_box.max.y, oa_box.max.z), proj));
 	}
 };
 

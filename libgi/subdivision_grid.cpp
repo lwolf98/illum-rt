@@ -137,6 +137,7 @@ class bvh_writer {
 	std::string name;
 	uint32_t v_off;
 	glm::mat3 M_trafo;
+	glm::mat3 M_proj;
 	uint32_t next_level;
 
 public:
@@ -159,8 +160,12 @@ public:
 		}
 	}
 
-	void set_trafo(glm::mat3 trafo) {
+	void set_trafo(const glm::mat3 &trafo) {
 		M_trafo = trafo;
+	}
+
+	void set_proj(const glm::mat3 &proj) {
+		M_proj = proj;
 	}
 
 	void new_level() {
@@ -180,14 +185,14 @@ public:
 	}
 
 	void print_box(const aabb &box) {
-		vec3 v_1 = M_trafo * vec3(box.min.x, box.min.y, box.min.z);
-		vec3 v_2 = M_trafo * vec3(box.max.x, box.min.y, box.min.z);
-		vec3 v_3 = M_trafo * vec3(box.max.x, box.max.y, box.min.z);
-		vec3 v_4 = M_trafo * vec3(box.min.x, box.max.y, box.min.z);
-		vec3 v_5 = M_trafo * vec3(box.min.x, box.min.y, box.max.z);
-		vec3 v_6 = M_trafo * vec3(box.max.x, box.min.y, box.max.z);
-		vec3 v_7 = M_trafo * vec3(box.max.x, box.max.y, box.max.z);
-		vec3 v_8 = M_trafo * vec3(box.min.x, box.max.y, box.max.z);
+		vec3 v_1 = M_trafo * project(vec3(box.min.x, box.min.y, box.min.z), M_proj);
+		vec3 v_2 = M_trafo * project(vec3(box.max.x, box.min.y, box.min.z), M_proj);
+		vec3 v_3 = M_trafo * project(vec3(box.max.x, box.max.y, box.min.z), M_proj);
+		vec3 v_4 = M_trafo * project(vec3(box.min.x, box.max.y, box.min.z), M_proj);
+		vec3 v_5 = M_trafo * project(vec3(box.min.x, box.min.y, box.max.z), M_proj);
+		vec3 v_6 = M_trafo * project(vec3(box.max.x, box.min.y, box.max.z), M_proj);
+		vec3 v_7 = M_trafo * project(vec3(box.max.x, box.max.y, box.max.z), M_proj);
+		vec3 v_8 = M_trafo * project(vec3(box.min.x, box.max.y, box.max.z), M_proj);
 
 		outfile << "v " << v_1.x << " " << v_1.y << " " << v_1.z << std::endl;
 		outfile << "v " << v_2.x << " " << v_2.y << " " << v_2.z << std::endl;
@@ -255,11 +260,12 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 
 		//std::cout << "Trafo (" << morton << "):\t" << glm::to_string(T_inv) << std::endl;
 		
+		// TODO: Can be built more efficiently, currently vertices are likely added multiple times adding using neighbouring quads
 		aabb box;
-		box.grow(T * verts[vert_index].pos);
-		box.grow(T * verts[parent->vert_right(vert_index)].pos);
-		box.grow(T * verts[parent->vert_down(vert_index)].pos);
-		box.grow(T * verts[parent->vert_down_right(vert_index)].pos);
+		box.grow(project(T * verts[vert_index].pos, proj));
+		box.grow(project(T * verts[parent->vert_right(vert_index)].pos, proj));
+		box.grow(project(T * verts[parent->vert_down(vert_index)].pos, proj));
+		box.grow(project(T * verts[parent->vert_down_right(vert_index)].pos, proj));
 
 		if (subd_level > 0) {
 			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
@@ -365,13 +371,13 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			target.emplace_back(-1.f, 1.f);
 			target.emplace_back(1.f, 1.f);
 			glm::mat3 proj = compute_homography(input, target);
-
-			// TODO: use proj
+			//glm::mat3 proj(1.f);
 
 			// Init subpatch
 			subd_subpatch &sub = subpatches[morton];
 			sub.vert_start = vert_index;
 			sub.trafo = T;
+			sub.proj = proj;
 			sub.subd_level = aligned_subd_level;
 		}
 
@@ -395,7 +401,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			auto &T = sub.trafo;
 			auto T_inv = inverse(T);
 
-			box.grow(sub.root_box, T_inv);
+			box.grow(sub.root_box, T_inv, inverse(sub.proj));
 		}
 		else {
 			// full aabb BVH:
@@ -450,6 +456,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 	writer.name_ext = "_aabb";
 	writer.start_bvh();
 	writer.set_trafo(glm::mat3(1.f));
+	writer.set_proj(glm::mat3(1.f));
 
 	// Start TL-BVH
 	writer.print_box(root_box);
@@ -476,6 +483,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 
 	for (const auto &sub : subpatches) {
 		writer.set_trafo(inverse(sub.trafo));
+		writer.set_proj(inverse(sub.proj));
 		writer.print_box(sub.root_box);
 	}
 
@@ -485,6 +493,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 		uint32_t size = 1 << 2*level; // 4^level
 		for (const auto &sub : subpatches) {
 			writer.set_trafo(inverse(sub.trafo));
+			writer.set_proj(inverse(sub.proj));
 			for (uint32_t morton = 0; morton < size; morton++) {
 				const patch_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)

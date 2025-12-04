@@ -47,13 +47,14 @@ load render-data/local/models/playground/plane_sand.obj
 #load render-data/local/bvh/surface.obj
 #load render-data/local/bvh/surface.obj subd_level 1 align_level 0
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
+load render-data/local/bvh/surface_tex.obj subd_level 1 align_level 1
 
 #load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/test_plane_rotated.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 0
 modeltrafo shift 0 0 -2
-load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 5 align_level 0
+#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 5 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 5 align_level 5
@@ -89,15 +90,17 @@ look 0.610622 -0.183563 -0.770354
 #look 0.933423 -0.115461 -0.339691
 #at -1.85527 0.806178 -2.77014
 #look 0.713304 -0.04213 0.699588
+at 2.12455 2.52896 4.06159
+look -0.359782 -0.421234 -0.83253
 
 # Pos number plane
-at -0.458907 2.11309 1.29086
-look 0.077323 -0.876971 -0.474281
+#at -0.458907 2.11309 1.29086
+#look 0.077323 -0.876971 -0.474281
 #at 0.204476 1.86327 5.34461
 #look 0.115416 -0.510952 -0.851826
 
-at 0.39456 1.70793 3.11263
-look -0.019479 -0.990068 -0.13923
+#at 0.39456 1.70793 3.11263
+#look -0.019479 -0.990068 -0.13923
 
 # Number cube
 #at -9.3126 0.763892 -2.51368
@@ -126,7 +129,8 @@ commit
 #algo local
 #algo direct
 #is light
-algo direct/mis
+#algo direct/mis
+algo primary
 outfile out_subds/playground_direct_cpu.png
 
 # WF GPU Direct

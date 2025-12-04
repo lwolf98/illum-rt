@@ -123,6 +123,7 @@ namespace subd {
 		std::vector<patch_node> nodes;
 		uint32_t vert_start;
 		glm::mat3 trafo;
+		glm::mat3 proj;
 		aabb root_box;
 		uint32_t subd_level;
 
