@@ -323,6 +323,27 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						subpatch.trafo * rayy.o,
 						subpatch.trafo * rayy.d
 					);
+	/*vec3 p1 = subpatch.world_to_projected(rayy.o);
+	vec3 p2 = subpatch.world_to_projected(rayy.o + rayy.d);
+	ray transformed_ray = ray(p1, p2-p1);*/
+
+	/*ray transformed_ray = ray(
+						subpatch.trafo * rayy.o,
+						subpatch.trafo * rayy.d
+					);
+	vec3 p1 = subpatch.oriented_to_projected(transformed_ray.o);
+	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + transformed_ray.d);
+	transformed_ray = ray(p1, p2-p1);*/
+
+	// Unproject box
+	/*aabb oriented_box;
+	oriented_box.min = subpatch.projected_to_oriented(subpatch.root_box.min);
+	oriented_box.max = subpatch.projected_to_oriented(subpatch.root_box.max);
+	float t_near, t_far;
+	if (!intersect(oriented_box, transformed_ray, t_near, t_far)) return;
+	vec3 p1 = subpatch.world_to_projected(transformed_ray.o + t_near * transformed_ray.d);
+	vec3 p2 = subpatch.world_to_projected(transformed_ray.o + t_far * transformed_ray.d);
+	transformed_ray = ray(p1, p2-p1);*/
 
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];

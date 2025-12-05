@@ -130,6 +130,10 @@ namespace subd {
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
 		const aabb &box_from_index(uint32_t local_index) const;
+
+		glm::vec3 world_to_projected(const glm::vec3 &p) const;
+		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;
+		glm::vec3 projected_to_oriented(const glm::vec3 &p) const;
 	};
 
 #ifdef BOX_APPROXIMATION

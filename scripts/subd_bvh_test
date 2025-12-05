@@ -47,14 +47,14 @@ load render-data/local/models/playground/plane_sand.obj
 #load render-data/local/bvh/surface.obj
 #load render-data/local/bvh/surface.obj subd_level 1 align_level 0
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
-load render-data/local/bvh/surface_tex.obj subd_level 1 align_level 1
+load render-data/local/bvh/surface_tex.obj subd_level 1 align_level 0
 
 #load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/test_plane_rotated.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 0
 modeltrafo shift 0 0 -2
-#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 5 align_level 0
+#load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 5 align_level 5

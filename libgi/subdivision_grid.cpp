@@ -2,7 +2,7 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -241,6 +241,21 @@ inline uint32_t truncate_to_block(uint32_t x, uint32_t n) {
 
 uint32_t subd_subpatch::len() const {
 	return (1 << subd_level) + 1; // 2^subd_level + 1
+}
+
+glm::vec3 subd_subpatch::oriented_to_projected(const glm::vec3 &p) const {
+	return project(p, proj);
+}
+
+glm::vec3 subd_subpatch::projected_to_oriented(const glm::vec3 &p) const {
+	return project(p, inverse(proj));
+}
+
+glm::vec3 subd_subpatch::world_to_projected(const glm::vec3 &p) const {
+	return project(trafo * p, proj);
+	//return project(glm::inverse(trafo) * p, glm::inverse(proj));
+	//return trafo * project(p, proj);
+	//return glm::inverse(trafo) * project(p, glm::inverse(proj));
 }
 
 void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {

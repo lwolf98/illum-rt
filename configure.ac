@@ -15,7 +15,7 @@ CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
 
 AC_CHECK_HEADER([glm/glm.hpp], [], [AC_MSG_ERROR([You need to install glm. On Debian-style distros this is libglm-dev.])])
 AC_CHECK_HEADER([png++/png.hpp],[],[AC_MSG_ERROR([You need to install png++. On Debian-style distros this is libpng++-dev])])
-AC_CHECK_HEADER([Eigen/Dense], [], [AC_MSG_ERROR([You need to install Eigen3. On Debian-style distros this is libeigen3-dev.])])
+AC_CHECK_HEADER([eigen3/Eigen/Dense], [], [AC_MSG_ERROR([You need to install Eigen3. On Debian-style distros this is libeigen3-dev.])])
 AC_CHECK_LIB([png], [main], [], [AC_MSG_ERROR([You need to install libpng (should be pulled in by png++)])])
 # libdl is needed by OptiX
 AC_CHECK_LIB([dl], [dlsym], [], [AC_MSG_ERROR([Cannot find libdl which is required for OptiX])])
