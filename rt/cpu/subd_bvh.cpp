@@ -1,4 +1,5 @@
 #include "subd_bvh.h"
+#include "debug/pixel.h"
 
 #include <algorithm>
 #include <iostream>
@@ -323,6 +324,8 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						subpatch.trafo * rayy.o,
 						subpatch.trafo * rayy.d
 					);
+	transformed_ray.t_min = rayy.t_min;
+	transformed_ray.t_max = rayy.t_max;
 	/*vec3 p1 = subpatch.world_to_projected(rayy.o);
 	vec3 p2 = subpatch.world_to_projected(rayy.o + rayy.d);
 	ray transformed_ray = ray(p1, p2-p1);*/
@@ -336,14 +339,19 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	transformed_ray = ray(p1, p2-p1);*/
 
 	// Unproject box
-	/*aabb oriented_box;
+	aabb oriented_box;
 	oriented_box.min = subpatch.projected_to_oriented(subpatch.root_box.min);
 	oriented_box.max = subpatch.projected_to_oriented(subpatch.root_box.max);
-	float t_near, t_far;
-	if (!intersect(oriented_box, transformed_ray, t_near, t_far)) return;
-	vec3 p1 = subpatch.world_to_projected(transformed_ray.o + t_near * transformed_ray.d);
-	vec3 p2 = subpatch.world_to_projected(transformed_ray.o + t_far * transformed_ray.d);
-	transformed_ray = ray(p1, p2-p1);*/
+	float t_near = transformed_ray.t_min, t_far = transformed_ray.t_max;
+	if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y)
+		std::cout << "";
+	//if (!intersect(oriented_box, transformed_ray, t_near, t_far)) return;
+	intersect(oriented_box, transformed_ray, t_near, t_far);
+	vec3 p1 = subpatch.oriented_to_projected(transformed_ray.o + t_near * transformed_ray.d);
+	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + t_far * transformed_ray.d);
+	if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y)
+		std::cout << "same point? " << (p1 == p2) << std::endl;
+	//transformed_ray = ray(p1, normalize(p2-p1));
 
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];

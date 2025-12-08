@@ -111,9 +111,12 @@ inline glm::mat3 compute_homography(const std::vector<glm::vec2> input, const st
 		b.row(0+i) << tar.x;
 		b.row(4+i) << tar.y;
 	}
+	//std::cout << "matrix: " << A << std::endl;
+	//std::cout << "result: " << b << std::endl;
 
 	VectorXd x(8);
 	x = A.fullPivLu().solve(b);
+	//std::cout << "variables: " << x << std::endl;
 
 	return glm::mat3 {
 		x[0], x[3], x[6],	// column 0
@@ -380,13 +383,28 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			input.emplace_back(xz(T * b));
 			input.emplace_back(xz(T * d));
 			input.emplace_back(xz(T * c));
+			/*input.emplace_back(1, 1);
+			input.emplace_back(4, 1);
+			input.emplace_back(2, 3);
+			input.emplace_back(5, 4);*/
 			std::vector<glm::vec2> target;
 			target.emplace_back(-1.f, -1.f);
-			target.emplace_back(1.f, -1.f);
 			target.emplace_back(-1.f, 1.f);
+			target.emplace_back(1.f, -1.f);
 			target.emplace_back(1.f, 1.f);
 			glm::mat3 proj = compute_homography(input, target);
 			//glm::mat3 proj(1.f);
+
+			/*std::cout << "result: " << project(vec3(5,1.3,4), proj) << std::endl;
+			std::cout << "result: " << project(vec3(4,1.3,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(4,0.4,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(1.5,0.4,2), proj) << std::endl;
+			std::cout << "result: " << project(vec3(1.5,0.6,2), proj) << std::endl;
+
+			std::cout << "result: " << project(vec3(2,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(3,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(2.5,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(project(vec3(2.5,0.6,1), proj), inverse(proj)) << std::endl;*/
 
 			// Init subpatch
 			subd_subpatch &sub = subpatches[morton];
