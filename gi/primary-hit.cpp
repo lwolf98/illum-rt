@@ -26,6 +26,11 @@ def_obj_debug;
 #endif
 
 vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
+#ifdef WITH_OBJ_DEBUG
+	start_obj_debug(x, y, "/tmp/debug_" + std::to_string(current_sample_index) + ".obj");
+	if (debug)
+		*ow << obj::object("path");
+#endif
 	current_pixel_x = x;
 	current_pixel_y = y;
 #ifndef RTGI_SKIP_PRIM_HIT_IMPL
@@ -55,6 +60,8 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 	if (debug)
 		*ow << obj::object("path");
 #endif
+	current_pixel_x = x;
+	current_pixel_y = y;
 
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
@@ -101,7 +108,8 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 		if (x == debug_pixel_x && y == debug_pixel_y) {
 			std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
 			float t = is.t;
-			if (!is.valid()) t = 10.f;
+			if (!is.valid())
+				t = 10.f;
 			*ow << obj::line(shadow_ray.o, shadow_ray.o + shadow_ray.d * t);
 		}
 
