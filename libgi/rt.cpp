@@ -53,17 +53,41 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		const aabb &box = subpatch.box_from_index(subd_quad_ref);
 		const glm::mat3 &M = glm::inverse(subpatch.trafo);
 
-		//TODO/REVIEW: ! Check if min.y is always correct or if it also could be max.y !
+#ifndef PROJECTION
 		if (upper) {
-			a.pos = M * vec3(box.min.x, box.min.y, box.min.z);
-			b.pos = M * vec3(box.max.x, box.min.y, box.min.z);
-			c.pos = M * vec3(box.min.x, box.min.y, box.max.z);
+			a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
+			b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
+			c.pos = M * vec3(box.min.x, box.max.y, box.max.z);
 		}
 		else {
-			a.pos = M * vec3(box.max.x, box.min.y, box.max.z);
-			b.pos = M * vec3(box.min.x, box.min.y, box.max.z);
-			c.pos = M * vec3(box.max.x, box.min.y, box.min.z);
+			a.pos = M * vec3(box.max.x, box.max.y, box.max.z);
+			b.pos = M * vec3(box.min.x, box.max.y, box.max.z);
+			c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
 		}
+#else
+		//const glm::mat3 &proj = glm::inverse(subpatch.proj);
+		
+		/*if (upper) {
+			a.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.min.z));
+			b.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.min.z));
+			c.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.max.z));
+		}
+		else {
+			a.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.max.z));
+			b.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.max.z));
+			c.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.min.z));
+		}*/
+		if (upper) {
+			a.pos = vec3(box.min.x, box.min.y, box.min.z);
+			b.pos = vec3(box.max.x, box.min.y, box.min.z);
+			c.pos = vec3(box.min.x, box.min.y, box.max.z);
+		}
+		else {
+			a.pos = vec3(box.max.x, box.min.y, box.max.z);
+			b.pos = vec3(box.min.x, box.min.y, box.max.z);
+			c.pos = vec3(box.max.x, box.min.y, box.min.z);
+		}
+#endif
 
 #else
 		// exact geometry

@@ -15,7 +15,7 @@ class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #define BOX_APPROXIMATION
-//#define PROJECTION
+#define PROJECTION
 
 namespace subd {
 	struct edge {

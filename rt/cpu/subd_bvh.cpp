@@ -417,7 +417,8 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					}
 					//if (dist < closest.t && dist > 0) { // -> crashes overlapping
 					//if (t1 < closest.t) { // -> fixes overlapping
-					if (t_total < closest.t) { // -> fixes overlapping
+					//if (t_total < closest.t) { // -> fixes overlapping
+					if (t_total < closest.t && t_total > 0) { // -> fixes overlapping and shadow ray self intersection
 #endif
 						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
 #ifndef BOX_APPROXIMATION
@@ -467,6 +468,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				quad_ref += patch.quad_ref_from_index(relative_index);
 			}
 
+			// TODO: ! supply projection logic !
 			std::array<triangle, 2> tris = patch.tris(quad_ref);
 			for (int i = 0; i < 2; i++) {
 				if (intersect(tris[i], patch.verts.data(), rayy, intersection)) {
@@ -483,6 +485,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				}
 			}
 #else
+			// TODO: ! supply projection logic !
 			float dist;
 			if (intersect4(subpatch.root_box, transformed_ray, dist)) {
 				closest.t = dist <= 0 ? FLT_MAX : dist;
