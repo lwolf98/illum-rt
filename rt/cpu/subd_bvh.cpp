@@ -369,6 +369,8 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				t_hit = dist;
 				t_bary = dist;
 #else
+				dist += eps; // correct by earlier added epsilon
+				
 				// Calculate new t
 				float t_total;
 				vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
