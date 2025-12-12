@@ -48,17 +48,17 @@ load render-data/local/models/playground/plane_sand.obj
 #load render-data/local/bvh/surface.obj
 #load render-data/local/bvh/surface.obj subd_level 1 align_level 0
 #load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
-load render-data/local/bvh/surface_tex.obj subd_level 3 align_level 3
+#load render-data/local/bvh/surface_tex.obj subd_level 3 align_level 2
 
 #load render-data/local/dbg_approx/test_plane.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/test_plane_rotated.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/two_planes.obj subd_level 1 align_level 0
-#load render-data/local/dbg_approx/two_planes_combined.obj subd_level 1 align_level 1
+#load render-data/local/dbg_approx/two_planes_combined.obj subd_level 3 align_level 3
 modeltrafo shift 0 0 -2
 #load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 3 align_level 2
 #load render-data/local/dbg_approx/two_planes_combined2.obj subd_level 2 align_level 0
 #load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
-#load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 5 align_level 4
+#load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 3 align_level 3
 modeltrafo shift 0 0 2
 #load render-data/local/dbg_approx/cube.obj subd_level 5 align_level 4
 #load render-data/local/dbg_approx/cube2.obj subd_level 3 align_level 0
@@ -71,7 +71,7 @@ modeltrafo shift 0 0 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 align_level 0
-#load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 3 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
+load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 #material select body
 #material albedo 0 0.215 0.047
@@ -95,8 +95,8 @@ look 0.610622 -0.183563 -0.770354
 #look -0.359782 -0.421234 -0.83253
 
 # Pos number plane
-at -0.458907 2.11309 1.29086
-look 0.077323 -0.876971 -0.474281
+#at -0.458907 2.11309 1.29086
+#look 0.077323 -0.876971 -0.474281
 #at 0.204476 1.86327 5.34461
 #look 0.115416 -0.510952 -0.851826
 
@@ -130,8 +130,8 @@ look -0.950138 -0.299847 -0.08561
 # Pos frog
 #at -26.5161 0.373078 45.1841
 #look 0.599129 -0.023018 -0.800322
-#at -7.84849 -0.111552 32.8653
-#look 0.599129 -0.023018 -0.800322
+at -7.84849 -0.111552 32.8653
+look 0.599129 -0.023018 -0.800322
 
 #at -5.74001 -0.062859 33.8478
 #look 0.494362 0.029664 -0.86875

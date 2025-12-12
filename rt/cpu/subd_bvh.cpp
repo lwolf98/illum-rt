@@ -272,10 +272,10 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	}
 }
 
-void bary_calc(aabb box, ray ray, triangle_intersection &is) {
+void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
 	//const float eps = 1e-4f;
 
-	vec3 hit = ray.o + is.t * ray.d;
+	vec3 hit = ray.o + t_dist * ray.d;
 	float width = box.max.x - box.min.x;
 	float height = box.max.z - box.min.z;
 	vec3 hit_relative = hit - box.min;
@@ -325,54 +325,24 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						subpatch.trafo * rayy.d
 					);
 #ifdef PROJECTION
-	transformed_ray.t_min = 0; //rayy.t_min;
-	transformed_ray.t_max = FLT_MAX; //rayy.t_max;
-	/*vec3 p1 = subpatch.world_to_projected(rayy.o);
-	vec3 p2 = subpatch.world_to_projected(rayy.o + rayy.d);
-	ray transformed_ray = ray(p1, p2-p1);*/
-
-	/*ray transformed_ray = ray(
-						subpatch.trafo * rayy.o,
-						subpatch.trafo * rayy.d
-					);
-	vec3 p1 = subpatch.oriented_to_projected(transformed_ray.o);
-	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + transformed_ray.d);
-	transformed_ray = ray(p1, p2-p1);*/
-
-	// Unproject box
-	aabb oriented_box;
-	oriented_box.min = subpatch.projected_to_oriented(subpatch.root_box.min);
-	oriented_box.max = subpatch.projected_to_oriented(subpatch.root_box.max);
-	//float t_near = transformed_ray.t_min, t_far = transformed_ray.t_max;
-	if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y)
-		std::cout << "";
-	//if (!intersect(oriented_box, transformed_ray, t_near, t_far)) return;
-	/*intersect(oriented_box, transformed_ray, t_near, t_far);
-	vec3 p1 = subpatch.oriented_to_projected(transformed_ray.o + t_near * transformed_ray.d);
-	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + t_far * transformed_ray.d);
-	if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y)
-		std::cout << "same point? " << (p1 == p2) << std::endl;
-	transformed_ray = ray(p1, normalize(p2-p1));*/
-
 	const float eps = transformed_ray.eps;
-	float t1 = (oriented_box.max.y - transformed_ray.o.y) * transformed_ray.id.y;
-	float t2 = (oriented_box.min.y - transformed_ray.o.y) * transformed_ray.id.y;
+
+	// Note: root_box is in projected space, but the y coordinate can also be used to
+	// calculate points in oriented space here. x and z cannot directly be mapped.
+	float t1 = (subpatch.root_box.max.y - transformed_ray.o.y) * transformed_ray.id.y;
+	float t2 = (subpatch.root_box.min.y - transformed_ray.o.y) * transformed_ray.id.y;
 	if (t1 > t2) std::swap(t1, t2);
-	//if (t1 < 0) return;
+
 	vec3 p1_oriented = transformed_ray.o + t1 * transformed_ray.d;
 	vec3 p1 = subpatch.oriented_to_projected(p1_oriented);
 	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + t2 * transformed_ray.d);
-	/*if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y) {
-		if (t1 == t2)	std::cout << "same t: " << t1 << std::endl;
-		else			std::cout << "t1: " << t1 << ", t2: " << t2 << std::endl;
-	}*/
+	
 	vec3 dir = (t1 != t2) ? normalize(p2-p1) : vec3(0, 1.f, 0); // REVIEW: stable solution for t1 == t2?
-	//if (t1 != t2) dir = normalize(dir);
 	p1 = p1 - eps * dir; // -> eps offset fixes (in this case wanted) potential self intersections
 	transformed_ray = ray(p1, dir);
-	//transformed_ray = ray(p1, normalize(p2-p1));
-
-	//transformed_ray = ray(subpatch.oriented_to_projected(transformed_ray.o), dir);
+	//transformed_ray.t_min = 0; // REVIEW: correct here? Or how to translate: rayy.t_min ?
+	//transformed_ray.t_max = FLT_MAX; // REVIEW: correct here? Or how to translate: rayy.t_max ?
+	//transformed_ray.t_max = 2.f; // -> quick fix for artifacts, but does not explain them...
 #endif
 
 	while (sp >= 0) {
@@ -382,88 +352,64 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 		bool is_leaf = trav_level == subpatch.subd_level;
 		if (!is_leaf) {
 			const auto &node = subpatch.nodes[index];
+			uint32_t child_base = child_node_base(trav_level, index);
+			uint32_t off_current_level = geometric_series4(trav_level);
 			float dist;
 			for (int i = 0; i < 4; ++i) {
 				const aabb &box = node.boxes[i];
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
+				float t_hit, t_bary;
+				bool accept_intersection = true;
+				if (!intersect4(box, transformed_ray, dist)) continue;
 
 #ifndef PROJECTION
-				if (intersect4(box, transformed_ray, dist)) {
-					if (dist < closest.t) {
+				//assert(!std::isnan(dist)); // REVIEW: can this happen?
+				//if (std::isnan(dist)) accept_intersection = false;
+				if (!(dist < closest.t)) accept_intersection = false;
+				t_hit = dist;
+				t_bary = dist;
 #else
-				float t1y = (box.min.y - transformed_ray.o.y) * transformed_ray.id.y;
-				float t2y = (box.max.y - transformed_ray.o.y) * transformed_ray.id.y;
-				if (t1y > t2y) std::swap(t1y, t2y);
-				vec3 hit = transformed_ray.o + t1y * transformed_ray.d;
-				transformed_ray.t_min = t1y;
-				//transformed_ray.t_max = t2y;
-				//transformed_ray.t_max = 2.f; // -> quick fix for artifacts, but does not explain them...
-				//transformed_ray.t_min = 0;
-				//transformed_ray.t_max = t2y-t1y;
-
-				if (intersect4(box, transformed_ray, dist)) {
-				//if (intersect_projected_xz(box, transformed_ray.o)) {
-					dist += eps; // correct by earlier added epsilon
-					if (current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y) {
-						bool dbg_ref = intersect4(box, transformed_ray, dist);
-						//bool dbg_ref = intersect_projected_xz(box, hit);
-						std::cout << "";
-					}
+				// Calculate new t
+				float t_total;
+				vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
+				vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
+				float t_dist = glm::length(x_oriented - p1_oriented);
+				t_total = t1 + t_dist;
 					
-					// Calculate new t
-					float t_total;
-					vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
-					vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
-					float t_dist = glm::length(x_oriented - p1_oriented);
-					t_total = t1 + t_dist;
-						
-					//if (dist < closest.t && dist > 0) { // -> crashes overlapping
-					//if (t1 < closest.t) { // -> fixes overlapping
-					//if (t_total < closest.t) { // -> fixes overlapping
-					if (t_total < closest.t && t_total > 0) { // -> fixes overlapping and shadow ray self intersection
+				//if (isnan(t_total)) accept_intersection = false; //REVIEW: check nans here
+				if (!(t_total < closest.t && t_total > 0)) accept_intersection = false; // -> fixes overlapping and shadow ray self intersection
+				t_hit = t_total;
+				t_bary = dist;
 #endif
-						uint32_t child_base = child_node_base(trav_level, index); //TODO: here or outside of loop?
+
+				if (!accept_intersection) continue;
+
 #ifndef BOX_APPROXIMATION
-						stack[++sp] = child_base+i;
+				stack[++sp] = child_base+i;
 #else
-						if (trav_level < subpatch.subd_level-1) {
-							stack[++sp] = child_base+i;
-						}
-						else {
-							//box_approximation(subpatch.vert_start, dist, patch_ref, child_base+i, trav_level, transformed_ray, box, closest);
-
-							//closest.t = dist <= 0 ? FLT_MAX : dist;
-							//closest.t = std::abs(dist);
-							//closest.t = t1; //+ dist/(box.max.y-box.min.y);
-	#ifndef PROJECTION
-							if (dist <= 0) continue;
-							closest.t = dist;
-							//closest.t = dist <= 0 ? FLT_MAX : dist; //REVIEW: still correct or just assign dist?
-							closest.ref = ((uint32_t)-1) - patch_ref;
-							bary_calc(box, transformed_ray, closest);
-	#else
-							//if (t1 < 0) return;
-							//closest.t = 0;
-							closest.t = dist; // -> required in local projected space for barycentric coord calculation
-							closest.ref = ((uint32_t)-1) - patch_ref;
-							bary_calc(box, transformed_ray, closest);
-							closest.t = t_total; // -> set to global scope after bary_calc
-	#endif
-
-							uint32_t off_current_level = geometric_series4(trav_level);
-							uint32_t relative_index = (child_base+i) - off_current_level;
-							uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
-														+ relative_index;
-
-							closest.subd_quad_ref.set_ref(quad_ref_morton);
-						}
-#endif
-					}
+				if (trav_level < subpatch.subd_level-1) {
+					stack[++sp] = child_base+i;
 				}
+				else {
+	#ifndef PROJECTION
+					if (t_hit <= 0) continue;
+	#endif
+					bary_calc(box, transformed_ray, t_bary, closest);
+					closest.ref = ((uint32_t)-1) - patch_ref;
+					closest.t = t_hit; // -> required in local projected space for barycentric coord calculation
+
+					uint32_t relative_index = (child_base+i) - off_current_level;
+					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+												+ relative_index;
+
+					closest.subd_quad_ref.set_ref(quad_ref_morton);
+				}
+#endif
 			}
 		}
 		else {
 #ifndef BOX_APPROXIMATION
+			/* Regular geometry hit */
 			uint32_t quad_ref = subpatch.vert_start;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
@@ -488,21 +434,16 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				}
 			}
 #else
-			// TODO: ! supply projection logic !
+			/* Box approximation root box hit */
 			float dist;
-	#ifndef PROJECTION
-			if (intersect4(subpatch.root_box, transformed_ray, dist)) {
-				if (dist <= 0) continue;
-				closest.t = dist;
-				//closest.t = dist <= 0 ? FLT_MAX : dist;
-				closest.ref = ((uint32_t)-1) - patch_ref;
-				bary_calc(subpatch.root_box, transformed_ray, closest);
+			if (!intersect4(subpatch.root_box, transformed_ray, dist)) continue;
+			float t_hit, t_bary;
 
-				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
-				closest.subd_quad_ref.set_ref(quad_ref_morton);
-			}
+	#ifndef PROJECTION
+				if (dist <= 0) continue;
+				t_hit = dist;
+				t_bary = dist;
 	#else
-			if (intersect4(subpatch.root_box, transformed_ray, dist)) {
 				dist += eps; // correct by earlier added epsilon
 
 				// Calculate new t
@@ -512,18 +453,18 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				float t_dist = glm::length(x_oriented - p1_oriented);
 				t_total = t1 + t_dist;
 
-				if (t_total < closest.t && t_total > 0) { // -> fixes overlapping and shadow ray self intersection
-					closest.ref = ((uint32_t)-1) - patch_ref;
-
-					closest.t = dist; // -> required in local projected space for barycentric coord calculation
-					bary_calc(subpatch.root_box, transformed_ray, closest);
-					closest.t = t_total; // -> set to global scope after bary_calc
-
-					uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
-					closest.subd_quad_ref.set_ref(quad_ref_morton);
-				}
-			}
+				//if (std::isnan(t_total )) continue; // TODO/REVIEW: What happens here? How to handle this properly?
+				if (!(t_total < closest.t && t_total > 0)) continue; // -> fixes overlapping and shadow ray self intersection
+				t_hit = t_total;
+				t_bary = dist; // -> required in local projected space for barycentric coord calculation
 	#endif
+
+				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
+				closest.t = t_hit;
+				closest.ref = ((uint32_t)-1) - patch_ref;
+				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
+				closest.subd_quad_ref.set_ref(quad_ref_morton);
+
 #endif
 		}
 	}
