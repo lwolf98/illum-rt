@@ -272,7 +272,7 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	}
 }
 
-void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
+inline void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
 	//const float eps = 1e-4f;
 
 	vec3 hit = ray.o + t_dist * ray.d;
@@ -304,6 +304,50 @@ void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersect
 	assert(is.gamma >= 0 && is.gamma <= 1);
 	assert(is.beta + is.gamma >= 0);
 	assert(is.beta + is.gamma <= 1);
+}
+
+inline bool compute_valid_hit(
+	const aabb &box,
+	const ray &transformed_ray,
+	float closest_t,
+#ifdef PROJECTION
+	float t_near_oriented,
+	const glm::vec3 &hit_near_oriented,
+	float t_off,
+	const subd::subd_subpatch &subpatch,
+#endif
+	bool allow_negative_t,
+	float &t_hit,
+	float &t_bary
+) {
+	float dist;
+	if (!intersect4(box, transformed_ray, dist)) return false;
+
+#ifndef PROJECTION
+	//assert(!std::isnan(dist)); // REVIEW: can this happen?
+	if (std::isnan(dist)) return false;
+	if (dist >= closest_t) return false;
+	if (!allow_negative_t && dist <= 0) return false;
+	t_hit = dist;
+	t_bary = dist;
+#else
+	dist += t_off; // correct by earlier added epsilon
+
+	// Calculate new t
+	float t_total;
+	vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
+	vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
+	float t_dist = glm::length(x_oriented - hit_near_oriented);
+	t_total = t_near_oriented + t_dist;
+		
+	if (isnan(t_total)) return false; //REVIEW: check nans here
+	if (t_total >= closest_t) return false; // -> fixes overlapping and shadow ray self intersection
+	if (!allow_negative_t && t_total <= 0) return false;
+	t_hit = t_total;
+	t_bary = dist;
+#endif
+
+	return true;
 }
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
@@ -359,32 +403,11 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				const aabb &box = node.boxes[i];
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				float t_hit, t_bary;
-				bool accept_intersection = true;
-				if (!intersect4(box, transformed_ray, dist)) continue;
-
 #ifndef PROJECTION
-				//assert(!std::isnan(dist)); // REVIEW: can this happen?
-				//if (std::isnan(dist)) accept_intersection = false;
-				if (!(dist < closest.t)) accept_intersection = false;
-				t_hit = dist;
-				t_bary = dist;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, true, t_hit, t_bary)) continue;
 #else
-				dist += eps; // correct by earlier added epsilon
-				
-				// Calculate new t
-				float t_total;
-				vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
-				vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
-				float t_dist = glm::length(x_oriented - p1_oriented);
-				t_total = t1 + t_dist;
-					
-				//if (isnan(t_total)) accept_intersection = false; //REVIEW: check nans here
-				if (!(t_total < closest.t && t_total > 0)) accept_intersection = false; // -> fixes overlapping and shadow ray self intersection
-				t_hit = t_total;
-				t_bary = dist;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
 #endif
-
-				if (!accept_intersection) continue;
 
 #ifndef BOX_APPROXIMATION
 				stack[++sp] = child_base+i;
@@ -437,29 +460,14 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			}
 #else
 			/* Box approximation root box hit */
-			float dist;
-			if (!intersect4(subpatch.root_box, transformed_ray, dist)) continue;
 			float t_hit, t_bary;
-
-	#ifndef PROJECTION
-				if (dist <= 0) continue;
-				t_hit = dist;
-				t_bary = dist;
-	#else
-				dist += eps; // correct by earlier added epsilon
-
-				// Calculate new t
-				float t_total;
-				vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
-				vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
-				float t_dist = glm::length(x_oriented - p1_oriented);
-				t_total = t1 + t_dist;
-
-				//if (std::isnan(t_total )) continue; // TODO/REVIEW: What happens here? How to handle this properly?
-				if (!(t_total < closest.t && t_total > 0)) continue; // -> fixes overlapping and shadow ray self intersection
-				t_hit = t_total;
-				t_bary = dist; // -> required in local projected space for barycentric coord calculation
-	#endif
+			
+#ifndef PROJECTION
+			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, t_hit, t_bary)) continue;
+#else
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
+#endif
 
 				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
 				closest.t = t_hit;
