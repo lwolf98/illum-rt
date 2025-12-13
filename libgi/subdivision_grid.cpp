@@ -495,6 +495,10 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			return;
 		}
 
+		// TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
+		if (align_boxes)
+			subpatches[morton].root_box_world = box;
+
 	}
 
 

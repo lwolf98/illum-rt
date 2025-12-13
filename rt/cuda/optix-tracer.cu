@@ -281,13 +281,13 @@ namespace wf::cuda
 
 		/* Build custom primitives GAS */
 		OptixTraversableHandle custom_prims_handle = 0;
-		if (scene->patch_root_nodes.size > 0) {
+		if (scene->patch_root_boxes.size > 0) {
 			// SubD grid data
 			std::vector<OptixBuildInput> custom_prim_inputs = { OptixBuildInput{} };
 			custom_prim_inputs[0].type = OPTIX_BUILD_INPUT_TYPE_CUSTOM_PRIMITIVES;
 			
 			//CUdeviceptr patches = static_cast<CUdeviceptr>(scene->patches);
-			CUdeviceptr aabb_roots = static_cast<CUdeviceptr>(scene->patch_root_nodes);
+			CUdeviceptr aabb_roots = static_cast<CUdeviceptr>(scene->patch_root_boxes);
 
 			OptixBuildInputCustomPrimitiveArray &custom_prim_array = custom_prim_inputs[0].customPrimitiveArray;
 			//custom_prim_array.aabbBuffers = &patches;
@@ -295,12 +295,12 @@ namespace wf::cuda
 			//custom_prim_array.numPrimitives = scene->patches.size;
 			custom_prim_array.aabbBuffers = &aabb_roots;
 			custom_prim_array.strideInBytes = sizeof(aabb);
-			custom_prim_array.numPrimitives = scene->patch_root_nodes.size;
+			custom_prim_array.numPrimitives = scene->patch_root_boxes.size;
 
 			uint32_t custom_prim_flags[2] = {OPTIX_GEOMETRY_FLAG_NONE, OPTIX_GEOMETRY_FLAG_NONE};
 			custom_prim_array.flags = custom_prim_flags;
 
-			std::vector<uint32_t> custom_sbt_indices(scene->patch_root_nodes.size, 1);
+			std::vector<uint32_t> custom_sbt_indices(scene->patch_root_boxes.size, 1);
 			global_memory_buffer<uint32_t> custom_sbt_index_buffer("tmp_sbt_indices", 0);
 			custom_sbt_index_buffer.upload(custom_sbt_indices);
 			CUdeviceptr d_sbt_indices = (CUdeviceptr)custom_sbt_index_buffer;
@@ -383,6 +383,7 @@ namespace wf::cuda
 		host_launch_params.triangles = scene_data->triangles.device_memory;
 
 		host_launch_params.patches = scene_data->patches.device_memory;
+		host_launch_params.subpatches = scene_data->subpatches.device_memory;
 		host_launch_params.patch_nodes = scene_data->patch_nodes.device_memory;
 		host_launch_params.patch_vertex_pos = scene_data->patch_vertex_pos.device_memory;
 		//host_launch_params.patch_vertex_norm = ;

@@ -14,8 +14,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
-#define BOX_APPROXIMATION
-#define PROJECTION
+//#define BOX_APPROXIMATION
+//#define PROJECTION
 
 namespace subd {
 	struct edge {
@@ -128,6 +128,7 @@ namespace subd {
 		glm::mat3 proj;
 #endif
 		aabb root_box;
+		aabb root_box_world; // TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
 		uint32_t subd_level;
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
@@ -151,7 +152,6 @@ namespace subd {
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
-		std::vector<glm::mat3> trafos;
 		std::vector<subd_subpatch> subpatches;
 		aabb root_box;
 		uint32_t material_id;

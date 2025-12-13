@@ -20,6 +20,7 @@ namespace wf::cuda {
 		return bary_interpol(a, b, c, hit.beta, hit.gamma);
 	}
 
+	// [FEAT-APPROX] Move diff_geom to base.h or similar (like in manylight branch) and update to box approximation
 	struct __align__(16) diff_geom {
 		__device__ __inline__ diff_geom(const tri_is &is, const scene_refs *params) {
 			if (is.is_tri())

@@ -86,35 +86,52 @@ namespace wf {
 
 			// SubD patches
 			vector<subd_patch> device_patches(scene->patches.size());
+			vector<subd_subpatch> device_subpatches;
 			vector<patch_node> device_nodes;
-			vector<aabb> device_root_nodes(scene->patches.size());
+			vector<aabb> device_root_boxes;
 			tmp_p.clear(), tmp_n.clear(), tmp_t.clear();
-			for (int i = 0; i < scene->patches.size(); ++i) {
-				const auto &patch = scene->patches[i];
+			for (uint32_t i = 0; i < scene->patches.size(); ++i) {
+				const subd::subd_patch &patch = scene->patches[i];
 				auto &device_patch = device_patches[i];
 				device_patch.subd_level = patch.subd_level;
 				device_patch.material_id = patch.material_id;
-				
-				uint32_t offset = device_nodes.size();
-				device_nodes.resize(offset + patch.nodes.size());
-				device_patch.bvh_node_offset = offset;
 
-				device_root_nodes[i] = patch.root_box;
+				// Resize subpatches and set offset
+				uint32_t offset_subpatches = device_subpatches.size();
+				device_subpatches.resize(offset_subpatches + patch.subpatches.size());
+				device_root_boxes.resize(offset_subpatches + patch.subpatches.size());
 
-				#pragma omp parallel for
-				for (int j = 0; j < patch.nodes.size(); ++j) {
-					patch_node device_node;
-					const subd::patch_node &node = patch.nodes[j];
-					device_node.set_min(0, node.boxes[0].min);
-					device_node.set_min(1, node.boxes[1].min);
-					device_node.set_min(2, node.boxes[2].min);
-					device_node.set_min(3, node.boxes[3].min);
-					device_node.set_max(0, node.boxes[0].max);
-					device_node.set_max(1, node.boxes[1].max);
-					device_node.set_max(2, node.boxes[2].max);
-					device_node.set_max(3, node.boxes[3].max);
+				for (uint32_t j = 0; j < patch.subpatches.size(); ++j) {
+					const subd::subd_subpatch &subpatch = patch.subpatches[j];
+					auto &device_subpatch = device_subpatches[offset_subpatches+j];
+					auto &device_subpatch_root_box = device_root_boxes[offset_subpatches+j];
+					device_subpatch_root_box = subpatch.root_box_world; //aabb root_box from parent patch (not subpatch.root_box)
 
-					device_nodes[offset + j] = device_node;
+					device_subpatch.parent_id = i; // reference to parent patch
+					device_subpatch.vert_start = subpatch.vert_start;
+					device_subpatch.trafo = mat3::from(subpatch.trafo);
+					//device_subpatch.proj = ; -> required for projection
+					device_subpatch.subd_level = subpatch.subd_level;
+					//device_subpatch.root_box = ...; -> required for box approximation (probably better to use two float4)
+
+					// Resize nodes and set offset
+					uint32_t offset_nodes = device_nodes.size();
+					device_nodes.resize(offset_nodes + subpatch.nodes.size());
+					device_subpatch.bvh_node_offset = offset_nodes;
+
+					#pragma omp parallel for
+					for (uint32_t k = 0; k < subpatch.nodes.size(); ++k) {
+						const subd::patch_node &node = subpatch.nodes[k];
+						patch_node &device_node = device_nodes[offset_nodes+k];
+						device_node.set_min(0, node.boxes[0].min);
+						device_node.set_min(1, node.boxes[1].min);
+						device_node.set_min(2, node.boxes[2].min);
+						device_node.set_min(3, node.boxes[3].min);
+						device_node.set_max(0, node.boxes[0].max);
+						device_node.set_max(1, node.boxes[1].max);
+						device_node.set_max(2, node.boxes[2].max);
+						device_node.set_max(3, node.boxes[3].max);
+					}
 				}
 
 				device_patch.start_index = tmp_p.size();
@@ -130,13 +147,14 @@ namespace wf {
 					tmp_n[insert_index] = float4{ patch.verts[j].norm.x, patch.verts[j].norm.y, patch.verts[j].norm.z, 0 };
 					tmp_t[insert_index] = float2{ patch.verts[j].tc.x, patch.verts[j].tc.y };
 				}
-
 			}
 
+			// Store patch data
 			if (device_patches.size() > 0) {
 				patches.upload(device_patches);
+				subpatches.upload(device_subpatches);
 				patch_nodes.upload(device_nodes);
-				patch_root_nodes.upload(device_root_nodes);
+				patch_root_boxes.upload(device_root_boxes);
 
 				patch_vertex_pos.upload(tmp_p);
 				patch_vertex_norm.upload(tmp_n);

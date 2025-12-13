@@ -80,7 +80,8 @@ namespace wf::cuda {
 
 		optixGetLaunchIndex();
 
-		prd->set_ref(optixGetPrimitiveIndex(), true);
+		const auto &subpatch = launch_params.subpatches[optixGetPrimitiveIndex()];
+		prd->set_ref(subpatch.parent_id, true);
         prd->beta = __uint_as_float(optixGetAttribute_0()); //0.5f;
         prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
@@ -127,6 +128,7 @@ namespace wf::cuda {
 	}
 	//TODO end: until here
 
+	// [FEAT-APPROX] Update logic for box approximation
 	extern "C" __global__ void __intersection__patches() {
 		if (DBG_PRINT) printf("intersection patches\n");
 		uint3 px_index = optixGetLaunchIndex();
@@ -136,22 +138,29 @@ namespace wf::cuda {
 		//debug = debug && px_index.x == 640 && px_index.y == 250;
 
 		// node x, patch x (level -1), quad x (x)
-		debug = debug && px_index.x == 566 && px_index.y == 281;
+		debug = debug && px_index.x == 528 && px_index.y == 251;
 
-		float3 ray_origin = optixGetObjectRayOrigin();
-		float3 ray_direction = optixGetObjectRayDirection();
+		int id = optixGetPrimitiveIndex();
+		auto &subpatch = launch_params.subpatches[id];
+		auto &patch = launch_params.patches[subpatch.parent_id];
+		uint32_t node_offset = subpatch.bvh_node_offset;
+
+		float3 ray_origin_world = optixGetObjectRayOrigin();
+		float3 ray_direction_world = optixGetObjectRayDirection();
+		float3 ray_origin = subpatch.trafo * ray_origin_world;
+		float3 ray_direction = subpatch.trafo * ray_direction_world;
 		float tmin = optixGetRayTmin();
 		float tmax = optixGetRayTmax();
 		float3 r_id = ray_id(ray_direction);
 		float3 r_ood = ray_ood(ray_origin, r_id);
 
-		int id = optixGetPrimitiveIndex();
-		auto &patch = launch_params.patches[id];
-		uint32_t node_offset = patch.bvh_node_offset;
+		// TMP: DEBUGGING
+		//optixReportIntersection(0.f, 0, __float_as_uint(0.f), __float_as_uint(0.f), 1);
+		//return;
 
 		uint32_t stack[25];
 		int32_t sp = 0;
-		bool is_root_and_leaf = patch.subd_level == 0;
+		bool is_root_and_leaf = subpatch.subd_level == 0;
 		stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
@@ -166,7 +175,7 @@ namespace wf::cuda {
 			uint32_t index = stack[sp--];
 			uint32_t trav_level = log4_clz(1+3*index);
 
-			bool is_leaf = trav_level == patch.subd_level;
+			bool is_leaf = trav_level == subpatch.subd_level;
 			if (!is_leaf) {
 				const auto &node = launch_params.patch_nodes[node_offset + index];
 				float t = FLT_MAX;
@@ -187,14 +196,17 @@ namespace wf::cuda {
 				}
 			}
 			else {
-				uint32_t quad_ref = 0;
+				uint32_t quad_ref = subpatch.vert_start;
 				if (!is_root_and_leaf) { // is only leaf
 					uint32_t off_current_level = geometric_series4(trav_level-1);
-					quad_ref = patch.quad_ref_from_index(index - off_current_level);
+					quad_ref += patch.quad_ref_from_index(index - off_current_level);
+					if (debug) printf("Index: %d, trav_level: %d, off_cur_level: %d, quad_ref: %d\n", index, trav_level, off_current_level, quad_ref);
+					if (debug) printf("Rel_index: %d, rel_quad_ref: %d\n", index - off_current_level, patch.quad_ref_from_index(index - off_current_level));
 				}
 
-				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
+				if (debug) printf("Patch ref: %d, Subpatch ref: %d, Quad ref: %d\n", subpatch.parent_id, id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);
+				if (debug) printf("Subpatch vert start: %d\n", subpatch.vert_start);
 
 				uint4 tri_0 = patch.subd_tri(quad_ref, true);
 				uint4 tri_1 = patch.subd_tri(quad_ref, false);
@@ -218,7 +230,7 @@ namespace wf::cuda {
 
 				float t = FLT_MAX;
 				bool hit = intersect_triangle(a_0, b_0, c_0,
-												ray_origin, ray_direction, tmin, tmax,
+												ray_origin_world, ray_direction_world, tmin, tmax,
 												t, beta, gamma, debug);
 
 				
@@ -236,7 +248,7 @@ namespace wf::cuda {
 
 				t = FLT_MAX;
 				hit = intersect_triangle(a_1, b_1, c_1,
-												ray_origin, ray_direction, tmin, tmax,
+												ray_origin_world, ray_direction_world, tmin, tmax,
 												t, beta, gamma, debug);
 
 				if (debug) {
@@ -252,7 +264,8 @@ namespace wf::cuda {
 			}
 		}
 
-		//printf("hit:%d\n", closest_t < FLT_MAX);
+		if (debug) printf("Closest t: %f\n", closest_t);
+
 		if (closest_t < FLT_MAX)
 			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref);
 

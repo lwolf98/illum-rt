@@ -31,6 +31,37 @@ namespace wf {
 			void synchronize() override;
 		};
 
+		// Stored as rows for efficient M*v
+		struct mat3 {
+			float a[9];
+
+			static mat3 from(glm::mat3 mat) {
+				return {{
+					mat[0][0], mat[1][0], mat[2][0],
+					mat[0][1], mat[1][1], mat[2][1],
+					mat[0][2], mat[1][2], mat[2][2]
+				}};
+			}
+
+			__device__ float& at(int x, int y) {
+				return a[y*3+x];
+			}
+			__device__ float3 operator*(const float3 &f) {
+				float3 res;
+				res.x = f.x * at(0,0) + f.y * at(1,0) + f.z * at(2,0);
+				res.y = f.x * at(0,1) + f.y * at(1,1) + f.z * at(2,1);
+				res.z = f.x * at(0,2) + f.y * at(1,2) + f.z * at(2,2);
+				return res;
+			}
+			__device__ float4 operator*(const float4 &f) {
+				float4 res;
+				res.x = f.x * at(0,0) + f.y * at(1,0) + f.z * at(2,0);
+				res.y = f.x * at(0,1) + f.y * at(1,1) + f.z * at(2,1);
+				res.z = f.x * at(0,2) + f.y * at(1,2) + f.z * at(2,2);
+				res.w = 1.0;
+				return res;
+			}
+		};
 
 		struct __align__(16) tri_is {
 			float t;
@@ -442,6 +473,18 @@ namespace wf {
 			}*/
 		};
 
+		struct subd_subpatch {
+			uint32_t vert_start;
+			mat3 trafo;
+			uint32_t bvh_node_offset;
+			uint32_t subd_level;
+			uint32_t parent_id; // TODO/TMP: Can probably be deleted and calculated in intersect
+
+			__forceinline__ __device__ uint32_t len() const {
+				return (1 << subd_level)+1;
+			}
+		};
+
 		struct subd_patch {
 			uint32_t start_index;
 			uint32_t bvh_node_offset;
@@ -471,6 +514,7 @@ namespace wf {
 					tri.z = start_index + quad_id + 1; // vert right
 				}
 				else {
+					// [FEAT-APPROX] update vertex order for box approx
 					tri.x = start_index + quad_id + len(); // vert down
 					tri.y = start_index + quad_id + len() + 1; // vert down right
 					tri.z = start_index + quad_id + 1; // vert right
@@ -521,8 +565,9 @@ namespace wf {
 			std::vector<texture_image> tex_images;
 
 			global_memory_buffer<subd_patch> patches;
+			global_memory_buffer<subd_subpatch> subpatches;
 			global_memory_buffer<patch_node> patch_nodes;
-			global_memory_buffer<aabb> patch_root_nodes;
+			global_memory_buffer<aabb> patch_root_boxes;
 			texture_buffer<float4> patch_vertex_pos;
 			texture_buffer<float4> patch_vertex_norm;
 			texture_buffer<float2> patch_vertex_tc;
@@ -535,8 +580,9 @@ namespace wf {
 						  triangles("triangles", 0),
 						  materials("materials", 0),
 						  patches("patches", 0),
+						  subpatches("subpatches", 0),
 						  patch_nodes("patch_nodes", 0),
-						  patch_root_nodes("patch_root_nodes", 0),
+						  patch_root_boxes("patch_root_boxes", 0),
 						  patch_vertex_pos("patch_vertex_pos", 0),
 						  patch_vertex_norm("patch_vertex_norm", 0),
 						  patch_vertex_tc("patch_vertex_tc", 0),
@@ -552,8 +598,9 @@ namespace wf {
 																	n_vertices(org->n_vertices),
 																	n_triangles(org->n_triangles),
 																	patches(org->patches, m),
+																	subpatches(org->subpatches, m),
 																	patch_nodes(org->patch_nodes, m),
-																	patch_root_nodes(org->patch_root_nodes, m),
+																	patch_root_boxes(org->patch_root_boxes, m),
 																	patch_vertex_pos(org->patch_vertex_pos, m),
 																	patch_vertex_norm(org->patch_vertex_norm, m),
 																	patch_vertex_tc(org->patch_vertex_tc, m),

@@ -209,7 +209,6 @@ uint32_t child_node_base(
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = patch.nodes[0];
 
 	// ---- REVIEW size
 	//uint32_t max_size = patch.align_level + 4; // tree height + number of child nodes
@@ -353,7 +352,6 @@ inline bool compute_valid_hit(
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = subpatch.nodes[0];
 
 	// ---- REVIEW size
 	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
