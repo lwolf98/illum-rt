@@ -4,6 +4,7 @@
 #include "rt/cpu/bvh.h"
 #include "libgi/timer.h"
 #include "libgi/subdivision.h"
+#include "libgi/subdivision-helper.h"
 
 #include "cuda-helpers.h"
 //#include "cuda-operators.h"
@@ -490,6 +491,10 @@ namespace wf {
 			uint32_t bvh_node_offset;
 			uint32_t material_id;
 			uint32_t subd_level;
+#ifdef BOX_APPROXIMATION
+			float2 box_tcs[4];
+			float4 box_norms[4];
+#endif
 
 			__forceinline__ __device__ uint32_t len() const {
 				return (1 << subd_level)+1;
@@ -524,12 +529,39 @@ namespace wf {
 			}
 
 			uint32_t __forceinline__ __device__ quad_ref_from_index(uint32_t index) {
-				uint32_t x = decode_morton(index);
-				uint32_t y = decode_morton(index >> 1);
-				return y*len() + x;
+				uint2 xy = xy_from_index(index);
+				return xy.y*len() + xy.x;
 			}
 
+#ifdef BOX_APPROXIMATION
+			std::tuple<float, float> __forceinline__ __device__ global_uvs(subd::quad_ref quad_ref, float local_u, float local_v) const {
+				uint32_t quad_len = len() - 1;
+				auto [x, y] = xy_from_index(quad_ref.ref());
+				float global_u = x * 1.f/quad_len;
+				float global_v = y * 1.f/quad_len;
+
+				float step = 1.f / quad_len;
+				if (quad_ref.is_upper_tri()) {
+					global_u += step * local_u;
+					global_v += step * local_v;
+				}
+				else {
+					global_u += step * (1.f - local_u);
+					global_v += step * (1.f - local_v);
+				}
+
+				return {global_u, global_v};
+			}
+#endif
+
 		private:
+			uint2 __forceinline__ __device__ xy_from_index(uint32_t index) const {
+				return make_uint2(
+					decode_morton(index),		// x
+					decode_morton(index >> 1)	// y
+				);
+			}
+
 			//TODO: remove one of the variables (x, morton)
 			static uint32_t __forceinline__ __device__ decode_morton(uint32_t morton) {
 				uint32_t x = morton & 0x55555555;

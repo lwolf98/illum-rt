@@ -14,7 +14,7 @@ PXR_NAMESPACE_OPEN_SCOPE
 class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
-//#define BOX_APPROXIMATION
+#define BOX_APPROXIMATION
 //#define PROJECTION
 
 namespace subd {
