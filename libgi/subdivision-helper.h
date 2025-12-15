@@ -18,6 +18,7 @@ namespace subd {
 
 		public:
 		heterogeneous quad_ref() : data_field(0) {}
+		heterogeneous quad_ref(uint32_t data_field) : data_field(data_field) {}
 
 		heterogeneous uint32_t ref() const { return data_field >> 5; }
 
@@ -45,5 +46,8 @@ namespace subd {
 			// reset last bit to 0 with & and write data with |
 			data_field = (data_field & ~1u) | static_cast<uint32_t>(upper_tri);
 		}
+
+		// provides the internal data field, can be used to reconstruct this object
+		heterogeneous uint32_t internal_data() const { return data_field; }
 	};
 }

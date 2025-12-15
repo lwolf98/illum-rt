@@ -85,8 +85,7 @@ namespace wf::cuda {
         prd->beta = __uint_as_float(optixGetAttribute_0()); //0.5f;
         prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
-		int32_t quad_ref = (int32_t)optixGetAttribute_2();
-		prd->set_quad_ref(abs(quad_ref)-1, quad_ref >= 0);
+		prd->subd_quad_ref = subd::quad_ref(optixGetAttribute_2());
 		if (debug) printf("CH: t: %f, beta: %f, gamma: %f\n", prd->t, prd->beta, prd->gamma);
 	};
 
@@ -169,7 +168,7 @@ namespace wf::cuda {
 
 		float closest_t = FLT_MAX;
 		float beta = 0, gamma = 0;
-		int32_t closest_quad_ref = 0;
+		subd::quad_ref closest_quad_ref;
 		while (sp >= 0) {
 			if (debug) printf("\n");
 			uint32_t index = stack[sp--];
@@ -242,7 +241,8 @@ namespace wf::cuda {
 				if (hit && t < closest_t) {
 					if (debug) printf("hit tri 0 and is closer!!!\n");
 					closest_t = t;
-					closest_quad_ref = quad_ref+1;
+					closest_quad_ref.set_ref(quad_ref);
+					closest_quad_ref.set_upper_tri(true);
 					continue;
 				}
 
@@ -259,7 +259,8 @@ namespace wf::cuda {
 				if (hit && t < closest_t) {
 					if (debug) printf("hit tri 1 and is closer!!!\n");
 					closest_t = t;
-					closest_quad_ref = (quad_ref+1) * -1;
+					closest_quad_ref.set_ref(quad_ref);
+					closest_quad_ref.set_upper_tri(false);
 				}
 			}
 		}
@@ -267,7 +268,7 @@ namespace wf::cuda {
 		if (debug) printf("Closest t: %f\n", closest_t);
 
 		if (closest_t < FLT_MAX)
-			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref);
+			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref.internal_data());
 
 	};
     

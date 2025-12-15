@@ -62,12 +62,17 @@ namespace wf::cuda {
 		}
 
 		__device__ __forceinline__ void init_custom_prim(const tri_is &is, const scene_refs *params) {
-			uint32_t patch_ref = is.ref(); //((uint32_t)-1) - is.ref();
-			bool upper = is.is_upper_tri() > 0;
-			int32_t subd_quad_ref = is.quad_ref();
+			uint32_t patch_ref = is.ref();
+			bool upper = is.subd_quad_ref.is_upper_tri();
+			int32_t subd_quad_ref = is.subd_quad_ref.ref();
 
 			const subd_patch patch = params->patches[patch_ref];
 			const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+
+			// [FEAT-APPROX]
+			#ifdef BOX_APPROXIMATION
+			#else
+			#endif
 
 			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
 			init_base(

@@ -68,9 +68,10 @@ namespace wf {
 			float t;
 			float beta;
 			float gamma;
+			subd::quad_ref subd_quad_ref;
 
-			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), prim_ref(0), subd_quad_ref(0) {};
-			__device__ tri_is(float t, float beta, float gamma, uint32_t ref) : t(t), beta(beta), gamma(gamma), subd_quad_ref(0) {
+			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), prim_ref(0) {};
+			__device__ tri_is(float t, float beta, float gamma, uint32_t ref) : t(t), beta(beta), gamma(gamma) {
 				set_ref(ref);
 			};
 			__device__ __inline__ bool valid() const { return t != FLT_MAX; }
@@ -82,21 +83,9 @@ namespace wf {
 							(ref << 1) | 1 :
 							ref << 1;
 			}
-			__device__ __inline__ int32_t quad_ref() const {
-				return abs(subd_quad_ref) - 1;
-			}
-			__device__ __inline__ bool is_upper_tri() const {
-				assert(subd_quad_ref != 0);
-				return subd_quad_ref > 0;
-			}
-			__device__ __inline__ void set_quad_ref(int32_t quad_ref, bool upper) {
-				quad_ref++;
-				subd_quad_ref = upper ? quad_ref : -1 * quad_ref;
-			}
 
 		private:
 			uint32_t prim_ref;
-			int32_t subd_quad_ref;
 
 		};
 
