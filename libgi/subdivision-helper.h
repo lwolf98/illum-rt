@@ -50,4 +50,8 @@ namespace subd {
 		// provides the internal data field, can be used to reconstruct this object
 		heterogeneous uint32_t internal_data() const { return data_field; }
 	};
+
+
+	// TODO: bring compute_valid_hit function here and make heterogeneous?
+
 }

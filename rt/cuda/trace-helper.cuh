@@ -5,7 +5,9 @@
 
 #define EPSILON 0.000001 // Moeller-Trumbore triangle intersection
 
-#define INTERSECT_BOX_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max, float &hit_t
+#define BOX_RAY_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max
+//#define INTERSECT_BOX_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max, float &hit_t
+#define INTERSECT_BOX_PARAMETERS BOX_RAY_PARAMETERS, float &hit_t
 __forceinline__ __device__ bool intersect_box(INTERSECT_BOX_PARAMETERS);
 __forceinline__ __device__ bool intersect_box_shirley(INTERSECT_BOX_PARAMETERS);
 __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS);
@@ -207,6 +209,85 @@ __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS) {
     bool intersect = (tmaxbox >= tminbox);
     hit_t = tminbox;
     return intersect;
+}
+
+//__forceinline__ __device__ void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
+__forceinline__ __device__ void bary_calc(BOX_RAY_PARAMETERS, float t_dist, bool &upper_tri, float &beta, float &gamma) {
+	float3 hit = ray_o + t_dist * ray_d;
+	float width = boxmax.x - boxmin.x;
+	float height = boxmax.z - boxmin.z;
+	float3 hit_relative = hit - boxmin;
+	float2 hit_xy = make_float2(hit_relative.x, hit_relative.z);
+	hit_xy.x = hit_xy.x / width;
+	hit_xy.y = hit_xy.y / height;
+	//assert(hit_xy.x >= -eps && hit_xy.x <= 1+eps);
+	//assert(hit_xy.y >= -eps && hit_xy.y <= 1+eps);
+	if (hit_xy.x < 0) hit_xy.x = 0;
+	if (hit_xy.x > 1) hit_xy.x = 1;
+	if (hit_xy.y < 0) hit_xy.y = 0;
+	if (hit_xy.y > 1) hit_xy.y = 1;
+
+	//bool upper_tri = hit_xy.y < -hit_xy.x + 1;
+	//is.subd_quad_ref.set_upper_tri(upper_tri);
+	upper_tri = hit_xy.y < -hit_xy.x + 1;
+	if (upper_tri) {
+		beta = hit_xy.x;
+		gamma = hit_xy.y;
+	}
+	else {
+		beta = 1 - hit_xy.x;
+		gamma = 1 - hit_xy.y;
+	}
+	//assert(is.beta >= 0 && is.beta <= 1);
+	//assert(is.gamma >= 0 && is.gamma <= 1);
+	//assert(is.beta + is.gamma >= 0);
+	//assert(is.beta + is.gamma <= 1);
+}
+
+__forceinline__ __device__ bool compute_valid_hit(
+	//INTERSECT_BOX_PARAMETERS,
+	BOX_RAY_PARAMETERS,
+	float closest_t,
+#ifdef PROJECTION
+	float t_near_oriented,
+	const float3 &hit_near_oriented,
+	float t_off,
+	const subd_subpatch &subpatch,
+#endif
+	bool allow_negative_t,
+	float &hit_t,
+	float &bary_t
+) {
+	//if (!intersect4(box, transformed_ray, dist)) return false;
+	//if (!intersect_box(INTERSECT_BOX_PARAMETERS)) return false;
+	float dist;
+	if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
+
+#ifndef PROJECTION
+	//assert(!std::isnan(dist)); // REVIEW: can this happen?
+	if (std::isnan(dist)) return false;
+	if (dist >= closest_t) return false;
+	if (!allow_negative_t && dist <= 0) return false;
+	hit_t = dist;
+	bary_t = dist;
+#else
+	dist += t_off; // correct by earlier added epsilon
+
+	// Calculate new t
+	float t_total;
+	vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
+	vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
+	float t_dist = glm::length(x_oriented - hit_near_oriented);
+	t_total = t_near_oriented + t_dist;
+	
+	if (isnan(t_total)) return false; //REVIEW: check nans here
+	if (t_total >= closest_t) return false; // -> fixes overlapping and shadow ray self intersection
+	if (!allow_negative_t && t_total <= 0) return false;
+	hit_t = t_total;
+	bary_t = dist;
+#endif
+
+	return true;
 }
 
 __forceinline__ __device__ bool intersect_triangle(INTERSECT_TRIANGLE_PARAMETERS) {

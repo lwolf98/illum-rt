@@ -290,7 +290,6 @@ inline void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_in
 
 	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
 	is.subd_quad_ref.set_upper_tri(upper_tri);
-	vec2 hit_xy_;
 	if (upper_tri) {
 		is.beta = hit_xy.x;
 		is.gamma = hit_xy.y;
@@ -419,7 +418,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	#endif
 					bary_calc(box, transformed_ray, t_bary, closest);
 					closest.ref = ((uint32_t)-1) - patch_ref;
-					closest.t = t_hit; // -> required in local projected space for barycentric coord calculation
+					closest.t = t_hit;
 
 					uint32_t relative_index = (child_base+i) - off_current_level;
 					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)

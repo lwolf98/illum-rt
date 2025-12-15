@@ -177,21 +177,63 @@ namespace wf::cuda {
 			bool is_leaf = trav_level == subpatch.subd_level;
 			if (!is_leaf) {
 				const auto &node = launch_params.patch_nodes[node_offset + index];
-				float t = FLT_MAX;
+				uint32_t child_base = child_node_base(trav_level, index);
+				uint32_t off_current_level = geometric_series4(trav_level);
+				float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
+				float t_bary;
 
 				for (int i = 0; i < 4; ++i) {
 					float3 node_min = node.get_min(i);
 					float3 node_max = node.get_max(i);
-					bool hit = intersect_box(node_min, node_max,
-									ray_origin, ray_direction, r_id, r_ood,
-									tmin, tmax, t);
 
-					if (hit && t < closest_t) {
+#ifndef PROJECTION
+					if (!compute_valid_hit(node_min, node_max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, true,									// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+#else
+					/*if (!compute_valid_hit(node_min, node_max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, true, t1, p1_oriented, eps, subpatch,	// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}*/
+#endif
+					
+#ifndef BOX_APPROXIMATION
+					if (debug) printf("hit node!!!!!!\n");
+					stack[++sp] = child_base+i;
+#else
+					if (trav_level < subpatch.subd_level-1) {
 						if (debug) printf("hit node!!!!!!\n");
-						uint32_t child_base = child_node_base(trav_level, index);
 						stack[++sp] = child_base+i;
 					}
-					else if (debug) printf("didn't hit node...\n");
+					else {
+						if (debug) printf("hit leaf box!!!!!!\n");
+
+	#ifndef PROJECTION
+						if (t_hit <= 0) continue;
+	#endif
+						//bary_calc(box, transformed_ray, t_bary, closest);
+						bool upper_tri;
+						bary_calc(node_min, node_max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									t_bary, upper_tri, beta, gamma);
+						closest_quad_ref.set_upper_tri(upper_tri);
+						//closest.ref = ((uint32_t)-1) - patch_ref;
+						closest_t = t_hit;
+
+						uint32_t relative_index = (child_base+i) - off_current_level;
+						uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+													+ relative_index;
+
+						closest_quad_ref.set_ref(quad_ref_morton);
+					}
+#endif
 				}
 			}
 			else {

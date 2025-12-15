@@ -487,17 +487,10 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			box.grow(verts[vert_down_right(vert_index)].pos);
 		}
 
-		if (align_level > 0) {
-			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
-		}
-		else {
-			root_box = box;
-			return;
-		}
-
+		if (align_level > 0)	nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+		else					root_box = box;
 		// TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
-		if (align_boxes)
-			subpatches[morton].root_box_world = box;
+		if (align_boxes)		subpatches[morton].root_box_world = box;
 
 	}
 

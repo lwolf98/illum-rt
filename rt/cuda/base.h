@@ -47,20 +47,31 @@ namespace wf {
 			__device__ float& at(int x, int y) {
 				return a[y*3+x];
 			}
-			__device__ float3 operator*(const float3 &f) {
+			__device__ float read_at(int x, int y) const {
+				return a[y*3+x];
+			}
+			__device__ float3 operator*(const float3 &f) const {
 				float3 res;
-				res.x = f.x * at(0,0) + f.y * at(1,0) + f.z * at(2,0);
-				res.y = f.x * at(0,1) + f.y * at(1,1) + f.z * at(2,1);
-				res.z = f.x * at(0,2) + f.y * at(1,2) + f.z * at(2,2);
+				res.x = f.x * read_at(0,0) + f.y * read_at(1,0) + f.z * read_at(2,0);
+				res.y = f.x * read_at(0,1) + f.y * read_at(1,1) + f.z * read_at(2,1);
+				res.z = f.x * read_at(0,2) + f.y * read_at(1,2) + f.z * read_at(2,2);
 				return res;
 			}
-			__device__ float4 operator*(const float4 &f) {
+			__device__ float4 operator*(const float4 &f) const {
 				float4 res;
-				res.x = f.x * at(0,0) + f.y * at(1,0) + f.z * at(2,0);
-				res.y = f.x * at(0,1) + f.y * at(1,1) + f.z * at(2,1);
-				res.z = f.x * at(0,2) + f.y * at(1,2) + f.z * at(2,2);
+				res.x = f.x * read_at(0,0) + f.y * read_at(1,0) + f.z * read_at(2,0);
+				res.y = f.x * read_at(0,1) + f.y * read_at(1,1) + f.z * read_at(2,1);
+				res.z = f.x * read_at(0,2) + f.y * read_at(1,2) + f.z * read_at(2,2);
 				res.w = 1.0;
 				return res;
+			}
+			// REVIEW: return order rows/cols correct?
+			__device__ mat3 transpose() const {
+				return {{
+					read_at(0, 0), read_at(0, 1), read_at(0, 2),
+					read_at(1, 0), read_at(1, 1), read_at(1, 2),
+					read_at(2, 0), read_at(2, 1), read_at(2, 2)
+				}};
 			}
 		};
 
@@ -509,20 +520,27 @@ namespace wf {
 				}
 				else {
 					// [FEAT-APPROX] update vertex order for box approx
-					tri.x = start_index + quad_id + len(); // vert down
-					tri.y = start_index + quad_id + len() + 1; // vert down right
-					tri.z = start_index + quad_id + 1; // vert right
+					tri.x = start_index + quad_id + len() + 1; // vert down right
+					tri.y = start_index + quad_id + 1; // vert right
+					tri.z = start_index + quad_id + len(); // vert down
 				}
 
 				return tri;
 			}
 
-			uint32_t __forceinline__ __device__ quad_ref_from_index(uint32_t index) {
+			uint32_t __forceinline__ __device__ quad_ref_from_index(uint32_t index) const {
 				uint2 xy = xy_from_index(index);
 				return xy.y*len() + xy.x;
 			}
 
 #ifdef BOX_APPROXIMATION
+
+			uint32_t __forceinline__ __device__ index_from_quad_ref(uint32_t vert_quad_id) const {
+				uint32_t x = vert_quad_id % len(); //TODO/REVIEW: switch / and % to shift operations
+				uint32_t y = vert_quad_id / len();
+				return encode_morton(x, y);
+			}
+
 			std::tuple<float, float> __forceinline__ __device__ global_uvs(subd::quad_ref quad_ref, float local_u, float local_v) const {
 				uint32_t quad_len = len() - 1;
 				auto [x, y] = xy_from_index(quad_ref.ref());
@@ -560,6 +578,21 @@ namespace wf {
 				x = (x | (x >> 8)) & 0x0000FFFF;
 				return x;
 			}
+
+#ifdef BOX_APPROXIMATION
+			static uint32_t __forceinline__ __device__ encode_morton(uint32_t x, uint32_t y) {
+				auto spread_bits = [](uint32_t v) {
+					v &= 0x0000FFFF; // clear upper bits
+					v = (v | (v << 8)) & 0x00FF00FF;
+					v = (v | (v << 4)) & 0x0F0F0F0F;
+					v = (v | (v << 2)) & 0x33333333;
+					v = (v | (v << 1)) & 0x55555555;
+					return v;
+				};
+
+				return spread_bits(x) | (spread_bits(y) << 1);
+			}
+#endif
 		};
 
 		struct scene_refs {

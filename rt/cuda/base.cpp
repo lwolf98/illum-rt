@@ -101,6 +101,7 @@ namespace wf {
 				device_subpatches.resize(offset_subpatches + patch.subpatches.size());
 				device_root_boxes.resize(offset_subpatches + patch.subpatches.size());
 
+				// TODO: ! Currently align_level -1 (meaning no box alignment) does not work on GPU, because this does not use subpatches !
 				for (uint32_t j = 0; j < patch.subpatches.size(); ++j) {
 					const subd::subd_subpatch &subpatch = patch.subpatches[j];
 					auto &device_subpatch = device_subpatches[offset_subpatches+j];

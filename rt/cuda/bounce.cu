@@ -67,12 +67,35 @@ namespace wf::cuda {
 			int32_t subd_quad_ref = is.subd_quad_ref.ref();
 
 			const subd_patch patch = params->patches[patch_ref];
-			const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
 
 			// [FEAT-APPROX]
-			#ifdef BOX_APPROXIMATION
-			#else
-			#endif
+#ifdef BOX_APPROXIMATION
+			float3 a_pos, b_pos, c_pos;
+			uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
+			const uint4 tri = patch.subd_tri(vert_quad_ref, upper);
+
+			const subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
+			const aabb &box = subpatch.box_from_index(subd_quad_ref);
+			const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here //TODO: check why this is not allowed without const?
+
+	#ifndef PROJECTION
+			if (upper) {
+				float3 tst = make_float3(box.min.x, box.max.y, box.min.z);
+				a_pos = M * tst; //make_float3(box.min.x, box.max.y, box.min.z);
+				b_pos = M * make_float3(box.max.x, box.max.y, box.min.z);
+				c_pos = M * make_float3(box.min.x, box.max.y, box.max.z);
+			}
+			else {
+				a_pos = M * make_float3(box.max.x, box.max.y, box.max.z);
+				b_pos = M * make_float3(box.min.x, box.max.y, box.max.z);
+				c_pos = M * make_float3(box.max.x, box.max.y, box.min.z);
+			}
+	#else
+			// [FEAT-PROJ]
+	#endif
+#else
+			const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+#endif
 
 			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
 			init_base(
