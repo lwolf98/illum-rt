@@ -139,10 +139,39 @@ namespace wf::cuda {
 		float3 ray_direction_world = optixGetObjectRayDirection();
 		float3 ray_origin = subpatch.trafo * ray_origin_world;
 		float3 ray_direction = subpatch.trafo * ray_direction_world;
+		float3 r_id = ray_id(ray_direction);
+#ifndef PROJECTION
 		float tmin = optixGetRayTmin();
 		float tmax = optixGetRayTmax();
-		float3 r_id = ray_id(ray_direction);
 		float3 r_ood = ray_ood(ray_origin, r_id);
+#else
+		static constexpr float eps = 1e-4f;
+
+		// Note: root_box is in projected space, but the y coordinate can also be used to
+		// calculate points in oriented space here. x and z cannot directly be mapped.
+		float t1 = (subpatch.root_max.y - ray_origin.y) * r_id.y;
+		float t2 = (subpatch.root_min.y - ray_origin.y) * r_id.y;
+		if (t1 > t2) {
+			float tmp = t1;
+			t1 = t2;
+			t2 = tmp;
+		}
+
+		float3 p1_oriented = ray_origin + t1 * ray_direction;
+		float3 p1 = subpatch.oriented_to_projected(p1_oriented);
+		float3 p2 = subpatch.oriented_to_projected(ray_origin + t2 * ray_direction);
+		
+		float3 dir = (t1 != t2) ? p2-p1 : make_float3(0, 1.f, 0); // REVIEW: stable solution for t1 == t2?
+		normalize(dir); // REVIEW: required?
+		p1 = p1 - eps * dir; // -> eps offset fixes (in this case wanted) potential self intersections
+		ray_origin = p1;
+		ray_direction = dir;
+		float tmin = eps;
+		float tmax = FLT_MAX; // REVIEW: t values correct? lenght_exclusive required somewhere?
+		//tmax = 2.f; // -> quick fix for artifacts, but does not explain them...
+		r_id = ray_id(ray_direction);
+		float3 r_ood = ray_ood(ray_origin, r_id);
+#endif
 
 		// TMP: DEBUGGING
 		//optixReportIntersection(0.f, 0, __float_as_uint(0.f), __float_as_uint(0.f), 1);
@@ -186,13 +215,13 @@ namespace wf::cuda {
 										continue;
 									}
 #else
-					/*if (!compute_valid_hit(node_min, node_max,							// box
+					if (!compute_valid_hit(node_min, node_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, true, t1, p1_oriented, eps, subpatch,	// additional params
+									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
 									t_hit, t_bary)) {									// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
-									}*/
+									}
 #endif
 					
 #ifndef BOX_APPROXIMATION
@@ -310,13 +339,13 @@ namespace wf::cuda {
 										continue;
 									}
 	#else
-					/*if (!compute_valid_hit(root_min, root_max,						// box
+					if (!compute_valid_hit(root_min, root_max,						// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, false, t1, p1_oriented, eps, subpatch,	// additional params
+									closest_t, t1, p1_oriented, eps, subpatch, false,	// additional params
 									t_hit, t_bary)) {									// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
-									}*/
+									}
 	#endif
 					bool upper_tri;
 					bary_calc(root_min, root_max,									// box

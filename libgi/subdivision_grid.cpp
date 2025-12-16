@@ -274,13 +274,6 @@ glm::vec3 subd_subpatch::oriented_to_projected(const glm::vec3 &p) const {
 glm::vec3 subd_subpatch::projected_to_oriented(const glm::vec3 &p) const {
 	return project(p, inverse(proj));
 }
-
-glm::vec3 subd_subpatch::world_to_projected(const glm::vec3 &p) const {
-	return project(trafo * p, proj);
-	//return project(glm::inverse(trafo) * p, glm::inverse(proj));
-	//return trafo * project(p, proj);
-	//return glm::inverse(trafo) * project(p, glm::inverse(proj));
-}
 #endif
 
 void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {

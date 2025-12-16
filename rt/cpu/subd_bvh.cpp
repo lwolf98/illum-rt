@@ -365,7 +365,10 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						subpatch.trafo * rayy.o,
 						subpatch.trafo * rayy.d
 					);
-#ifdef PROJECTION
+#ifndef PROJECTION
+	transformed_ray.t_min = rayy.t_min; // TODO: test this in Box approximation !
+	transformed_ray.t_max = rayy.t_max;
+#else
 	const float eps = transformed_ray.eps;
 
 	// Note: root_box is in projected space, but the y coordinate can also be used to

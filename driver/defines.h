@@ -2,4 +2,4 @@
 
 // Subdivision defines
 #define BOX_APPROXIMATION
-//#define PROJECTION
+#define PROJECTION

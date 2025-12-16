@@ -134,7 +134,6 @@ namespace subd {
 		const aabb &box_from_index(uint32_t local_index) const;
 
 #ifdef PROJECTION
-		glm::vec3 world_to_projected(const glm::vec3 &p) const;
 		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;
 		glm::vec3 projected_to_oriented(const glm::vec3 &p) const;
 #endif

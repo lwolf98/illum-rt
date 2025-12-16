@@ -118,7 +118,9 @@ namespace wf {
 					device_subpatch.parent_id = i; // reference to parent patch
 					device_subpatch.vert_start = subpatch.vert_start;
 					device_subpatch.trafo = mat3::from(subpatch.trafo);
-					//device_subpatch.proj = ; -> required for projection
+#ifdef PROJECTION
+					device_subpatch.proj = mat3::from(subpatch.proj);
+#endif
 					device_subpatch.subd_level = subpatch.subd_level;
 #ifdef BOX_APPROXIMATION
 					device_subpatch.root_min = f4(subpatch.root_box.min); //-> REVIEW: required for box approximation (probably better to use two float4)

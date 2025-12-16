@@ -44,20 +44,20 @@ namespace wf {
 				}};
 			}
 
-			__device__ float& at(int x, int y) {
+			__device__ __forceinline__ float& at(int x, int y) {
 				return a[y*3+x];
 			}
-			__device__ float read_at(int x, int y) const {
+			__device__ __forceinline__ float read_at(int x, int y) const {
 				return a[y*3+x];
 			}
-			__device__ float3 operator*(const float3 &f) const {
+			__device__ __forceinline__ float3 operator*(const float3 &f) const {
 				float3 res;
 				res.x = f.x * read_at(0,0) + f.y * read_at(1,0) + f.z * read_at(2,0);
 				res.y = f.x * read_at(0,1) + f.y * read_at(1,1) + f.z * read_at(2,1);
 				res.z = f.x * read_at(0,2) + f.y * read_at(1,2) + f.z * read_at(2,2);
 				return res;
 			}
-			__device__ float4 operator*(const float4 &f) const {
+			__device__ __forceinline__ float4 operator*(const float4 &f) const {
 				float4 res;
 				res.x = f.x * read_at(0,0) + f.y * read_at(1,0) + f.z * read_at(2,0);
 				res.y = f.x * read_at(0,1) + f.y * read_at(1,1) + f.z * read_at(2,1);
@@ -66,11 +66,41 @@ namespace wf {
 				return res;
 			}
 			// REVIEW: return order rows/cols correct?
-			__device__ mat3 transpose() const {
+			__device__ __forceinline__ mat3 transpose() const {
 				return {{
 					read_at(0, 0), read_at(0, 1), read_at(0, 2),
 					read_at(1, 0), read_at(1, 1), read_at(1, 2),
 					read_at(2, 0), read_at(2, 1), read_at(2, 2)
+				}};
+			}
+			__device__ __forceinline__ mat3 inverse() const {
+				// Prepare entries
+				float a00 = read_at(0,0), a01 = read_at(1,0), a02 = read_at(2,0);
+				float a10 = read_at(0,1), a11 = read_at(1,1), a12 = read_at(2,1);
+				float a20 = read_at(0,2), a21 = read_at(1,2), a22 = read_at(2,2);
+
+				// Compute cofactors
+				float c00 =  a11 * a22 - a12 * a21;
+				float c01 = -(a10 * a22 - a12 * a20);
+				float c02 =  a10 * a21 - a11 * a20;
+
+				float c10 = -(a01 * a22 - a02 * a21);
+				float c11 =  a00 * a22 - a02 * a20;
+				float c12 = -(a00 * a21 - a01 * a20);
+
+				float c20 =  a01 * a12 - a02 * a11;
+				float c21 = -(a00 * a12 - a02 * a10);
+				float c22 =  a00 * a11 - a01 * a10;
+
+				// Determinant
+				float det = a00 * c00 + a01 * c01 + a02 * c02;
+				float invDet = 1.0f / det; // TODO/REVIEW: handle det near 0 if necessary
+
+				// Build inverse
+				return {{
+					c00 * invDet, c10 * invDet, c20 * invDet,
+					c01 * invDet, c11 * invDet, c21 * invDet,
+					c02 * invDet, c12 * invDet, c22 * invDet
 				}};
 			}
 		};
@@ -481,6 +511,9 @@ namespace wf {
 		struct subd_subpatch {
 			uint32_t vert_start;
 			mat3 trafo;
+#ifdef PROJECTION
+			mat3 proj;
+#endif
 			uint32_t bvh_node_offset;
 			uint32_t subd_level;
 			uint32_t parent_id; // TODO/TMP: Can probably be deleted and calculated in intersect
@@ -507,6 +540,20 @@ namespace wf {
 				uint32_t box_index = quad_ref_local & 0x3;
 				box_min = nodes[node_index].get_min(box_index); // TODO/REVIEW: does this double copy the box? how to be more efficient?
 				box_max = nodes[node_index].get_max(box_index);
+			}
+#endif
+#ifdef PROJECTION
+			float3 __forceinline__ __device__ oriented_to_projected(const float3 &p) const {
+				return project(p, proj);
+			}
+
+			float3 __forceinline__ __device__ projected_to_oriented(const float3 &p) const {
+				return project(p, proj.inverse());
+			}
+		private:
+			static __forceinline__ __device__ float3 project(const float3 &a, const mat3 &P) {
+				float3 tmp = P * make_float3(a.x, a.z, 1.f);
+				return make_float3(tmp.x/tmp.z, a.y, tmp.y/tmp.z);
 			}
 #endif
 		};

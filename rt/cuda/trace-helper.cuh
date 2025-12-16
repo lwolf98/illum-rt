@@ -265,7 +265,7 @@ __forceinline__ __device__ bool compute_valid_hit(
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?
-	if (std::isnan(dist)) return false;
+	if (isnan(dist)) return false;
 	if (dist >= closest_t) return false;
 	if (!allow_negative_t && dist <= 0) return false;
 	hit_t = dist;
@@ -275,9 +275,9 @@ __forceinline__ __device__ bool compute_valid_hit(
 
 	// Calculate new t
 	float t_total;
-	vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
-	vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
-	float t_dist = glm::length(x_oriented - hit_near_oriented);
+	float3 x_proj = ray_o + dist * ray_d;
+	float3 x_oriented = subpatch.projected_to_oriented(x_proj);
+	float t_dist = length(x_oriented - hit_near_oriented);
 	t_total = t_near_oriented + t_dist;
 	
 	if (isnan(t_total)) return false; //REVIEW: check nans here
@@ -478,7 +478,9 @@ namespace wf {
 				if (debug()) printf("Patch ref: %d, quad_ref: %d, upper: %d\n", patch_ref, subd_quad_ref, upper);
 
 				// [FEAT-APPROX]
-	#ifdef BOX_APPROXIMATION
+#ifndef BOX_APPROXIMATION
+				const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+#else
 				float3 a_pos, b_pos, c_pos;
 				uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
 				const uint4 tri = patch.subd_tri(vert_quad_ref, upper); //REVIEW: still required here? or only for material?
@@ -487,10 +489,8 @@ namespace wf {
 				float3 box_min, box_max;
 				subpatch.box_from_index(subd_quad_ref, params->patch_nodes, box_min, box_max);
 
-				//const aabb &box = subpatch.box_from_index(subd_quad_ref);
+	#ifndef PROJECTION
 				const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here //TODO: check why this is not allowed without const?
-
-		#ifndef PROJECTION
 				if (upper) {
 					a_pos = M * make_float3(box_min.x, box_max.y, box_min.z);
 					b_pos = M * make_float3(box_max.x, box_max.y, box_min.z);
@@ -501,15 +501,23 @@ namespace wf {
 					b_pos = M * make_float3(box_min.x, box_max.y, box_max.z);
 					c_pos = M * make_float3(box_max.x, box_max.y, box_min.z);
 				}
-		#else
-				// [FEAT-PROJ]
-		#endif
 	#else
-				const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+				const mat3 &M = subpatch.trafo.inverse();
+				if (upper) {
+					a_pos = make_float3(box_min.x, box_min.y, box_min.z);
+					b_pos = make_float3(box_max.x, box_min.y, box_min.z);
+					c_pos = make_float3(box_min.x, box_min.y, box_max.z);
+				}
+				else {
+					a_pos = make_float3(box_max.x, box_min.y, box_max.z);
+					b_pos = make_float3(box_min.x, box_min.y, box_max.z);
+					c_pos = make_float3(box_max.x, box_min.y, box_min.z);
+				}
 	#endif
+#endif
 
 				const float2 barycentrics = {.x = is.beta, .y = is.gamma};
-	#ifndef BOX_APPROXIMATION
+#ifndef BOX_APPROXIMATION
 				init_base(
 					f3(params->patch_vertex_pos[tri.x]), f3(params->patch_vertex_pos[tri.y]), f3(params->patch_vertex_pos[tri.z]),
 					f3(params->patch_vertex_norm[tri.x]), f3(params->patch_vertex_norm[tri.y]), f3(params->patch_vertex_norm[tri.z]),
@@ -520,8 +528,7 @@ namespace wf {
 				if (debug()) printf("before: TCs: %f %f\n", tc.x, tc.y);
 				if (debug()) printf("before: TCs: %f %f %f\n", ns.x, ns.y, ns.z);
 
-	#else
-	//#ifdef BOX_APPROXIMATION
+#else
 				float alpha = 1.f - barycentrics.x - barycentrics.y;
 				x  = alpha * a_pos  + barycentrics.x * b_pos  + barycentrics.y * c_pos;
 				//tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
@@ -556,14 +563,11 @@ namespace wf {
 				if (debug()) printf("box TCs 2: u: %f, v: %f\n", patch.box_tcs[2].x, patch.box_tcs[2].y);
 				if (debug()) printf("box TCs 3: u: %f, v: %f\n", patch.box_tcs[3].x, patch.box_tcs[3].y);
 
-		#ifdef PROJECTION
-				// [FEAT-PROJ]
-				/*dg.x = M * subpatch.projected_to_oriented(dg.x);
-				dg.dbg_v_a.pos = M * subpatch.projected_to_oriented(dg.dbg_v_a.pos);
-				dg.dbg_v_b.pos = M * subpatch.projected_to_oriented(dg.dbg_v_b.pos);
-				dg.dbg_v_c.pos = M * subpatch.projected_to_oriented(dg.dbg_v_c.pos);*/
-		#endif
+	#ifdef PROJECTION
+				// Project x back to oriented space
+				x = M * subpatch.projected_to_oriented(x);
 	#endif
+#endif
 
 				// TODO: keep this assert?
 				//assert(tc.x >= 0 && tc.x <= 1);
