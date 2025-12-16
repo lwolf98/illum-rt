@@ -95,6 +95,13 @@ namespace wf {
 				auto &device_patch = device_patches[i];
 				device_patch.subd_level = patch.subd_level;
 				device_patch.material_id = patch.material_id;
+#ifdef BOX_APPROXIMATION
+				device_patch.subpatch_offset = device_subpatches.size();
+				for (uint32_t n = 0; n < 4; ++n) {
+					device_patch.box_tcs[n] = make_float2(patch.data[n].tc.x, patch.data[n].tc.y);
+					device_patch.box_norms[n] = make_float4(patch.data[n].norm.x, patch.data[n].norm.y, patch.data[n].norm.z, 0.f);
+				}
+#endif
 
 				// Resize subpatches and set offset
 				uint32_t offset_subpatches = device_subpatches.size();
@@ -113,7 +120,10 @@ namespace wf {
 					device_subpatch.trafo = mat3::from(subpatch.trafo);
 					//device_subpatch.proj = ; -> required for projection
 					device_subpatch.subd_level = subpatch.subd_level;
-					//device_subpatch.root_box = ...; -> required for box approximation (probably better to use two float4)
+#ifdef BOX_APPROXIMATION
+					device_subpatch.root_min = f4(subpatch.root_box.min); //-> REVIEW: required for box approximation (probably better to use two float4)
+					device_subpatch.root_max = f4(subpatch.root_box.max);
+#endif
 
 					// Resize nodes and set offset
 					uint32_t offset_nodes = device_nodes.size();
@@ -157,9 +167,11 @@ namespace wf {
 				patch_nodes.upload(device_nodes);
 				patch_root_boxes.upload(device_root_boxes);
 
+#ifndef BOX_APPROXIMATION
 				patch_vertex_pos.upload(tmp_p);
 				patch_vertex_norm.upload(tmp_n);
 				patch_vertex_tc.upload(tmp_t);
+#endif
 			}
 
 			// load scene_refs object
@@ -173,9 +185,13 @@ namespace wf {
 			//device_refs.tex_images = tex_images.device_memory;
 
 			device_refs.patches = patches.device_memory;
+#ifndef BOX_APPROXIMATION
 			device_refs.patch_vertex_pos = patch_vertex_pos.device_memory;
 			device_refs.patch_vertex_norm = patch_vertex_norm.device_memory;
 			device_refs.patch_vertex_tc = patch_vertex_tc.device_memory;
+#endif
+			device_refs.subpatches = subpatches.device_memory;
+			device_refs.patch_nodes = patch_nodes.device_memory;
 			refs.upload(1, &device_refs);
 		}
 

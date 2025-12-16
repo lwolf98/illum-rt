@@ -1,6 +1,7 @@
 #include "kernels.h"
 #include "cuda-operators.h"
-
+#include "platform.h"
+#include "trace-helper.cuh"
 
 // CLEAR FRAMEBUFFER - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -172,6 +173,7 @@ __global__ void add_hitpoint_albedo(int2 res,
 									uint4 *triangles,
 									float2 *tex_coords,
 									wf::cuda::material *materials,
+									wf::cuda::scene_refs *refs,
 									float4 *framebuffer) {
 	int x = threadIdx.x + blockIdx.x*blockDim.x;
     int y = threadIdx.y + blockIdx.y*blockDim.y;
@@ -179,18 +181,14 @@ __global__ void add_hitpoint_albedo(int2 res,
     if (x >= res.x || y >= res.y)
         return;
 
+	bool debug = true;
+	debug = debug && x == 566 && y == 281;
+
 	float4 result { 0,0,0,1 };
 	wf::cuda::tri_is hit = intersections[ray_index];
 	if (hit.valid()) {
-		uint4 tri = triangles[hit.ref()];
-		if (materials[tri.w].albedo_tex > 0) {
-			float2 tc = (1.0f - hit.beta - hit.gamma) * tex_coords[tri.x]
-			            + hit.beta * tex_coords[tri.y] 
-						+ hit.gamma * tex_coords[tri.z];
-			result = tex2D<float4>(materials[tri.w].albedo_tex, tc.x, tc.y);
-		}
-		else
-			result = materials[tri.w].albedo;
+		wf::cuda::diff_geom dg(hit, refs, x, y);
+		result = wf::cuda::albedo4(dg);
 		result.w = 1; // be safe
 	}
 	framebuffer[ray_index] = framebuffer[ray_index] + result;
@@ -201,9 +199,10 @@ void launch_add_hitpoint_albedo(int2 res,
 								uint4 *triangles,
 								float2 *tex_coords,
 								wf::cuda::material *materials,
+								wf::cuda::scene_refs *refs,
 								float4 *framebuffer) {
 	add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, intersections, triangles,
-																				tex_coords, materials, framebuffer);
+																				tex_coords, materials, refs, framebuffer);
 }
 
 // COPY FRAMEBUFFER TO PREVIEW OPENGL BUFFER

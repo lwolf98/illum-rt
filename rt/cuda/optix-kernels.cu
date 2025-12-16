@@ -7,7 +7,6 @@
 #include "base.h"
 #include "trace-helper.cuh"
 
-
 namespace wf::cuda {
     extern "C" __constant__ optix_launch_params launch_params;
 	#define DBG_PRINT false
@@ -94,18 +93,10 @@ namespace wf::cuda {
 		if (DBG_PRINT) printf("any hit patches\n");
 	};
 
-	//TODO: find better place for these functions
+	//TODO: find better place for these functions, maybe in base.h if possible with __clz(...)
 	static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
 		return (31 - __clz(x)) >> 1;
 	}
-
-	static __forceinline__ __device__ int geometric_series4(int iterations) {
-		return (1 - (1 << ((iterations+1)<<1))) / (-3);
-	}
-
-	/*static __forceinline__ __device__ int geometric_series(int iterations, int base) {
-		return (1-pow(base, iterations+1))/(1-base);
-	}*/
 
 	static uint32_t __forceinline__ __device__ child_node_base(
 			uint32_t trav_level,
@@ -237,6 +228,7 @@ namespace wf::cuda {
 				}
 			}
 			else {
+#ifndef BOX_APPROXIMATION
 				uint32_t quad_ref = subpatch.vert_start;
 				if (!is_root_and_leaf) { // is only leaf
 					uint32_t off_current_level = geometric_series4(trav_level-1);
@@ -253,12 +245,12 @@ namespace wf::cuda {
 				uint4 tri_1 = patch.subd_tri(quad_ref, false);
 				if (debug) printf("Tri 0: %d %d %d\n", tri_0.x, tri_0.y, tri_0.z);
 				if (debug) printf("Tri 1: %d %d %d\n", tri_1.x, tri_1.y, tri_1.z);
-				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]);
-				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]);
-				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]);
-				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]);
-				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]);
-				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]);
+				float3 a_0 = f3(launch_params.patch_vertex_pos[tri_0.x]);
+				float3 b_0 = f3(launch_params.patch_vertex_pos[tri_0.y]);
+				float3 c_0 = f3(launch_params.patch_vertex_pos[tri_0.z]);
+				float3 a_1 = f3(launch_params.patch_vertex_pos[tri_1.x]);
+				float3 b_1 = f3(launch_params.patch_vertex_pos[tri_1.y]);
+				float3 c_1 = f3(launch_params.patch_vertex_pos[tri_1.z]);
 				if (debug) {
 					printf("t_min: %f, t_max: %f\n", tmin, tmax);
 					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
@@ -304,6 +296,38 @@ namespace wf::cuda {
 					closest_quad_ref.set_ref(quad_ref);
 					closest_quad_ref.set_upper_tri(false);
 				}
+#else
+					float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
+					float t_bary;
+					float3 root_min = f3(subpatch.root_min); // REVIEW: more efficient way without copying?
+					float3 root_max = f3(subpatch.root_max);
+	#ifndef PROJECTION
+					if (!compute_valid_hit(root_min, root_max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, false,									// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+	#else
+					/*if (!compute_valid_hit(root_min, root_max,						// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, false, t1, p1_oriented, eps, subpatch,	// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}*/
+	#endif
+					bool upper_tri;
+					bary_calc(root_min, root_max,									// box
+								ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+								t_bary, upper_tri, beta, gamma);
+					closest_quad_ref.set_upper_tri(upper_tri);
+					closest_t = t_hit;
+
+					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start);
+					closest_quad_ref.set_ref(quad_ref_morton);
+#endif
 			}
 		}
 

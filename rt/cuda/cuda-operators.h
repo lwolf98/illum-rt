@@ -5,6 +5,7 @@ __device__ __inline__ float2 operator*(const float2 &l, float r) { return { l.x*
 __device__ __inline__ float2 operator*(const float2 &l, const float2 &r) { return { l.x*r.x, l.y*r.y }; }
 
 __device__ __inline__ float2 operator+(const float2 &l, const float2 &r) { return { l.x+r.x, l.y+r.y }; }
+__device__ __inline__ float2 operator-(const float2 &l, const float2 &r) { return { l.x-r.x, l.y-r.y }; }
 
 __device__ __inline__ float3 operator*(float l, const float3 &r) { return { l*r.x, l*r.y, l*r.z }; }
 __device__ __inline__ float3 operator*(const float3 &l, float r) { return { l.x*r, l.y*r, l.z*r }; }

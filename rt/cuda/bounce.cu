@@ -11,8 +11,6 @@ namespace wf::cuda {
 
 	const float eps = 1e-4f; // see rt.h
 
-	__device__ float3 f3(const float4 &v) { return make_float3(v.x, v.y, v.z); }
-
 	__device__ float3 hit_ns(const tri_is &hit, const uint4 &tri, const float4 *vert_norm) {
 		float3 a = f3(vert_norm[tri.x]);
 		float3 b = f3(vert_norm[tri.y]);
@@ -20,112 +18,11 @@ namespace wf::cuda {
 		return bary_interpol(a, b, c, hit.beta, hit.gamma);
 	}
 
-	// [FEAT-APPROX] Move diff_geom to base.h or similar (like in manylight branch) and update to box approximation
-	struct __align__(16) diff_geom {
-		__device__ __inline__ diff_geom(const tri_is &is, const scene_refs *params) {
-			if (is.is_tri())
-				init_tri(is, params);
-			else
-				init_custom_prim(is, params);
-		}
-
-		float2 tc;
-		float3 x;
-		float3 ng, ns;
-		const wf::cuda::material *mat;
-
-	private:
-		__device__ __forceinline__ void init_base(const float3 vertex_pos_a, const float3 vertex_pos_b, const float3 vertex_pos_c,
-													const float3 vertex_norm_a, const float3 vertex_norm_b, const float3 vertex_norm_c,
-													const float2 vertex_tc_a, const float2 vertex_tc_b, const float2 vertex_tc_c,
-													const float2 barycentrics, const material *mat) {
-
-			float alpha = 1.f - barycentrics.x - barycentrics.y;
-			x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
-			tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
-			ns = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
-			ng = cross(vertex_pos_b-vertex_pos_a, vertex_pos_c-vertex_pos_a);
-			normalize(ng);
-			this->mat = mat;
-		}
-
-		__device__ __forceinline__ void init_tri(const tri_is &is, const scene_refs *params) {
-			const unsigned int primitive_index = is.ref();
-			const uint4 triangle = params->triangles[primitive_index];
-			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
-			init_base(
-				f3(params->vertex_pos[triangle.x]), f3(params->vertex_pos[triangle.y]), f3(params->vertex_pos[triangle.z]),
-				f3(params->vertex_norm[triangle.x]), f3(params->vertex_norm[triangle.y]), f3(params->vertex_norm[triangle.z]),
-				params->vertex_tc[triangle.x], params->vertex_tc[triangle.y], params->vertex_tc[triangle.z],
-				barycentrics, &params->materials[triangle.w]
-			);
-		}
-
-		__device__ __forceinline__ void init_custom_prim(const tri_is &is, const scene_refs *params) {
-			uint32_t patch_ref = is.ref();
-			bool upper = is.subd_quad_ref.is_upper_tri();
-			int32_t subd_quad_ref = is.subd_quad_ref.ref();
-
-			const subd_patch patch = params->patches[patch_ref];
-
-			// [FEAT-APPROX]
-#ifdef BOX_APPROXIMATION
-			float3 a_pos, b_pos, c_pos;
-			uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
-			const uint4 tri = patch.subd_tri(vert_quad_ref, upper);
-
-			const subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
-			const aabb &box = subpatch.box_from_index(subd_quad_ref);
-			const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here //TODO: check why this is not allowed without const?
-
-	#ifndef PROJECTION
-			if (upper) {
-				float3 tst = make_float3(box.min.x, box.max.y, box.min.z);
-				a_pos = M * tst; //make_float3(box.min.x, box.max.y, box.min.z);
-				b_pos = M * make_float3(box.max.x, box.max.y, box.min.z);
-				c_pos = M * make_float3(box.min.x, box.max.y, box.max.z);
-			}
-			else {
-				a_pos = M * make_float3(box.max.x, box.max.y, box.max.z);
-				b_pos = M * make_float3(box.min.x, box.max.y, box.max.z);
-				c_pos = M * make_float3(box.max.x, box.max.y, box.min.z);
-			}
-	#else
-			// [FEAT-PROJ]
-	#endif
-#else
-			const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
-#endif
-
-			const float2 barycentrics = {.x = is.beta, .y = is.gamma};
-			init_base(
-				f3(params->patch_vertex_pos[tri.x]), f3(params->patch_vertex_pos[tri.y]), f3(params->patch_vertex_pos[tri.z]),
-				f3(params->patch_vertex_norm[tri.x]), f3(params->patch_vertex_norm[tri.y]), f3(params->patch_vertex_norm[tri.z]),
-				params->patch_vertex_tc[tri.x], params->patch_vertex_tc[tri.y], params->patch_vertex_tc[tri.z],
-				barycentrics, &params->materials[tri.w]
-			);
-
-			// TODO: keep this assert?
-			//assert(tc.x >= 0 && tc.x <= 1);
-			//assert(tc.y >= 0 && tc.y <= 1);
-		}
-	};
-
 	// 
 	// Uniform Sampling
 	// 
 
 	namespace k {
-		__device__ float4 albedo4(const diff_geom &dg, float2 *vertex_tc);
-		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc);
-		__device__ float4 emissive_albedo4(const diff_geom &dg);
-
-		static __device__ bool not_black(float4 c) {
-			return c.x != 0 || c.y != 0 || c.z != 0;
-		}
-		static __device__ bool not_black(float3 c) {
-			return c.x != 0 || c.y != 0 || c.z != 0;
-		}
 		static __global__ void sample_uniform_dir(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
 												  const scene_refs *refs,
 												  float *pdf, float2 *random) {
@@ -142,7 +39,7 @@ namespace wf::cuda {
 			float tmax = -FLT_MAX;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + wf::cuda::emissive_albedo4(dg); // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
@@ -198,7 +95,7 @@ namespace wf::cuda {
 			float pdf = one_over_pi;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + wf::cuda::emissive_albedo4(dg); // might be w==0
 				else {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
@@ -260,10 +157,6 @@ namespace wf::cuda {
 			pdf = lights_f[id] / lights_int_1spaced;
 			return id;
 		}
-
-		__device__ float3 f3(float4 f4) {
-			return {f4.x, f4.y, f4.z};
-		}
 	
 		__device__ void sample_Li(int index, tri_is hit, float2 xi, int ray_index,
 								  float4 *camrays, uint4 *tri_lights, const scene_refs *refs,
@@ -318,7 +211,7 @@ namespace wf::cuda {
 			float pdf = 0;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
-					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
+					framebuffer[ray_index] = framebuffer[ray_index] + wf::cuda::emissive_albedo4(dg); // might be w==0
 				else {
 					float4 xis = random[ray_index];
 					int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf);
@@ -368,26 +261,9 @@ namespace wf::cuda {
 
 	namespace k {
 
-		__device__ float4 albedo4(const diff_geom &dg, float2 *vertex_tc) {
-			if (dg.mat->albedo_tex > 0) {
-				return tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y);
-			}
-			return dg.mat->albedo;
-		}
-
-		__device__ float3 albedo(const diff_geom &dg, float2 *vertex_tc) {
-			return f3(albedo4(dg, vertex_tc));
-		}
-
-		__device__ float4 emissive_albedo4(const diff_geom &dg) {
-			float4 albedo = albedo4(dg, nullptr);
-			if(not_black(albedo))	return albedo * dg.mat->emissive;
-			else					return dg.mat->emissive;
-		}
-
-		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
 			if (!same_hemisphere(w_i, dg.ns)) return make_float3(0,0,0);
-			return one_over_pi * albedo(dg, vertex_tc);
+			return one_over_pi * wf::cuda::albedo(dg);
 		}
 
 		#define sqr(x) ((x)*(x))
@@ -408,7 +284,7 @@ namespace wf::cuda {
 		#undef sqr
 
 		
-		__device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+		__device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
 			if (!same_hemisphere(dg.ns, w_i)) return make_float3(0,0,0); // should be ng
 			const float NdotV = cdot(dg.ns, w_o);
 			const float NdotL = cdot(dg.ns, w_i);
@@ -423,10 +299,10 @@ namespace wf::cuda {
 			return make_float3(microfacet,microfacet,microfacet);
 		}
 
-		__device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg, float2 *vertex_tc) {
+		__device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg) {
 			const float F = fresnel_dielectric(absdot(dg.ns, w_o), 1.0f, dg.mat->ior);
-			float3 diff = lambertian_reflection(w_o, w_i, dg, vertex_tc);
-			float3 spec = gtr_coat_reflection(w_o, w_i, dg, vertex_tc);
+			float3 diff = lambertian_reflection(w_o, w_i, dg);
+			float3 spec = gtr_coat_reflection(w_o, w_i, dg);
 			return (1.0f-F)*diff + F*spec;
 		}
 
@@ -455,7 +331,7 @@ namespace wf::cuda {
 				// brdf
 				float3 w_o = -f3(camrays[ray_index*2+1]);
 				float3 w_i = f3(shadowrays[ray_index*2+1]);
-				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
+				float3 f = layered_gtr2(w_o, w_i, dg);
 				// dot
 				float cos_theta = cdot(w_i, dg.ns);
 				// combine
@@ -490,7 +366,7 @@ namespace wf::cuda {
 				float3 w_o = -f3(camrays[2*ray_index+1]);
 				float3 w_i = f3(shadowray_dir);
 
-				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
+				float3 f = layered_gtr2(w_o, w_i, dg);
 				// dot
 				float cos_theta = cdot(w_i, dg.ns);
 				// combine

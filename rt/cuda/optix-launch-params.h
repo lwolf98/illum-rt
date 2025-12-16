@@ -1,7 +1,7 @@
 #pragma once
 #include <vector_types.h>
 #include <optix.h>
-
+#include "driver/defines.h"
 
 namespace wf::cuda {
     class ray;  
@@ -24,8 +24,10 @@ namespace wf::cuda {
 		subd_patch *patches;
 		subd_subpatch *subpatches;
 		patch_node *patch_nodes;
+#ifndef BOX_APPROXIMATION
 		float4 *patch_vertex_pos;
 		float2 *patch_vertex_tc;
+#endif
 
     };
 }

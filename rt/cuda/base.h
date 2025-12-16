@@ -474,55 +474,71 @@ namespace wf {
 			}*/
 		};
 
+		int32_t __forceinline__ __device__ geometric_series4(int iterations) {
+			return (1 - (1 << ((iterations+1)<<1))) / (-3);
+		}
+
 		struct subd_subpatch {
 			uint32_t vert_start;
 			mat3 trafo;
 			uint32_t bvh_node_offset;
 			uint32_t subd_level;
 			uint32_t parent_id; // TODO/TMP: Can probably be deleted and calculated in intersect
+#ifdef BOX_APPROXIMATION
+			float4 root_min; // TODO/REVIEW: float4 here good? or other variants more efficient?
+			float4 root_max;
+#endif
 
 			__forceinline__ __device__ uint32_t len() const {
 				return (1 << subd_level)+1;
 			}
+#ifdef BOX_APPROXIMATION
+			__forceinline__ __device__ const void box_from_index(uint32_t index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
+				if (subd_level == 0) {
+					box_min = make_float3(root_min.x, root_min.y, root_min.z);
+					box_max = make_float3(root_max.x, root_max.y, root_max.z);
+					return;
+				}
+
+				nodes = &nodes[bvh_node_offset]; // REVIEW: nodes += bvh_node_offset;
+				uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
+				uint32_t quad_ref_local = index & modulo_mask;
+				uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
+				uint32_t box_index = quad_ref_local & 0x3;
+				box_min = nodes[node_index].get_min(box_index); // TODO/REVIEW: does this double copy the box? how to be more efficient?
+				box_max = nodes[node_index].get_max(box_index);
+			}
+#endif
 		};
 
 		struct subd_patch {
 			uint32_t start_index;
-			uint32_t bvh_node_offset;
 			uint32_t material_id;
 			uint32_t subd_level;
 #ifdef BOX_APPROXIMATION
 			float2 box_tcs[4];
-			float4 box_norms[4];
+			float4 box_norms[4]; // REVIEW: float4 here better than float3?
+			uint32_t subpatch_offset;
 #endif
 
 			__forceinline__ __device__ uint32_t len() const {
 				return (1 << subd_level)+1;
 			}
 
-			__forceinline__ __device__ int32_t get_subd_quad(int quad_ref) const {
-				int x = quad_ref % len();
-				int y = quad_ref / len();
-				return y * len() + x;
-			}
-
-			__forceinline__ __device__ uint4 subd_tri(int quad_ref, bool upper) const {
+			__forceinline__ __device__ uint4 subd_tri(int vert_quad_id, bool upper) const {
 				uint4 tri;
 
-				//TODO:
-				// get subd quad by morton code rather than the currently used position code?
-				int quad_id = get_subd_quad(quad_ref);
 				tri.w = material_id;
 				if (upper) {
-					tri.x = start_index + quad_id;
-					tri.y = start_index + quad_id + len(); // vert down
-					tri.z = start_index + quad_id + 1; // vert right
+					tri.x = start_index + vert_quad_id;
+					tri.y = start_index + vert_quad_id + len(); // vert down
+					tri.z = start_index + vert_quad_id + 1; // vert right
 				}
 				else {
 					// [FEAT-APPROX] update vertex order for box approx
-					tri.x = start_index + quad_id + len() + 1; // vert down right
-					tri.y = start_index + quad_id + 1; // vert right
-					tri.z = start_index + quad_id + len(); // vert down
+					tri.x = start_index + vert_quad_id + len() + 1; // vert down right
+					tri.y = start_index + vert_quad_id + 1; // vert right
+					tri.z = start_index + vert_quad_id + len(); // vert down
 				}
 
 				return tri;
@@ -541,7 +557,15 @@ namespace wf {
 				return encode_morton(x, y);
 			}
 
-			std::tuple<float, float> __forceinline__ __device__ global_uvs(subd::quad_ref quad_ref, float local_u, float local_v) const {
+			__forceinline__ __device__ const subd_subpatch &subpatch_from_index(uint32_t index, const subd_subpatch *subpatches) const {
+				//assert(subpatches.size() > 0);
+				subpatches = &subpatches[subpatch_offset];
+				uint32_t aligned_subd_level = subpatches[0].subd_level;
+				uint32_t subpatch_id = index >> 2*aligned_subd_level; // divide by subpatch size (#quads in subpatch)
+				return subpatches[subpatch_id];
+			}
+
+			float2 __forceinline__ __device__ global_uvs(subd::quad_ref quad_ref, float local_u, float local_v) const {
 				uint32_t quad_len = len() - 1;
 				auto [x, y] = xy_from_index(quad_ref.ref());
 				float global_u = x * 1.f/quad_len;
@@ -557,7 +581,7 @@ namespace wf {
 					global_v += step * (1.f - local_v);
 				}
 
-				return {global_u, global_v};
+				return make_float2(global_u, global_v);
 			}
 #endif
 
@@ -604,9 +628,14 @@ namespace wf {
 			texture_image *tex_images;
 
 			subd_patch *patches;
+#ifndef BOX_APPROXIMATION
 			float4 *patch_vertex_pos;
 			float4 *patch_vertex_norm;
 			float2 *patch_vertex_tc;
+#endif
+
+			subd_subpatch *subpatches;
+			patch_node *patch_nodes;
 		};
 
 		struct scenedata {
@@ -622,9 +651,11 @@ namespace wf {
 			global_memory_buffer<subd_subpatch> subpatches;
 			global_memory_buffer<patch_node> patch_nodes;
 			global_memory_buffer<aabb> patch_root_boxes;
+#ifndef BOX_APPROXIMATION
 			texture_buffer<float4> patch_vertex_pos;
 			texture_buffer<float4> patch_vertex_norm;
 			texture_buffer<float2> patch_vertex_tc;
+#endif
 
 			global_memory_buffer<scene_refs> refs;
 
@@ -637,9 +668,11 @@ namespace wf {
 						  subpatches("subpatches", 0),
 						  patch_nodes("patch_nodes", 0),
 						  patch_root_boxes("patch_root_boxes", 0),
+#ifndef BOX_APPROXIMATION
 						  patch_vertex_pos("patch_vertex_pos", 0),
 						  patch_vertex_norm("patch_vertex_norm", 0),
 						  patch_vertex_tc("patch_vertex_tc", 0),
+#endif
 						  refs("scene_refs", 0) {
 			};
 			scenedata(const scenedata &) = delete;
@@ -655,9 +688,11 @@ namespace wf {
 																	subpatches(org->subpatches, m),
 																	patch_nodes(org->patch_nodes, m),
 																	patch_root_boxes(org->patch_root_boxes, m),
+#ifndef BOX_APPROXIMATION
 																	patch_vertex_pos(org->patch_vertex_pos, m),
 																	patch_vertex_norm(org->patch_vertex_norm, m),
 																	patch_vertex_tc(org->patch_vertex_tc, m),
+#endif
 																	refs(org->refs, m) {
 				this->org = org;
 			}
