@@ -675,7 +675,7 @@ namespace wf {
 			texture_image *tex_images;
 
 			subd_patch *patches;
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 			float4 *patch_vertex_pos;
 			float4 *patch_vertex_norm;
 			float2 *patch_vertex_tc;
@@ -698,7 +698,7 @@ namespace wf {
 			global_memory_buffer<subd_subpatch> subpatches;
 			global_memory_buffer<patch_node> patch_nodes;
 			global_memory_buffer<aabb> patch_root_boxes;
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 			texture_buffer<float4> patch_vertex_pos;
 			texture_buffer<float4> patch_vertex_norm;
 			texture_buffer<float2> patch_vertex_tc;
@@ -715,7 +715,7 @@ namespace wf {
 						  subpatches("subpatches", 0),
 						  patch_nodes("patch_nodes", 0),
 						  patch_root_boxes("patch_root_boxes", 0),
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 						  patch_vertex_pos("patch_vertex_pos", 0),
 						  patch_vertex_norm("patch_vertex_norm", 0),
 						  patch_vertex_tc("patch_vertex_tc", 0),
@@ -735,7 +735,7 @@ namespace wf {
 																	subpatches(org->subpatches, m),
 																	patch_nodes(org->patch_nodes, m),
 																	patch_root_boxes(org->patch_root_boxes, m),
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 																	patch_vertex_pos(org->patch_vertex_pos, m),
 																	patch_vertex_norm(org->patch_vertex_norm, m),
 																	patch_vertex_tc(org->patch_vertex_tc, m),

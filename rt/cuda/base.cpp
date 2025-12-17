@@ -46,6 +46,8 @@ namespace wf {
 		
 	
 		void scenedata::upload(scene *scene) {
+			std::cout << "Device upload stats:" << std::endl;
+
 			vector<uint4> scene_tris;
 			scene_tris.reserve(scene->triangles.size());
 			for (triangle t : scene->triangles)
@@ -67,6 +69,14 @@ namespace wf {
 			vertex_norm.upload(tmp_n);
 			vertex_tc.upload(tmp_t);
 
+			std::cout << "Regular geometry:\n"
+				<< "\t" << "Vertices: " << tmp_p.size() << "\n"
+				<< "\t" << "Triangles: " << scene_tris.size() << "\n"
+				<< "\t" << "Copy:\n"
+				<< "\t" << tmp_p.size() << "\n"
+				<< "\t" << scene_tris.size() << "\n"
+				<< std::endl;
+
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
 			vector<material> mtls(scene->materials.size());
 			for (int i = 0; i < scene->materials.size(); ++i) {
@@ -83,6 +93,12 @@ namespace wf {
 				mtls[i].roughness = scene->materials[i].roughness;
 			}
 			materials.upload(mtls);
+			
+			std::cout << "Scene:\n"
+				<< "\t" << "Materials: " << mtls.size() << "\n"
+				<< "\t" << "Copy:\n"
+				<< "\t" << mtls.size() << "\n"
+				<< std::endl;
 
 			// SubD patches
 			vector<subd_patch> device_patches(scene->patches.size());
@@ -169,12 +185,30 @@ namespace wf {
 				patch_nodes.upload(device_nodes);
 				patch_root_boxes.upload(device_root_boxes);
 
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 				patch_vertex_pos.upload(tmp_p);
 				patch_vertex_norm.upload(tmp_n);
 				patch_vertex_tc.upload(tmp_t);
 #endif
 			}
+
+			std::cout << "Patch geometry:\n"
+				<< "\t" << "Patches: " << device_patches.size() << "\n"
+				<< "\t" << "Subpatches: " << device_subpatches.size() << "\n"
+				<< "\t" << "Patch nodes: " << device_nodes.size() << "\n"
+				<< "\t" << "Patch root boxes: " << device_root_boxes.size() << "\n"
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
+				<< "\t" << "Patch vertices: " << tmp_p.size() << "\n"
+#endif
+				<< "\t" << "Copy:\n"
+				<< "\t" << device_patches.size() << "\n"
+				<< "\t" << device_subpatches.size() << "\n"
+				<< "\t" << device_nodes.size() << "\n"
+				<< "\t" << device_root_boxes.size() << "\n"
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
+				<< "\t" << tmp_p.size() << "\n"
+#endif
+				<< std::endl;
 
 			// load scene_refs object
 
@@ -187,7 +221,7 @@ namespace wf {
 			//device_refs.tex_images = tex_images.device_memory;
 
 			device_refs.patches = patches.device_memory;
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 			device_refs.patch_vertex_pos = patch_vertex_pos.device_memory;
 			device_refs.patch_vertex_norm = patch_vertex_norm.device_memory;
 			device_refs.patch_vertex_tc = patch_vertex_tc.device_memory;

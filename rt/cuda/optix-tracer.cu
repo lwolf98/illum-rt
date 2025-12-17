@@ -385,7 +385,7 @@ namespace wf::cuda
 		host_launch_params.patches = scene_data->patches.device_memory;
 		host_launch_params.subpatches = scene_data->subpatches.device_memory;
 		host_launch_params.patch_nodes = scene_data->patch_nodes.device_memory;
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 		host_launch_params.patch_vertex_pos = scene_data->patch_vertex_pos.device_memory;
 		//host_launch_params.patch_vertex_norm = ;
 		host_launch_params.patch_vertex_tc = scene_data->patch_vertex_tc.device_memory;

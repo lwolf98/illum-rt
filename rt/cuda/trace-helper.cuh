@@ -490,7 +490,7 @@ namespace wf {
 				subpatch.box_from_index(subd_quad_ref, params->patch_nodes, box_min, box_max);
 
 	#ifndef PROJECTION
-				const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here //TODO: check why this is not allowed without const?
+				const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here, REVIEW: base always orthogonal here? //TODO: check why this is not allowed without const?
 				if (upper) {
 					a_pos = M * make_float3(box_min.x, box_max.y, box_min.z);
 					b_pos = M * make_float3(box_max.x, box_max.y, box_min.z);
@@ -502,7 +502,7 @@ namespace wf {
 					c_pos = M * make_float3(box_max.x, box_max.y, box_min.z);
 				}
 	#else
-				const mat3 &M = subpatch.trafo.inverse();
+				//const mat3 &M = subpatch.trafo.inverse();
 				if (upper) {
 					a_pos = make_float3(box_min.x, box_min.y, box_min.z);
 					b_pos = make_float3(box_max.x, box_min.y, box_min.z);
@@ -565,6 +565,7 @@ namespace wf {
 
 	#ifdef PROJECTION
 				// Project x back to oriented space
+				const mat3 &M = subpatch.trafo.inverse();
 				x = M * subpatch.projected_to_oriented(x);
 	#endif
 #endif

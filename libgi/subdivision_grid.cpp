@@ -651,9 +651,11 @@ void subd_patch::prepare_box_approximation() {
 	//patch.verts.clear();
 	//patch.verts.shrink_to_fit();
 
+	#ifndef KEEP_GEOMETRY
 	// Clear and deallocate vertex memory
 	// reference: https://cplusplus.com/reference/vector/vector/clear/
 	std::vector<vertex>().swap(verts);
+	#endif
 }
 
 std::tuple<float, float> subd_patch::global_uvs(quad_ref quad_ref, float local_u, float local_v) const {

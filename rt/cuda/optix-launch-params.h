@@ -24,7 +24,7 @@ namespace wf::cuda {
 		subd_patch *patches;
 		subd_subpatch *subpatches;
 		patch_node *patch_nodes;
-#ifndef BOX_APPROXIMATION
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 		float4 *patch_vertex_pos;
 		float2 *patch_vertex_tc;
 #endif
