@@ -458,7 +458,7 @@ namespace wf {
 			float4 max_3;
 
 			void set_min(uint32_t index, const vec3 &v) {
-				assert(index <= 3);
+				//assert(index <= 3);
 				if (index == 0)			{ min_1.x = v.x; min_1.y = v.y; min_1.z = v.z; }
 				else if (index == 1)	{ min_1.w = v.x; min_2.x = v.y; min_2.y = v.z; }
 				else if (index == 2)	{ min_2.z = v.x; min_2.w = v.y; min_3.x = v.z; }
@@ -466,7 +466,7 @@ namespace wf {
 			}
 
 			void set_max(uint32_t index, const vec3 &v) {
-				assert(index <= 3);
+				//assert(index <= 3);
 				if (index == 0)			{ max_1.x = v.x; max_1.y = v.y; max_1.z = v.z; }
 				else if (index == 1)	{ max_1.w = v.x; max_2.x = v.y; max_2.y = v.z; }
 				else if (index == 2)	{ max_2.z = v.x; max_2.w = v.y; max_3.x = v.z; }
@@ -474,7 +474,7 @@ namespace wf {
 			}
 
 			float3 __device__ __forceinline__ get_min(uint32_t index) const {
-				assert(index <= 3);
+				//assert(index <= 3);
 				if (index == 0)			return { .x = min_1.x, .y = min_1.y, .z = min_1.z };
 				else if (index == 1)	return { .x = min_1.w, .y = min_2.x, .z = min_2.y };
 				else if (index == 2)	return { .x = min_2.z, .y = min_2.w, .z = min_3.x };
@@ -482,7 +482,7 @@ namespace wf {
 			}
 
 			float3 __device__ __forceinline__ get_max(uint32_t index) const {
-				assert(index <= 3);
+				//assert(index <= 3);
 				if (index == 0)			return { .x = max_1.x, .y = max_1.y, .z = max_1.z };
 				else if (index == 1)	return { .x = max_1.w, .y = max_2.x, .z = max_2.y };
 				else if (index == 2)	return { .x = max_2.z, .y = max_2.w, .z = max_3.x };
