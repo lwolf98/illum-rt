@@ -6,6 +6,7 @@
 #include <map>
 #include <assimp/mesh.h>
 #include <pxr/pxr.h>
+#include "driver/defines.h"
 #include "rt.h"
 #include "intersect.h"
 
@@ -13,9 +14,6 @@ PXR_NAMESPACE_OPEN_SCOPE
 // forward declaration to avoid full include of pxr/usd/usdGeom/mesh.h
 class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
-
-#define BOX_APPROXIMATION
-#define PROJECTION
 
 namespace subd {
 	struct edge {
@@ -128,6 +126,7 @@ namespace subd {
 		glm::mat3 proj;
 #endif
 		aabb root_box;
+		aabb root_box_world; // TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
 		uint32_t subd_level;
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
@@ -135,7 +134,6 @@ namespace subd {
 		const aabb &box_from_index(uint32_t local_index) const;
 
 #ifdef PROJECTION
-		glm::vec3 world_to_projected(const glm::vec3 &p) const;
 		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;
 		glm::vec3 projected_to_oriented(const glm::vec3 &p) const;
 #endif
@@ -151,7 +149,6 @@ namespace subd {
 	struct subd_patch {
 		std::vector<vertex> verts;
 		std::vector<patch_node> nodes;
-		std::vector<glm::mat3> trafos;
 		std::vector<subd_subpatch> subpatches;
 		aabb root_box;
 		uint32_t material_id;
@@ -186,7 +183,6 @@ namespace subd {
 		triangle tri(int vert_quad_id, bool upper) const;
 
 		// Index operations
-		//int get_subd_quad(int vert_quad_id) const;
 		std::tuple<uint32_t, uint32_t> xy_from_index(uint32_t index) const;
 		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
 		uint32_t quad_ref_from_index(uint32_t index) const;

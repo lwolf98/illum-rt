@@ -301,37 +301,4 @@ inline bool intersect4(const aabb &box, const ray &ray, float &is) {
 #endif
 }
 
-//#ifdef PROJECTION
-inline bool intersect_projected_xz(const aabb &box, const glm::vec3 &hit) {
-	if (!(box.min.x <= hit.x && box.max.x >= hit.x)) return false;
-	if (!(box.min.y <= hit.y && box.max.y >= hit.y)) return false;
-	return true;
-}
-
-/*inline bool intresect_projected_xz(const aabb &box, const ray &ray, float &is) {
-	float idx = ray.id.x;
-	float idz = ray.id.z;
-
-	float t1x_tmp = (box.min.x - ray.o.x) * idx;
-	float t2x_tmp = (box.max.x - ray.o.x) * idx;
-	float t1x = (t1x_tmp < t2x_tmp) ? t1x_tmp : t2x_tmp;
-	float t2x = (t2x_tmp < t1x_tmp) ? t1x_tmp : t2x_tmp;
-
-	float t1z_tmp = (box.min.z - ray.o.z) * idz;
-	float t2z_tmp = (box.max.z - ray.o.z) * idz;
-	float t1z = (t1z_tmp < t2z_tmp) ? t1z_tmp : t2z_tmp;
-	float t2z = (t2z_tmp < t1z_tmp) ? t1z_tmp : t2z_tmp;
-
-	float t1 = (t1x < t1z) ? t1z : t1x;
-	float t2 = (t2x < t2z) ? t2x : t2z;
-
-	if (t1 > t2)        return false;
-	if (t2 < ray.t_min) return false;
-	if (t1 > ray.t_max) return false;
-
-	is = t1;
-	return true;
-}*/
-//#endif
-
 #endif

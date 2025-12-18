@@ -39,7 +39,15 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		vertex a, b, c;
 		//vertex dbg_a, dbg_b, dbg_c;
 
-#ifdef BOX_APPROXIMATION
+#ifndef BOX_APPROXIMATION
+		// exact geometry
+
+		triangle tri = patch.tri(subd_quad_ref, upper);
+		a = patch.verts[tri.a];
+		b = patch.verts[tri.b];
+		c = patch.verts[tri.c];
+		//dbg_a = a, dbg_b = b, dbg_c = c;
+#else
 		// approximate geometry by bounding boxes
 
 		uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
@@ -53,7 +61,7 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		const aabb &box = subpatch.box_from_index(subd_quad_ref);
 		const glm::mat3 &M = glm::inverse(subpatch.trafo);
 
-#ifndef PROJECTION
+	#ifndef PROJECTION
 		if (upper) {
 			a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
 			b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
@@ -64,7 +72,7 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 			b.pos = M * vec3(box.min.x, box.max.y, box.max.z);
 			c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
 		}
-#else
+	#else
 		//const glm::mat3 &proj = glm::inverse(subpatch.proj);
 		
 		/*if (upper) {
@@ -87,16 +95,7 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 			b.pos = vec3(box.min.x, box.min.y, box.max.z);
 			c.pos = vec3(box.max.x, box.min.y, box.min.z);
 		}
-#endif
-
-#else
-		// exact geometry
-
-		triangle tri = patch.tri(subd_quad_ref, upper);
-		a = patch.verts[tri.a];
-		b = patch.verts[tri.b];
-		c = patch.verts[tri.c];
-		//dbg_a = a, dbg_b = b, dbg_c = c;
+	#endif
 #endif
 		const material &mat = scene.materials[patch.material_id];
 		diff_geom dg(a, b, c, &mat, is, scene);

@@ -209,7 +209,6 @@ uint32_t child_node_base(
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = patch.nodes[0];
 
 	// ---- REVIEW size
 	//uint32_t max_size = patch.align_level + 4; // tree height + number of child nodes
@@ -291,7 +290,6 @@ inline void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_in
 
 	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
 	is.subd_quad_ref.set_upper_tri(upper_tri);
-	vec2 hit_xy_;
 	if (upper_tri) {
 		is.beta = hit_xy.x;
 		is.gamma = hit_xy.y;
@@ -353,7 +351,6 @@ inline bool compute_valid_hit(
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = subpatch.nodes[0];
 
 	// ---- REVIEW size
 	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
@@ -368,7 +365,10 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 						subpatch.trafo * rayy.o,
 						subpatch.trafo * rayy.d
 					);
-#ifdef PROJECTION
+#ifndef PROJECTION
+	transformed_ray.t_min = rayy.t_min; // TODO: test this in Box approximation !
+	transformed_ray.t_max = rayy.t_max;
+#else
 	const float eps = transformed_ray.eps;
 
 	// Note: root_box is in projected space, but the y coordinate can also be used to
@@ -421,7 +421,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	#endif
 					bary_calc(box, transformed_ray, t_bary, closest);
 					closest.ref = ((uint32_t)-1) - patch_ref;
-					closest.t = t_hit; // -> required in local projected space for barycentric coord calculation
+					closest.t = t_hit;
 
 					uint32_t relative_index = (child_base+i) - off_current_level;
 					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)

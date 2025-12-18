@@ -132,6 +132,7 @@ namespace wf {
 									   pf->sd->triangles.device_memory,
 									   pf->sd->vertex_tc.device_memory,
 									   pf->sd->materials.device_memory,
+									   pf->sd->refs.device_memory,
 									   sample_rays->framebuffer.device_memory);
 			warn_on_cuda_error("");
 			potentially_sync_cuda("");

@@ -2,7 +2,7 @@ bin_PROGRAMS = rtgi
 
 AM_CPPFLAGS = -I$(top_srcdir)
 rtgi_SOURCES = main.cpp cmdline.cpp interaction.cpp
-noinst_HEADERS = interaction.h cmdline.h
+noinst_HEADERS = interaction.h cmdline.h defines.h
 
 if have_gl
 rtgi_SOURCES += preview.cpp

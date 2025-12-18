@@ -1,13 +1,14 @@
 #pragma once
 #include <vector_types.h>
 #include <optix.h>
-
+#include "driver/defines.h"
 
 namespace wf::cuda {
     class ray;  
     class tri_is; 
     class material;
 	class subd_patch;
+	class subd_subpatch;
 	class patch_node;
 
     struct optix_launch_params {
@@ -21,9 +22,12 @@ namespace wf::cuda {
         uint4 *triangles;
 
 		subd_patch *patches;
+		subd_subpatch *subpatches;
 		patch_node *patch_nodes;
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 		float4 *patch_vertex_pos;
 		float2 *patch_vertex_tc;
+#endif
 
     };
 }
