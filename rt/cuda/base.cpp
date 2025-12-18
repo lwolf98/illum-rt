@@ -139,8 +139,13 @@ namespace wf {
 #endif
 					device_subpatch.subd_level = subpatch.subd_level;
 #ifdef BOX_APPROXIMATION
+	#ifndef PROJECTION
 					device_subpatch.root_min = f4(subpatch.root_box.min); //-> REVIEW: required for box approximation (probably better to use two float4)
 					device_subpatch.root_max = f4(subpatch.root_box.max);
+	#else
+					device_subpatch.root_min_y = subpatch.root_box.min.y;
+					device_subpatch.root_max_y = subpatch.root_box.max.y;
+	#endif
 #endif
 
 					// Resize nodes and set offset

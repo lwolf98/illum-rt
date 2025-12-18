@@ -518,8 +518,13 @@ namespace wf {
 			uint32_t subd_level;
 			uint32_t parent_id; // TODO/TMP: Can probably be deleted and calculated in intersect
 #ifdef BOX_APPROXIMATION
+	#ifndef PROJECTION
 			float4 root_min; // TODO/REVIEW: float4 here good? or other variants more efficient?
 			float4 root_max;
+	#else
+			float root_min_y;
+			float root_max_y;
+	#endif
 #endif
 
 			__forceinline__ __device__ uint32_t len() const {
@@ -528,9 +533,15 @@ namespace wf {
 #ifdef BOX_APPROXIMATION
 			__forceinline__ __device__ const void box_from_index(uint32_t index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
 				if (subd_level == 0) {
+	#ifndef PROJECTION					
 					box_min = make_float3(root_min.x, root_min.y, root_min.z);
 					box_max = make_float3(root_max.x, root_max.y, root_max.z);
 					return;
+	#else
+					box_min = make_float3(-1.f, root_min_y, -1.f);
+					box_max = make_float3(1.f, root_max_y, 1.f);
+					return;
+	#endif
 				}
 
 				nodes = &nodes[bvh_node_offset]; // REVIEW: nodes += bvh_node_offset;

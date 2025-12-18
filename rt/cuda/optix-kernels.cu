@@ -149,8 +149,8 @@ namespace wf::cuda {
 
 		// Note: root_box is in projected space, but the y coordinate can also be used to
 		// calculate points in oriented space here. x and z cannot directly be mapped.
-		float t1 = (subpatch.root_max.y - ray_origin.y) * r_id.y;
-		float t2 = (subpatch.root_min.y - ray_origin.y) * r_id.y;
+		float t1 = (subpatch.root_max_y - ray_origin.y) * r_id.y;
+		float t2 = (subpatch.root_min_y - ray_origin.y) * r_id.y;
 		if (t1 > t2) {
 			float tmp = t1;
 			t1 = t2;
@@ -328,9 +328,9 @@ namespace wf::cuda {
 #else
 					float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
 					float t_bary;
+	#ifndef PROJECTION
 					float3 root_min = f3(subpatch.root_min); // REVIEW: more efficient way without copying?
 					float3 root_max = f3(subpatch.root_max);
-	#ifndef PROJECTION
 					if (!compute_valid_hit(root_min, root_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, false,									// additional params
@@ -339,6 +339,8 @@ namespace wf::cuda {
 										continue;
 									}
 	#else
+					float3 root_min = make_float3(-1.f, subpatch.root_min_y, -1.f);
+					float3 root_max = make_float3(1.f, subpatch.root_max_y, 1.f);
 					if (!compute_valid_hit(root_min, root_max,						// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, t1, p1_oriented, eps, subpatch, false,	// additional params

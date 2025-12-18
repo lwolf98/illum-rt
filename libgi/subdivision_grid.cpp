@@ -280,11 +280,41 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	glm::mat3 &T = trafo;
 	glm::mat3 T_inv = inverse(trafo);
 	const auto &verts = parent->verts;
-	int size = (len()-1)*(len()-1);
+	uint32_t size = (len()-1)*(len()-1);
 	
 	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
+#ifdef PROJECTION
+	// Scale projection so that the root box bounds will result in (-1,y_min,-1)x(1,y_max,1)
+	aabb subpatch_bounds;
+	for (uint32_t morton = 0; morton < size; ++morton) {
+		uint32_t x = decode_morton(morton);
+		uint32_t y = decode_morton(morton >> 1);
+		uint32_t vert_index = vert_start + y*parent->len()+x;
+		
+		// TODO: Can be built more efficiently, currently vertices are likely added multiple times adding using neighbouring quads
+		subpatch_bounds.grow(project(T * verts[vert_index].pos, proj));
+		subpatch_bounds.grow(project(T * verts[parent->vert_right(vert_index)].pos, proj));
+		subpatch_bounds.grow(project(T * verts[parent->vert_down(vert_index)].pos, proj));
+		subpatch_bounds.grow(project(T * verts[parent->vert_down_right(vert_index)].pos, proj));
+	}
+	std::vector<glm::vec2> input;
+	input.emplace_back(subpatch_bounds.min.x, subpatch_bounds.min.z);
+	input.emplace_back(subpatch_bounds.min.x, subpatch_bounds.max.z);
+	input.emplace_back(subpatch_bounds.max.x, subpatch_bounds.min.z);
+	input.emplace_back(subpatch_bounds.max.x, subpatch_bounds.max.z);
+	std::vector<glm::vec2> target;
+	target.emplace_back(-1.f, -1.f);
+	target.emplace_back(-1.f, 1.f);
+	target.emplace_back(1.f, -1.f);
+	target.emplace_back(1.f, 1.f);
+	proj = compute_homography(input, target) * proj;
+	//subpatch_bounds.min.x = -1.f, subpatch_bounds.min.z = -1.f;
+	//subpatch_bounds.max.x = 1.f, subpatch_bounds.max.z = 1.f;
+#endif
+
+	// Build leaf BVH level
 	int off_children = geometric_series4(subd_level-2);
 	for (uint32_t morton = 0; morton < size; ++morton) {
 		uint32_t x = decode_morton(morton);
@@ -316,6 +346,7 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 		}
 	}
 
+	// Build inner BVH levels
 	int off = 0;
 	for (int i = 1; i <= subd_level; i++) {
 		int len = 1 << (subd_level-i); // 2^(subd_level-i);
