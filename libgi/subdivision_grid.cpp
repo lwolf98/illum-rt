@@ -2,6 +2,9 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#ifdef PROJECTION
+#include <eigen3/Eigen/Dense>
+#endif
 #include <iomanip>
 #include <iostream>
 #include <fstream>
@@ -95,12 +98,55 @@ uint32_t encode_morton(uint32_t x, uint32_t y) {
 	return spread_bits(x) | (spread_bits(y) << 1);
 }
 
+#ifdef PROJECTION
+inline glm::mat3 compute_homography(const std::vector<glm::vec2> input, const std::vector<glm::vec2> target) {
+	using namespace Eigen;
+
+	MatrixXd A(8, 8);
+	VectorXd b(8);
+
+	for (uint32_t i = 0; i < 4; ++i) {
+		const glm::vec2 in = input[i];
+		const glm::vec2 tar = target[i];
+		A.row(0+i) << in.x,  in.y,  1.f,   0.f,   0.f,  0.f,  -tar.x*in.x,  -tar.x*in.y;
+		A.row(4+i) <<  0.f,   0.f,  0.f,  in.x,  in.y,  1.f,  -tar.y*in.x,  -tar.y*in.y;
+
+		b.row(0+i) << tar.x;
+		b.row(4+i) << tar.y;
+	}
+	//std::cout << "matrix: " << A << std::endl;
+	//std::cout << "result: " << b << std::endl;
+
+	VectorXd x(8);
+	x = A.fullPivLu().solve(b);
+	//std::cout << "variables: " << x << std::endl;
+
+	return glm::mat3 {
+		x[0], x[3], x[6],	// column 0
+		x[1], x[4], x[7],	// column 1
+		x[2], x[5], 1.f		// column 2
+	};
+}
+
+inline glm::vec2 xz(glm::vec3 xyz) {
+	return glm::vec2(xyz.x, xyz.z);
+}
+
+inline glm::vec3 project(const glm::vec3 &a, const glm::mat3 &proj) {
+	glm::vec3 tmp = proj * glm::vec3(a.x, a.z, 1.f);
+	return glm::vec3(tmp.x/tmp.z, a.y, tmp.y/tmp.z);
+}
+#endif
+
 class bvh_writer {
 	std::string path;
 	std::ofstream outfile;
 	std::string name;
 	uint32_t v_off;
 	glm::mat3 M_trafo;
+#ifdef PROJECTION
+	glm::mat3 M_proj;
+#endif
 	uint32_t next_level;
 
 public:
@@ -123,9 +169,15 @@ public:
 		}
 	}
 
-	void set_trafo(glm::mat3 trafo) {
+	void set_trafo(const glm::mat3 &trafo) {
 		M_trafo = trafo;
 	}
+
+#ifdef PROJECTION
+	void set_proj(const glm::mat3 &proj) {
+		M_proj = proj;
+	}
+#endif
 
 	void new_level() {
 		if (next_level >= 1) {
@@ -144,6 +196,8 @@ public:
 	}
 
 	void print_box(const aabb &box) {
+#ifndef PROJECTION
+
 		vec3 v_1 = M_trafo * vec3(box.min.x, box.min.y, box.min.z);
 		vec3 v_2 = M_trafo * vec3(box.max.x, box.min.y, box.min.z);
 		vec3 v_3 = M_trafo * vec3(box.max.x, box.max.y, box.min.z);
@@ -152,6 +206,16 @@ public:
 		vec3 v_6 = M_trafo * vec3(box.max.x, box.min.y, box.max.z);
 		vec3 v_7 = M_trafo * vec3(box.max.x, box.max.y, box.max.z);
 		vec3 v_8 = M_trafo * vec3(box.min.x, box.max.y, box.max.z);
+#else
+		vec3 v_1 = M_trafo * project(vec3(box.min.x, box.min.y, box.min.z), M_proj);
+		vec3 v_2 = M_trafo * project(vec3(box.max.x, box.min.y, box.min.z), M_proj);
+		vec3 v_3 = M_trafo * project(vec3(box.max.x, box.max.y, box.min.z), M_proj);
+		vec3 v_4 = M_trafo * project(vec3(box.min.x, box.max.y, box.min.z), M_proj);
+		vec3 v_5 = M_trafo * project(vec3(box.min.x, box.min.y, box.max.z), M_proj);
+		vec3 v_6 = M_trafo * project(vec3(box.max.x, box.min.y, box.max.z), M_proj);
+		vec3 v_7 = M_trafo * project(vec3(box.max.x, box.max.y, box.max.z), M_proj);
+		vec3 v_8 = M_trafo * project(vec3(box.min.x, box.max.y, box.max.z), M_proj);
+#endif
 
 		outfile << "v " << v_1.x << " " << v_1.y << " " << v_1.z << std::endl;
 		outfile << "v " << v_2.x << " " << v_2.y << " " << v_2.z << std::endl;
@@ -202,6 +266,23 @@ uint32_t subd_subpatch::len() const {
 	return (1 << subd_level) + 1; // 2^subd_level + 1
 }
 
+#ifdef PROJECTION
+glm::vec3 subd_subpatch::oriented_to_projected(const glm::vec3 &p) const {
+	return project(p, proj);
+}
+
+glm::vec3 subd_subpatch::projected_to_oriented(const glm::vec3 &p) const {
+	return project(p, inverse(proj));
+}
+
+glm::vec3 subd_subpatch::world_to_projected(const glm::vec3 &p) const {
+	return project(trafo * p, proj);
+	//return project(glm::inverse(trafo) * p, glm::inverse(proj));
+	//return trafo * project(p, proj);
+	//return glm::inverse(trafo) * project(p, glm::inverse(proj));
+}
+#endif
+
 void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	glm::mat3 &T = trafo;
 	glm::mat3 T_inv = inverse(trafo);
@@ -219,11 +300,19 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 
 		//std::cout << "Trafo (" << morton << "):\t" << glm::to_string(T_inv) << std::endl;
 		
+		// TODO: Can be built more efficiently, currently vertices are likely added multiple times adding using neighbouring quads
 		aabb box;
+#ifndef PROJECTION
 		box.grow(T * verts[vert_index].pos);
 		box.grow(T * verts[parent->vert_right(vert_index)].pos);
 		box.grow(T * verts[parent->vert_down(vert_index)].pos);
 		box.grow(T * verts[parent->vert_down_right(vert_index)].pos);
+#else
+		box.grow(project(T * verts[vert_index].pos, proj));
+		box.grow(project(T * verts[parent->vert_right(vert_index)].pos, proj));
+		box.grow(project(T * verts[parent->vert_down(vert_index)].pos, proj));
+		box.grow(project(T * verts[parent->vert_down_right(vert_index)].pos, proj));
+#endif
 
 		if (subd_level > 0) {
 			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
@@ -302,27 +391,59 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			uint32_t y = decode_morton(block_start >> 1);
 			uint32_t vert_index = y*len()+x;
 
-			// base from one corner
-			/*glm::mat3 T = trafo_matrix(
-					verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos,
-					verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos
-				);*/
-			// base from averaged diagonales
-			/*glm::mat3 T = trafo_matrix(
-					verts[vert_down(vert_index, block_len)].pos - verts[vert_right(vert_index)].pos,
-					verts[vert_down_right(vert_index, block_len)].pos - verts[vert_index].pos
-				);*/
-			// base from averaged opposite sides
-			vec3 ab = verts[vert_down(vert_index, block_len)].pos - verts[vert_index].pos;
-			vec3 dc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_right(vert_index, block_len)].pos;
-			vec3 ad = verts[vert_right(vert_index, block_len)].pos - verts[vert_index].pos;
-			vec3 bc = verts[vert_down_right(vert_index, block_len)].pos - verts[vert_down(vert_index, block_len)].pos;
-			glm::mat3 T = trafo_matrix(ab + dc, ad + bc);
-			//glm::mat3 T_inv = inverse(T); //TODO: equal to transpose here?
+			// base vertices
+			const vec3 &a = verts[vert_index].pos;
+			const vec3 &b = verts[vert_down(vert_index, block_len)].pos;
+			const vec3 &c = verts[vert_down_right(vert_index, block_len)].pos;
+			const vec3 &d = verts[vert_right(vert_index, block_len)].pos;
 
+			// base from one corner
+			//glm::mat3 T = trafo_matrix(b-a, d-a);
+
+			// base from averaged diagonales
+			//glm::mat3 T = trafo_matrix(b-d, c-a);
+
+			// base from averaged opposite sides
+			glm::mat3 T = trafo_matrix((b-a) + (c-d), (d-a) + (c-b));
+
+#ifdef PROJECTION
+			// Calculate projection matrix
+			std::vector<glm::vec2> input;
+			input.emplace_back(xz(T * a));
+			input.emplace_back(xz(T * b));
+			input.emplace_back(xz(T * d));
+			input.emplace_back(xz(T * c));
+			/*input.emplace_back(1, 1);
+			input.emplace_back(4, 1);
+			input.emplace_back(2, 3);
+			input.emplace_back(5, 4);*/
+			std::vector<glm::vec2> target;
+			target.emplace_back(-1.f, -1.f);
+			target.emplace_back(-1.f, 1.f);
+			target.emplace_back(1.f, -1.f);
+			target.emplace_back(1.f, 1.f);
+			glm::mat3 proj = compute_homography(input, target);
+			//glm::mat3 proj(1.f);
+
+			/*std::cout << "result: " << project(vec3(5,1.3,4), proj) << std::endl;
+			std::cout << "result: " << project(vec3(4,1.3,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(4,0.4,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(1.5,0.4,2), proj) << std::endl;
+			std::cout << "result: " << project(vec3(1.5,0.6,2), proj) << std::endl;
+
+			std::cout << "result: " << project(vec3(2,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(3,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(vec3(2.5,0.6,1), proj) << std::endl;
+			std::cout << "result: " << project(project(vec3(2.5,0.6,1), proj), inverse(proj)) << std::endl;*/
+#endif
+
+			// Init subpatch
 			subd_subpatch &sub = subpatches[morton];
 			sub.vert_start = vert_index;
 			sub.trafo = T;
+#ifdef PROJECTION
+			sub.proj = proj;
+#endif
 			sub.subd_level = aligned_subd_level;
 		}
 
@@ -346,7 +467,11 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			auto &T = sub.trafo;
 			auto T_inv = inverse(T);
 
+#ifndef PROJECTION
 			box.grow(sub.root_box, T_inv);
+#else
+			box.grow(sub.root_box, T_inv, inverse(sub.proj));
+#endif
 		}
 		else {
 			// full aabb BVH:
@@ -401,6 +526,9 @@ void subd_patch::export_bvh(const std::string &path) const {
 	writer.name_ext = "_aabb";
 	writer.start_bvh();
 	writer.set_trafo(glm::mat3(1.f));
+#ifdef PROJECTION
+	writer.set_proj(glm::mat3(1.f));
+#endif
 
 	// Start TL-BVH
 	writer.print_box(root_box);
@@ -427,6 +555,9 @@ void subd_patch::export_bvh(const std::string &path) const {
 
 	for (const auto &sub : subpatches) {
 		writer.set_trafo(inverse(sub.trafo));
+#ifdef PROJECTION
+		writer.set_proj(inverse(sub.proj));
+#endif
 		writer.print_box(sub.root_box);
 	}
 
@@ -436,6 +567,9 @@ void subd_patch::export_bvh(const std::string &path) const {
 		uint32_t size = 1 << 2*level; // 4^level
 		for (const auto &sub : subpatches) {
 			writer.set_trafo(inverse(sub.trafo));
+#ifdef PROJECTION
+			writer.set_proj(inverse(sub.proj));
+#endif
 			for (uint32_t morton = 0; morton < size; morton++) {
 				const patch_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)

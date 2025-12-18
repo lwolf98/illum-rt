@@ -15,6 +15,7 @@ class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
 #define BOX_APPROXIMATION
+#define PROJECTION
 
 namespace subd {
 	struct edge {
@@ -123,12 +124,21 @@ namespace subd {
 		std::vector<patch_node> nodes;
 		uint32_t vert_start;
 		glm::mat3 trafo;
+#ifdef PROJECTION
+		glm::mat3 proj;
+#endif
 		aabb root_box;
 		uint32_t subd_level;
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
 		const aabb &box_from_index(uint32_t local_index) const;
+
+#ifdef PROJECTION
+		glm::vec3 world_to_projected(const glm::vec3 &p) const;
+		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;
+		glm::vec3 projected_to_oriented(const glm::vec3 &p) const;
+#endif
 	};
 
 #ifdef BOX_APPROXIMATION

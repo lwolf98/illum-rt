@@ -52,18 +52,42 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
 		const aabb &box = subpatch.box_from_index(subd_quad_ref);
 		const glm::mat3 &M = glm::inverse(subpatch.trafo);
-		
-		//TODO/REVIEW: ! Check if min.y is always correct or if it also could be max.y !
+
+#ifndef PROJECTION
 		if (upper) {
-			a.pos = M * vec3(box.min.x, box.min.y, box.min.z);
-			b.pos = M * vec3(box.max.x, box.min.y, box.min.z);
-			c.pos = M * vec3(box.min.x, box.min.y, box.max.z);
+			a.pos = M * vec3(box.min.x, box.max.y, box.min.z);
+			b.pos = M * vec3(box.max.x, box.max.y, box.min.z);
+			c.pos = M * vec3(box.min.x, box.max.y, box.max.z);
 		}
 		else {
-			a.pos = M * vec3(box.max.x, box.min.y, box.max.z);
-			b.pos = M * vec3(box.min.x, box.min.y, box.max.z);
-			c.pos = M * vec3(box.max.x, box.min.y, box.min.z);
+			a.pos = M * vec3(box.max.x, box.max.y, box.max.z);
+			b.pos = M * vec3(box.min.x, box.max.y, box.max.z);
+			c.pos = M * vec3(box.max.x, box.max.y, box.min.z);
 		}
+#else
+		//const glm::mat3 &proj = glm::inverse(subpatch.proj);
+		
+		/*if (upper) {
+			a.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.min.z));
+			b.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.min.z));
+			c.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.max.z));
+		}
+		else {
+			a.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.max.z));
+			b.pos = M * subpatch.projected_to_oriented(vec3(box.min.x, box.max.y, box.max.z));
+			c.pos = M * subpatch.projected_to_oriented(vec3(box.max.x, box.max.y, box.min.z));
+		}*/
+		if (upper) {
+			a.pos = vec3(box.min.x, box.min.y, box.min.z);
+			b.pos = vec3(box.max.x, box.min.y, box.min.z);
+			c.pos = vec3(box.min.x, box.min.y, box.max.z);
+		}
+		else {
+			a.pos = vec3(box.max.x, box.min.y, box.max.z);
+			b.pos = vec3(box.min.x, box.min.y, box.max.z);
+			c.pos = vec3(box.max.x, box.min.y, box.min.z);
+		}
+#endif
 
 #else
 		// exact geometry
@@ -103,6 +127,13 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		glm::vec3 n1 = patch.data[0].norm + (patch.data[1].norm - patch.data[0].norm) * u;
 		glm::vec3 n2 = patch.data[2].norm + (patch.data[3].norm - patch.data[2].norm) * u;
 		dg.ns = n1 + (n2 - n1) * v;
+
+#ifdef PROJECTION
+		dg.x = M * subpatch.projected_to_oriented(dg.x);
+		dg.dbg_v_a.pos = M * subpatch.projected_to_oriented(dg.dbg_v_a.pos);
+		dg.dbg_v_b.pos = M * subpatch.projected_to_oriented(dg.dbg_v_b.pos);
+		dg.dbg_v_c.pos = M * subpatch.projected_to_oriented(dg.dbg_v_c.pos);
+#endif
 #endif
 
 		return dg;

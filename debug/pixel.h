@@ -4,6 +4,8 @@
 
 extern int debug_pixel_x;
 extern int debug_pixel_y;
+extern int current_pixel_x;
+extern int current_pixel_y;
 extern bool debug_pixel_single_run_pending;
 
 inline bool debug_pixel(int x, int y) {
