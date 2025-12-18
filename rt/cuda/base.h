@@ -447,7 +447,8 @@ namespace wf {
 			float ior, roughness;
 		};
 
-		struct patch_node {
+		//struct patch_node {
+		/*struct patch_node_old {
 			// memory layout and order of the following fields is important!
 			float4 min_1;
 			float4 min_2;
@@ -489,19 +490,85 @@ namespace wf {
 			}
 
 			//TODO: is it ok to use these (dynamic) variants?
-			/*float3 __device__ __forceinline__ get_min(uint32_t index) const {
-				assert(index <= 3);
-				uint32_t off = index * 3;
-				float *min_base = (float *)&min_1;
-				return float3 { .x = min_base[off], .y = min_base[off+1], .z = min_base[off+2] };
+			//float3 __device__ __forceinline__ get_min(uint32_t index) const {
+			//	assert(index <= 3);
+			//	uint32_t off = index * 3;
+			//	float *min_base = (float *)&min_1;
+			//	return float3 { .x = min_base[off], .y = min_base[off+1], .z = min_base[off+2] };
+			//}
+
+			//float3 __device__ __forceinline__ get_max(uint32_t index) const {
+			//	assert(index <= 3);
+			//	uint32_t off = index * 3;
+			//	float *max_base = (float *)&max_1;
+			//	return float3 { .x = max_base[off], .y = max_base[off+1], .z = max_base[off+2] };
+			//}
+		};*/
+
+		//struct patch_slab_node {
+		struct patch_node {
+			// 8 slabs for xz -> 8 floats + 8 y coords -> 8 floats = 16 floats
+			// instead of: 6 float4s (24 floats)
+			// slab x_0 x_1 x_2 x_3
+			// slab z_0 z_1 z_2 z_3
+			//          - MIN -                       - MAX -
+			// box 0 -> x_0,z_0 | x_1,z_0 | x_0,z_1 | x_1,z_1
+			// box 1 -> x_2,z_0 | x_3,z_0 | x_2,z_1 | x_3,z_1
+			// box 2 -> x_0,z_2 | x_1,z_2 | x_0,z_3 | x_1,z_3
+			// box 3 -> x_2,z_2 | x_3,z_2 | x_2,z_3 | x_3,z_3
+
+			float x_slabs[4];
+			float z_slabs[4];
+			float y_min[4];
+			float y_max[4];
+
+			static patch_node from(const subd::patch_node &from_node) {
+				patch_node node;
+				/*for (uint32_t i = 0; i < 4; ++i) {
+					auto minmax = (i % 2 == 0)
+								? [](float a, float b) { return std::min(a, b); }
+								: [](float a, float b) { return std::max(a, b); };
+					node.x_slabs[i] = minmax(from_node.boxes[i/2].min/max.x, from_node.boxes[i/2 + 2].min/max.x);
+					node.z_slabs[i] = minmax(from_node.boxes[i/2].min/max.z, from_node.boxes[i/2 + 2].min/max.z);
+					node.y_min[i] = from_node.boxes[i].min.y;
+					node.y_max[i] = from_node.boxes[i].max.y;
+				}*/
+				node.x_slabs[0] = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
+				node.x_slabs[1] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
+				node.x_slabs[2] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
+				node.x_slabs[3] = std::max(from_node.boxes[1].max.x, from_node.boxes[3].max.x);
+				node.z_slabs[0] = std::min(from_node.boxes[0].min.z, from_node.boxes[2].min.z);
+				node.z_slabs[1] = std::max(from_node.boxes[0].max.z, from_node.boxes[2].max.z);
+				node.z_slabs[2] = std::min(from_node.boxes[1].min.z, from_node.boxes[3].min.z);
+				node.z_slabs[3] = std::max(from_node.boxes[1].max.z, from_node.boxes[3].max.z);
+
+				node.y_min[0] = from_node.boxes[0].min.y;
+				node.y_min[1] = from_node.boxes[1].min.y;
+				node.y_min[2] = from_node.boxes[2].min.y;
+				node.y_min[3] = from_node.boxes[3].min.y;
+				node.y_max[0] = from_node.boxes[0].max.y;
+				node.y_max[1] = from_node.boxes[1].max.y;
+				node.y_max[2] = from_node.boxes[2].max.y;
+				node.y_max[3] = from_node.boxes[3].max.y;
+
+				return node;
+			}
+
+			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				//assert(index <= 3);
+				if (index == 0)			return { .x = x_slabs[0], .y = y_min[0], .z = z_slabs[0] };
+				else if (index == 1)	return { .x = x_slabs[2], .y = y_min[1], .z = z_slabs[0] };
+				else if (index == 2)	return { .x = x_slabs[0], .y = y_min[2], .z = z_slabs[2] };
+				else					return { .x = x_slabs[2], .y = y_min[3], .z = z_slabs[2] };
 			}
 
 			float3 __device__ __forceinline__ get_max(uint32_t index) const {
-				assert(index <= 3);
-				uint32_t off = index * 3;
-				float *max_base = (float *)&max_1;
-				return float3 { .x = max_base[off], .y = max_base[off+1], .z = max_base[off+2] };
-			}*/
+				//assert(index <= 3);
+				if (index == 0)			return { .x = x_slabs[1], .y = y_min[0], .z = z_slabs[1] };
+				else if (index == 1)	return { .x = x_slabs[3], .y = y_min[1], .z = z_slabs[1] };
+				else if (index == 2)	return { .x = x_slabs[1], .y = y_min[2], .z = z_slabs[3] };
+				else					return { .x = x_slabs[3], .y = y_min[3], .z = z_slabs[3] };
+			}
 		};
 
 		int32_t __forceinline__ __device__ geometric_series4(int iterations) {
