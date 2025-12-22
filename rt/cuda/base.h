@@ -535,38 +535,6 @@ namespace wf {
 				return node;
 			}
 
-			static patch_node from(const subd::patch_node &from_node) {
-				patch_node node;
-				/*for (uint32_t i = 0; i < 4; ++i) {
-					auto minmax = (i % 2 == 0)
-								? [](float a, float b) { return std::min(a, b); }
-								: [](float a, float b) { return std::max(a, b); };
-					node.x_slabs[i] = minmax(from_node.boxes[i/2].min/max.x, from_node.boxes[i/2 + 2].min/max.x);
-					node.z_slabs[i] = minmax(from_node.boxes[i/2].min/max.z, from_node.boxes[i/2 + 2].min/max.z);
-					node.y_min[i] = from_node.boxes[i].min.y;
-					node.y_max[i] = from_node.boxes[i].max.y;
-				}*/
-				node.x_slabs[0] = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
-				node.x_slabs[1] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
-				node.x_slabs[2] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
-				node.x_slabs[3] = std::max(from_node.boxes[1].max.x, from_node.boxes[3].max.x);
-				node.z_slabs[0] = std::min(from_node.boxes[0].min.z, from_node.boxes[1].min.z);
-				node.z_slabs[1] = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
-				node.z_slabs[2] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
-				node.z_slabs[3] = std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z);
-
-				node.y_min[0] = from_node.boxes[0].min.y;
-				node.y_min[1] = from_node.boxes[1].min.y;
-				node.y_min[2] = from_node.boxes[2].min.y;
-				node.y_min[3] = from_node.boxes[3].min.y;
-				node.y_max[0] = from_node.boxes[0].max.y;
-				node.y_max[1] = from_node.boxes[1].max.y;
-				node.y_max[2] = from_node.boxes[2].max.y;
-				node.y_max[3] = from_node.boxes[3].max.y;
-
-				return node;
-			}
-
 			float3 __device__ __forceinline__ get_min(uint32_t index) const {
 				//assert(index <= 3);
 				if (index == 0)			return { .x = x_slabs[0], .y = y_min[0], .z = z_slabs[0] };
@@ -585,8 +553,36 @@ namespace wf {
 		};
 #endif
 
-		int32_t __forceinline__ __device__ geometric_series4(int iterations) {
+		static int32_t __forceinline__ __device__ geometric_series4(int iterations) {
 			return (1 - (1 << ((iterations+1)<<1))) / (-3);
+		}
+
+		// Basic operations
+		static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
+#ifdef __CUDACC__
+			return (31 - __clz(x)) >> 1;
+#else
+			return 0; // only used in device code
+#endif
+		}
+
+		static uint32_t __forceinline__ __device__ child_node_base(
+				uint32_t trav_level,
+				uint32_t index
+			) {
+				uint32_t off_current_level = geometric_series4(trav_level-1);
+				uint32_t off_child_level = geometric_series4(trav_level);
+				uint32_t idx_current_relative = index - off_current_level;
+				uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+				uint32_t index_child = off_child_level + idx_child_relative;
+				return index_child;
+		}
+
+		static uint32_t __forceinline__ __device__ child_node_base(
+				uint32_t index
+			) {
+				uint32_t trav_level = log4_clz(1+3*index);
+				return child_node_base(trav_level, index);
 		}
 
 		struct subd_subpatch {
@@ -630,8 +626,149 @@ namespace wf {
 				uint32_t quad_ref_local = index & modulo_mask;
 				uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
 				uint32_t box_index = quad_ref_local & 0x3;
+#ifndef HALF_SLAB_COMPRESSION
 				box_min = nodes[node_index].get_min(box_index); // TODO/REVIEW: does this double copy the box? how to be more efficient?
 				box_max = nodes[node_index].get_max(box_index);
+#else
+				// REVIEW/TODO: half slab compression...
+				box_from_node(node_index, box_index, nodes, box_min, box_max);
+#endif
+			}
+#endif
+#ifdef HALF_SLAB_COMPRESSION
+			__forceinline__ __device__ void assert_box_compare(const float3 &a, const float3 &b) const {
+				assert(a.y == b.y);
+
+				assert(a.x == b.x);
+				assert(a.z == b.z);
+			}
+
+			__forceinline__ __device__ void box_from_node(uint32_t local_node_index, uint32_t box_index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
+				//float x1, x2, z1, z2;
+				//float x0, x3, z0, z3;
+				//float x_min, x_max, z_min, z_max;
+				const patch_node &node = nodes[bvh_node_offset + local_node_index];
+				float3 dbg_min = node.get_min(box_index);
+				float3 dbg_max = node.get_max(box_index);
+
+	#ifdef PROJECTION
+				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
+				float3 root_max = make_float3(1.f, root_max_y, 1.f);
+	#endif
+				if (box_index == 0)      { box_max.x = node.x_slabs[1]; box_max.z = node.z_slabs[1]; box_min.y = node.y_min[0]; box_max.y = node.y_max[0]; }
+				else if (box_index == 1) { box_min.x = node.x_slabs[2]; box_max.z = node.z_slabs[1]; box_min.y = node.y_min[1]; box_max.y = node.y_max[1]; }
+				else if (box_index == 2) { box_max.x = node.x_slabs[1]; box_min.z = node.z_slabs[2]; box_min.y = node.y_min[2]; box_max.y = node.y_max[2]; }
+				else if (box_index == 3) { box_min.x = node.x_slabs[2]; box_min.z = node.z_slabs[2]; box_min.y = node.y_min[3]; box_max.y = node.y_max[3]; }
+
+				if (local_node_index == 0) {
+					// case no parent: take missing values fully from root box
+					if (box_index == 0)      { box_min.x = root_min.x; box_min.z = root_min.z; }
+					else if (box_index == 1) { box_max.x = root_max.x; box_min.z = root_min.z; }
+					else if (box_index == 2) { box_min.x = root_min.x; box_max.z = root_max.z; }
+					else if (box_index == 3) { box_max.x = root_max.x; box_max.z = root_max.z; }
+
+					//assert_box_compare(box_min, dbg_min);
+					//assert_box_compare(box_max, dbg_max);
+					return;
+				}
+
+				uint32_t parent_index;
+				uint32_t parents_child_index;
+				//{
+					// Calculate parent node index
+					uint32_t trav_level = log4_clz(1+3*local_node_index);
+					uint32_t off_current_level = geometric_series4(trav_level-1);
+					uint32_t off_parent_level = geometric_series4(trav_level-2);
+					uint32_t idx_current_relative = local_node_index - off_current_level;
+					uint32_t idx_parent_relative = idx_current_relative >> 2; //(/ 4)
+					parent_index = off_parent_level + idx_parent_relative;
+					parents_child_index = idx_current_relative & 3; // equals modulo 4 for non-negative values
+				//}
+
+				// set parent slabs
+				//uint32_t parents_child_index = local_node_index & 3; // equals modulo 4 for non-negative values
+				const patch_node &parent = nodes[bvh_node_offset + parent_index];
+				if (parents_child_index == 0 && box_index == 3) { box_max.x = parent.x_slabs[1]; box_max.z = parent.z_slabs[1]; return; }
+				if (parents_child_index == 1 && box_index == 2) { box_min.x = parent.x_slabs[2]; box_max.z = parent.z_slabs[1]; return; }
+				if (parents_child_index == 2 && box_index == 1) { box_max.x = parent.x_slabs[1]; box_min.z = parent.z_slabs[2]; return; }
+				if (parents_child_index == 3 && box_index == 0) { box_min.x = parent.x_slabs[2]; box_min.z = parent.z_slabs[2]; return; }
+
+				if (parents_child_index == 0) {
+					if (box_index == 0)      { }
+					else if (box_index == 1) { box_max.x = parent.x_slabs[1]; }
+					else if (box_index == 2) { box_max.z = parent.z_slabs[1]; }
+					//else if (box_index == 3) { box_max.x = parent.x_slabs[1]; box_max.z = parent.z_slabs[1]; return; }
+				}
+				else if (parents_child_index == 1) {
+					if (box_index == 0)      { box_min.x = parent.x_slabs[2]; }
+					else if (box_index == 1) { }
+					//else if (box_index == 2) { box_min.x = parent.x_slabs[2]; box_max.z = parent.z_slabs[1]; return; }
+					else if (box_index == 3) { box_max.z = parent.z_slabs[1]; }
+				}
+				else if (parents_child_index == 2) {
+					if (box_index == 0)      { box_min.z = parent.z_slabs[2]; }
+					//else if (box_index == 1) { box_max.x = parent.x_slabs[1]; box_min.z = parent.z_slabs[2]; return; }
+					else if (box_index == 2) { }
+					else if (box_index == 3) { box_max.x = parent.x_slabs[1]; }
+				}
+				else if (parents_child_index == 3) {
+					//if (box_index == 0)      { box_min.x = parent.x_slabs[2]; box_min.z = parent.z_slabs[2]; return; }
+					if (box_index == 1)      { box_min.z = parent.z_slabs[2]; }
+					else if (box_index == 2) { box_min.x = parent.x_slabs[2]; }
+					else if (box_index == 3) { }
+				}
+
+				if (parent_index == 0) {
+					// case parent, but no grand parent: take ...
+
+					if (parents_child_index == 0) {
+						if (box_index == 0)      { box_min.x = root_min.x; box_min.z = root_min.z; }
+						else if (box_index == 1) { box_min.z = root_min.z; }
+						else if (box_index == 2) { box_min.x = root_min.x; }
+						//else if (box_index == 3) { }
+					}
+					else if (parents_child_index == 1) {
+						if (box_index == 0)      { box_min.z = root_min.z; }
+						else if (box_index == 1) { box_max.x = root_max.x; box_min.z = root_min.z; }
+						//else if (box_index == 2) { }
+						else if (box_index == 3) { box_max.x = root_max.x; }
+					}
+					else if (parents_child_index == 2) {
+						if (box_index == 0)      { box_min.x = root_min.x; }
+						//else if (box_index == 1) { }
+						else if (box_index == 2) { box_min.x = root_min.x; box_max.z = root_max.z; }
+						else if (box_index == 3) { box_max.z = root_max.z; }
+					}
+					else if (parents_child_index == 3) {
+						//if (box_index == 0)    { }
+						if (box_index == 1)      { box_max.x = root_max.x; }
+						else if (box_index == 2) { box_max.z = root_max.z; }
+						else if (box_index == 3) { box_max.x = root_max.x; box_max.z = root_max.z; }
+					}
+
+					return;
+				}
+
+				bool has_grandparent = local_node_index>>2 == 0;
+				const patch_node &grandparent = nodes[bvh_node_offset + local_node_index>>4];
+				// ...
+
+				/*if (box_index == 0) {
+					 = node.get_max();
+					node.get_max();
+				}
+				else if (box_index == 1) {
+					node.get_min();
+					node.get_max();
+				}
+				else if (box_index == 2) {
+					node.get_max();
+					node.get_min();
+				}
+				else if (box_index == 3) {
+					node.get_min();
+					node.get_min();
+				}*/
 			}
 #endif
 #ifdef PROJECTION

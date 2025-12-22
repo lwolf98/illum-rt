@@ -16,6 +16,39 @@ class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace subd {
+	/* Basic operations */
+	static uint32_t log2_clz(uint32_t x) {
+		return 31 - __builtin_clz(x);
+	}
+
+	static uint32_t log4_clz(uint32_t x) {
+		return (31 - __builtin_clz(x)) >> 1;
+	}
+
+	static int geometric_series4(int iterations) {
+		return (1 - (1 << ((iterations+1)<<1))) / (-3);
+	}
+
+	static uint32_t child_node_base(
+		uint32_t trav_level,
+		uint32_t index
+	) {
+		uint32_t off_current_level = geometric_series4(trav_level-1);
+		uint32_t off_child_level = geometric_series4(trav_level);
+		uint32_t idx_current_relative = index - off_current_level;
+		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+		uint32_t index_child = off_child_level + idx_child_relative;
+		return index_child;
+	}
+
+	static uint32_t child_node_base(
+			uint32_t index
+		) {
+			uint32_t trav_level = log4_clz(1+3*index);
+			return child_node_base(trav_level, index);
+	}
+
+	/* Structures */
 	struct edge {
 		int v1, v2;
 		float sharpness;
@@ -190,6 +223,9 @@ namespace subd {
 		const aabb &box_from_index(uint32_t local_index) const;
 #else
 		aabb box_from_index(uint32_t local_index) const;
+#endif
+#ifdef HALF_SLAB_COMPRESSION
+		aabb box_from_node(uint32_t node_index, uint32_t box_index, bool debug = false) const;
 #endif
 
 #ifdef PROJECTION

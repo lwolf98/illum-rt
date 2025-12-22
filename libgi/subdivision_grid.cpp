@@ -714,7 +714,157 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 	uint32_t quad_ref_local = index & modulo_mask;
 	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
 	uint32_t box_index = quad_ref_local & 0x3;
+#ifndef HALF_SLAB_COMPRESSION
 	return nodes[node_index].get_box(box_index);
+#else
+	return box_from_node(node_index, box_index);
+#endif
+}
+#endif
+#ifdef HALF_SLAB_COMPRESSION
+void assert_box_compare(const aabb &a, const aabb &b) {
+	assert(a.min.y == b.min.y);
+	assert(a.max.y == b.max.y);
+
+	assert(a.min.x == b.min.x);
+	assert(a.min.z == b.min.z);
+	assert(a.max.x == b.max.x);
+	assert(a.max.z == b.max.z);
+}
+
+void debug_boxes(const aabb &a, const aabb &b, int32_t id = -1) {
+	if (id > -1) std::cout << "Check " << id << ":\n";
+	std::cout << "Box: [(" << a.min << "), (" << a.max << ")]\n";
+	std::cout << "Ref: [(" << b.min << "), (" << b.max << ")]\n";
+	assert_box_compare(a, b);
+}
+
+aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool debug) const {
+				aabb box;
+				const patch_slab_node &node = nodes[node_index];
+				aabb dbg_box = node.get_box(box_index);
+
+				// [FEAT-PROJ] TODO !
+	/*#ifdef PROJECTION
+				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
+				float3 root_max = make_float3(1.f, root_max_y, 1.f);
+	#endif*/
+
+				if (box_index == 0)      { box.max.x = node.x_slabs[1]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
+				else if (box_index == 1) { box.min.x = node.x_slabs[2]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
+				else if (box_index == 2) { box.max.x = node.x_slabs[1]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
+				else if (box_index == 3) { box.min.x = node.x_slabs[2]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
+
+				if (node_index == 0) {
+					// case no parent: take missing values fully from root box
+					if (box_index == 0)      { box.min.x = root_box.min.x; box.min.z = root_box.min.z; }
+					else if (box_index == 1) { box.max.x = root_box.max.x; box.min.z = root_box.min.z; }
+					else if (box_index == 2) { box.min.x = root_box.min.x; box.max.z = root_box.max.z; }
+					else if (box_index == 3) { box.max.x = root_box.max.x; box.max.z = root_box.max.z; }
+
+					if (debug) debug_boxes(box, dbg_box, 0);
+					return box;
+				}
+
+				uint32_t parent_index;
+				uint32_t parents_child_index;
+				//{
+					// Calculate parent node index
+					uint32_t trav_level = log4_clz(1+3*node_index);
+					uint32_t off_current_level = geometric_series4(trav_level-1);
+					uint32_t off_parent_level = geometric_series4(trav_level-2);
+					uint32_t idx_current_relative = node_index - off_current_level;
+					uint32_t idx_parent_relative = idx_current_relative >> 2; //(/ 4)
+					parent_index = off_parent_level + idx_parent_relative;
+					parents_child_index = idx_current_relative & 3; // equals modulo 4 for non-negative values
+				//}
+
+				// set parent slabs
+				//uint32_t parents_child_index = node_index & 3; // equals modulo 4 for non-negative values
+				//const patch_slab_node &parent = nodes[node_index>>2];
+				const patch_slab_node &parent = nodes[parent_index];
+				if (parents_child_index == 0 && box_index == 3) { box.max.x = parent.x_slabs[1]; box.max.z = parent.z_slabs[1]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
+				if (parents_child_index == 1 && box_index == 2) { box.min.x = parent.x_slabs[2]; box.max.z = parent.z_slabs[1]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
+				if (parents_child_index == 2 && box_index == 1) { box.max.x = parent.x_slabs[1]; box.min.z = parent.z_slabs[2]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
+				if (parents_child_index == 3 && box_index == 0) { box.min.x = parent.x_slabs[2]; box.min.z = parent.z_slabs[2]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
+				
+				if (parents_child_index == 0) {
+					if (box_index == 0)      { }
+					else if (box_index == 1) { box.max.x = parent.x_slabs[1]; }
+					else if (box_index == 2) { box.max.z = parent.z_slabs[1]; }
+					//else if (box_index == 3) { box.max.x = parent.x_slabs[1]; box.max.z = parent.z_slabs[1]; return; }
+				}
+				else if (parents_child_index == 1) {
+					if (box_index == 0)      { box.min.x = parent.x_slabs[2]; }
+					else if (box_index == 1) { }
+					//else if (box_index == 2) { box.min.x = parent.x_slabs[2]; box.max.z = parent.z_slabs[1]; return; }
+					else if (box_index == 3) { box.max.z = parent.z_slabs[1]; }
+				}
+				else if (parents_child_index == 2) {
+					if (box_index == 0)      { box.min.z = parent.z_slabs[2]; }
+					//else if (box_index == 1) { box.max.x = parent.x_slabs[1]; box.min.z = parent.z_slabs[2]; return; }
+					else if (box_index == 2) { }
+					else if (box_index == 3) { box.max.x = parent.x_slabs[1]; }
+				}
+				else if (parents_child_index == 3) {
+					//if (box_index == 0)      { box.min.x = parent.x_slabs[2]; box.min.z = parent.z_slabs[2]; return; }
+					if (box_index == 1)      { box.min.z = parent.z_slabs[2]; }
+					else if (box_index == 2) { box.min.x = parent.x_slabs[2]; }
+					else if (box_index == 3) { }
+				}
+
+				if (parent_index == 0) {
+					// case parent, but no grand parent: take ...
+
+					if (parents_child_index == 0) {
+						if (box_index == 0)      { box.min.x = root_box.min.x; box.min.z = root_box.min.z; }
+						else if (box_index == 1) { box.min.z = root_box.min.z; }
+						else if (box_index == 2) { box.min.x = root_box.min.x; }
+						//else if (box_index == 3) { }
+					}
+					else if (parents_child_index == 1) {
+						if (box_index == 0)      { box.min.z = root_box.min.z; }
+						else if (box_index == 1) { box.max.x = root_box.max.x; box.min.z = root_box.min.z; }
+						//else if (box_index == 2) { }
+						else if (box_index == 3) { box.max.x = root_box.max.x; }
+					}
+					else if (parents_child_index == 2) {
+						if (box_index == 0)      { box.min.x = root_box.min.x; }
+						//else if (box_index == 1) { }
+						else if (box_index == 2) { box.min.x = root_box.min.x; box.max.z = root_box.max.z; }
+						else if (box_index == 3) { box.max.z = root_box.max.z; }
+					}
+					else if (parents_child_index == 3) {
+						//if (box_index == 0)    { }
+						if (box_index == 1)      { box.max.x = root_box.max.x; }
+						else if (box_index == 2) { box.max.z = root_box.max.z; }
+						else if (box_index == 3) { box.max.x = root_box.max.x; box.max.z = root_box.max.z; }
+					}
+
+					return box;
+				}
+
+				//bool has_grandparent = node_index>>2 == 0;
+				//const patch_slab_node &grandparent = nodes[node_index>>4];
+
+				/*if (box_index == 0) {
+					 = node.get_max();
+					node.get_max();
+				}
+				else if (box_index == 1) {
+					node.get_min();
+					node.get_max();
+				}
+				else if (box_index == 2) {
+					node.get_max();
+					node.get_min();
+				}
+				else if (box_index == 3) {
+					node.get_min();
+					node.get_min();
+				}*/
+
+				return box;
 }
 #endif
 
