@@ -400,7 +400,11 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			uint32_t off_current_level = geometric_series4(trav_level);
 			float dist;
 			for (int i = 0; i < 4; ++i) {
+#ifndef SLAB_COMPRESSION
 				const aabb &box = node.boxes[i];
+#else
+				const aabb box = node.get_box(i);
+#endif
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				float t_hit, t_bary;
 #ifndef PROJECTION

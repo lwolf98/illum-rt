@@ -285,6 +285,10 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
+#ifdef SLAB_COMPRESSION
+	patch_node basic_nodes[nodes_count];
+#endif
+
 #ifdef PROJECTION
 	// Scale projection so that the root box bounds will result in (-1,y_min,-1)x(1,y_max,1)
 	aabb subpatch_bounds;
@@ -338,7 +342,13 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 #endif
 
 		if (subd_level > 0) {
-			nodes[off_children+(morton>>2)].boxes[morton%4] = box;
+#ifndef SLAB_COMPRESSION
+			nodes[off_children+(morton>>2)].boxes[morton & 3] = box;
+#else
+			basic_nodes[off_children+(morton>>2)].boxes[morton & 3] = box;
+			if ((morton & 3) == 3) // equivalent to modulo 4 for non negative values
+				nodes[off_children+(morton>>2)] = patch_slab_node::from(basic_nodes[off_children+(morton>>2)]);
+#endif
 		}
 		else {
 			root_box = box;
@@ -355,21 +365,48 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 		if (i < subd_level)	off = geometric_series4(subd_level-i-2);
 
 		for (uint32_t j = 0; j < size; ++j) {
-			const patch_node &child_node = nodes[off_children + j];
+			const auto &child_node = nodes[off_children + j];
 			aabb box;
 
+#ifndef SLAB_COMPRESSION
 			box.grow(child_node.boxes[0]);
 			box.grow(child_node.boxes[1]);
 			box.grow(child_node.boxes[2]);
 			box.grow(child_node.boxes[3]);
+#else
+			box.grow(child_node.get_box(0));
+			box.grow(child_node.get_box(1));
+			box.grow(child_node.get_box(2));
+			box.grow(child_node.get_box(3));
+#endif
 
-			if (i < subd_level)
-				nodes[off+(j>>2)].boxes[j%4] = box;
-			else
+			if (i < subd_level) {
+#ifndef SLAB_COMPRESSION
+				nodes[off+(j>>2)].boxes[j & 3] = box;
+#else
+				basic_nodes[off+(j>>2)].boxes[j & 3] = box;
+				if ((j & 3) == 3) // equivalent to modulo 4 for non negative values
+					nodes[off+(j>>2)] = patch_slab_node::from(basic_nodes[off+(j>>2)]);
+#endif
+			}
+			else {
 				root_box = box;
-			
+			}
 		}
 	}
+
+	/*assert(root_box.min.x == slab_nodes[0].x_slabs[0]);
+	assert(root_box.max.x == slab_nodes[0].x_slabs[3]);
+	assert(root_box.min.z == slab_nodes[0].z_slabs[0]);
+	assert(root_box.max.z == slab_nodes[0].z_slabs[3]);*/
+	//assert(root_box.min.y == slab_nodes[0].y);
+
+/*#ifdef SLAB_COMPRESSION
+	// Convert to compressed slab nodes
+	for (uint32_t i = 0; i < nodes_count; i++) {
+		slab_nodes[i] = patch_slab_node::from(nodes[i]);
+	}
+#endif*/
 }
 
 void subd_patch::build_bvh(int32_t align_level, bool debug) {
@@ -592,10 +629,15 @@ void subd_patch::export_bvh(const std::string &path) const {
 			writer.set_proj(inverse(sub.proj));
 #endif
 			for (uint32_t morton = 0; morton < size; morton++) {
+#ifndef SLAB_COMPRESSION
 				const patch_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)
 					writer.print_box(box);
-
+#else
+				const patch_slab_node &node = sub.nodes[child_node_base + morton];
+				for (uint32_t i = 0; i < 4; i++)
+					writer.print_box(node.get_box(i));
+#endif
 			}
 		}
 	}
@@ -654,6 +696,7 @@ const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
 	return subpatches[subpatch_id];
 }
 
+#ifndef SLAB_COMPRESSION
 const aabb &subd_subpatch::box_from_index(uint32_t index) const {
 	if (subd_level == 0) return root_box;
 
@@ -663,6 +706,17 @@ const aabb &subd_subpatch::box_from_index(uint32_t index) const {
 	uint32_t box_index = quad_ref_local & 0x3;
 	return nodes[node_index].boxes[box_index];
 }
+#else
+aabb subd_subpatch::box_from_index(uint32_t index) const {
+	if (subd_level == 0) return root_box;
+
+	uint32_t modulo_mask = ~(0xFFFFFFFF << 2*subd_level);
+	uint32_t quad_ref_local = index & modulo_mask;
+	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
+	uint32_t box_index = quad_ref_local & 0x3;
+	return nodes[node_index].get_box(box_index);
+}
+#endif
 
 #ifdef BOX_APPROXIMATION
 void subd_patch::prepare_box_approximation() {

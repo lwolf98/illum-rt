@@ -155,17 +155,22 @@ namespace wf {
 
 					#pragma omp parallel for
 					for (uint32_t k = 0; k < subpatch.nodes.size(); ++k) {
+#ifndef SLAB_COMPRESSION
 						const subd::patch_node &node = subpatch.nodes[k];
 						patch_node &device_node = device_nodes[offset_nodes+k];
-						device_node = patch_node::from(node);
-						/*device_node.set_min(0, node.boxes[0].min);
+						device_node.set_min(0, node.boxes[0].min);
 						device_node.set_min(1, node.boxes[1].min);
 						device_node.set_min(2, node.boxes[2].min);
 						device_node.set_min(3, node.boxes[3].min);
 						device_node.set_max(0, node.boxes[0].max);
 						device_node.set_max(1, node.boxes[1].max);
 						device_node.set_max(2, node.boxes[2].max);
-						device_node.set_max(3, node.boxes[3].max);*/
+						device_node.set_max(3, node.boxes[3].max);
+#else
+						const subd::patch_slab_node &node = subpatch.nodes[k];
+						patch_node &device_node = device_nodes[offset_nodes+k];
+						device_node = patch_node::from(node);
+#endif
 					}
 				}
 

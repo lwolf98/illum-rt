@@ -58,7 +58,11 @@ diff_geom diff_geom::init(const triangle_intersection &is, const scene &scene) {
 		//dbg_a = a, dbg_b = b, dbg_c = c;
 
 		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
+	#ifndef SLAB_COMPRESSION
 		const aabb &box = subpatch.box_from_index(subd_quad_ref);
+	#else
+		const aabb box = subpatch.box_from_index(subd_quad_ref);
+	#endif
 		const glm::mat3 &M = glm::inverse(subpatch.trafo);
 
 	#ifndef PROJECTION
