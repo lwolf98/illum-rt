@@ -508,7 +508,7 @@ namespace wf {
 
 #ifdef SLAB_COMPRESSION
 		//struct patch_slab_node {
-		struct patch_node {
+		struct __align__(16) patch_node {
 			// 8 slabs for xz -> 8 floats + 8 y coords -> 8 floats = 16 floats
 			// instead of: 6 float4s (24 floats)
 			// slab x_0 x_1 x_2 x_3
