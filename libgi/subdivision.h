@@ -199,6 +199,12 @@ namespace subd {
 			else					return { vec3(x_slabs[2], y_min[3], z_slabs[2]),
 											 vec3(x_slabs[3], y_max[3], z_slabs[3]) };
 		}
+//TODO/REVIEW: required?
+/*#ifdef HALF_SLAB_COMPRESSION
+		aabb get_box(uint32_t box_index, subd_subpatch subpatch, uint32_t node_id)const {
+			return subpatch.box_from_node(node_id, box_index);
+		}
+#endif*/
 	};
 
 	struct subd_patch;
@@ -226,6 +232,9 @@ namespace subd {
 #endif
 #ifdef HALF_SLAB_COMPRESSION
 		aabb box_from_node(uint32_t node_index, uint32_t box_index, bool debug = false) const;
+	private:
+		float slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const;
+	public:
 #endif
 
 #ifdef PROJECTION

@@ -635,8 +635,14 @@ void subd_patch::export_bvh(const std::string &path) const {
 					writer.print_box(box);
 #else
 				const patch_slab_node &node = sub.nodes[child_node_base + morton];
-				for (uint32_t i = 0; i < 4; i++)
+				for (uint32_t i = 0; i < 4; i++) {
+	#ifndef HALF_SLAB_COMPRESSION
 					writer.print_box(node.get_box(i));
+	#else
+					//writer.print_box(node.get_box(i));
+					writer.print_box(sub.box_from_node(child_node_base + morton, i));
+	#endif
+				}
 #endif
 			}
 		}
@@ -739,132 +745,92 @@ void debug_boxes(const aabb &a, const aabb &b, int32_t id = -1) {
 	assert_box_compare(a, b);
 }
 
-aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool debug) const {
-				aabb box;
-				const patch_slab_node &node = nodes[node_index];
-				aabb dbg_box = node.get_box(box_index);
-
-				// [FEAT-PROJ] TODO !
+float subd_subpatch::slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const {
+	// [FEAT-PROJ] TODO !
 	/*#ifdef PROJECTION
 				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
 				float3 root_max = make_float3(1.f, root_max_y, 1.f);
 	#endif*/
+	if (node_index == 0) {
+		// case no parent: take missing values from root box
+		if (is_x_slab) {
+			if (slab_pos == 0)  return root_box.max.x; // right
+			else				return root_box.min.x; // left
+		}
+		if (!is_x_slab) {
+			if (slab_pos == 0)  return root_box.max.z; // bottom
+			else				return root_box.min.z; // top
+		}
+	}
 
-				if (box_index == 0)      { box.max.x = node.x_slabs[1]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
-				else if (box_index == 1) { box.min.x = node.x_slabs[2]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
-				else if (box_index == 2) { box.max.x = node.x_slabs[1]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
-				else if (box_index == 3) { box.min.x = node.x_slabs[2]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
+	const patch_slab_node &node = nodes[node_index];
 
-				if (node_index == 0) {
-					// case no parent: take missing values fully from root box
-					if (box_index == 0)      { box.min.x = root_box.min.x; box.min.z = root_box.min.z; }
-					else if (box_index == 1) { box.max.x = root_box.max.x; box.min.z = root_box.min.z; }
-					else if (box_index == 2) { box.min.x = root_box.min.x; box.max.z = root_box.max.z; }
-					else if (box_index == 3) { box.max.x = root_box.max.x; box.max.z = root_box.max.z; }
+	// Calculate parent node index
+	uint32_t trav_level = log4_clz(1+3*node_index);
+	uint32_t off_current_level = geometric_series4(trav_level-1);
+	uint32_t off_parent_level = geometric_series4(trav_level-2);
+	uint32_t idx_current_relative = node_index - off_current_level;
+	uint32_t idx_parent_relative = idx_current_relative >> 2; //(/ 4)
 
-					if (debug) debug_boxes(box, dbg_box, 0);
-					return box;
-				}
+	uint32_t parent_index = off_parent_level + idx_parent_relative;
+	uint32_t parents_child_index = idx_current_relative & 3; // equals modulo 4 for non-negative values
 
-				uint32_t parent_index;
-				uint32_t parents_child_index;
-				//{
-					// Calculate parent node index
-					uint32_t trav_level = log4_clz(1+3*node_index);
-					uint32_t off_current_level = geometric_series4(trav_level-1);
-					uint32_t off_parent_level = geometric_series4(trav_level-2);
-					uint32_t idx_current_relative = node_index - off_current_level;
-					uint32_t idx_parent_relative = idx_current_relative >> 2; //(/ 4)
-					parent_index = off_parent_level + idx_parent_relative;
-					parents_child_index = idx_current_relative & 3; // equals modulo 4 for non-negative values
-				//}
+	bool delegate_to_parent = parents_child_index == child_index;
+	if (is_x_slab && slab_pos == 0) {
+		// right
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 1 && child_index == 3);
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 3 && child_index == 1);
+	}
+	else if (is_x_slab && slab_pos == 1) {
+		// left
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 0 && child_index == 2);
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 2 && child_index == 0);
+	}
+	else if (!is_x_slab && slab_pos == 0) {
+		// bottom
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 2 && child_index == 3);
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 3 && child_index == 2);
+	}
+	else if (!is_x_slab && slab_pos == 1) {
+		// top
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 0 && child_index == 1);
+		delegate_to_parent = delegate_to_parent || (parents_child_index == 1 && child_index == 0);
+	}
+	if (delegate_to_parent)
+		return slab_from_parent(parent_index, parents_child_index, is_x_slab, slab_pos);
 
-				// set parent slabs
-				//uint32_t parents_child_index = node_index & 3; // equals modulo 4 for non-negative values
-				//const patch_slab_node &parent = nodes[node_index>>2];
-				const patch_slab_node &parent = nodes[parent_index];
-				if (parents_child_index == 0 && box_index == 3) { box.max.x = parent.x_slabs[1]; box.max.z = parent.z_slabs[1]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
-				if (parents_child_index == 1 && box_index == 2) { box.min.x = parent.x_slabs[2]; box.max.z = parent.z_slabs[1]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
-				if (parents_child_index == 2 && box_index == 1) { box.max.x = parent.x_slabs[1]; box.min.z = parent.z_slabs[2]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
-				if (parents_child_index == 3 && box_index == 0) { box.min.x = parent.x_slabs[2]; box.min.z = parent.z_slabs[2]; if (debug) debug_boxes(box, dbg_box, 1); return box; }
-				
-				if (parents_child_index == 0) {
-					if (box_index == 0)      { }
-					else if (box_index == 1) { box.max.x = parent.x_slabs[1]; }
-					else if (box_index == 2) { box.max.z = parent.z_slabs[1]; }
-					//else if (box_index == 3) { box.max.x = parent.x_slabs[1]; box.max.z = parent.z_slabs[1]; return; }
-				}
-				else if (parents_child_index == 1) {
-					if (box_index == 0)      { box.min.x = parent.x_slabs[2]; }
-					else if (box_index == 1) { }
-					//else if (box_index == 2) { box.min.x = parent.x_slabs[2]; box.max.z = parent.z_slabs[1]; return; }
-					else if (box_index == 3) { box.max.z = parent.z_slabs[1]; }
-				}
-				else if (parents_child_index == 2) {
-					if (box_index == 0)      { box.min.z = parent.z_slabs[2]; }
-					//else if (box_index == 1) { box.max.x = parent.x_slabs[1]; box.min.z = parent.z_slabs[2]; return; }
-					else if (box_index == 2) { }
-					else if (box_index == 3) { box.max.x = parent.x_slabs[1]; }
-				}
-				else if (parents_child_index == 3) {
-					//if (box_index == 0)      { box.min.x = parent.x_slabs[2]; box.min.z = parent.z_slabs[2]; return; }
-					if (box_index == 1)      { box.min.z = parent.z_slabs[2]; }
-					else if (box_index == 2) { box.min.x = parent.x_slabs[2]; }
-					else if (box_index == 3) { }
-				}
+	const patch_slab_node &parent = nodes[parent_index];
+	return is_x_slab ? parent.x_slabs[slab_pos+1] : parent.z_slabs[slab_pos+1]; //TODO: remove outer slabs for half slab compression and then remove +1 here
+}
 
-				if (parent_index == 0) {
-					// case parent, but no grand parent: take ...
+aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool debug) const {
+	aabb box;
+	const patch_slab_node &node = nodes[node_index];
+	aabb dbg_box = node.get_box(box_index);
 
-					if (parents_child_index == 0) {
-						if (box_index == 0)      { box.min.x = root_box.min.x; box.min.z = root_box.min.z; }
-						else if (box_index == 1) { box.min.z = root_box.min.z; }
-						else if (box_index == 2) { box.min.x = root_box.min.x; }
-						//else if (box_index == 3) { }
-					}
-					else if (parents_child_index == 1) {
-						if (box_index == 0)      { box.min.z = root_box.min.z; }
-						else if (box_index == 1) { box.max.x = root_box.max.x; box.min.z = root_box.min.z; }
-						//else if (box_index == 2) { }
-						else if (box_index == 3) { box.max.x = root_box.max.x; }
-					}
-					else if (parents_child_index == 2) {
-						if (box_index == 0)      { box.min.x = root_box.min.x; }
-						//else if (box_index == 1) { }
-						else if (box_index == 2) { box.min.x = root_box.min.x; box.max.z = root_box.max.z; }
-						else if (box_index == 3) { box.max.z = root_box.max.z; }
-					}
-					else if (parents_child_index == 3) {
-						//if (box_index == 0)    { }
-						if (box_index == 1)      { box.max.x = root_box.max.x; }
-						else if (box_index == 2) { box.max.z = root_box.max.z; }
-						else if (box_index == 3) { box.max.x = root_box.max.x; box.max.z = root_box.max.z; }
-					}
+	if (box_index == 0)      { box.max.x = node.x_slabs[1]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
+	else if (box_index == 1) { box.min.x = node.x_slabs[2]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
+	else if (box_index == 2) { box.max.x = node.x_slabs[1]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
+	else if (box_index == 3) { box.min.x = node.x_slabs[2]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
 
-					return box;
-				}
+	if (box_index == 0) {
+		box.min.x = slab_from_parent(node_index, box_index, true, 1);	// left
+		box.min.z = slab_from_parent(node_index, box_index, false, 1);	// top
+	}
+	else if (box_index == 1) {
+		box.max.x = slab_from_parent(node_index, box_index, true, 0);	// right
+		box.min.z = slab_from_parent(node_index, box_index, false, 1);	// top
+	}
+	else if (box_index == 2) {
+		box.min.x = slab_from_parent(node_index, box_index, true, 1);	// left
+		box.max.z = slab_from_parent(node_index, box_index, false, 0);	// bottom
+	}
+	else if (box_index == 3) {
+		box.max.x = slab_from_parent(node_index, box_index, true, 0);	// right
+		box.max.z = slab_from_parent(node_index, box_index, false, 0);	// bottom
+	}
 
-				//bool has_grandparent = node_index>>2 == 0;
-				//const patch_slab_node &grandparent = nodes[node_index>>4];
-
-				/*if (box_index == 0) {
-					 = node.get_max();
-					node.get_max();
-				}
-				else if (box_index == 1) {
-					node.get_min();
-					node.get_max();
-				}
-				else if (box_index == 2) {
-					node.get_max();
-					node.get_min();
-				}
-				else if (box_index == 3) {
-					node.get_min();
-					node.get_min();
-				}*/
-
-				return box;
+	return box;
 }
 #endif
 
