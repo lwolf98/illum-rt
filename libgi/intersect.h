@@ -3,8 +3,9 @@
 #include "rt.h"
 
 struct aabb {
-	vec3 min, max;
+	glm::vec3 min, max;
 	aabb() : min(FLT_MAX), max(-FLT_MAX) {}
+	aabb(glm::vec3 min, glm::vec3 max) : min(min), max(max) {}
 	void grow(vec3 v) {
 		min = glm::min(v, min);
 		max = glm::max(v, max);

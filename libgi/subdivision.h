@@ -16,6 +16,39 @@ class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace subd {
+	/* Basic operations */
+	static uint32_t log2_clz(uint32_t x) {
+		return 31 - __builtin_clz(x);
+	}
+
+	static uint32_t log4_clz(uint32_t x) {
+		return (31 - __builtin_clz(x)) >> 1;
+	}
+
+	static int geometric_series4(int iterations) {
+		return (1 - (1 << ((iterations+1)<<1))) / (-3);
+	}
+
+	static uint32_t child_node_base(
+		uint32_t trav_level,
+		uint32_t index
+	) {
+		uint32_t off_current_level = geometric_series4(trav_level-1);
+		uint32_t off_child_level = geometric_series4(trav_level);
+		uint32_t idx_current_relative = index - off_current_level;
+		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+		uint32_t index_child = off_child_level + idx_child_relative;
+		return index_child;
+	}
+
+	static uint32_t child_node_base(
+			uint32_t index
+		) {
+			uint32_t trav_level = log4_clz(1+3*index);
+			return child_node_base(trav_level, index);
+	}
+
+	/* Structures */
 	struct edge {
 		int v1, v2;
 		float sharpness;
@@ -117,9 +150,70 @@ namespace subd {
 		aabb boxes[4];
 	};
 
+	struct patch_slab_node {
+		float x_slabs[4];
+		float z_slabs[4];
+		float y_min[4];
+		float y_max[4];
+
+		static patch_slab_node from(const patch_node &from_node) {
+			patch_slab_node node;
+			/*for (uint32_t i = 0; i < 4; ++i) {
+				auto minmax = (i % 2 == 0)
+							? [](float a, float b) { return std::min(a, b); }
+							: [](float a, float b) { return std::max(a, b); };
+				node.x_slabs[i] = minmax(from_node.boxes[i/2].min/max.x, from_node.boxes[i/2 + 2].min/max.x);
+				node.z_slabs[i] = minmax(from_node.boxes[i/2].min/max.z, from_node.boxes[i/2 + 2].min/max.z);
+				node.y_min[i] = from_node.boxes[i].min.y;
+				node.y_max[i] = from_node.boxes[i].max.y;
+			}*/
+			node.x_slabs[0] = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
+			node.x_slabs[1] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
+			node.x_slabs[2] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
+			node.x_slabs[3] = std::max(from_node.boxes[1].max.x, from_node.boxes[3].max.x);
+			node.z_slabs[0] = std::min(from_node.boxes[0].min.z, from_node.boxes[1].min.z);
+			node.z_slabs[1] = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
+			node.z_slabs[2] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
+			node.z_slabs[3] = std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z);
+
+			node.y_min[0] = from_node.boxes[0].min.y;
+			node.y_min[1] = from_node.boxes[1].min.y;
+			node.y_min[2] = from_node.boxes[2].min.y;
+			node.y_min[3] = from_node.boxes[3].min.y;
+			node.y_max[0] = from_node.boxes[0].max.y;
+			node.y_max[1] = from_node.boxes[1].max.y;
+			node.y_max[2] = from_node.boxes[2].max.y;
+			node.y_max[3] = from_node.boxes[3].max.y;
+
+			return node;
+		}
+
+		aabb get_box(uint32_t index) const {
+			assert(index <= 3);
+			if (index == 0)			return { vec3(x_slabs[0], y_min[0], z_slabs[0]),
+											 vec3(x_slabs[1], y_max[0], z_slabs[1]) };
+			else if (index == 1)	return { vec3(x_slabs[2], y_min[1], z_slabs[0]),
+											 vec3(x_slabs[3], y_max[1], z_slabs[1]) };
+			else if (index == 2)	return { vec3(x_slabs[0], y_min[2], z_slabs[2]),
+											 vec3(x_slabs[1], y_max[2], z_slabs[3]) };
+			else					return { vec3(x_slabs[2], y_min[3], z_slabs[2]),
+											 vec3(x_slabs[3], y_max[3], z_slabs[3]) };
+		}
+//TODO/REVIEW: required?
+/*#ifdef HALF_SLAB_COMPRESSION
+		aabb get_box(uint32_t box_index, subd_subpatch subpatch, uint32_t node_id)const {
+			return subpatch.box_from_node(node_id, box_index);
+		}
+#endif*/
+	};
+
 	struct subd_patch;
 	struct subd_subpatch {
+#ifndef SLAB_COMPRESSION
 		std::vector<patch_node> nodes;
+#else
+		std::vector<patch_slab_node> nodes;
+#endif
 		uint32_t vert_start;
 		glm::mat3 trafo;
 #ifdef PROJECTION
@@ -131,7 +225,17 @@ namespace subd {
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
+#ifndef SLAB_COMPRESSION
 		const aabb &box_from_index(uint32_t local_index) const;
+#else
+		aabb box_from_index(uint32_t local_index) const;
+#endif
+#ifdef HALF_SLAB_COMPRESSION
+		aabb box_from_node(uint32_t node_index, uint32_t box_index, bool debug = false) const;
+	private:
+		float slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const;
+	public:
+#endif
 
 #ifdef PROJECTION
 		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;

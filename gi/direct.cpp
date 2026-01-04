@@ -75,6 +75,8 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 	if (debug)
 		*ow << obj::object("path");
 #endif
+	current_pixel_x = x;
+	current_pixel_y = y;
 
 	vec3 radiance(0,0,0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));

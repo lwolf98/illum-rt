@@ -172,41 +172,9 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 	return false;
 }
 
-
-//TODO: find better place for these functions
-static uint32_t log2_clz(uint32_t x) {
-	return 31 - __builtin_clz(x);
-}
-
-static uint32_t log4_clz(uint32_t x) {
-	return (31 - __builtin_clz(x)) >> 1;
-}
-
-static int geometric_series4(int iterations) {
-	return (1 - (1 << ((iterations+1)<<1))) / (-3);
-}
-
-uint32_t child_node_base(
-		uint32_t trav_level,
-		uint32_t index
-	) {
-		uint32_t off_current_level = geometric_series4(trav_level-1);
-		uint32_t off_child_level = geometric_series4(trav_level);
-		uint32_t idx_current_relative = index - off_current_level;
-		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
-		uint32_t index_child = off_child_level + idx_child_relative;
-		return index_child;
-}
-
-uint32_t child_node_base(
-		uint32_t index
-	) {
-		uint32_t trav_level = log4_clz(1+3*index);
-		return child_node_base(trav_level, index);
-}
-//TODO end: until here
-
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
+	using namespace subd;
+
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
 
@@ -349,6 +317,11 @@ inline bool compute_valid_hit(
 }
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
+	using namespace subd;
+
+	bool dbg_pixel = true;
+	dbg_pixel = dbg_pixel && current_pixel_x == debug_pixel_x && current_pixel_y && debug_pixel_y;
+
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
 
@@ -400,7 +373,15 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			uint32_t off_current_level = geometric_series4(trav_level);
 			float dist;
 			for (int i = 0; i < 4; ++i) {
+#ifndef SLAB_COMPRESSION
 				const aabb &box = node.boxes[i];
+#else
+	#ifndef HALF_SLAB_COMPRESSION
+				const aabb box = node.get_box(i);
+	#else
+				const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
+	#endif
+#endif
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				float t_hit, t_bary;
 #ifndef PROJECTION

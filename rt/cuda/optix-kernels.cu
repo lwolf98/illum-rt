@@ -93,32 +93,6 @@ namespace wf::cuda {
 		if (DBG_PRINT) printf("any hit patches\n");
 	};
 
-	//TODO: find better place for these functions, maybe in base.h if possible with __clz(...)
-	static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
-		return (31 - __clz(x)) >> 1;
-	}
-
-	static uint32_t __forceinline__ __device__ child_node_base(
-			uint32_t trav_level,
-			uint32_t index
-		) {
-			uint32_t off_current_level = geometric_series4(trav_level-1);
-			uint32_t off_child_level = geometric_series4(trav_level);
-			uint32_t idx_current_relative = index - off_current_level;
-			uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
-			uint32_t index_child = off_child_level + idx_child_relative;
-			return index_child;
-	}
-
-	static uint32_t __forceinline__ __device__ child_node_base(
-			uint32_t index
-		) {
-			uint32_t trav_level = log4_clz(1+3*index);
-			return child_node_base(trav_level, index);
-	}
-	//TODO end: until here
-
-	// [FEAT-APPROX] Update logic for box approximation
 	extern "C" __global__ void __intersection__patches() {
 		if (DBG_PRINT) printf("intersection patches\n");
 		uint3 px_index = optixGetLaunchIndex();
@@ -203,11 +177,16 @@ namespace wf::cuda {
 				float t_bary;
 
 				for (int i = 0; i < 4; ++i) {
-					float3 node_min = node.get_min(i);
-					float3 node_max = node.get_max(i);
+#ifndef HALF_SLAB_COMPRESSION
+					float3 box_min = node.get_min(i);
+					float3 box_max = node.get_max(i);
+#else
+					float3 box_min, box_max;
+					subpatch.box_from_node(index, i, launch_params.patch_nodes, box_min, box_max);
+#endif
 
 #ifndef PROJECTION
-					if (!compute_valid_hit(node_min, node_max,							// box
+					if (!compute_valid_hit(box_min, box_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, true,									// additional params
 									t_hit, t_bary)) {									// reference/out params
@@ -215,7 +194,7 @@ namespace wf::cuda {
 										continue;
 									}
 #else
-					if (!compute_valid_hit(node_min, node_max,							// box
+					if (!compute_valid_hit(box_min, box_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
 									t_hit, t_bary)) {									// reference/out params
@@ -240,7 +219,7 @@ namespace wf::cuda {
 	#endif
 						//bary_calc(box, transformed_ray, t_bary, closest);
 						bool upper_tri;
-						bary_calc(node_min, node_max,							// box
+						bary_calc(box_min, box_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									t_bary, upper_tri, beta, gamma);
 						closest_quad_ref.set_upper_tri(upper_tri);
