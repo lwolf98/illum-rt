@@ -150,6 +150,7 @@ namespace subd {
 		aabb boxes[4];
 	};
 
+#ifdef SLAB_COMPRESSION
 	struct patch_slab_node {
 		float x_slabs[4];
 		float z_slabs[4];
@@ -206,6 +207,7 @@ namespace subd {
 		}
 #endif*/
 	};
+#endif
 
 	struct subd_patch;
 	struct subd_subpatch {
