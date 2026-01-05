@@ -569,8 +569,8 @@ namespace wf {
 			static patch_node from(const subd::patch_slab_node &from_node) {
 				patch_node node;
 				for (uint32_t i = 0; i < 2; ++i) {
-					node.x_slabs[i] = from_node.x_slabs[i+1];
-					node.z_slabs[i] = from_node.z_slabs[i+1];
+					node.x_slabs[i] = from_node.x_slabs[i];
+					node.z_slabs[i] = from_node.z_slabs[i];
 				}
 				for (uint32_t i = 0; i < 4; ++i) {
 					node.y_min[i] = from_node.y_min[i];
@@ -655,16 +655,16 @@ namespace wf {
 				uint32_t quad_ref_local = index & modulo_mask;
 				uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
 				uint32_t box_index = quad_ref_local & 0x3;
-#ifndef HALF_SLAB_COMPRESSION
-				box_min = nodes[node_index].get_min(box_index); // TODO/REVIEW: does this double copy the box? how to be more efficient?
-				box_max = nodes[node_index].get_max(box_index);
-#else
+	#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 				// REVIEW/TODO: half slab compression...
 				box_from_node(node_index, box_index, nodes, box_min, box_max);
-#endif
+	#else
+				box_min = nodes[node_index].get_min(box_index); // TODO/REVIEW: does this double copy the box? how to be more efficient?
+				box_max = nodes[node_index].get_max(box_index);
+	#endif
 			}
 #endif
-#ifdef HALF_SLAB_COMPRESSION
+#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 			__forceinline__ __device__ float slab_from_parent(uint32_t local_node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos, const patch_node *nodes) const {
 	#ifdef PROJECTION
 				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
