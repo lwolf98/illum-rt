@@ -177,12 +177,12 @@ namespace wf::cuda {
 				float t_bary;
 
 				for (int i = 0; i < 4; ++i) {
-#ifndef HALF_SLAB_COMPRESSION
-					float3 box_min = node.get_min(i);
-					float3 box_max = node.get_max(i);
-#else
+#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 					float3 box_min, box_max;
 					subpatch.box_from_node(index, i, launch_params.patch_nodes, box_min, box_max);
+#else
+					float3 box_min = node.get_min(i);
+					float3 box_max = node.get_max(i);
 #endif
 
 #ifndef PROJECTION

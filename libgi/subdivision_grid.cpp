@@ -285,8 +285,10 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
-#ifdef SLAB_COMPRESSION
+#if defined(SLAB_COMPRESSION)
 	patch_node basic_nodes[nodes_count];
+#else
+	std::vector<patch_node> &basic_nodes = nodes;
 #endif
 
 #ifdef PROJECTION
@@ -342,13 +344,7 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 #endif
 
 		if (subd_level > 0) {
-#ifndef SLAB_COMPRESSION
-			nodes[off_children+(morton>>2)].boxes[morton & 3] = box;
-#else
 			basic_nodes[off_children+(morton>>2)].boxes[morton & 3] = box;
-			if ((morton & 3) == 3) // equivalent to modulo 4 for non negative values
-				nodes[off_children+(morton>>2)] = patch_slab_node::from(basic_nodes[off_children+(morton>>2)]);
-#endif
 		}
 		else {
 			root_box = box;
@@ -365,35 +361,49 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 		if (i < subd_level)	off = geometric_series4(subd_level-i-2);
 
 		for (uint32_t j = 0; j < size; ++j) {
-			const auto &child_node = nodes[off_children + j];
+			const auto &child_node = basic_nodes[off_children + j];
 			aabb box;
-
-#ifndef SLAB_COMPRESSION
 			box.grow(child_node.boxes[0]);
 			box.grow(child_node.boxes[1]);
 			box.grow(child_node.boxes[2]);
 			box.grow(child_node.boxes[3]);
-#else
-			box.grow(child_node.get_box(0));
-			box.grow(child_node.get_box(1));
-			box.grow(child_node.get_box(2));
-			box.grow(child_node.get_box(3));
-#endif
 
 			if (i < subd_level) {
-#ifndef SLAB_COMPRESSION
-				nodes[off+(j>>2)].boxes[j & 3] = box;
-#else
 				basic_nodes[off+(j>>2)].boxes[j & 3] = box;
-				if ((j & 3) == 3) // equivalent to modulo 4 for non negative values
-					nodes[off+(j>>2)] = patch_slab_node::from(basic_nodes[off+(j>>2)]);
-#endif
 			}
 			else {
 				root_box = box;
 			}
 		}
 	}
+
+#if defined(SLAB_COMPRESSION)
+	off = geometric_series4(subd_level-2);
+	uint32_t off_parent = 0;
+	for (int i = 1; i <= subd_level; i++) {
+		int len = 1 << (subd_level-i); // 2^(subd_level-i);
+		size = len*len;
+		if (i > 1)			off = off_parent;
+		if (i < subd_level)	off_parent = geometric_series4(subd_level-i-2);
+
+		for (uint32_t j = 0; j < size; ++j) {
+			auto &node = nodes[off + j];
+			const auto &basic_node = basic_nodes[off + j];
+			const aabb &parent_box = (i < subd_level) ?
+									   basic_nodes[off_parent+(j>>2)].boxes[j & 3]
+									 : root_box;
+
+			node = patch_slab_node::from(basic_node);
+			//node = patch_slab_node::from(basic_node, parent_box);
+	/*#ifndef QUANTIZATION
+			node = patch_slab_node::from(basic_node);
+	#else
+			node = patch_slab_node::from(basic_node, parent_box);
+	#endif*/
+
+		}
+	}
+#endif
 
 	/*assert(root_box.min.x == slab_nodes[0].x_slabs[0]);
 	assert(root_box.max.x == slab_nodes[0].x_slabs[3]);
@@ -727,7 +737,7 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 #endif
 }
 #endif
-#ifdef HALF_SLAB_COMPRESSION
+#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 void assert_box_compare(const aabb &a, const aabb &b) {
 	assert(a.min.y == b.min.y);
 	assert(a.max.y == b.max.y);
@@ -800,18 +810,18 @@ float subd_subpatch::slab_from_parent(uint32_t node_index, uint32_t child_index,
 		return slab_from_parent(parent_index, parents_child_index, is_x_slab, slab_pos);
 
 	const patch_slab_node &parent = nodes[parent_index];
-	return is_x_slab ? parent.x_slabs[slab_pos+1] : parent.z_slabs[slab_pos+1]; //TODO: remove outer slabs for half slab compression and then remove +1 here
+	return is_x_slab ? parent.x_slabs[slab_pos] : parent.z_slabs[slab_pos];
 }
 
 aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool debug) const {
 	aabb box;
 	const patch_slab_node &node = nodes[node_index];
-	aabb dbg_box = node.get_box(box_index);
+	//aabb dbg_box = node.get_box(box_index);
 
-	if (box_index == 0)      { box.max.x = node.x_slabs[1]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
-	else if (box_index == 1) { box.min.x = node.x_slabs[2]; box.max.z = node.z_slabs[1]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
-	else if (box_index == 2) { box.max.x = node.x_slabs[1]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
-	else if (box_index == 3) { box.min.x = node.x_slabs[2]; box.min.z = node.z_slabs[2]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
+	if (box_index == 0)      { box.max.x = node.x_slabs[0]; box.max.z = node.z_slabs[0]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
+	else if (box_index == 1) { box.min.x = node.x_slabs[1]; box.max.z = node.z_slabs[0]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
+	else if (box_index == 2) { box.max.x = node.x_slabs[0]; box.min.z = node.z_slabs[1]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
+	else if (box_index == 3) { box.min.x = node.x_slabs[1]; box.min.z = node.z_slabs[1]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
 
 	if (box_index == 0) {
 		box.min.x = slab_from_parent(node_index, box_index, true, 1);	// left
