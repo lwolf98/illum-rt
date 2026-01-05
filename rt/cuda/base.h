@@ -449,6 +449,7 @@ namespace wf {
 
 #ifndef SLAB_COMPRESSION
 		struct patch_node {
+	#ifndef QUANTIZATION
 			// memory layout and order of the following fields is important!
 			float4 min_1;
 			float4 min_2;
@@ -456,6 +457,24 @@ namespace wf {
 			float4 max_1;
 			float4 max_2;
 			float4 max_3;
+			//-> 24 floats, 96 byte, 768 bit
+			//non optimized layout:
+			//-> 32 floats, 128 byte, 1024 bit
+	#else
+			/*
+				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
+				b0xz	[0_x_min	|0_x_max	|0_z_min]
+				b0yz	[0_y_min	|0_y_max	|0_z_max]
+				b1xz	[1_x_min	|1_x_max	|1_z_min]
+				b1yz	[1_y_min	|1_y_max	|1_z_max]
+				b2xz	[2_x_min	|2_x_max	|2_z_min]
+				b2yz	[2_y_min	|2_y_max	|2_z_max]
+				b3xz	[3_x_min	|3_x_max	|3_z_min]
+				b3yz	[3_y_min	|3_y_max	|3_z_max]
+				-> 8 chars, 8 byte, 64 bit
+			*/
+			char box_data[8];
+	#endif
 
 			void set_min(uint32_t index, const vec3 &v) {
 				//assert(index <= 3);
@@ -524,14 +543,44 @@ namespace wf {
 			// box 2 -> x_0,z_2 | x_1,z_2 | x_0,z_3 | x_1,z_3
 			// box 3 -> x_2,z_2 | x_3,z_2 | x_2,z_3 | x_3,z_3
 
+		#ifndef QUANTIZATION
 			float x_slabs[4];
 			float z_slabs[4];
-		#ifdef Y_SLAB_COMPRESSION
+			#ifdef Y_SLAB_COMPRESSION
 			float y_min;
 			float y_max;
-		#else
+			//With y compression:
+			//-> 10 floats, 40 byte, 320 bit
+			#else
 			float y_min[4];
 			float y_max[4];
+			//Without y compression:
+			//-> 16 floats, 64 byte, 512 bit
+			#endif
+		#else
+			#ifdef Y_SLAB_COMPRESSION
+			/*
+				With y compression:
+				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
+				xy_0	[x_slab_0	|x_slab_1	|y_min  ]
+				xy_1	[x_slab_2	|x_slab_3	|       ]
+				zy_0	[z_slab_0	|z_slab_1	|y_max  ]
+				zy_1	[z_slab_2	|z_slab_3	|       ]
+				-> 4 chars, 4 byte, 32 bit
+			*/
+			char box_data[4];
+			#else
+			/*
+				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
+				xy_0	[x_slab_0	|x_slab_1	|y_min_0]
+				xy_1	[x_slab_2	|x_slab_3	|y_min_1]
+				zy_0	[z_slab_0	|z_slab_1	|y_min_2]
+				zy_1	[z_slab_2	|z_slab_3	|y_min_3]
+				y_max	[y_max_0|y_max_1|y_max_2|y_max_3]
+				-> 5 chars, 5 byte, 40 bit
+			*/
+			char box_data[5];
+			#endif
 		#endif
 
 			static patch_node from(const subd::patch_slab_node &from_node) {
@@ -592,14 +641,46 @@ namespace wf {
 			//
 			// boxes can be reconstructed by using the parent's slabs or root bounds
 
+			// TODO: Combine quantization with other variants (slab-, half-slab- and no slab-compression)
+		#ifndef QUANTIZATION
 			float x_slabs[2];
 			float z_slabs[2];
-		#ifdef Y_SLAB_COMPRESSION
+			#ifdef Y_SLAB_COMPRESSION
 			float y_min;
 			float y_max;
-		#else
+			//With y compression:
+			//-> 6 floats, 24 byte, 192 bit
+			#else
 			float y_min[4];
 			float y_max[4];
+			//Without y compression:
+			//-> 12 floats, 48 byte, 384 bit
+			#endif
+		#else
+			#ifdef Y_SLAB_COMPRESSION
+			/*
+				With y compression:
+				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
+				x_y0	[x_slab_0	|x_slab_1	|y_min  ]
+				z_y1	[z_slab_0	|z_slab_1	|y_max  ]
+				-> 2 chars, 2 byte, 16 bit
+			*/
+			char box_data[2];
+			#else
+			/*
+				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
+				x_y0	[x_slab_0	|x_slab_1	|y_min_0]
+				z_y1	[z_slab_0	|z_slab_1	|y_min_1]
+				y2		[y_min_2|y_min_3|y_max_0|y_max_1]
+				y3		[y_max_2|y_max_3|    -free-     ]
+				-> 4 chars, 4 byte, 32 bit
+			*/
+			char box_data[4];
+			#endif
+
+			//char xz_slabs[6];	// [x]
+			//char y_min;			// contains: b0_min, b1_min, b2_min, b3_min, each 2 bit
+			//char y_max;			// contains: b0_max, b1_max, b2_max, b3_max, each 2 bit
 		#endif
 
 			static patch_node from(const subd::patch_slab_node &from_node) {
