@@ -285,7 +285,7 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	int nodes_count = geometric_series4(subd_level-1);
 	nodes.resize(nodes_count);
 
-#if defined(SLAB_COMPRESSION)
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 	patch_node basic_nodes[nodes_count];
 #else
 	std::vector<patch_node> &basic_nodes = nodes;
@@ -377,7 +377,7 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 		}
 	}
 
-#if defined(SLAB_COMPRESSION)
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 	off = geometric_series4(subd_level-2);
 	uint32_t off_parent = 0;
 	for (int i = 1; i <= subd_level; i++) {
