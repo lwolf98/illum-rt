@@ -11,6 +11,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					framebuffer.cpp \
 					random.cpp \
 					rt.cpp \
+					subdivision_nodes.cpp \
 					subdivision_grid.cpp \
 					subdivision.cpp \
 					scene.cpp \

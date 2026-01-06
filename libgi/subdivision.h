@@ -152,151 +152,79 @@ namespace subd {
 
 #ifdef SLAB_COMPRESSION
 	#ifndef HALF_SLAB_COMPRESSION
-	struct patch_slab_node {
-		float x_slabs[4];
-		float z_slabs[4];
-		#ifdef Y_SLAB_COMPRESSION
-		float y_min;
-		float y_max;
+		#ifndef QUANTIZATION
+			struct patch_slab_node {
+				float x_slabs[4];
+				float z_slabs[4];
+				#ifdef Y_SLAB_COMPRESSION
+				float y_min;
+				float y_max;
+				#else
+				float y_min[4];
+				float y_max[4];
+				#endif
+
+				static patch_slab_node from(const patch_node &from_node);
+				aabb get_box(uint32_t index) const;
+			};
+
+
 		#else
-		float y_min[4];
-		float y_max[4];
+			struct patch_slab_node {
+			#ifdef Y_SLAB_COMPRESSION
+				char box_data[4];
+			#else
+				char box_data[5];
+			#endif
+
+			static patch_slab_node from(const patch_node &from_node, const aabb &parent_box);
+			aabb get_box(uint32_t index, const aabb &parent_box) const;
+
+			inline void set_x_slab(uint32_t index, float val, const aabb &parent_box);
+			inline void set_z_slab(uint32_t index, float val, const aabb &parent_box);
+			inline void set_y_min(uint32_t index, float val, const aabb &parent_box);
+			inline void set_y_max(uint32_t index, float val, const aabb &parent_box);
+
+			inline float x_slab(uint32_t index, const aabb &parent_box) const;
+			inline float z_slab(uint32_t index, const aabb &parent_box) const;
+			inline float y_min(uint32_t index, const aabb &parent_box) const;
+			inline float y_max(uint32_t index, const aabb &parent_box) const;
+			};
 		#endif
 
-		static patch_slab_node from(const patch_node &from_node) {
-			patch_slab_node node;
-			node.x_slabs[0] = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
-			node.x_slabs[1] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
-			node.x_slabs[2] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
-			node.x_slabs[3] = std::max(from_node.boxes[1].max.x, from_node.boxes[3].max.x);
-			node.z_slabs[0] = std::min(from_node.boxes[0].min.z, from_node.boxes[1].min.z);
-			node.z_slabs[1] = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
-			node.z_slabs[2] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
-			node.z_slabs[3] = std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z);
 
-		#ifdef Y_SLAB_COMPRESSION
-			node.y_min = std::min(
-							std::min(from_node.boxes[0].min.y, from_node.boxes[1].min.y),
-							std::min(from_node.boxes[2].min.y, from_node.boxes[3].min.y)
-						);
-			node.y_max = std::max(
-							std::max(from_node.boxes[0].max.y, from_node.boxes[1].max.y),
-							std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
-						);
-		#else
-			node.y_min[0] = from_node.boxes[0].min.y;
-			node.y_min[1] = from_node.boxes[1].min.y;
-			node.y_min[2] = from_node.boxes[2].min.y;
-			node.y_min[3] = from_node.boxes[3].min.y;
-			node.y_max[0] = from_node.boxes[0].max.y;
-			node.y_max[1] = from_node.boxes[1].max.y;
-			node.y_max[2] = from_node.boxes[2].max.y;
-			node.y_max[3] = from_node.boxes[3].max.y;
-		#endif
-
-			return node;
-		}
-
-		aabb get_box(uint32_t index) const {
-			assert(index <= 3);
-		#ifdef Y_SLAB_COMPRESSION
-			if (index == 0)			return { vec3(x_slabs[0], y_min, z_slabs[0]),
-											 vec3(x_slabs[1], y_max, z_slabs[1]) };
-			else if (index == 1)	return { vec3(x_slabs[2], y_min, z_slabs[0]),
-											 vec3(x_slabs[3], y_max, z_slabs[1]) };
-			else if (index == 2)	return { vec3(x_slabs[0], y_min, z_slabs[2]),
-											 vec3(x_slabs[1], y_max, z_slabs[3]) };
-			else					return { vec3(x_slabs[2], y_min, z_slabs[2]),
-											 vec3(x_slabs[3], y_max, z_slabs[3]) };
-		#else
-			if (index == 0)			return { vec3(x_slabs[0], y_min[0], z_slabs[0]),
-											 vec3(x_slabs[1], y_max[0], z_slabs[1]) };
-			else if (index == 1)	return { vec3(x_slabs[2], y_min[1], z_slabs[0]),
-											 vec3(x_slabs[3], y_max[1], z_slabs[1]) };
-			else if (index == 2)	return { vec3(x_slabs[0], y_min[2], z_slabs[2]),
-											 vec3(x_slabs[1], y_max[2], z_slabs[3]) };
-			else					return { vec3(x_slabs[2], y_min[3], z_slabs[2]),
-											 vec3(x_slabs[3], y_max[3], z_slabs[3]) };
-		#endif
-		}
-//TODO/REVIEW: required?
-/*#ifdef HALF_SLAB_COMPRESSION
-		aabb get_box(uint32_t box_index, subd_subpatch subpatch, uint32_t node_id)const {
-			return subpatch.box_from_node(node_id, box_index);
-		}
-#endif*/
-	};
 	#else
-	struct patch_slab_node {
-		float x_slabs[2];
-		float z_slabs[2];
-		#ifdef Y_SLAB_COMPRESSION
-		float y_min;
-		float y_max;
+		#ifndef QUANTIZATION
+			struct patch_slab_node {
+				float x_slabs[2];
+				float z_slabs[2];
+				#ifdef Y_SLAB_COMPRESSION
+				float y_min;
+				float y_max;
+				#else
+				float y_min[4];
+				float y_max[4];
+				#endif
+
+				static patch_slab_node from(const patch_node &from_node);
+				aabb get_box(uint32_t index, aabb parent_box) const;
+			};
+
+			
 		#else
-		float y_min[4];
-		float y_max[4];
+			struct patch_slab_node {
+			#ifdef Y_SLAB_COMPRESSION
+				char box_data[2];
+			#else
+				char box_data[4];
+			#endif
+
+				static patch_slab_node from(const patch_node &from_node);
+				aabb get_box(uint32_t index, aabb parent_box) const;
+			};
 		#endif
 
-		static patch_slab_node from(const patch_node &from_node) {
-			patch_slab_node node;
-			node.x_slabs[0] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
-			node.x_slabs[1] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
-			node.z_slabs[0] = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
-			node.z_slabs[1] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
 
-		#ifdef Y_SLAB_COMPRESSION
-			node.y_min = std::min(
-							std::min(from_node.boxes[0].min.y, from_node.boxes[1].min.y),
-							std::min(from_node.boxes[2].min.y, from_node.boxes[3].min.y)
-						);
-			node.y_max = std::max(
-							std::max(from_node.boxes[0].max.y, from_node.boxes[1].max.y),
-							std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
-						);
-		#else
-			node.y_min[0] = from_node.boxes[0].min.y;
-			node.y_min[1] = from_node.boxes[1].min.y;
-			node.y_min[2] = from_node.boxes[2].min.y;
-			node.y_min[3] = from_node.boxes[3].min.y;
-			node.y_max[0] = from_node.boxes[0].max.y;
-			node.y_max[1] = from_node.boxes[1].max.y;
-			node.y_max[2] = from_node.boxes[2].max.y;
-			node.y_max[3] = from_node.boxes[3].max.y;
-		#endif
-
-			return node;
-		}
-
-		aabb get_box(uint32_t index, aabb parent_box) const {
-			assert(index <= 3);
-		#ifdef Y_SLAB_COMPRESSION
-			if (index == 0)			return { vec3(parent_box.min.x, y_min, parent_box.min.z),
-											 vec3(x_slabs[1],       y_max, z_slabs[1]      ) };
-			else if (index == 1)	return { vec3(x_slabs[2],       y_min, parent_box.min.z),
-											 vec3(parent_box.max.x, y_max, z_slabs[1]      ) };
-			else if (index == 2)	return { vec3(parent_box.min.x, y_min, z_slabs[2]      ),
-											 vec3(x_slabs[1],       y_max, parent_box.max.z) };
-			else					return { vec3(x_slabs[2],       y_min, z_slabs[2]      ),
-											 vec3(parent_box.max.x, y_max, parent_box.max.z) };
-		#else
-			if (index == 0)			return { vec3(parent_box.min.x, y_min[0], parent_box.min.z),
-											 vec3(x_slabs[1],       y_max[0], z_slabs[1]      ) };
-			else if (index == 1)	return { vec3(x_slabs[2],       y_min[1], parent_box.min.z),
-											 vec3(parent_box.max.x, y_max[1], z_slabs[1]      ) };
-			else if (index == 2)	return { vec3(parent_box.min.x, y_min[2], z_slabs[2]      ),
-											 vec3(x_slabs[1],       y_max[2], parent_box.max.z) };
-			else					return { vec3(x_slabs[2],       y_min[3], z_slabs[2]      ),
-											 vec3(parent_box.max.x, y_max[3], parent_box.max.z) };
-		#endif
-		}
-//TODO/REVIEW: required?
-/*#ifdef HALF_SLAB_COMPRESSION
-		aabb get_box(uint32_t box_index, subd_subpatch subpatch, uint32_t node_id)const {
-			return subpatch.box_from_node(node_id, box_index);
-		}
-#endif*/
-	};
 	#endif
 #endif
 
