@@ -737,6 +737,7 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 #endif
 }
 #endif
+
 #if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 void assert_box_compare(const aabb &a, const aabb &b) {
 	assert(a.min.y == b.min.y);
@@ -818,10 +819,17 @@ aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool 
 	const patch_slab_node &node = nodes[node_index];
 	//aabb dbg_box = node.get_box(box_index);
 
-	if (box_index == 0)      { box.max.x = node.x_slabs[0]; box.max.z = node.z_slabs[0]; box.min.y = node.y_min[0]; box.max.y = node.y_max[0]; }
-	else if (box_index == 1) { box.min.x = node.x_slabs[1]; box.max.z = node.z_slabs[0]; box.min.y = node.y_min[1]; box.max.y = node.y_max[1]; }
-	else if (box_index == 2) { box.max.x = node.x_slabs[0]; box.min.z = node.z_slabs[1]; box.min.y = node.y_min[2]; box.max.y = node.y_max[2]; }
-	else if (box_index == 3) { box.min.x = node.x_slabs[1]; box.min.z = node.z_slabs[1]; box.min.y = node.y_min[3]; box.max.y = node.y_max[3]; }
+	#ifdef Y_SLAB_COMPRESSION
+	box.min.y = node.y_min;
+	box.max.y = node.y_max;
+	#else
+	box.min.y = node.y_min[box_index];
+	box.max.y = node.y_max[box_index];
+	#endif
+	if (box_index == 0)      { box.max.x = node.x_slabs[0]; box.max.z = node.z_slabs[0]; }
+	else if (box_index == 1) { box.min.x = node.x_slabs[1]; box.max.z = node.z_slabs[0]; }
+	else if (box_index == 2) { box.max.x = node.x_slabs[0]; box.min.z = node.z_slabs[1]; }
+	else if (box_index == 3) { box.min.x = node.x_slabs[1]; box.min.z = node.z_slabs[1]; }
 
 	if (box_index == 0) {
 		box.min.x = slab_from_parent(node_index, box_index, true, 1);	// left
