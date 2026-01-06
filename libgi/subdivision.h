@@ -155,20 +155,16 @@ namespace subd {
 	struct patch_slab_node {
 		float x_slabs[4];
 		float z_slabs[4];
+		#ifdef Y_SLAB_COMPRESSION
+		float y_min;
+		float y_max;
+		#else
 		float y_min[4];
 		float y_max[4];
+		#endif
 
 		static patch_slab_node from(const patch_node &from_node) {
 			patch_slab_node node;
-			/*for (uint32_t i = 0; i < 4; ++i) {
-				auto minmax = (i % 2 == 0)
-							? [](float a, float b) { return std::min(a, b); }
-							: [](float a, float b) { return std::max(a, b); };
-				node.x_slabs[i] = minmax(from_node.boxes[i/2].min/max.x, from_node.boxes[i/2 + 2].min/max.x);
-				node.z_slabs[i] = minmax(from_node.boxes[i/2].min/max.z, from_node.boxes[i/2 + 2].min/max.z);
-				node.y_min[i] = from_node.boxes[i].min.y;
-				node.y_max[i] = from_node.boxes[i].max.y;
-			}*/
 			node.x_slabs[0] = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
 			node.x_slabs[1] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
 			node.x_slabs[2] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
@@ -178,6 +174,16 @@ namespace subd {
 			node.z_slabs[2] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
 			node.z_slabs[3] = std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z);
 
+		#ifdef Y_SLAB_COMPRESSION
+			node.y_min = std::min(
+							std::min(from_node.boxes[0].min.y, from_node.boxes[1].min.y),
+							std::min(from_node.boxes[2].min.y, from_node.boxes[3].min.y)
+						);
+			node.y_max = std::max(
+							std::max(from_node.boxes[0].max.y, from_node.boxes[1].max.y),
+							std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
+						);
+		#else
 			node.y_min[0] = from_node.boxes[0].min.y;
 			node.y_min[1] = from_node.boxes[1].min.y;
 			node.y_min[2] = from_node.boxes[2].min.y;
@@ -186,12 +192,23 @@ namespace subd {
 			node.y_max[1] = from_node.boxes[1].max.y;
 			node.y_max[2] = from_node.boxes[2].max.y;
 			node.y_max[3] = from_node.boxes[3].max.y;
+		#endif
 
 			return node;
 		}
 
 		aabb get_box(uint32_t index) const {
 			assert(index <= 3);
+		#ifdef Y_SLAB_COMPRESSION
+			if (index == 0)			return { vec3(x_slabs[0], y_min, z_slabs[0]),
+											 vec3(x_slabs[1], y_max, z_slabs[1]) };
+			else if (index == 1)	return { vec3(x_slabs[2], y_min, z_slabs[0]),
+											 vec3(x_slabs[3], y_max, z_slabs[1]) };
+			else if (index == 2)	return { vec3(x_slabs[0], y_min, z_slabs[2]),
+											 vec3(x_slabs[1], y_max, z_slabs[3]) };
+			else					return { vec3(x_slabs[2], y_min, z_slabs[2]),
+											 vec3(x_slabs[3], y_max, z_slabs[3]) };
+		#else
 			if (index == 0)			return { vec3(x_slabs[0], y_min[0], z_slabs[0]),
 											 vec3(x_slabs[1], y_max[0], z_slabs[1]) };
 			else if (index == 1)	return { vec3(x_slabs[2], y_min[1], z_slabs[0]),
@@ -200,6 +217,7 @@ namespace subd {
 											 vec3(x_slabs[1], y_max[2], z_slabs[3]) };
 			else					return { vec3(x_slabs[2], y_min[3], z_slabs[2]),
 											 vec3(x_slabs[3], y_max[3], z_slabs[3]) };
+		#endif
 		}
 //TODO/REVIEW: required?
 /*#ifdef HALF_SLAB_COMPRESSION
@@ -212,25 +230,31 @@ namespace subd {
 	struct patch_slab_node {
 		float x_slabs[2];
 		float z_slabs[2];
+		#ifdef Y_SLAB_COMPRESSION
+		float y_min;
+		float y_max;
+		#else
 		float y_min[4];
 		float y_max[4];
+		#endif
 
 		static patch_slab_node from(const patch_node &from_node) {
 			patch_slab_node node;
-			/*for (uint32_t i = 0; i < 4; ++i) {
-				auto minmax = (i % 2 == 0)
-							? [](float a, float b) { return std::min(a, b); }
-							: [](float a, float b) { return std::max(a, b); };
-				node.x_slabs[i] = minmax(from_node.boxes[i/2].min/max.x, from_node.boxes[i/2 + 2].min/max.x);
-				node.z_slabs[i] = minmax(from_node.boxes[i/2].min/max.z, from_node.boxes[i/2 + 2].min/max.z);
-				node.y_min[i] = from_node.boxes[i].min.y;
-				node.y_max[i] = from_node.boxes[i].max.y;
-			}*/
 			node.x_slabs[0] = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
 			node.x_slabs[1] = std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x);
 			node.z_slabs[0] = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
 			node.z_slabs[1] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
 
+		#ifdef Y_SLAB_COMPRESSION
+			node.y_min = std::min(
+							std::min(from_node.boxes[0].min.y, from_node.boxes[1].min.y),
+							std::min(from_node.boxes[2].min.y, from_node.boxes[3].min.y)
+						);
+			node.y_max = std::max(
+							std::max(from_node.boxes[0].max.y, from_node.boxes[1].max.y),
+							std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
+						);
+		#else
 			node.y_min[0] = from_node.boxes[0].min.y;
 			node.y_min[1] = from_node.boxes[1].min.y;
 			node.y_min[2] = from_node.boxes[2].min.y;
@@ -239,12 +263,23 @@ namespace subd {
 			node.y_max[1] = from_node.boxes[1].max.y;
 			node.y_max[2] = from_node.boxes[2].max.y;
 			node.y_max[3] = from_node.boxes[3].max.y;
+		#endif
 
 			return node;
 		}
 
 		aabb get_box(uint32_t index, aabb parent_box) const {
 			assert(index <= 3);
+		#ifdef Y_SLAB_COMPRESSION
+			if (index == 0)			return { vec3(parent_box.min.x, y_min, parent_box.min.z),
+											 vec3(x_slabs[1],       y_max, z_slabs[1]      ) };
+			else if (index == 1)	return { vec3(x_slabs[2],       y_min, parent_box.min.z),
+											 vec3(parent_box.max.x, y_max, z_slabs[1]      ) };
+			else if (index == 2)	return { vec3(parent_box.min.x, y_min, z_slabs[2]      ),
+											 vec3(x_slabs[1],       y_max, parent_box.max.z) };
+			else					return { vec3(x_slabs[2],       y_min, z_slabs[2]      ),
+											 vec3(parent_box.max.x, y_max, parent_box.max.z) };
+		#else
 			if (index == 0)			return { vec3(parent_box.min.x, y_min[0], parent_box.min.z),
 											 vec3(x_slabs[1],       y_max[0], z_slabs[1]      ) };
 			else if (index == 1)	return { vec3(x_slabs[2],       y_min[1], parent_box.min.z),
@@ -253,6 +288,7 @@ namespace subd {
 											 vec3(x_slabs[1],       y_max[2], parent_box.max.z) };
 			else					return { vec3(x_slabs[2],       y_min[3], z_slabs[2]      ),
 											 vec3(parent_box.max.x, y_max[3], parent_box.max.z) };
+		#endif
 		}
 //TODO/REVIEW: required?
 /*#ifdef HALF_SLAB_COMPRESSION

@@ -509,8 +509,13 @@ namespace wf {
 #ifdef SLAB_COMPRESSION
 	#ifndef HALF_SLAB_COMPRESSION
 		struct __align__(16) patch_node {
+			// With Y-Slab Compression:
+			// 8 slabs for xz -> 8 floats + 2 y coords -> 2 floats = 10 floats
+			// Without Y-Slab Compression:
 			// 8 slabs for xz -> 8 floats + 8 y coords -> 8 floats = 16 floats
+			//
 			// instead of: 6 floats (24 byte)
+			//
 			// slab x_0 x_1 x_2 x_3
 			// slab z_0 z_1 z_2 z_3
 			//          - MIN -                       - MAX -
@@ -521,22 +526,48 @@ namespace wf {
 
 			float x_slabs[4];
 			float z_slabs[4];
+		#ifdef Y_SLAB_COMPRESSION
+			float y_min;
+			float y_max;
+		#else
 			float y_min[4];
 			float y_max[4];
+		#endif
 
 			static patch_node from(const subd::patch_slab_node &from_node) {
 				patch_node node;
 				for (uint32_t i = 0; i < 4; ++i) {
 					node.x_slabs[i] = from_node.x_slabs[i];
 					node.z_slabs[i] = from_node.z_slabs[i];
+		#ifndef Y_SLAB_COMPRESSION
 					node.y_min[i] = from_node.y_min[i];
 					node.y_max[i] = from_node.y_max[i];
+		#endif
 				}
+		#ifdef Y_SLAB_COMPRESSION
+				node.y_min = from_node.y_min;
+				node.y_max = from_node.y_max;
+		#endif
 				return node;
 			}
+	
+		#ifdef Y_SLAB_COMPRESSION
+			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[0], .y = y_min, .z = z_slabs[0] };
+				else if (index == 1)	return { .x = x_slabs[2], .y = y_min, .z = z_slabs[0] };
+				else if (index == 2)	return { .x = x_slabs[0], .y = y_min, .z = z_slabs[2] };
+				else					return { .x = x_slabs[2], .y = y_min, .z = z_slabs[2] };
+			}
+
+			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[1], .y = y_max, .z = z_slabs[1] };
+				else if (index == 1)	return { .x = x_slabs[3], .y = y_max, .z = z_slabs[1] };
+				else if (index == 2)	return { .x = x_slabs[1], .y = y_max, .z = z_slabs[3] };
+				else					return { .x = x_slabs[3], .y = y_max, .z = z_slabs[3] };
+			}
+		#else
 
 			float3 __device__ __forceinline__ get_min(uint32_t index) const {
-				//assert(index <= 3);
 				if (index == 0)			return { .x = x_slabs[0], .y = y_min[0], .z = z_slabs[0] };
 				else if (index == 1)	return { .x = x_slabs[2], .y = y_min[1], .z = z_slabs[0] };
 				else if (index == 2)	return { .x = x_slabs[0], .y = y_min[2], .z = z_slabs[2] };
@@ -544,12 +575,12 @@ namespace wf {
 			}
 
 			float3 __device__ __forceinline__ get_max(uint32_t index) const {
-				//assert(index <= 3);
 				if (index == 0)			return { .x = x_slabs[1], .y = y_max[0], .z = z_slabs[1] };
 				else if (index == 1)	return { .x = x_slabs[3], .y = y_max[1], .z = z_slabs[1] };
 				else if (index == 2)	return { .x = x_slabs[1], .y = y_max[2], .z = z_slabs[3] };
 				else					return { .x = x_slabs[3], .y = y_max[3], .z = z_slabs[3] };
 			}
+		#endif
 		};
 	#else
 		struct __align__(16) patch_node {
@@ -563,8 +594,13 @@ namespace wf {
 
 			float x_slabs[2];
 			float z_slabs[2];
+		#ifdef Y_SLAB_COMPRESSION
+			float y_min;
+			float y_max;
+		#else
 			float y_min[4];
 			float y_max[4];
+		#endif
 
 			static patch_node from(const subd::patch_slab_node &from_node) {
 				patch_node node;
@@ -572,10 +608,15 @@ namespace wf {
 					node.x_slabs[i] = from_node.x_slabs[i];
 					node.z_slabs[i] = from_node.z_slabs[i];
 				}
+		#ifdef Y_SLAB_COMPRESSION
+				node.y_min = from_node.y_min;
+				node.y_max = from_node.y_max;
+		#else
 				for (uint32_t i = 0; i < 4; ++i) {
 					node.y_min[i] = from_node.y_min[i];
 					node.y_max[i] = from_node.y_max[i];
 				}
+		#endif
 				return node;
 			}
 		};
@@ -733,10 +774,17 @@ namespace wf {
 			__forceinline__ __device__ void box_from_node(uint32_t local_node_index, uint32_t box_index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
 				const patch_node &node = nodes[bvh_node_offset + local_node_index];
 
-				if (box_index == 0)      { box_max.x = node.x_slabs[0]; box_max.z = node.z_slabs[0]; box_min.y = node.y_min[0]; box_max.y = node.y_max[0]; }
-				else if (box_index == 1) { box_min.x = node.x_slabs[1]; box_max.z = node.z_slabs[0]; box_min.y = node.y_min[1]; box_max.y = node.y_max[1]; }
-				else if (box_index == 2) { box_max.x = node.x_slabs[0]; box_min.z = node.z_slabs[1]; box_min.y = node.y_min[2]; box_max.y = node.y_max[2]; }
-				else if (box_index == 3) { box_min.x = node.x_slabs[1]; box_min.z = node.z_slabs[1]; box_min.y = node.y_min[3]; box_max.y = node.y_max[3]; }
+	#ifdef Y_SLAB_COMPRESSION
+				box_min.y = node.y_min;
+				box_max.y = node.y_max;
+	#else
+				box_min.y = node.y_min[box_index];
+				box_max.y = node.y_max[box_index];
+	#endif
+				if (box_index == 0)      { box_max.x = node.x_slabs[0]; box_max.z = node.z_slabs[0]; }
+				else if (box_index == 1) { box_min.x = node.x_slabs[1]; box_max.z = node.z_slabs[0]; }
+				else if (box_index == 2) { box_max.x = node.x_slabs[0]; box_min.z = node.z_slabs[1]; }
+				else if (box_index == 3) { box_min.x = node.x_slabs[1]; box_min.z = node.z_slabs[1]; }
 
 				if (box_index == 0) {
 					box_min.x = slab_from_parent(local_node_index, box_index, true, 1, nodes);	// left
