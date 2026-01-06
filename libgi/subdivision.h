@@ -121,8 +121,13 @@ namespace subd {
 	struct patch_slab_node {
 		float x_slabs[4];
 		float z_slabs[4];
+	#ifdef Y_SLAB_COMPRESSION
 		float y_min;
 		float y_max;
+	#else
+		float y_min[4];
+		float y_max[4];
+	#endif
 
 		static patch_slab_node from(const patch_node &from_node) {
 			patch_slab_node node;
@@ -135,6 +140,7 @@ namespace subd {
 			node.z_slabs[2] = std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z);
 			node.z_slabs[3] = std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z);
 
+	#ifdef Y_SLAB_COMPRESSION
 			node.y_min = std::min(
 							std::min(from_node.boxes[0].min.y, from_node.boxes[1].min.y),
 							std::min(from_node.boxes[2].min.y, from_node.boxes[3].min.y)
@@ -143,12 +149,23 @@ namespace subd {
 							std::max(from_node.boxes[0].max.y, from_node.boxes[1].max.y),
 							std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
 						);
+	#else
+			node.y_min[0] = from_node.boxes[0].min.y;
+			node.y_min[1] = from_node.boxes[1].min.y;
+			node.y_min[2] = from_node.boxes[2].min.y;
+			node.y_min[3] = from_node.boxes[3].min.y;
+			node.y_max[0] = from_node.boxes[0].max.y;
+			node.y_max[1] = from_node.boxes[1].max.y;
+			node.y_max[2] = from_node.boxes[2].max.y;
+			node.y_max[3] = from_node.boxes[3].max.y;
+	#endif
 
 			return node;
 		}
 
 		aabb get_box(uint32_t index) const {
 			assert(index <= 3);
+	#ifdef Y_SLAB_COMPRESSION
 			if (index == 0)			return { vec3(x_slabs[0], y_min, z_slabs[0]),
 											 vec3(x_slabs[1], y_max, z_slabs[1]) };
 			else if (index == 1)	return { vec3(x_slabs[2], y_min, z_slabs[0]),
@@ -157,6 +174,16 @@ namespace subd {
 											 vec3(x_slabs[1], y_max, z_slabs[3]) };
 			else					return { vec3(x_slabs[2], y_min, z_slabs[2]),
 											 vec3(x_slabs[3], y_max, z_slabs[3]) };
+	#else
+			if (index == 0)			return { vec3(x_slabs[0], y_min[0], z_slabs[0]),
+											 vec3(x_slabs[1], y_max[0], z_slabs[1]) };
+			else if (index == 1)	return { vec3(x_slabs[2], y_min[1], z_slabs[0]),
+											 vec3(x_slabs[3], y_max[1], z_slabs[1]) };
+			else if (index == 2)	return { vec3(x_slabs[0], y_min[2], z_slabs[2]),
+											 vec3(x_slabs[1], y_max[2], z_slabs[3]) };
+			else					return { vec3(x_slabs[2], y_min[3], z_slabs[2]),
+											 vec3(x_slabs[3], y_max[3], z_slabs[3]) };
+	#endif
 		}
 	};
 #endif
