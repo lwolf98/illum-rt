@@ -187,7 +187,7 @@ __global__ void add_hitpoint_albedo(int2 res,
 	float4 result { 0,0,0,1 };
 	wf::cuda::tri_is hit = intersections[ray_index];
 	if (hit.valid()) {
-		wf::cuda::diff_geom dg(hit, refs, x, y);
+		wf::cuda::diff_geom dg = wf::cuda::diff_geom::init_lightweight(hit, refs);
 		result = wf::cuda::albedo4(dg);
 		result.w = 1; // be safe
 	}

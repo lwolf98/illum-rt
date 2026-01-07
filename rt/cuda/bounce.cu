@@ -33,7 +33,9 @@ namespace wf::cuda {
 				return;
 	
 			tri_is hit = hits[ray_index];
-			diff_geom dg(hit, refs);
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs);
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
@@ -44,10 +46,9 @@ namespace wf::cuda {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
 					float3 ns = dg.ns;
-					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ns, cam_dir);
 					w_i = align(sampled_dir, ns);
-					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
+					org = cam_org + hit.t * cam_dir;
 					tmax = FLT_MAX;
 				}
 			}
@@ -88,7 +89,9 @@ namespace wf::cuda {
 				return;
 	
 			tri_is hit = hits[ray_index];
-			diff_geom dg(hit, refs);
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs);
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
@@ -100,11 +103,10 @@ namespace wf::cuda {
 					float2 xi = random[ray_index];
 					float3 sampled_dir = cosine_sample_hemisphere<float3>(xi);
 					float3 ns = dg.ns;
-					float3 cam_dir = f3(camrays[ray_index*2 + 1]);
 					flip_normals_to_ray(ns, cam_dir);
 					w_i = align(sampled_dir, ns);
 					pdf *= cdot(w_i, ns);
-					org = f3(camrays[ray_index*2]) + hit.t * cam_dir;
+					org = cam_org + hit.t * cam_dir;
 					tmax = FLT_MAX;
 				}
 			}
@@ -203,7 +205,9 @@ namespace wf::cuda {
 			if (x >= res.x || y >= res.y)
 				return;
 			tri_is hit = hits[ray_index];
-			diff_geom dg(hit, refs); //TODO: maybe don't use diff_geom here when only material is required
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs); //TODO: maybe don't use diff_geom here when only material is required
 			float3 w_i { 0,0,0 };
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
@@ -320,7 +324,9 @@ namespace wf::cuda {
 				return;
 
 			tri_is hit = cam_hits[ray_index];
-			diff_geom dg(hit, refs);
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs);
 			tri_is light_hit = light_hits[ray_index];
 			float3 radiance {0,0,0};
 			if (hit.valid() && light_hit.valid()) {
@@ -329,7 +335,7 @@ namespace wf::cuda {
 				material light_mat = refs->materials[light_tri.w];
 				float3 brightness = f3(light_mat.emissive);
 				// brdf
-				float3 w_o = -f3(camrays[ray_index*2+1]);
+				float3 w_o = -cam_dir;
 				float3 w_i = f3(shadowrays[ray_index*2+1]);
 				float3 f = layered_gtr2(w_o, w_i, dg);
 				// dot
@@ -358,12 +364,14 @@ namespace wf::cuda {
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
 
 			if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
-				diff_geom dg(hit, refs);
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs);
 
 				// light color
 				float3 brightness = lightcol[ray_index];
 				// brdf
-				float3 w_o = -f3(camrays[2*ray_index+1]);
+				float3 w_o = -cam_dir;
 				float3 w_i = f3(shadowray_dir);
 
 				float3 f = layered_gtr2(w_o, w_i, dg);

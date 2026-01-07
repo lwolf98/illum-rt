@@ -107,7 +107,7 @@ struct diff_geom {
 	const uint32_t tri;     // reference to triangle
 	const material *mat;    // reference to triangle's material
 	diff_geom(const triangle_intersection &is, const scene &scene);
-	static diff_geom init(const triangle_intersection &is, const scene &scene);
+	static diff_geom init(const triangle_intersection &is, const ray &is_ray, const scene &scene, bool debug = false);
 
 	vec3 albedo() const;			// evaluates the surface albedo (including texture lookup)
 	vec3 emissive_albedo() const;	// evaluates the surface albedo considering the emissive value(including texture lookup)
@@ -115,6 +115,7 @@ struct diff_geom {
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
+	diff_geom(const material *m, uint32_t ref) : mat(m), tri(ref) {}
 };
 
 /*  \brief Ray tracing interface.

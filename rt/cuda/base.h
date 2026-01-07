@@ -678,7 +678,6 @@ namespace wf {
 					tri.z = start_index + vert_quad_id + 1; // vert right
 				}
 				else {
-					// [FEAT-APPROX] update vertex order for box approx
 					tri.x = start_index + vert_quad_id + len() + 1; // vert down right
 					tri.y = start_index + vert_quad_id + 1; // vert right
 					tri.z = start_index + vert_quad_id + len(); // vert down

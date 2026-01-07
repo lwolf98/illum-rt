@@ -393,7 +393,11 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 									   basic_nodes[off_parent+(j>>2)].boxes[j & 3]
 									 : root_box;
 
+	#ifndef QUANTIZATION
+			node = patch_slab_node::from(basic_node);
+	#else
 			node = patch_slab_node::from(basic_node, parent_box);
+	#endif
 			//node = patch_slab_node::from(basic_node, parent_box);
 	/*#ifndef QUANTIZATION
 			node = patch_slab_node::from(basic_node);

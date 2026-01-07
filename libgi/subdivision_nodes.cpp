@@ -6,46 +6,46 @@ namespace subd {
 #ifdef QUANTIZATION
 	static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.40f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.60f };
 	static constexpr std::array<float,4> thresholds_y = { 0.00f, 0.25f, 0.50f, 0.75f };
-    static char quantize_xz(float val) {
-        char res = 0;
+	static char quantize_xz(float val) {
+		char res = 0;
 		for (uint32_t i = 0; i < thresholds_xz.size(); ++i) {
 			if (thresholds_xz[i] <= val) res = i;
 			else break;
 		}
-        return res;
-    }
-    static char quantize_y(float val) {
+		return res;
+	}
+	static char quantize_y(float val) {
 		char res = 0;
 		for (uint32_t i = 0; i < thresholds_y.size(); ++i) {
 			if (thresholds_y[i] <= val) res = i;
 			else break;
 		}
-        return res;
-    }
-    static float dequantize_xz(char val) {
-        return thresholds_xz[val];
-    }
-    static float dequantize_y(char val) {
+		return res;
+	}
+	static float dequantize_xz(char val) {
+		return thresholds_xz[val];
+	}
+	static float dequantize_y(char val) {
 		return thresholds_y[val];
-    }
+	}
 
-    inline void set_012(char &field, char val) { field = (field & 0b00011111 | val << 5); }
-    inline void set_345(char &field, char val) { field = (field & 0b11100011 | val << 2); }
-    inline void set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
+	inline void set_012(char &field, char val) { field = (field & 0b00011111 | val << 5); }
+	inline void set_345(char &field, char val) { field = (field & 0b11100011 | val << 2); }
+	inline void set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
 
-    inline char get_012(const char &field) { return ((field & 0b11100000) >> 5); }
-    inline char get_345(const char &field) { return ((field & 0b00011100) >> 2); }
-    inline char get_67 (const char &field) { return (field & 0b00000011); }
-    
-    #ifndef Y_SLAB_COMPRESSION
-    inline void set_01 (char &field, char val) { field = (field & 0b00111111 | val << 6); }
-    inline void set_23 (char &field, char val) { field = (field & 0b11001111 | val << 4); }
-    inline void set_45 (char &field, char val) { field = (field & 0b11110011 | val << 2); }
+	inline char get_012(const char &field) { return ((field & 0b11100000) >> 5); }
+	inline char get_345(const char &field) { return ((field & 0b00011100) >> 2); }
+	inline char get_67 (const char &field) { return (field & 0b00000011); }
+	
+	#ifndef Y_SLAB_COMPRESSION
+	inline void set_01 (char &field, char val) { field = (field & 0b00111111 | val << 6); }
+	inline void set_23 (char &field, char val) { field = (field & 0b11001111 | val << 4); }
+	inline void set_45 (char &field, char val) { field = (field & 0b11110011 | val << 2); }
 
-    inline char get_01 (const char &field) { return ((field & 0b11000000) >> 6); }
-    inline char get_23 (const char &field) { return ((field & 0b00110000) >> 4); }
-    inline char get_45 (const char &field) { return (field & 0b00001100 >> 2); }
-    #endif
+	inline char get_01 (const char &field) { return ((field & 0b11000000) >> 6); }
+	inline char get_23 (const char &field) { return ((field & 0b00110000) >> 4); }
+	inline char get_45 (const char &field) { return ((field & 0b00001100) >> 2); }
+	#endif
 #endif
 
 #ifdef SLAB_COMPRESSION
@@ -283,21 +283,21 @@ namespace subd {
 				assert(index <= 3);
 			#ifdef Y_SLAB_COMPRESSION
 				if (index == 0)			return { vec3(parent_box.min.x, y_min, parent_box.min.z),
-												 vec3(x_slabs[1],       y_max, z_slabs[1]      ) };
-				else if (index == 1)	return { vec3(x_slabs[2],       y_min, parent_box.min.z),
-												 vec3(parent_box.max.x, y_max, z_slabs[1]      ) };
-				else if (index == 2)	return { vec3(parent_box.min.x, y_min, z_slabs[2]      ),
-												 vec3(x_slabs[1],       y_max, parent_box.max.z) };
-				else					return { vec3(x_slabs[2],       y_min, z_slabs[2]      ),
+												 vec3(x_slabs[1],	   y_max, z_slabs[1]	  ) };
+				else if (index == 1)	return { vec3(x_slabs[2],	   y_min, parent_box.min.z),
+												 vec3(parent_box.max.x, y_max, z_slabs[1]	  ) };
+				else if (index == 2)	return { vec3(parent_box.min.x, y_min, z_slabs[2]	  ),
+												 vec3(x_slabs[1],	   y_max, parent_box.max.z) };
+				else					return { vec3(x_slabs[2],	   y_min, z_slabs[2]	  ),
 												 vec3(parent_box.max.x, y_max, parent_box.max.z) };
 			#else
 				if (index == 0)			return { vec3(parent_box.min.x, y_min[0], parent_box.min.z),
-												 vec3(x_slabs[0],       y_max[0], z_slabs[0]      ) };
-				else if (index == 1)	return { vec3(x_slabs[1],       y_min[1], parent_box.min.z),
-												 vec3(parent_box.max.x, y_max[1], z_slabs[0]      ) };
-				else if (index == 2)	return { vec3(parent_box.min.x, y_min[2], z_slabs[1]      ),
-												 vec3(x_slabs[0],       y_max[2], parent_box.max.z) };
-				else					return { vec3(x_slabs[1],       y_min[3], z_slabs[1]      ),
+												 vec3(x_slabs[0],	   y_max[0], z_slabs[0]	  ) };
+				else if (index == 1)	return { vec3(x_slabs[1],	   y_min[1], parent_box.min.z),
+												 vec3(parent_box.max.x, y_max[1], z_slabs[0]	  ) };
+				else if (index == 2)	return { vec3(parent_box.min.x, y_min[2], z_slabs[1]	  ),
+												 vec3(x_slabs[0],	   y_max[2], parent_box.max.z) };
+				else					return { vec3(x_slabs[1],	   y_min[3], z_slabs[1]	  ),
 												 vec3(parent_box.max.x, y_max[3], parent_box.max.z) };
 			#endif
 			}

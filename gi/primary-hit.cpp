@@ -43,7 +43,7 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
 	if (closest.valid()) {
-		diff_geom dg = diff_geom::init(closest, rc->scene);
+		diff_geom dg = diff_geom::init(closest, view_ray, rc->scene);
 		radiance = dg.albedo();
 	}
 	return radiance;
@@ -60,6 +60,7 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 	if (debug)
 		*ow << obj::object("path");
 #endif
+	bool dbg_current = (x == debug_pixel_x && y == debug_pixel_y);
 	current_pixel_x = x;
 	current_pixel_y = y;
 
@@ -70,7 +71,7 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 		std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
 
 	if (closest.valid()) {
-		diff_geom dg = diff_geom::init(closest, rc->scene);
+		diff_geom dg = diff_geom::init(closest, view_ray, rc->scene, dbg_current);
 
 #ifdef WITH_OBJ_DEBUG
 		if (x == debug_pixel_x && y == debug_pixel_y) {
