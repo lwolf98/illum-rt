@@ -329,10 +329,12 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
 	uint32_t max_size = 25;
 	uint32_t stack[max_size];
+	aabb box_stack[max_size];
 	int32_t sp = 0;
 
 	bool is_root_and_leaf = subpatch.subd_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
+	box_stack[sp] = subpatch.root_box;
 
 	ray transformed_ray = ray(
 						subpatch.trafo * rayy.o,
@@ -363,7 +365,10 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #endif
 
 	while (sp >= 0) {
-		uint32_t index = stack[sp--];
+		uint32_t index = stack[sp];
+		const aabb &parent_box = box_stack[sp];
+		sp--;
+
 		uint32_t trav_level = log4_clz(1+3*index);
 
 		bool is_leaf = trav_level == subpatch.subd_level;
@@ -376,10 +381,17 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #ifndef SLAB_COMPRESSION
 				const aabb &box = node.boxes[i];
 #else
-	#ifndef HALF_SLAB_COMPRESSION
+	#ifndef QUANTIZATION
+		#ifndef HALF_SLAB_COMPRESSION
 				const aabb box = node.get_box(i);
-	#else
+		#else
 				const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
+		#endif
+	#else
+				// [FEAT-QUANT] Implement box stack and pass parent box!
+				//const aabb box = node.get_box(i, aabb());
+				//const aabb box = node.get_box(i, aabb(vec3(0), vec3(1)));
+				const aabb box = node.get_box(i, parent_box);
 	#endif
 #endif
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
@@ -394,7 +406,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				stack[++sp] = child_base+i;
 #else
 				if (trav_level < subpatch.subd_level-1) {
-					stack[++sp] = child_base+i;
+					sp++;
+					stack[sp] = child_base+i;
+					box_stack[sp] = box;
 				}
 				else {
 	#ifndef PROJECTION

@@ -502,7 +502,7 @@ namespace wf {
 			__forceinline__ __device__ uint32_t len() const {
 				return (1 << subd_level)+1;
 			}
-#ifdef BOX_APPROXIMATION
+/*#ifdef BOX_APPROXIMATION
 			__forceinline__ __device__ void box_from_index(uint32_t index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
 				if (subd_level == 0) {
 	#ifndef PROJECTION					
@@ -529,7 +529,7 @@ namespace wf {
 				box_max = nodes[node_index].get_max(box_index);
 	#endif
 			}
-#endif
+#endif*/
 #if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 			__forceinline__ __device__ float slab_from_parent(uint32_t local_node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos, const patch_node *nodes) const {
 	#ifdef PROJECTION

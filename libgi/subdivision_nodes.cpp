@@ -1,10 +1,11 @@
 #include "subdivision.h"
+#include <iostream> // only TMP/DBG
 
 using namespace glm;
 
 namespace subd {
 #ifdef QUANTIZATION
-	static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.40f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.60f };
+	static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.60f }; // switched 0.40f with 0.35f
 	static constexpr std::array<float,4> thresholds_y = { 0.00f, 0.25f, 0.50f, 0.75f };
 	static char quantize_xz(float val) {
 		char res = 0;
@@ -112,80 +113,80 @@ namespace subd {
 				double x_f = 1.0 / (parent_box.max.x - parent_box.min.x);
 				if (!std::isfinite(x_f)) x_f = FLT_MIN;
 				switch (index) {
-					case 0: set_012(box_data[0], quantize_xz((val - parent_box.min.x) * x_f));
-					case 1: set_345(box_data[0], quantize_xz((parent_box.min.x - val) * x_f));
-					case 2: set_012(box_data[1], quantize_xz((val - parent_box.min.x) * x_f));
-					case 3: set_345(box_data[1], quantize_xz((parent_box.min.x - val) * x_f));
+					case 0: set_012(box_data[0], quantize_xz((val - parent_box.min.x) * x_f)); break;
+					case 1: set_345(box_data[0], quantize_xz((parent_box.max.x - val) * x_f)); break;
+					case 2: set_012(box_data[1], quantize_xz((val - parent_box.min.x) * x_f)); break;
+					case 3: set_345(box_data[1], quantize_xz((parent_box.max.x - val) * x_f)); break;
 				}
 			}
 			void patch_slab_node::set_z_slab(uint32_t index, float val, const aabb &parent_box) {
 				double z_f = 1.0 / (parent_box.max.z - parent_box.min.z);
 				if (!std::isfinite(z_f)) z_f = FLT_MIN;
 				switch (index) {
-					case 0: set_012(box_data[2], quantize_xz((val - parent_box.min.z) * z_f));
-					case 1: set_345(box_data[2], quantize_xz((parent_box.min.z - val) * z_f));
-					case 2: set_012(box_data[3], quantize_xz((val - parent_box.min.z) * z_f));
-					case 3: set_345(box_data[3], quantize_xz((parent_box.min.z - val) * z_f));
+					case 0: set_012(box_data[2], quantize_xz((val - parent_box.min.z) * z_f)); break;
+					case 1: set_345(box_data[2], quantize_xz((parent_box.max.z - val) * z_f)); break;
+					case 2: set_012(box_data[3], quantize_xz((val - parent_box.min.z) * z_f)); break;
+					case 3: set_345(box_data[3], quantize_xz((parent_box.max.z - val) * z_f)); break;
 				}
 			}
 			void patch_slab_node::set_y_min(uint32_t index, float val, const aabb &parent_box) {
 				double y_f = 1.0 / (parent_box.max.y - parent_box.min.y);
-				char q_val = quantize_xz(val - parent_box.min.y) * y_f;
+				char q_val = quantize_y(val - parent_box.min.y) * y_f;
 				switch (index) {
-					case 0: set_67(box_data[0], q_val);
-					case 1: set_67(box_data[1], q_val);
-					case 2: set_67(box_data[2], q_val);
-					case 3: set_67(box_data[3], q_val);
+					case 0: set_67(box_data[0], q_val); break;
+					case 1: set_67(box_data[1], q_val); break;
+					case 2: set_67(box_data[2], q_val); break;
+					case 3: set_67(box_data[3], q_val); break;
 				}
 			}
 			void patch_slab_node::set_y_max(uint32_t index, float val, const aabb &parent_box) {
 				double y_f = 1.0 / (parent_box.max.y - parent_box.min.y);
-				char q_val = quantize_xz(parent_box.max.y - val) * y_f;
+				char q_val = quantize_y(parent_box.max.y - val) * y_f;
 				switch (index) {
-					case 0: set_01(box_data[4], q_val);
-					case 1: set_23(box_data[4], q_val);
-					case 2: set_45(box_data[4], q_val);
-					case 3: set_67(box_data[4], q_val);
+					case 0: set_01(box_data[4], q_val); break;
+					case 1: set_23(box_data[4], q_val); break;
+					case 2: set_45(box_data[4], q_val); break;
+					case 3: set_67(box_data[4], q_val); break;
 				}
 			}
 
 			float patch_slab_node::x_slab(uint32_t index, const aabb &parent_box) const {
 				float dim = parent_box.max.x - parent_box.min.x;
 				switch (index) {
-					case 0: return dequantize_xz(get_012(box_data[0]) * dim + parent_box.min.x);
-					case 1: return dequantize_xz((1.f - get_345(box_data[0])) * dim + parent_box.min.x); //REVIEW: parent_box.min here correct??
-					case 2: return dequantize_xz(get_012(box_data[1]) * dim + parent_box.min.x);
-					case 3: return dequantize_xz((1.f - get_345(box_data[1])) * dim + parent_box.min.x);
+					case 0: return dequantize_xz(get_012(box_data[0])) * dim + parent_box.min.x;
+					case 1: return (1.f - dequantize_xz(get_345(box_data[0]))) * dim + parent_box.min.x; //REVIEW: parent_box.min here correct??
+					case 2: return dequantize_xz(get_012(box_data[1])) * dim + parent_box.min.x;
+					case 3: return (1.f - dequantize_xz(get_345(box_data[1]))) * dim + parent_box.min.x;
 				}
 				assert(false);
 			}
 			float patch_slab_node::z_slab(uint32_t index, const aabb &parent_box) const {
 				float dim = parent_box.max.z - parent_box.min.z;
 				switch (index) {
-					case 0: return dequantize_xz(get_012(box_data[2]) * dim + parent_box.min.z);
-					case 1: return dequantize_xz((1.f - get_345(box_data[2])) * dim + parent_box.min.z); //REVIEW: parent_box.min here correct??
-					case 2: return dequantize_xz(get_012(box_data[3]) * dim + parent_box.min.z);
-					case 3: return dequantize_xz((1.f - get_345(box_data[3])) * dim + parent_box.min.z);
+					case 0: return dequantize_xz(get_012(box_data[2])) * dim + parent_box.min.z;
+					case 1: return (1.f - dequantize_xz(get_345(box_data[2]))) * dim + parent_box.min.z; //REVIEW: parent_box.min here (and 1.f-...) correct??
+					case 2: return dequantize_xz(get_012(box_data[3])) * dim + parent_box.min.z;
+					case 3: return (1.f - dequantize_xz(get_345(box_data[3]))) * dim + parent_box.min.z;
 				}
 				assert(false);
 			}
 			float patch_slab_node::y_min(uint32_t index, const aabb &parent_box) const {
 				float dim = parent_box.max.y - parent_box.min.y;
 				switch (index) {
-					case 0: return dequantize_y(get_67(box_data[0] * dim + parent_box.min.y));
-					case 1: return dequantize_y(get_67(box_data[1] * dim + parent_box.min.y));
-					case 2: return dequantize_y(get_67(box_data[2] * dim + parent_box.min.y));
-					case 3: return dequantize_y(get_67(box_data[3] * dim + parent_box.min.y));
+					case 0: return dequantize_y(get_67(box_data[0])) * dim + parent_box.min.y;
+					case 1: return dequantize_y(get_67(box_data[1])) * dim + parent_box.min.y;
+					case 2: return dequantize_y(get_67(box_data[2])) * dim + parent_box.min.y;
+					case 3: return dequantize_y(get_67(box_data[3])) * dim + parent_box.min.y;
 				}
 				assert(false);
 			}
 			float patch_slab_node::y_max(uint32_t index, const aabb &parent_box) const {
 				float dim = parent_box.max.y - parent_box.min.y;
 				switch (index) {
-					case 0: return dequantize_y((1.f - get_01(box_data[4]) * dim + parent_box.min.y)); //REVIEW: parent_box.min here correct??
-					case 1: return dequantize_y((1.f - get_23(box_data[4]) * dim + parent_box.min.y));
-					case 2: return dequantize_y((1.f - get_45(box_data[4]) * dim + parent_box.min.y));
-					case 3: return dequantize_y((1.f - get_67(box_data[4]) * dim + parent_box.min.y));
+					case 0: return dequantize_y((1.f - get_01(box_data[4]))) * dim + parent_box.min.y; //REVIEW: parent_box.min here correct??
+					case 1: return dequantize_y((1.f - get_23(box_data[4]))) * dim + parent_box.min.y;
+					case 2: return dequantize_y((1.f - get_45(box_data[4]))) * dim + parent_box.min.y;
+					case 3: return dequantize_y((1.f - get_67(box_data[4]))) * dim + parent_box.min.y;
 				}
 				assert(false);
 			}
@@ -193,11 +194,25 @@ namespace subd {
 			patch_slab_node patch_slab_node::from(const patch_node &from_node, const aabb &parent_box) {
 				patch_slab_node node;
 				node.set_x_slab(0, std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x), parent_box);
+				// TMP/DBG:
+				float x_slab_0 = std::min(from_node.boxes[0].min.x, from_node.boxes[2].min.x);
+				std::cout << "x_slab_0 (ref): " << x_slab_0 << std::endl;
+				std::cout << "x_slab_0 (qnt): " << node.x_slab(0, parent_box) << std::endl << std::endl;
+
+				float x_slab_1 = std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x);
 				node.set_x_slab(1, std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x), parent_box);
+				std::cout << "x_slab_1 (ref): " << x_slab_1 << std::endl;
+				std::cout << "x_slab_1 (qnt): " << node.x_slab(1, parent_box) << std::endl << std::endl;
+
 				node.set_x_slab(2, std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x), parent_box);
 				node.set_x_slab(3, std::max(from_node.boxes[1].max.x, from_node.boxes[3].max.x), parent_box);
 				node.set_z_slab(0, std::min(from_node.boxes[0].min.z, from_node.boxes[1].min.z), parent_box);
+
+				float z_slab_1 = std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z);
 				node.set_z_slab(1, std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z), parent_box);
+				std::cout << "z_slab_1 (ref): " << z_slab_1 << std::endl;
+				std::cout << "z_slab_1 (qnt): " << node.z_slab(1, parent_box) << std::endl << std::endl;
+
 				node.set_z_slab(2, std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z), parent_box);
 				node.set_z_slab(3, std::max(from_node.boxes[2].max.z, from_node.boxes[3].max.z), parent_box);
 
@@ -211,12 +226,25 @@ namespace subd {
 								std::max(from_node.boxes[2].max.y, from_node.boxes[3].max.y)
 							);
 			#else
+				float y_min_0 = from_node.boxes[0].min.y;
 				node.set_y_min(0, from_node.boxes[0].min.y, parent_box);
+				std::cout << "y_min_0 (ref): " << y_min_0 << std::endl;
+				std::cout << "y_min_0 (qnt): " << node.y_min(0, parent_box) << std::endl << std::endl;
+
 				node.set_y_min(1, from_node.boxes[1].min.y, parent_box);
 				node.set_y_min(2, from_node.boxes[2].min.y, parent_box);
 				node.set_y_min(3, from_node.boxes[3].min.y, parent_box);
+
+				float y_max_0 = from_node.boxes[0].max.y;
 				node.set_y_max(0, from_node.boxes[0].max.y, parent_box);
+				std::cout << "y_max_0 (ref): " << y_max_0 << std::endl;
+				std::cout << "y_max_0 (qnt): " << node.y_max(0, parent_box) << std::endl << std::endl;
+
+				float y_max_1 = from_node.boxes[1].max.y;
 				node.set_y_max(1, from_node.boxes[1].max.y, parent_box);
+				std::cout << "y_max_1 (ref): " << y_max_1 << std::endl;
+				std::cout << "y_max_1 (qnt): " << node.y_max(1, parent_box) << std::endl << std::endl;
+
 				node.set_y_max(2, from_node.boxes[2].max.y, parent_box);
 				node.set_y_max(3, from_node.boxes[3].max.y, parent_box);
 			#endif

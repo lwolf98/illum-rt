@@ -505,8 +505,8 @@ namespace wf {
 
 				const subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref, params->subpatches);
 				const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here, REVIEW: base always orthogonal here? //TODO: check why this is not allowed without const?
-				float3 box_min, box_max;
-				subpatch.box_from_index(subd_quad_ref, params->patch_nodes, box_min, box_max);
+				//float3 box_min, box_max;
+				//subpatch.box_from_index(subd_quad_ref, params->patch_nodes, box_min, box_max);
 
 				//float alpha = 1.f - barycentrics.x - barycentrics.y;
 				//x  = alpha * a_pos  + barycentrics.x * b_pos  + barycentrics.y * c_pos;

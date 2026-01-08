@@ -3,44 +3,49 @@
 
 namespace wf {
 	namespace cuda {
+		struct aabb_f3 {
+			float3 min;
+			float3 max;
+		};
+
 #ifdef QUANTIZATION
-    static char quantize_xz(float val) {
-        static float thresholds[] = { -1.f, -.2f, -.01f, -.001f, .001f, .01f, .2f, 1.f };
-        char res = 0;
+		static char quantize_xz(float val) {
+			static float thresholds[] = { -1.f, -.2f, -.01f, -.001f, .001f, .01f, .2f, 1.f };
+			char res = 0;
 
-        return res;
-    }
-    static char quantize_y(float val) {
+			return res;
+		}
+		static char quantize_y(float val) {
 
-    }
-    static float dequantize_xz(char val) {
-        static float thresholds[] = { -1.f, -.2f, -.01f, -.001f, .001f, .01f, .2f, 1.f };
-        float res = thresholds[2];
+		}
+		static float dequantize_xz(char val) {
+			static float thresholds[] = { -1.f, -.2f, -.01f, -.001f, .001f, .01f, .2f, 1.f };
+			float res = thresholds[2];
 
-        return res;
-    }
-    static float dequantize_y(char val) {
+			return res;
+		}
+		static float dequantize_y(char val) {
+			return 0.f;
+		}
 
-    }
+		void __device__ __forceinline__ set_012(char &field, char val) { field = (field & 0b00011111 | val << 5); }
+		void __device__ __forceinline__ set_345(char &field, char val) { field = (field & 0b11100011 | val << 2); }
+		void __device__ __forceinline__ set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
 
-    void __device__ __forceinline__ set_012(char &field, char val) { field = (field & 0b00011111 | val << 5); }
-    void __device__ __forceinline__ set_345(char &field, char val) { field = (field & 0b11100011 | val << 2); }
-    void __device__ __forceinline__ set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
-
-    char __device__ __forceinline__ get_012(const char &field) { return ((field & 0b11100000) >> 5); }
-    char __device__ __forceinline__ get_345(const char &field) { return ((field & 0b00011100) >> 2); }
-    char __device__ __forceinline__ get_67 (const char &field) { return (field & 0b00000011); }
+		char __device__ __forceinline__ get_012(const char &field) { return ((field & 0b11100000) >> 5); }
+		char __device__ __forceinline__ get_345(const char &field) { return ((field & 0b00011100) >> 2); }
+		char __device__ __forceinline__ get_67 (const char &field) { return (field & 0b00000011); }
     
     #ifndef Y_SLAB_COMPRESSION
-    void __device__ __forceinline__ set_01 (char &field, char val) { field = (field & 0b00111111 | val << 6); }
-    void __device__ __forceinline__ set_23 (char &field, char val) { field = (field & 0b11001111 | val << 4); }
-    void __device__ __forceinline__ set_45 (char &field, char val) { field = (field & 0b11110011 | val << 2); }
-    //void __device__ __forceinline__ set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
+		void __device__ __forceinline__ set_01 (char &field, char val) { field = (field & 0b00111111 | val << 6); }
+		void __device__ __forceinline__ set_23 (char &field, char val) { field = (field & 0b11001111 | val << 4); }
+		void __device__ __forceinline__ set_45 (char &field, char val) { field = (field & 0b11110011 | val << 2); }
+		//void __device__ __forceinline__ set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
 
-    char __device__ __forceinline__ get_01 (const char &field) { return ((field & 0b11000000) >> 6); }
-    char __device__ __forceinline__ get_23 (const char &field) { return ((field & 0b00110000) >> 4); }
-    char __device__ __forceinline__ get_45 (const char &field) { return (field & 0b00001100 >> 2); }
-    //char __device__ __forceinline__ get_67 (char &field) { return (field & 0b00000011); }
+		char __device__ __forceinline__ get_01 (const char &field) { return ((field & 0b11000000) >> 6); }
+		char __device__ __forceinline__ get_23 (const char &field) { return ((field & 0b00110000) >> 4); }
+		char __device__ __forceinline__ get_45 (const char &field) { return (field & 0b00001100 >> 2); }
+		//char __device__ __forceinline__ get_67 (char &field) { return (field & 0b00000011); }
     #endif
 #endif
 
@@ -124,6 +129,7 @@ namespace wf {
 
 #ifdef SLAB_COMPRESSION
 	#ifndef HALF_SLAB_COMPRESSION
+		#ifndef QUANTIZATION
 		struct __align__(16) patch_node {
 			// With Y-Slab Compression:
 			// 8 slabs for xz -> 8 floats + 2 y coords -> 2 floats = 10 floats
@@ -140,7 +146,6 @@ namespace wf {
 			// box 2 -> x_0,z_2 | x_1,z_2 | x_0,z_3 | x_1,z_3
 			// box 3 -> x_2,z_2 | x_3,z_2 | x_2,z_3 | x_3,z_3
 
-		#ifndef QUANTIZATION
 			float x_slabs[4];
 			float z_slabs[4];
 			#ifdef Y_SLAB_COMPRESSION
@@ -154,7 +159,57 @@ namespace wf {
 			//Without y compression:
 			//-> 16 floats, 64 byte, 512 bit
 			#endif
+
+			static patch_node from(const subd::patch_slab_node &from_node) {
+				patch_node node;
+				for (uint32_t i = 0; i < 4; ++i) {
+					node.x_slabs[i] = from_node.x_slabs[i];
+					node.z_slabs[i] = from_node.z_slabs[i];
+			#ifndef Y_SLAB_COMPRESSION
+					node.y_min[i] = from_node.y_min[i];
+					node.y_max[i] = from_node.y_max[i];
+			#endif
+				}
+			#ifdef Y_SLAB_COMPRESSION
+				node.y_min = from_node.y_min;
+				node.y_max = from_node.y_max;
+			#endif
+				return node;
+			}
+	
+			#ifdef Y_SLAB_COMPRESSION
+			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[0], .y = y_min, .z = z_slabs[0] };
+				else if (index == 1)	return { .x = x_slabs[2], .y = y_min, .z = z_slabs[0] };
+				else if (index == 2)	return { .x = x_slabs[0], .y = y_min, .z = z_slabs[2] };
+				else					return { .x = x_slabs[2], .y = y_min, .z = z_slabs[2] };
+			}
+
+			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[1], .y = y_max, .z = z_slabs[1] };
+				else if (index == 1)	return { .x = x_slabs[3], .y = y_max, .z = z_slabs[1] };
+				else if (index == 2)	return { .x = x_slabs[1], .y = y_max, .z = z_slabs[3] };
+				else					return { .x = x_slabs[3], .y = y_max, .z = z_slabs[3] };
+			}
+			#else
+
+			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[0], .y = y_min[0], .z = z_slabs[0] };
+				else if (index == 1)	return { .x = x_slabs[2], .y = y_min[1], .z = z_slabs[0] };
+				else if (index == 2)	return { .x = x_slabs[0], .y = y_min[2], .z = z_slabs[2] };
+				else					return { .x = x_slabs[2], .y = y_min[3], .z = z_slabs[2] };
+			}
+
+			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+				if (index == 0)			return { .x = x_slabs[1], .y = y_max[0], .z = z_slabs[1] };
+				else if (index == 1)	return { .x = x_slabs[3], .y = y_max[1], .z = z_slabs[1] };
+				else if (index == 2)	return { .x = x_slabs[1], .y = y_max[2], .z = z_slabs[3] };
+				else					return { .x = x_slabs[3], .y = y_max[3], .z = z_slabs[3] };
+			}
+			#endif
+		};
 		#else
+		struct __align__(16) patch_node {
 			#ifdef Y_SLAB_COMPRESSION
 			/*
 				With y compression:
@@ -178,56 +233,72 @@ namespace wf {
 			*/
 			char box_data[5];
 			#endif
-		#endif
 
 			static patch_node from(const subd::patch_slab_node &from_node) {
 				patch_node node;
-				for (uint32_t i = 0; i < 4; ++i) {
-					node.x_slabs[i] = from_node.x_slabs[i];
-					node.z_slabs[i] = from_node.z_slabs[i];
-		#ifndef Y_SLAB_COMPRESSION
-					node.y_min[i] = from_node.y_min[i];
-					node.y_max[i] = from_node.y_max[i];
-		#endif
-				}
-		#ifdef Y_SLAB_COMPRESSION
-				node.y_min = from_node.y_min;
-				node.y_max = from_node.y_max;
-		#endif
+				uint32_t size = sizeof(node.box_data)/sizeof(node.box_data[0]);
+				for (uint32_t i = 0; i < size; ++i)
+					node.box_data[i] = from_node.box_data[i];
+					
 				return node;
 			}
 	
-		#ifdef Y_SLAB_COMPRESSION
-			float3 __device__ __forceinline__ get_min(uint32_t index) const {
+			#ifdef Y_SLAB_COMPRESSION
+			float3 __device__ __forceinline__ get_min(uint32_t index, const aabb_f3 &parent_box) const {
 				if (index == 0)			return { .x = x_slabs[0], .y = y_min, .z = z_slabs[0] };
 				else if (index == 1)	return { .x = x_slabs[2], .y = y_min, .z = z_slabs[0] };
 				else if (index == 2)	return { .x = x_slabs[0], .y = y_min, .z = z_slabs[2] };
 				else					return { .x = x_slabs[2], .y = y_min, .z = z_slabs[2] };
 			}
 
-			float3 __device__ __forceinline__ get_max(uint32_t index) const {
+			float3 __device__ __forceinline__ get_max(uint32_t index, const aabb_f3 &parent_box) const {
 				if (index == 0)			return { .x = x_slabs[1], .y = y_max, .z = z_slabs[1] };
 				else if (index == 1)	return { .x = x_slabs[3], .y = y_max, .z = z_slabs[1] };
 				else if (index == 2)	return { .x = x_slabs[1], .y = y_max, .z = z_slabs[3] };
 				else					return { .x = x_slabs[3], .y = y_max, .z = z_slabs[3] };
 			}
-		#else
+			#else
 
-			float3 __device__ __forceinline__ get_min(uint32_t index) const {
-				if (index == 0)			return { .x = x_slabs[0], .y = y_min[0], .z = z_slabs[0] };
-				else if (index == 1)	return { .x = x_slabs[2], .y = y_min[1], .z = z_slabs[0] };
-				else if (index == 2)	return { .x = x_slabs[0], .y = y_min[2], .z = z_slabs[2] };
-				else					return { .x = x_slabs[2], .y = y_min[3], .z = z_slabs[2] };
+			float3 __device__ __forceinline__ get_min(uint32_t index, const aabb_f3 &parent_box) const {
+				if (index == 0)			return { .x = x_slab(0, parent_box), .y = y_min(0, parent_box), .z = z_slab(0, parent_box) };
+				else if (index == 1)	return { .x = x_slab(2, parent_box), .y = y_min(1, parent_box), .z = z_slab(0, parent_box) };
+				else if (index == 2)	return { .x = x_slab(0, parent_box), .y = y_min(2, parent_box), .z = z_slab(2, parent_box) };
+				else					return { .x = x_slab(2, parent_box), .y = y_min(3, parent_box), .z = z_slab(2, parent_box) };
 			}
 
-			float3 __device__ __forceinline__ get_max(uint32_t index) const {
-				if (index == 0)			return { .x = x_slabs[1], .y = y_max[0], .z = z_slabs[1] };
-				else if (index == 1)	return { .x = x_slabs[3], .y = y_max[1], .z = z_slabs[1] };
-				else if (index == 2)	return { .x = x_slabs[1], .y = y_max[2], .z = z_slabs[3] };
-				else					return { .x = x_slabs[3], .y = y_max[3], .z = z_slabs[3] };
+			float3 __device__ __forceinline__ get_max(uint32_t index, const aabb_f3 &parent_box) const {
+				if (index == 0)			return { .x = x_slab(1, parent_box), .y = y_max(0, parent_box), .z = z_slab(1, parent_box) };
+				else if (index == 1)	return { .x = x_slab(3, parent_box), .y = y_max(1, parent_box), .z = z_slab(1, parent_box) };
+				else if (index == 2)	return { .x = x_slab(1, parent_box), .y = y_max(2, parent_box), .z = z_slab(3, parent_box) };
+				else					return { .x = x_slab(3, parent_box), .y = y_max(3, parent_box), .z = z_slab(3, parent_box) };
 			}
-		#endif
+			#endif
+
+
+
+			/*void set_x_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
+			}
+			void set_z_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
+			}
+			void set_y_min(uint32_t index, float val, const aabb_f3 &parent_box) {
+			}
+			void set_y_max(uint32_t index, float val, const aabb_f3 &parent_box) {
+			}*/
+
+			float __device__ __forceinline__ x_slab(uint32_t index, const aabb_f3 &parent_box) const {
+				return 0.f;
+			}
+			float __device__ __forceinline__ z_slab(uint32_t index, const aabb_f3 &parent_box) const {
+				return 0.f;
+			}
+			float __device__ __forceinline__ y_min(uint32_t index, const aabb_f3 &parent_box) const {
+				return 0.f;
+			}
+			float __device__ __forceinline__ y_max(uint32_t index, const aabb_f3 &parent_box) const {
+				return 0.f;
+			}
 		};
+		#endif
 	#else
 		struct __align__(16) patch_node {
 			// 4 slabs for xz -> 4 floats + 8 y coords -> 8 floats = 12 floats
