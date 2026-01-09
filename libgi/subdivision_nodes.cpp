@@ -5,47 +5,48 @@ using namespace glm;
 
 namespace subd {
 #ifdef QUANTIZATION
-	static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.60f }; // switched 0.40f with 0.35f
+	//static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.65f }; // switched 0.40f with 0.35f and so 0.60f with 0.65f
+	static constexpr std::array<float,8> thresholds_xz = { 0.00f, 0.125f, 0.25f, 0.375f, 0.50f, 0.625f, 0.75f, 0.875f };
 	static constexpr std::array<float,4> thresholds_y = { 0.00f, 0.25f, 0.50f, 0.75f };
-	static char quantize_xz(float val) {
-		char res = 0;
+	static uint8_t quantize_xz(float val) {
+		uint8_t res = 0;
 		for (uint32_t i = 0; i < thresholds_xz.size(); ++i) {
 			if (thresholds_xz[i] <= val) res = i;
 			else break;
 		}
 		return res;
 	}
-	static char quantize_y(float val) {
-		char res = 0;
+	static uint8_t quantize_y(float val) {
+		uint8_t res = 0;
 		for (uint32_t i = 0; i < thresholds_y.size(); ++i) {
 			if (thresholds_y[i] <= val) res = i;
 			else break;
 		}
 		return res;
 	}
-	static float dequantize_xz(char val) {
+	static float dequantize_xz(uint8_t val) {
 		return thresholds_xz[val];
 	}
-	static float dequantize_y(char val) {
+	static float dequantize_y(uint8_t val) {
 		return thresholds_y[val];
 	}
 
-	inline void set_012(char &field, char val) { field = (field & 0b00011111 | val << 5); }
-	inline void set_345(char &field, char val) { field = (field & 0b11100011 | val << 2); }
-	inline void set_67 (char &field, char val) { field = (field & 0b11111100 | val); }
+	inline void set_012(uint8_t &field, uint8_t val) { field = (field & 0b00011111 | val << 5); }
+	inline void set_345(uint8_t &field, uint8_t val) { field = (field & 0b11100011 | val << 2); }
+	inline void set_67 (uint8_t &field, uint8_t val) { field = (field & 0b11111100 | val); }
 
-	inline char get_012(const char &field) { return ((field & 0b11100000) >> 5); }
-	inline char get_345(const char &field) { return ((field & 0b00011100) >> 2); }
-	inline char get_67 (const char &field) { return (field & 0b00000011); }
+	inline uint8_t get_012(const uint8_t &field) { return ((field & 0b11100000) >> 5); }
+	inline uint8_t get_345(const uint8_t &field) { return ((field & 0b00011100) >> 2); }
+	inline uint8_t get_67 (const uint8_t &field) { return (field & 0b00000011); }
 	
 	#ifndef Y_SLAB_COMPRESSION
-	inline void set_01 (char &field, char val) { field = (field & 0b00111111 | val << 6); }
-	inline void set_23 (char &field, char val) { field = (field & 0b11001111 | val << 4); }
-	inline void set_45 (char &field, char val) { field = (field & 0b11110011 | val << 2); }
+	inline void set_01 (uint8_t &field, uint8_t val) { field = (field & 0b00111111 | val << 6); }
+	inline void set_23 (uint8_t &field, uint8_t val) { field = (field & 0b11001111 | val << 4); }
+	inline void set_45 (uint8_t &field, uint8_t val) { field = (field & 0b11110011 | val << 2); }
 
-	inline char get_01 (const char &field) { return ((field & 0b11000000) >> 6); }
-	inline char get_23 (const char &field) { return ((field & 0b00110000) >> 4); }
-	inline char get_45 (const char &field) { return ((field & 0b00001100) >> 2); }
+	inline uint8_t get_01 (const uint8_t &field) { return ((field & 0b11000000) >> 6); }
+	inline uint8_t get_23 (const uint8_t &field) { return ((field & 0b00110000) >> 4); }
+	inline uint8_t get_45 (const uint8_t &field) { return ((field & 0b00001100) >> 2); }
 	#endif
 #endif
 
@@ -131,7 +132,7 @@ namespace subd {
 			}
 			void patch_slab_node::set_y_min(uint32_t index, float val, const aabb &parent_box) {
 				double y_f = 1.0 / (parent_box.max.y - parent_box.min.y);
-				char q_val = quantize_y(val - parent_box.min.y) * y_f;
+				uint8_t q_val = quantize_y((val - parent_box.min.y) * y_f);
 				switch (index) {
 					case 0: set_67(box_data[0], q_val); break;
 					case 1: set_67(box_data[1], q_val); break;
@@ -141,7 +142,7 @@ namespace subd {
 			}
 			void patch_slab_node::set_y_max(uint32_t index, float val, const aabb &parent_box) {
 				double y_f = 1.0 / (parent_box.max.y - parent_box.min.y);
-				char q_val = quantize_y(parent_box.max.y - val) * y_f;
+				uint8_t q_val = quantize_y((parent_box.max.y - val) * y_f);
 				switch (index) {
 					case 0: set_01(box_data[4], q_val); break;
 					case 1: set_23(box_data[4], q_val); break;
@@ -154,7 +155,7 @@ namespace subd {
 				float dim = parent_box.max.x - parent_box.min.x;
 				switch (index) {
 					case 0: return dequantize_xz(get_012(box_data[0])) * dim + parent_box.min.x;
-					case 1: return (1.f - dequantize_xz(get_345(box_data[0]))) * dim + parent_box.min.x; //REVIEW: parent_box.min here correct??
+					case 1: return (1.f - dequantize_xz(get_345(box_data[0]))) * dim + parent_box.min.x;
 					case 2: return dequantize_xz(get_012(box_data[1])) * dim + parent_box.min.x;
 					case 3: return (1.f - dequantize_xz(get_345(box_data[1]))) * dim + parent_box.min.x;
 				}
@@ -164,7 +165,7 @@ namespace subd {
 				float dim = parent_box.max.z - parent_box.min.z;
 				switch (index) {
 					case 0: return dequantize_xz(get_012(box_data[2])) * dim + parent_box.min.z;
-					case 1: return (1.f - dequantize_xz(get_345(box_data[2]))) * dim + parent_box.min.z; //REVIEW: parent_box.min here (and 1.f-...) correct??
+					case 1: return (1.f - dequantize_xz(get_345(box_data[2]))) * dim + parent_box.min.z;
 					case 2: return dequantize_xz(get_012(box_data[3])) * dim + parent_box.min.z;
 					case 3: return (1.f - dequantize_xz(get_345(box_data[3]))) * dim + parent_box.min.z;
 				}
@@ -183,10 +184,10 @@ namespace subd {
 			float patch_slab_node::y_max(uint32_t index, const aabb &parent_box) const {
 				float dim = parent_box.max.y - parent_box.min.y;
 				switch (index) {
-					case 0: return dequantize_y((1.f - get_01(box_data[4]))) * dim + parent_box.min.y; //REVIEW: parent_box.min here correct??
-					case 1: return dequantize_y((1.f - get_23(box_data[4]))) * dim + parent_box.min.y;
-					case 2: return dequantize_y((1.f - get_45(box_data[4]))) * dim + parent_box.min.y;
-					case 3: return dequantize_y((1.f - get_67(box_data[4]))) * dim + parent_box.min.y;
+					case 0: return (1.f - dequantize_y(get_01(box_data[4]))) * dim + parent_box.min.y;
+					case 1: return (1.f - dequantize_y(get_23(box_data[4]))) * dim + parent_box.min.y;
+					case 2: return (1.f - dequantize_y(get_45(box_data[4]))) * dim + parent_box.min.y;
+					case 3: return (1.f - dequantize_y(get_67(box_data[4]))) * dim + parent_box.min.y;
 				}
 				assert(false);
 			}

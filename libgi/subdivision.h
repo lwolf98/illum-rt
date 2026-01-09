@@ -172,9 +172,9 @@ namespace subd {
 		#else
 			struct patch_slab_node {
 			#ifdef Y_SLAB_COMPRESSION
-				char box_data[4];
+				uint8_t box_data[4];
 			#else
-				char box_data[5];
+				uint8_t box_data[5];
 			#endif
 
 			static patch_slab_node from(const patch_node &from_node, const aabb &parent_box);
@@ -214,9 +214,9 @@ namespace subd {
 		#else
 			struct patch_slab_node {
 			#ifdef Y_SLAB_COMPRESSION
-				char box_data[2];
+				uint8_t box_data[2];
 			#else
-				char box_data[4];
+				uint8_t box_data[4];
 			#endif
 
 				static patch_slab_node from(const patch_node &from_node);
