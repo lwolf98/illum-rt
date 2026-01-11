@@ -440,7 +440,9 @@ void eval(const std::string &line) {
 
 				std::string displace_param;
 				in >> displace_param;
-				if (displace_param != "random")
+				if (displace_param == "random" || displace_param == "uniform")
+					cfg.displace_action = displace_param;
+				else
 					cfg.displacement_map = displace_param;
 					
 			}

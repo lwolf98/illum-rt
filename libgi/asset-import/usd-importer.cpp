@@ -373,6 +373,7 @@ namespace import {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
+						  cfg.displace_action,
 						  cfg.displacement_strength);
 
 						// build second level BVH for each patch
@@ -421,6 +422,7 @@ namespace import {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
+						  cfg.displace_action,
 						  cfg.displacement_strength);
 
 						// serialize vertices

@@ -192,7 +192,7 @@ namespace subd {
 		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
-		void displace(sample_tex sample, float strength);
+		void displace(sample_tex sample, std::string action, float strength);
 		void build_patch_bvhs(uint32_t align_level) {
 			if (storage_type_patches) {
 				for (int i = 0; i < patches.size(); i++) {

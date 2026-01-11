@@ -89,7 +89,7 @@ namespace import {
 			if (material.ior == 1.0f) material.ior = 1.3;
 			if (luma(kd) > 1e-4) material.albedo = kd;
 			else                 material.albedo = ks;
-			material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
+			//material.albedo = pow(material.albedo, vec3(2.2f, 2.2f, 2.2f));
 			material.emissive = ke;
 			
 			if (mat_ai->GetTextureCount(aiTextureType_DIFFUSE) > 0) {
@@ -113,6 +113,7 @@ namespace import {
 	#endif
 		
 			scene.materials.push_back(material);
+			std::cout << material.name << std::endl;
 		}
 
 		int light_prims = 0;
@@ -226,7 +227,8 @@ namespace import {
 						return displace_tex->sample(tc);
 					})
 					: subd::sample_tex(nullptr),
-					cfg.displacement_strength);
+					  cfg.displace_action,
+					  cfg.displacement_strength);
 
 					// build second level BVH for each patch
 					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
@@ -293,7 +295,8 @@ namespace import {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
-						cfg.displacement_strength);
+						  cfg.displace_action,
+						  cfg.displacement_strength);
 
 					//o.write_obj("out_spike.obj", true, "", 0.2);
 

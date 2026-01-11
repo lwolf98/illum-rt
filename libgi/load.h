@@ -11,6 +11,7 @@ struct load_config {
 	uint32_t subd_level;
 	bool subd_type_patches;
 	std::string displacement_map;
+	std::string displace_action;
 	float displacement_strength;
 	int32_t bvh_align_level;
 
@@ -21,6 +22,7 @@ struct load_config {
 				  subd_level(0),
 				  subd_type_patches(true),
 				  displacement_map(""),
+				  displace_action("map"),
 				  displacement_strength(0.f), // strength 0 means no displacement
 				  bvh_align_level(-1) {}
 };
