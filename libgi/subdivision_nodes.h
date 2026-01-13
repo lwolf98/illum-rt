@@ -120,14 +120,14 @@ namespace subd {
 		struct patch_slab_node {
 			/*
 				Bit:	[  0|  1|  2|  3|  4|  5|  6|  7]
-				b0min	[0_x_min	|0_y_min	|0_z_min]
-				b0max	[0_x_max	|0_y_max	|0_z_max]
-				b1min	[1_x_min	|1_y_min	|1_z_min]
-				b1max	[1_x_max	|1_y_max	|1_z_max]
-				b2min	[2_x_min	|2_y_min	|2_z_min]
-				b2max	[2_x_max	|2_y_max	|2_z_max]
-				b3min	[3_x_min	|3_y_min	|3_z_min]
-				b3max	[3_x_max	|3_y_max	|3_z_max]
+				b0min	[0_x_min	|0_z_min	|0_y_min]
+				b0max	[0_x_max	|0_z_max	|0_y_max]
+				b1min	[1_x_min	|1_z_min	|1_y_min]
+				b1max	[1_x_max	|1_z_max	|1_y_max]
+				b2min	[2_x_min	|2_z_min	|2_y_min]
+				b2max	[2_x_max	|2_z_max	|2_y_max]
+				b3min	[3_x_min	|3_z_min	|3_y_min]
+				b3max	[3_x_max	|3_z_max	|3_y_max]
 				-> 8 chars, 8 byte, 64 bit
 			*/
 			uint8_t box_data[8];
