@@ -149,10 +149,10 @@ namespace subd {
 
 	struct subd_patch;
 	struct subd_subpatch {
-#ifndef SLAB_COMPRESSION
-		std::vector<patch_base_node> nodes;
-#else
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 		std::vector<patch_slab_node> nodes;
+#else
+		std::vector<patch_base_node> nodes; //REVIEW: BASE?
 #endif
 		uint32_t vert_start;
 		glm::mat3 trafo;

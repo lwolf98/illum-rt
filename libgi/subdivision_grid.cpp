@@ -658,7 +658,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 			writer.set_proj(inverse(sub.proj));
 #endif
 			for (uint32_t morton = 0; morton < size; morton++) {
-#ifndef SLAB_COMPRESSION
+#if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
 				const patch_base_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)
 					writer.print_box(box);
@@ -769,7 +769,7 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 	#endif
 #endif
 
-#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
+/*#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 void assert_box_compare(const aabb &a, const aabb &b) {
 	assert(a.min.y == b.min.y);
 	assert(a.max.y == b.max.y);
@@ -789,10 +789,6 @@ void debug_boxes(const aabb &a, const aabb &b, int32_t id = -1) {
 
 float subd_subpatch::slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const {
 	// [FEAT-PROJ] TODO !
-	/*#ifdef PROJECTION
-				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
-				float3 root_max = make_float3(1.f, root_max_y, 1.f);
-	#endif*/
 	if (node_index == 0) {
 		// case no parent: take missing values from root box
 		if (is_x_slab) {
@@ -881,7 +877,7 @@ aabb subd_subpatch::box_from_node(uint32_t node_index, uint32_t box_index, bool 
 
 	return box;
 }
-#endif
+#endif*/
 
 #ifdef BOX_APPROXIMATION
 void subd_patch::prepare_box_approximation() {

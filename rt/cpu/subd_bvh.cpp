@@ -377,7 +377,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			uint32_t off_current_level = geometric_series4(trav_level);
 			float dist;
 			for (int i = 0; i < 4; ++i) {
-#ifndef SLAB_COMPRESSION
+#if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
 				const aabb &box = node.boxes[i];
 #else
 	#ifndef QUANTIZATION
@@ -413,7 +413,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	#ifndef PROJECTION
 					if (t_hit <= 0) continue;
 	#endif
-					bary_calc(box, transformed_ray, t_bary, closest);
+					bary_calc(box, transformed_ray, t_bary, closest); // !REVIEW: breaks for quantisation without slab compression on CPU, check what is happening
 					closest.ref = ((uint32_t)-1) - patch_ref;
 					closest.t = t_hit;
 

@@ -530,7 +530,7 @@ namespace wf {
 	#endif
 			}
 #endif*/
-#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
+/*#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 			__forceinline__ __device__ float slab_from_parent(uint32_t local_node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos, const patch_node *nodes) const {
 	#ifdef PROJECTION
 				float3 root_min = make_float3(-1.f, root_min_y, -1.f);
@@ -637,7 +637,7 @@ namespace wf {
 					result_box.max.z = slab_from_parent(local_node_index, box_index, false, 0, nodes);	// bottom
 				}
 			}
-#endif
+#endif*/
 #ifdef PROJECTION
 			float3 __forceinline__ __device__ oriented_to_projected(const float3 &p) const {
 				return project(p, proj);
