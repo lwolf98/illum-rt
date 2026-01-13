@@ -1,3 +1,5 @@
+#pragma once
+
 #include "libgi/subdivision.h"
 #include "cuda-helpers.h"
 
@@ -8,7 +10,13 @@ namespace wf {
 			float3 max;
 		};
 
-#ifdef QUANTIZATION
+#ifndef SLAB_COMPRESSION
+		typedef subd::patch_slab_node<float4> patch_node;
+#else
+		typedef subd::patch_slab_node patch_node;
+#endif
+
+/*#ifdef QUANTIZATION
 		static char quantize_xz(float val) {
 			static float thresholds[] = { -1.f, -.2f, -.01f, -.001f, .001f, .01f, .2f, 1.f };
 			char res = 0;
@@ -47,9 +55,9 @@ namespace wf {
 		char __device__ __forceinline__ get_45 (const char &field) { return (field & 0b00001100 >> 2); }
 		//char __device__ __forceinline__ get_67 (char &field) { return (field & 0b00000011); }
     #endif
-#endif
+#endif*/
 
-#ifndef SLAB_COMPRESSION
+/*#ifndef SLAB_COMPRESSION
 		struct patch_node {
 	#ifndef QUANTIZATION
 			// memory layout and order of the following fields is important!
@@ -74,7 +82,7 @@ namespace wf {
 				b3xz	[3_x_min	|3_x_max	|3_z_min]
 				b3yz	[3_y_min	|3_y_max	|3_z_max]
 				-> 8 chars, 8 byte, 64 bit
-			*/
+			*
 			char box_data[8];
 	#endif
 
@@ -125,12 +133,12 @@ namespace wf {
 			//	return float3 { .x = max_base[off], .y = max_base[off+1], .z = max_base[off+2] };
 			//}
 		};
-#endif
+#endif*/
 
 #ifdef SLAB_COMPRESSION
 	#ifndef HALF_SLAB_COMPRESSION
 		#ifndef QUANTIZATION
-		struct __align__(16) patch_node {
+		/*struct __align__(16) patch_node {
 			// With Y-Slab Compression:
 			// 8 slabs for xz -> 8 floats + 2 y coords -> 2 floats = 10 floats
 			// Without Y-Slab Compression:
@@ -207,9 +215,23 @@ namespace wf {
 				else					return { .x = x_slabs[3], .y = y_max[3], .z = z_slabs[3] };
 			}
 			#endif
-		};
+		};*/
 		#else
-		struct __align__(16) patch_node {
+
+		//typedef subd::patch_slab_node patch_node;
+		//using patch_node = subd::patch_slab_node;
+		/*struct patch_node {
+			aabb_f3 __device__ __forceinline__ get_box(uint32_t index, const aabb_f3 &parent_box) const {
+				return {{0.f,0.f,0.f},{0.f,0.f,0.f}};
+			}
+
+			static patch_node from(const subd::patch_slab_node &from_node) {
+				patch_node node;
+				return node;
+			}
+		};*/
+
+		/*struct __align__(16) patch_node {
 			#ifdef Y_SLAB_COMPRESSION
 			/*
 				With y compression:
@@ -219,7 +241,7 @@ namespace wf {
 				zy_0	[z_slab_0	|z_slab_1	|y_max  ]
 				zy_1	[z_slab_2	|z_slab_3	|       ]
 				-> 4 chars, 4 byte, 32 bit
-			*/
+			*
 			char box_data[4];
 			#else
 			/*
@@ -230,7 +252,7 @@ namespace wf {
 				zy_1	[z_slab_2	|z_slab_3	|y_min_3]
 				y_max	[y_max_0|y_max_1|y_max_2|y_max_3]
 				-> 5 chars, 5 byte, 40 bit
-			*/
+			*
 			char box_data[5];
 			#endif
 
@@ -276,14 +298,14 @@ namespace wf {
 
 
 
-			/*void set_x_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
-			}
-			void set_z_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
-			}
-			void set_y_min(uint32_t index, float val, const aabb_f3 &parent_box) {
-			}
-			void set_y_max(uint32_t index, float val, const aabb_f3 &parent_box) {
-			}*/
+			//void set_x_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
+			//}
+			//void set_z_slab(uint32_t index, float val, const aabb_f3 &parent_box) {
+			//}
+			//void set_y_min(uint32_t index, float val, const aabb_f3 &parent_box) {
+			//}
+			//void set_y_max(uint32_t index, float val, const aabb_f3 &parent_box) {
+			//}
 
 			float __device__ __forceinline__ x_slab(uint32_t index, const aabb_f3 &parent_box) const {
 				return 0.f;
@@ -297,10 +319,10 @@ namespace wf {
 			float __device__ __forceinline__ y_max(uint32_t index, const aabb_f3 &parent_box) const {
 				return 0.f;
 			}
-		};
+		};*/
 		#endif
 	#else
-		struct __align__(16) patch_node {
+		/*struct __align__(16) patch_node {
 			// 4 slabs for xz -> 4 floats + 8 y coords -> 8 floats = 12 floats
 			// instead of: 6 floats (24 byte)
 			// keeping only inner slabs:
@@ -332,7 +354,7 @@ namespace wf {
 				x_y0	[x_slab_0	|x_slab_1	|y_min  ]
 				z_y1	[z_slab_0	|z_slab_1	|y_max  ]
 				-> 2 chars, 2 byte, 16 bit
-			*/
+			*
 			char box_data[2];
 			#else
 			/*
@@ -342,7 +364,7 @@ namespace wf {
 				y2		[y_min_0|y_min_1|y_min_2|y_min_3]
 				y3		[y_max_0|y_max_1|y_max_2|y_max_3]
 				-> 4 chars, 4 byte, 32 bit
-			*/
+			*
 			char box_data[4];
 			#endif
 
@@ -404,12 +426,12 @@ namespace wf {
 					node.y_min[i] = from_node.y_min[i];
 					node.y_max[i] = from_node.y_max[i];
 				}
-		    #endif*/
+		    #endif/
 
 				return node;
 			}
         #endif
-		};
+		};*/
 	#endif
 #endif
     }

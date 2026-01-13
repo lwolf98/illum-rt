@@ -327,7 +327,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 
 	// ---- REVIEW size
 	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
-	uint32_t max_size = 25;
+	constexpr uint32_t max_size = 25;
 	uint32_t stack[max_size];
 	aabb box_stack[max_size];
 	int32_t sp = 0;
@@ -370,7 +370,6 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 		sp--;
 
 		uint32_t trav_level = log4_clz(1+3*index);
-
 		bool is_leaf = trav_level == subpatch.subd_level;
 		if (!is_leaf) {
 			const auto &node = subpatch.nodes[index];
@@ -383,7 +382,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #else
 	#ifndef QUANTIZATION
 		#ifndef HALF_SLAB_COMPRESSION
-				const aabb box = node.get_box(i);
+				const aabb box = node.get_box<aabb>(i);
 		#else
 				const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
 		#endif

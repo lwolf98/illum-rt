@@ -109,6 +109,17 @@ namespace wf::cuda {
 		auto &patch = launch_params.patches[subpatch.parent_id];
 		uint32_t node_offset = subpatch.bvh_node_offset;
 
+#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+	#ifndef PROJECTION
+					aabb_f3 root_box = { f3(subpatch.root_min), f3(subpatch.root_max) };
+	#else
+					aabb_f3 root_box =  {
+											make_float3(-1.f, subpatch.root_min_y, -1.f),
+											make_float3(1.f, subpatch.root_max_y, 1.f)
+										};
+	#endif
+#endif
+
 		float3 ray_origin_world = optixGetObjectRayOrigin();
 		float3 ray_direction_world = optixGetObjectRayDirection();
 		float3 ray_origin = subpatch.trafo * ray_origin_world;
@@ -151,10 +162,15 @@ namespace wf::cuda {
 		//optixReportIntersection(0.f, 0, __float_as_uint(0.f), __float_as_uint(0.f), 1);
 		//return;
 
-		uint32_t stack[25];
+		constexpr uint32_t max_size = 25;
+		uint32_t stack[max_size];
 		int32_t sp = 0;
 		bool is_root_and_leaf = subpatch.subd_level == 0;
 		stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
+#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+		aabb_f3 box_stack[max_size];
+		box_stack[sp] = root_box; //aabb_f3 { subpatch.root_min_y, subpatch.root_max_y };
+#endif
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
 		if (debug) printf("Ray direction: (%f %f %f)\n", ray_direction.x, ray_direction.y, ray_direction.z);
@@ -165,9 +181,13 @@ namespace wf::cuda {
 		subd::quad_ref closest_quad_ref;
 		while (sp >= 0) {
 			if (debug) printf("\n");
-			uint32_t index = stack[sp--];
-			uint32_t trav_level = log4_clz(1+3*index);
+			uint32_t index = stack[sp];
+		#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+			const aabb_f3 &parent_box = box_stack[sp];
+		#endif
+			sp--;
 
+			uint32_t trav_level = log4_clz(1+3*index);
 			bool is_leaf = trav_level == subpatch.subd_level;
 			if (!is_leaf) {
 				const auto &node = launch_params.patch_nodes[node_offset + index];
@@ -178,21 +198,25 @@ namespace wf::cuda {
 
 				for (int i = 0; i < 4; ++i) {
 #ifndef QUANTIZATION
-#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
-					float3 box_min, box_max;
-					subpatch.box_from_node(index, i, launch_params.patch_nodes, box_min, box_max);
-#else
-					float3 box_min = node.get_min(i);
-					float3 box_max = node.get_max(i);
-#endif
+	#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
+					//float3 box_min, box_max;
+					aabb_f3 box;
+					subpatch.box_from_node(index, i, launch_params.patch_nodes, box);
+	#else
+					//float3 box_min = node.get_min(i);
+					//float3 box_max = node.get_max(i);
+					aabb_f3 box = node.get_box<aabb_f3>(i);
+	#endif
 #else
 					// [FEAT-QUANT] Implement box stack and pass parent box!
-					float3 box_min = node.get_min(i, aabb_f3());
-					float3 box_max = node.get_max(i, aabb_f3());
+					//float3 box_min = node.get_min(i, aabb_f3());
+					//float3 box_max = node.get_max(i, aabb_f3());
+					//aabb_f3 box = node.get_box(i, aabb_f3());
+					aabb_f3 box = node.get_box(i, parent_box);
 #endif
 
 #ifndef PROJECTION
-					if (!compute_valid_hit(box_min, box_max,							// box
+					if (!compute_valid_hit(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, true,									// additional params
 									t_hit, t_bary)) {									// reference/out params
@@ -200,7 +224,7 @@ namespace wf::cuda {
 										continue;
 									}
 #else
-					if (!compute_valid_hit(box_min, box_max,							// box
+					if (!compute_valid_hit(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
 									t_hit, t_bary)) {									// reference/out params
@@ -215,7 +239,9 @@ namespace wf::cuda {
 #else
 					if (trav_level < subpatch.subd_level-1) {
 						if (debug) printf("hit node!!!!!!\n");
-						stack[++sp] = child_base+i;
+						sp++;
+						stack[sp] = child_base+i;
+						box_stack[sp] = box;
 					}
 					else {
 						if (debug) printf("hit leaf box!!!!!!\n");
@@ -225,7 +251,7 @@ namespace wf::cuda {
 	#endif
 						//bary_calc(box, transformed_ray, t_bary, closest);
 						bool upper_tri;
-						bary_calc(box_min, box_max,							// box
+						bary_calc(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									t_bary, upper_tri, beta, gamma);
 						closest_quad_ref.set_upper_tri(upper_tri);

@@ -9,6 +9,7 @@
 #include "driver/defines.h"
 #include "rt.h"
 #include "intersect.h"
+#include "subdivision_nodes.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 // forward declaration to avoid full include of pxr/usd/usdGeom/mesh.h
@@ -146,92 +147,10 @@ namespace subd {
 		}
 	};
 
-	struct patch_node {
-		aabb boxes[4];
-	};
-
-#ifdef SLAB_COMPRESSION
-	#ifndef HALF_SLAB_COMPRESSION
-		#ifndef QUANTIZATION
-			struct patch_slab_node {
-				float x_slabs[4];
-				float z_slabs[4];
-				#ifdef Y_SLAB_COMPRESSION
-				float y_min;
-				float y_max;
-				#else
-				float y_min[4];
-				float y_max[4];
-				#endif
-
-				static patch_slab_node from(const patch_node &from_node);
-				aabb get_box(uint32_t index) const;
-			};
-
-
-		#else
-			struct patch_slab_node {
-			#ifdef Y_SLAB_COMPRESSION
-				uint8_t box_data[4];
-			#else
-				uint8_t box_data[5];
-			#endif
-
-			static patch_slab_node from(const patch_node &from_node, const aabb &parent_box);
-			aabb get_box(uint32_t index, const aabb &parent_box) const;
-
-			inline void set_x_slab(uint32_t index, float val, const aabb &parent_box);
-			inline void set_z_slab(uint32_t index, float val, const aabb &parent_box);
-			inline void set_y_min(uint32_t index, float val, const aabb &parent_box);
-			inline void set_y_max(uint32_t index, float val, const aabb &parent_box);
-
-			inline float x_slab(uint32_t index, const aabb &parent_box) const;
-			inline float z_slab(uint32_t index, const aabb &parent_box) const;
-			inline float y_min(uint32_t index, const aabb &parent_box) const;
-			inline float y_max(uint32_t index, const aabb &parent_box) const;
-			};
-		#endif
-
-
-	#else
-		#ifndef QUANTIZATION
-			struct patch_slab_node {
-				float x_slabs[2];
-				float z_slabs[2];
-				#ifdef Y_SLAB_COMPRESSION
-				float y_min;
-				float y_max;
-				#else
-				float y_min[4];
-				float y_max[4];
-				#endif
-
-				static patch_slab_node from(const patch_node &from_node);
-				aabb get_box(uint32_t index, aabb parent_box) const;
-			};
-
-			
-		#else
-			struct patch_slab_node {
-			#ifdef Y_SLAB_COMPRESSION
-				uint8_t box_data[2];
-			#else
-				uint8_t box_data[4];
-			#endif
-
-				static patch_slab_node from(const patch_node &from_node);
-				aabb get_box(uint32_t index, aabb parent_box) const;
-			};
-		#endif
-
-
-	#endif
-#endif
-
 	struct subd_patch;
 	struct subd_subpatch {
 #ifndef SLAB_COMPRESSION
-		std::vector<patch_node> nodes;
+		std::vector<patch_base_node> nodes;
 #else
 		std::vector<patch_slab_node> nodes;
 #endif
@@ -274,7 +193,7 @@ namespace subd {
 
 	struct subd_patch {
 		std::vector<vertex> verts;
-		std::vector<patch_node> nodes;
+		std::vector<patch_base_node> nodes;
 		std::vector<subd_subpatch> subpatches;
 		aabb root_box;
 		uint32_t material_id;

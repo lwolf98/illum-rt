@@ -286,9 +286,9 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	nodes.resize(nodes_count);
 
 #if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
-	patch_node basic_nodes[nodes_count];
+	patch_base_node basic_nodes[nodes_count];
 #else
-	std::vector<patch_node> &basic_nodes = nodes;
+	std::vector<patch_base_node> &basic_nodes = nodes;
 #endif
 
 #ifdef PROJECTION
@@ -579,7 +579,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 		if (i < align_level)	off = geometric_series4(align_level-i-2);
 
 		for (uint32_t j = 0; j < size; ++j) {
-			const patch_node &child_node = nodes[off_children + j];
+			const patch_base_node &child_node = nodes[off_children + j];
 			aabb box;
 			box.grow(child_node.boxes[0]);
 			box.grow(child_node.boxes[1]);
@@ -609,7 +609,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 		uint32_t child_node_base = geometric_series4(level-1);
 		uint32_t size = 1 << 2*level; // 4^level
 		for (uint32_t morton = 0; morton < size; morton++) {
-			const patch_node &node = nodes[child_node_base + morton];
+			const patch_base_node &node = nodes[child_node_base + morton];
 			for (const auto &box : node.boxes)
 				writer.print_box(box);
 
@@ -659,7 +659,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 #endif
 			for (uint32_t morton = 0; morton < size; morton++) {
 #ifndef SLAB_COMPRESSION
-				const patch_node &node = sub.nodes[child_node_base + morton];
+				const patch_base_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)
 					writer.print_box(box);
 #else
@@ -669,7 +669,7 @@ void subd_patch::export_bvh(const std::string &path) const {
 				for (uint32_t i = 0; i < 4; i++) {
 	#ifndef QUANTIZATION
 		#ifndef HALF_SLAB_COMPRESSION
-					writer.print_box(node.get_box(i));
+					writer.print_box(node.get_box<aabb>(i));
 		#else
 					//writer.print_box(node.get_box(i));
 					writer.print_box(sub.box_from_node(child_node_base + morton, i));
@@ -761,7 +761,7 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 	uint32_t node_index = (quad_ref_local >> 2) + geometric_series4(subd_level-2);
 	uint32_t box_index = quad_ref_local & 0x3;
 		#ifndef HALF_SLAB_COMPRESSION
-	return nodes[node_index].get_box(box_index);
+	return nodes[node_index].get_box<aabb>(box_index);
 		#else
 	return box_from_node(node_index, box_index);
 		#endif

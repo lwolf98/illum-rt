@@ -596,45 +596,45 @@ namespace wf {
 				}
 			}
 
-			__forceinline__ __device__ void box_from_node(uint32_t local_node_index, uint32_t box_index, const patch_node *nodes, float3 &box_min, float3 &box_max) const {
+			__forceinline__ __device__ void box_from_node(uint32_t local_node_index, uint32_t box_index, const patch_node *nodes, aabb_f3 &result_box) const {
 				const patch_node &node = nodes[bvh_node_offset + local_node_index];
 
 	#ifdef Y_SLAB_COMPRESSION
-				box_min.y = node.y_min;
-				box_max.y = node.y_max;
+				result_box.min.y = node.y_min;
+				result_box.max.y = node.y_max;
 	#else
-				box_min.y = node.y_min[box_index];
-				box_max.y = node.y_max[box_index];
+				result_box.min.y = node.y_min[box_index];
+				result_box.max.y = node.y_max[box_index];
 				//QUANTIZATION
-				//box_min.y = get_67(node.box_data[]) node.y_min[box_index];
-				//box_max.y = node.y_max[box_index];
+				//result_box.min.y = get_67(node.box_data[]) node.y_min[box_index];
+				//result_box.max.y = node.y_max[box_index];
 	#endif
 				
-				if (box_index == 0)      { box_max.x = node.x_slabs[0]; box_max.z = node.z_slabs[0]; }
-				else if (box_index == 1) { box_min.x = node.x_slabs[1]; box_max.z = node.z_slabs[0]; }
-				else if (box_index == 2) { box_max.x = node.x_slabs[0]; box_min.z = node.z_slabs[1]; }
-				else if (box_index == 3) { box_min.x = node.x_slabs[1]; box_min.z = node.z_slabs[1]; }
+				if (box_index == 0)      { result_box.max.x = node.x_slabs[0]; result_box.max.z = node.z_slabs[0]; }
+				else if (box_index == 1) { result_box.min.x = node.x_slabs[1]; result_box.max.z = node.z_slabs[0]; }
+				else if (box_index == 2) { result_box.max.x = node.x_slabs[0]; result_box.min.z = node.z_slabs[1]; }
+				else if (box_index == 3) { result_box.min.x = node.x_slabs[1]; result_box.min.z = node.z_slabs[1]; }
 				//QUANTIZATION
-				//if (box_index == 0)      { box_max.x = dequantize_xz(get_345(node.box_data[0])); box_max.z = dequantize_xz(get_345(node.box_data[1])); }
-				//else if (box_index == 1) { box_min.x = dequantize_xz(get_012(node.box_data[0])); box_max.z = dequantize_xz(get_345(node.box_data[1])); }
-				//else if (box_index == 2) { box_max.x = dequantize_xz(get_345(node.box_data[0])); box_min.z = dequantize_xz(get_012(node.box_data[1])); }
-				//else if (box_index == 3) { box_min.x = dequantize_xz(get_012(node.box_data[0])); box_min.z = dequantize_xz(get_012(node.box_data[1])); }
+				//if (box_index == 0)      { result_box.max.x = dequantize_xz(get_345(node.box_data[0])); result_box.max.z = dequantize_xz(get_345(node.box_data[1])); }
+				//else if (box_index == 1) { result_box.min.x = dequantize_xz(get_012(node.box_data[0])); result_box.max.z = dequantize_xz(get_345(node.box_data[1])); }
+				//else if (box_index == 2) { result_box.max.x = dequantize_xz(get_345(node.box_data[0])); result_box.min.z = dequantize_xz(get_012(node.box_data[1])); }
+				//else if (box_index == 3) { result_box.min.x = dequantize_xz(get_012(node.box_data[0])); result_box.min.z = dequantize_xz(get_012(node.box_data[1])); }
 
 				if (box_index == 0) {
-					box_min.x = slab_from_parent(local_node_index, box_index, true, 1, nodes);	// left
-					box_min.z = slab_from_parent(local_node_index, box_index, false, 1, nodes);	// top
+					result_box.min.x = slab_from_parent(local_node_index, box_index, true, 1, nodes);	// left
+					result_box.min.z = slab_from_parent(local_node_index, box_index, false, 1, nodes);	// top
 				}
 				else if (box_index == 1) {
-					box_max.x = slab_from_parent(local_node_index, box_index, true, 0, nodes);	// right
-					box_min.z = slab_from_parent(local_node_index, box_index, false, 1, nodes);	// top
+					result_box.max.x = slab_from_parent(local_node_index, box_index, true, 0, nodes);	// right
+					result_box.min.z = slab_from_parent(local_node_index, box_index, false, 1, nodes);	// top
 				}
 				else if (box_index == 2) {
-					box_min.x = slab_from_parent(local_node_index, box_index, true, 1, nodes);	// left
-					box_max.z = slab_from_parent(local_node_index, box_index, false, 0, nodes);	// bottom
+					result_box.min.x = slab_from_parent(local_node_index, box_index, true, 1, nodes);	// left
+					result_box.max.z = slab_from_parent(local_node_index, box_index, false, 0, nodes);	// bottom
 				}
 				else if (box_index == 3) {
-					box_max.x = slab_from_parent(local_node_index, box_index, true, 0, nodes);	// right
-					box_max.z = slab_from_parent(local_node_index, box_index, false, 0, nodes);	// bottom
+					result_box.max.x = slab_from_parent(local_node_index, box_index, true, 0, nodes);	// right
+					result_box.max.z = slab_from_parent(local_node_index, box_index, false, 0, nodes);	// bottom
 				}
 			}
 #endif
