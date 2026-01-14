@@ -8,7 +8,9 @@ libcudaraytracing_a_CUDA_SOURCES = bounce.cu \
 
 libcudaraytracing_a_SOURCES = base.cpp cuda-helpers.cpp platform.cpp preprocessing.cpp rni.cpp $(libcudaraytracing_a_CUDA_SOURCES)
 
-noinst_HEADERS = bounce.h \
+noinst_HEADERS = base.h \
+				 patch_nodes.h \
+				 bounce.h \
 				 cuda-helpers.h \
 				 cuda-operators.h \
 				 kernels.h \

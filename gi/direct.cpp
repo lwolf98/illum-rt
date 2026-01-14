@@ -45,7 +45,7 @@ std::tuple<triangle_intersection,vec3,bool> find_closest_nonspecular(ray &ray, i
 	while (is.valid()) {
 		if (--max_bounces == 0) { throughput = vec3(0); break; }
 		//diff_geom hit(is, rc->scene);
-		diff_geom hit = diff_geom::init(is, rc->scene);
+		diff_geom hit = diff_geom::init(is, ray, rc->scene);
 		if (dynamic_cast<specular_brdf*>(hit.mat->brdf)) {
 #ifdef WITH_OBJ_DEBUG
 			if (debug)
@@ -88,7 +88,7 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 		if (closest.valid()) {
 			//diff_geom dg(closest, rc->scene);
-			diff_geom dg = diff_geom::init(closest, rc->scene);
+			diff_geom dg = diff_geom::init(closest, view_ray, rc->scene);
 
 			// denoising example
 			if (rc->enable_denoising) {
@@ -161,7 +161,7 @@ vec3 direct_light::sample_uniformly(const diff_geom &hit, const ray &view_ray) {
 #endif
 	if (closest.valid()) {
 		//diff_geom dg(closest, rc->scene);
-		diff_geom dg = diff_geom::init(closest, rc->scene);
+		diff_geom dg = diff_geom::init(closest, sample_ray, rc->scene);
 		brightness = dg.mat->emissive;
 	}
 #ifndef RTGI_SKIP_SKY
@@ -195,7 +195,7 @@ vec3 direct_light::sample_cosine_weighted(const diff_geom &hit, const ray &view_
 #endif
 	if (closest.valid()) {
 		//diff_geom dg(closest, rc->scene);
-		diff_geom dg = diff_geom::init(closest, rc->scene);
+		diff_geom dg = diff_geom::init(closest, sample_ray, rc->scene);
 		brightness = dg.mat->emissive;
 	}
 #ifndef RTGI_SKIP_SKY
@@ -285,13 +285,13 @@ vec3 direct_light::sample_brdfs(const diff_geom &hit, const ray &view_ray) {
 #ifndef RTGI_SKIP_ASS
 		if (auto [is,tp,ok] = find_closest_nonspecular(light_ray); ok)
 			if (is.valid()) {
-				if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0))
+				if (diff_geom hit_geom = diff_geom::init(is, light_ray, rc->scene); hit_geom.mat->emissive != vec3(0))
 					return tp * f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 			}
 #else
 		triangle_intersection is = rc->scene.rt->closest_hit(light_ray);
 		if (is.valid()) {
-			if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0))
+			if (diff_geom hit_geom = diff_geom::init(is, light_ray, rc->scene); hit_geom.mat->emissive != vec3(0))
 				return f * hit_geom.mat->emissive * cdot(hit.ns, w_i) / pdf;
 		}
 #endif
@@ -374,7 +374,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 	if (closest.valid()) {
 #endif
 		while (true) { // will repeat if MIS heuristic yields 0 (rejection sampling)
-			diff_geom dg = diff_geom::init(closest, rc->scene);
+			diff_geom dg = diff_geom::init(closest, view_ray, rc->scene);
 			
 			if (dg.mat->emissive != vec3(0)) {
 				radiance = dg.emissive_albedo();
@@ -420,7 +420,7 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 #else
 						if (auto is = rc->scene.rt->closest_hit(light_ray); is.valid())
 #endif
-							if (diff_geom hit_geom = diff_geom::init(is, rc->scene); hit_geom.mat->emissive != vec3(0)) {
+							if (diff_geom hit_geom = diff_geom::init(is, light_ray, rc->scene); hit_geom.mat->emissive != vec3(0)) {
 								// Need to document this!!!
 								trianglelight tl(rc->scene, is.ref);
 								#ifndef BAD_MIS

@@ -42,6 +42,7 @@ noinst_HEADERS = 	algorithm.h \
 					random.h \
 					subdivision-helper.h \
 					rt.h \
+					subdivision_nodes.h \
 					subdivision.h \
 					scene.h \
 					timer.h \

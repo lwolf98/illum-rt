@@ -7,6 +7,6 @@
 
 // Compression defines
 #define SLAB_COMPRESSION
-//#define Y_SLAB_COMPRESSION
+#define Y_SLAB_COMPRESSION
 #define HALF_SLAB_COMPRESSION
-//#define QUANTIZATION
+#define QUANTIZATION

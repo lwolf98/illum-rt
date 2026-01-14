@@ -2,6 +2,7 @@
 #include <vector_types.h>
 #include <optix.h>
 #include "driver/defines.h"
+#include "patch_nodes.h"
 
 namespace wf::cuda {
     class ray;  
@@ -9,7 +10,6 @@ namespace wf::cuda {
     class material;
 	class subd_patch;
 	class subd_subpatch;
-	class patch_node;
 
     struct optix_launch_params {
         int2 frame_buffer_dimensions;
