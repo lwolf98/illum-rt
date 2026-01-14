@@ -522,9 +522,13 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 			sub.subd_level = aligned_subd_level;
 		}
 
-		for (uint32_t morton = 0; morton < blocks; morton++)
-			subpatches[morton].build_bvh(this, debug);
-
+		for (uint32_t morton = 0; morton < blocks; morton++) {
+			#pragma omp task
+			{
+				subpatches[morton].build_bvh(this, debug);
+			}
+		}
+		#pragma omp taskwait
 	}
 
 
@@ -593,6 +597,7 @@ void subd_patch::build_bvh(int32_t align_level, bool debug) {
 }
 
 void subd_patch::export_bvh(const std::string &path) const {
+	constexpr bool debug_export = false;
 	bvh_writer writer(path, "S" + std::to_string(subd_level) + "_A" + std::to_string(align_level));
 	// Init writer
 	writer.name_ext = "_aabb";
@@ -657,12 +662,17 @@ void subd_patch::export_bvh(const std::string &path) const {
 #ifdef PROJECTION
 			writer.set_proj(inverse(sub.proj));
 #endif
+			float dbg_off = 0.f;
 			for (uint32_t morton = 0; morton < size; morton++) {
 #if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
 				const patch_base_node &node = sub.nodes[child_node_base + morton];
 				for (const auto &box : node.boxes)
 					writer.print_box(box);
 #else
+				if (debug_export) {
+					dbg_off += .2f;
+					if (morton % 4 == 0) dbg_off += .5f;
+				}
 				const patch_slab_node &node = sub.nodes[child_node_base + morton];
 				//const aabb &parent_box = parent_boxes[sub_idx][morton >> 2];
 				const aabb &parent_box = parent_boxes[sub_idx][morton];
@@ -675,7 +685,11 @@ void subd_patch::export_bvh(const std::string &path) const {
 					writer.print_box(sub.box_from_node(child_node_base + morton, i));
 		#endif
 	#else
-					const aabb box = node.get_box(i, parent_box);
+					aabb box = node.get_box(i, parent_box);
+					if (debug_export) {
+						box.min.y += dbg_off;
+						box.max.y += dbg_off;
+					}
 					writer.print_box(box);
 					prepare_boxes[sub_idx].push_back(box);
 	#endif

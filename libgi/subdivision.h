@@ -271,9 +271,15 @@ namespace subd {
 		void displace(sample_tex sample, float strength);
 		void build_patch_bvhs(uint32_t align_level) {
 			if (storage_type_patches) {
-				for (int i = 0; i < patches.size(); i++) {
-					auto &patch = patches[i];
-					patch.build_bvh(align_level, true);
+				#pragma omp parallel
+				{
+					#pragma omp single
+					{
+						for (int i = 0; i < patches.size(); i++) {
+							auto &patch = patches[i];
+							patch.build_bvh(align_level, true);
+						}
+					}
 				}
 			}
 		}
