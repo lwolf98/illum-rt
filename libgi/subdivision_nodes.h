@@ -22,6 +22,7 @@ namespace subd {
 #ifdef QUANTIZATION
 	#define SIZE_XZ 8
 	#define THRESHOLDS_XZ_VALUES 0.f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f
+	//#define THRESHOLDS_XZ_VALUES 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.65f // switched 0.40f with 0.35f and so 0.60f with 0.65f
 	#define SIZE_Y 4
 	#define THRESHOLDS_Y_VALUES 0.f, 0.25f, 0.5f, 0.75f
 	static uint8_t quantize_xz(float val) {
@@ -807,8 +808,8 @@ namespace subd {
 
 				static patch_slab_node from(const patch_base_node &from_node, const aabb &parent_box) {
 					patch_slab_node node;
-					node.set_x_slab(0, std::max(from_node.boxes[0].min.x, from_node.boxes[2].min.x), parent_box);
-					node.set_x_slab(0, std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x), parent_box);
+					node.set_x_slab(0, std::max(from_node.boxes[0].max.x, from_node.boxes[2].max.x), parent_box);
+					node.set_x_slab(1, std::min(from_node.boxes[1].min.x, from_node.boxes[3].min.x), parent_box);
 					node.set_z_slab(0, std::max(from_node.boxes[0].max.z, from_node.boxes[1].max.z), parent_box);
 					node.set_z_slab(1, std::min(from_node.boxes[2].min.z, from_node.boxes[3].min.z), parent_box);
 
