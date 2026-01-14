@@ -384,7 +384,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 		#ifndef HALF_SLAB_COMPRESSION
 				const aabb box = node.get_box<aabb>(i);
 		#else
-				const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
+				//[INDP_BOX]
+				//const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
+				const aabb box = node.get_box(i, parent_box);
 		#endif
 	#else
 				// [FEAT-QUANT] Implement box stack and pass parent box!

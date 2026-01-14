@@ -681,8 +681,9 @@ void subd_patch::export_bvh(const std::string &path) const {
 		#ifndef HALF_SLAB_COMPRESSION
 					writer.print_box(node.get_box<aabb>(i));
 		#else
-					//writer.print_box(node.get_box(i));
-					writer.print_box(sub.box_from_node(child_node_base + morton, i));
+					writer.print_box(node.get_box(i, parent_box));
+					//[INDP_BOX]
+					//writer.print_box(sub.box_from_node(child_node_base + morton, i));
 		#endif
 	#else
 					aabb box = node.get_box(i, parent_box);
@@ -755,7 +756,7 @@ const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
 	return subpatches[subpatch_id];
 }
 
-#ifndef QUANTIZATION
+/*#ifndef QUANTIZATION
 	#ifndef SLAB_COMPRESSION
 const aabb &subd_subpatch::box_from_index(uint32_t index) const {
 	if (subd_level == 0) return root_box;
@@ -781,7 +782,7 @@ aabb subd_subpatch::box_from_index(uint32_t index) const {
 		#endif
 }
 	#endif
-#endif
+#endif*/
 
 /*#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 void assert_box_compare(const aabb &a, const aabb &b) {

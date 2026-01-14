@@ -4,6 +4,8 @@
 
 #include "rt/cpu/bvh-ctor.h"
 
+#include <string.h>
+#include <sstream>
 #include <iostream>
 
 #define error(x) { cerr << "command (" << command << "): " << x << endl;  return true; }
@@ -44,7 +46,38 @@ namespace wf {
 			events.clear();
 		}
 		
-	
+		template<typename T>
+		std::string vecsize_string(const std::string &name, std::vector<T> vec) {
+			uint32_t vec_size = vec.size();
+			uint32_t type_size = sizeof(T);
+			uint32_t total_size = vec_size * type_size;
+			//float size_mb = total_size * 1.f/1e6;
+
+			double value = static_cast<double>(total_size);
+			const char* unit = "B";
+			uint32_t prec = 0;
+
+			if (total_size >= 1'000'000) {
+				value /= 1e6;
+				unit = "MB";
+				prec = 3;
+			}
+			else if (total_size >= 1'000) {
+				value /= 1e3;
+				unit = "kB";
+				prec = 3;
+			}
+
+			std::stringstream sstr;
+			sstr << std::left << std::setw(20) << (name + ":") << std::right
+				 << "Count: " << std::setw(8) << vec_size
+				 << " | Item size: " << std::setw(4) << type_size << " B"
+				 << " | Total size: " << std::setw(8)
+				 << std::fixed << std::setprecision(prec) << value << " " << unit;
+
+			return sstr.str();
+		}
+
 		void scenedata::upload(scene *scene) {
 			std::cout << "Device upload stats:" << std::endl;
 
@@ -70,8 +103,8 @@ namespace wf {
 			vertex_tc.upload(tmp_t);
 
 			std::cout << "Regular geometry:\n"
-				<< "\t" << "Vertices: " << tmp_p.size() << "\n"
-				<< "\t" << "Triangles: " << scene_tris.size() << "\n"
+				<< "\t" << vecsize_string("Vertices", tmp_p) << "\n"
+				<< "\t" << vecsize_string("Triangles", scene_tris) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << tmp_p.size() << "\n"
 				<< "\t" << scene_tris.size() << "\n"
@@ -95,7 +128,7 @@ namespace wf {
 			materials.upload(mtls);
 			
 			std::cout << "Scene:\n"
-				<< "\t" << "Materials: " << mtls.size() << "\n"
+				<< "\t" << vecsize_string("Materials", mtls) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << mtls.size() << "\n"
 				<< std::endl;
@@ -206,12 +239,12 @@ namespace wf {
 			}
 
 			std::cout << "Patch geometry:\n"
-				<< "\t" << "Patches: " << device_patches.size() << "\n"
-				<< "\t" << "Subpatches: " << device_subpatches.size() << "\n"
-				<< "\t" << "Patch nodes: " << device_nodes.size() << "\n"
-				<< "\t" << "Patch root boxes: " << device_root_boxes.size() << "\n"
+				<< "\t" << vecsize_string("Patches", device_patches) << "\n"
+				<< "\t" << vecsize_string("Subpatches", device_subpatches) << "\n"
+				<< "\t" << vecsize_string("Patch nodes", device_nodes) << "\n"
+				<< "\t" << vecsize_string("Patch root boxes", device_root_boxes) << "\n"
 #if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
-				<< "\t" << "Patch vertices: " << tmp_p.size() << "\n"
+				<< "\t" << vecsize_string("Patch vertices", tmp_p) << "\n"
 #endif
 				<< "\t" << "Copy:\n"
 				<< "\t" << device_patches.size() << "\n"

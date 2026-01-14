@@ -26,7 +26,8 @@ diff_geom::diff_geom(const triangle_intersection &is, const scene &scene)
  : diff_geom(scene.triangles[is.ref], is, scene) {
 }
 
-#ifndef QUANTIZATION
+//[INDP_BOX]
+/*#ifndef QUANTIZATION
 void set_dbg_tri(diff_geom &dg, subd::subd_subpatch subpatch, uint32_t subd_quad_ref, bool upper) {
 	vertex a, b, c;
 	glm::mat3 M = inverse(subpatch.trafo);
@@ -68,7 +69,7 @@ void set_dbg_tri(diff_geom &dg, subd::subd_subpatch subpatch, uint32_t subd_quad
 	dg.dbg_v_b.pos = b.pos;
 	dg.dbg_v_c.pos = c.pos;
 }
-#endif
+#endif*/
 
 diff_geom diff_geom::init(const triangle_intersection &is, const ray &is_ray, const scene &scene, bool debug) {
 	if (is.ref < scene.triangles.size()) {
@@ -100,9 +101,10 @@ diff_geom diff_geom::init(const triangle_intersection &is, const ray &is_ray, co
 		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
 		const glm::mat3 M = glm::inverse(subpatch.trafo);
 		diff_geom dg(&mat, is.ref);
-	#ifndef QUANTIZATION
-		set_dbg_tri(dg, subpatch, subd_quad_ref, upper);
-	#endif
+	//[INDP_BOX]
+	//#ifndef QUANTIZATION
+	//	set_dbg_tri(dg, subpatch, subd_quad_ref, upper);
+	//#endif
 
 		//REVIEW: put somewhere more suitable...
 		auto [u, v] = patch.global_uvs(is.subd_quad_ref, is.beta, is.gamma);

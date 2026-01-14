@@ -200,8 +200,10 @@ namespace wf::cuda {
 #ifndef QUANTIZATION
 	#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
 					//float3 box_min, box_max;
-					aabb_f3 box;
-					subpatch.box_from_node(index, i, launch_params.patch_nodes, box);
+					//[INDP_BOX]
+					//aabb_f3 box;
+					//subpatch.box_from_node(index, i, launch_params.patch_nodes, box);
+					aabb_f3 box = node.get_box(i, parent_box);
 	#else
 					//float3 box_min = node.get_min(i);
 					//float3 box_max = node.get_max(i);

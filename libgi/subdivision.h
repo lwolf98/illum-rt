@@ -165,17 +165,19 @@ namespace subd {
 
 		void build_bvh(const subd_patch *parent, bool debug = false);
 		uint32_t len() const;
-#ifndef SLAB_COMPRESSION
+//[INDP_BOX]
+/*#ifndef SLAB_COMPRESSION
 		const aabb &box_from_index(uint32_t local_index) const;
 #else
-		aabb box_from_index(uint32_t local_index) const;
-	#ifdef HALF_SLAB_COMPRESSION
+		aabb box_from_index(uint32_t local_index) const;*/
+	//[INDP_BOX]
+	/*#ifdef HALF_SLAB_COMPRESSION
 		aabb box_from_node(uint32_t node_index, uint32_t box_index, bool debug = false) const;
 	private:
 		float slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const;
 	public:
 	#endif
-#endif
+#endif*/
 
 
 #ifdef PROJECTION
