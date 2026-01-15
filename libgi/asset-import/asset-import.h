@@ -13,24 +13,14 @@
 namespace import {
 	class asset_importer {
 		protected:
-		const std::string &name;
-		const glm::mat4 &trafo;
-		const uint subdiv_level;
-		const bool subdiv_type_patches;
-		const float displace_strength;
-		std::filesystem::path filepath;
-		std::filesystem::path displace_map_path;
+		const load_config &cfg;
 
 		public:
-		asset_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true, float displace_strength = 0.f)
-			: name(name), trafo(trafo), subdiv_level(subdiv_level), subdiv_type_patches(subdiv_type_patches), displace_strength(displace_strength) {}
+		asset_importer(const load_config &cfg)
+			: cfg(cfg) {}
 		virtual ~asset_importer() {}
 
-		virtual void load_scene(const std::filesystem::path& filepath, const std::filesystem::path& displace_map_path = "") {
-			this->filepath = filepath;
-			if (displace_map_path != "")
-				this->displace_map_path = displace_map_path;
-		}
+		virtual void load_scene() = 0;
 		virtual void import(scene& scene) = 0;
 	};
 
@@ -40,11 +30,11 @@ namespace import {
 		const aiScene* scene_ai;
 
 		public:
-		assimp_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true, float displace_strength = 0.f)
-			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches, displace_strength) {}
+		assimp_importer(const load_config &cfg)
+			: asset_importer(cfg) {}
 		~assimp_importer() {}
 
-		void load_scene(const std::filesystem::path& path, const std::filesystem::path& displace_map_path = "") override;
+		void load_scene() override;
 		void import(scene& scene) override;
 	};
 
@@ -58,21 +48,21 @@ namespace import {
 		void traverse_shader_inputs(const pxr::UsdShadeShader &shader, int level, material &material);
 
 		public:
-		usd_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true, float displace_strength = 0.f)
-			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches, displace_strength) {}
+		usd_importer(const load_config &cfg)
+			: asset_importer(cfg) {}
 		~usd_importer() {}
 
-		void load_scene(const std::filesystem::path& path, const std::filesystem::path& displace_map_path = "") override;
+		void load_scene() override;
 		void import(scene& scene) override;
 	};
 
 	class objx_importer : public asset_importer {
 		public:
-		objx_importer(const std::string &name, const glm::mat4 &trafo, const uint subdiv_level = 0, const bool subdiv_type_patches = true, float displace_strength = 0.f)
-			: asset_importer(name, trafo, subdiv_level, subdiv_type_patches, displace_strength) {}
+		objx_importer(const load_config &cfg)
+			: asset_importer(cfg) {}
 		~objx_importer() {}
 
-		void load_scene(const std::filesystem::path& path, const std::filesystem::path& displace_map_path = "") override;
+		void load_scene() override;
 		void import(scene& scene) override;
 	};
 }

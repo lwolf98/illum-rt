@@ -1,0 +1,87 @@
+#omp off
+
+up 0 1 0
+
+#sppx 1
+#sppx 10
+#sppx 20
+sppx 128
+#sppx 1024
+#sppx 4096
+#sppx 400000
+resolution 960 540
+#resolution 1920 1200
+
+default-brdf layered-gtr2
+
+# Plane light
+#load render-data/light/plane_sky.obj
+#material select Light
+#material emissive 2 2 2
+
+# Dome light
+#load render-data/light/dome_light.obj
+#material select Dome
+#material emissive 1 1 1
+
+#modeltrafo shift 0 -10 0
+#load render-data/local/bvh/surface.obj
+#modeltrafo shift 0 10 0
+
+# Point light
+#pointlight pos 0 10 0 col 10 10 10
+#pointlight pos -20 30 30 col 100 100 100
+
+# Environment
+load render-data/light/dome_sky.obj
+load render-data/local/models/playground/plane_sand.obj
+
+# Scene
+#load render-data/local/models/playground/playground.obj
+
+# Cartoon dragon
+#load render-data/local/models/playground/dragon_pg.obj
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.02
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace render-data/displace/map1.png strength 0.1
+
+# Test models
+#load render-data/local/bvh/surface.obj
+#load render-data/local/bvh/surface.obj subd_level 1 align_level 0
+#load render-data/local/bvh/surface.obj subd_level 4 displace render-data/displace/map1.png strength 1 align_level 2
+load render-data/local/bvh/surface_tex.obj subd_level 3 align_level 2
+
+# Surface
+at 6.77278 2.17657 1.145
+look -0.950138 -0.299847 -0.08561
+# Surface - debug borders
+#at 1.90164 -0.598491 -0.539858
+#look -0.748832 -0.458544 -0.478527
+#at 1.13146 2.78123 -3.7333
+#look 0.021118 -0.414029 0.910019
+#at -3.49466 0.910402 1.70497
+#look 0.903394 -0.296078 0.31019
+
+# CPU Direct
+raytracer subd-naive-bvh
+commit
+#algo local
+#algo direct
+#is light
+algo direct/mis
+#algo primary
+#algo local
+outfile out_subds/playground_direct_cpu.png
+
+# WF GPU Direct
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile out_subds/playground_primary_cuda.png
+#algo direct-wf
+#is light
+##is cosine
+#outfile out_subds/playground_direct_cuda.png
+#commit
+
+run

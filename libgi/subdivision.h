@@ -6,8 +6,10 @@
 #include <map>
 #include <assimp/mesh.h>
 #include <pxr/pxr.h>
+#include "driver/defines.h"
 #include "rt.h"
 #include "intersect.h"
+#include "subdivision_nodes.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 // forward declaration to avoid full include of pxr/usd/usdGeom/mesh.h
@@ -15,6 +17,39 @@ class UsdGeomMesh;
 PXR_NAMESPACE_CLOSE_SCOPE
 
 namespace subd {
+	/* Basic operations */
+	static uint32_t log2_clz(uint32_t x) {
+		return 31 - __builtin_clz(x);
+	}
+
+	static uint32_t log4_clz(uint32_t x) {
+		return (31 - __builtin_clz(x)) >> 1;
+	}
+
+	static int geometric_series4(int iterations) {
+		return (1 - (1 << ((iterations+1)<<1))) / (-3);
+	}
+
+	static uint32_t child_node_base(
+		uint32_t trav_level,
+		uint32_t index
+	) {
+		uint32_t off_current_level = geometric_series4(trav_level-1);
+		uint32_t off_child_level = geometric_series4(trav_level);
+		uint32_t idx_current_relative = index - off_current_level;
+		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
+		uint32_t index_child = off_child_level + idx_child_relative;
+		return index_child;
+	}
+
+	static uint32_t child_node_base(
+			uint32_t index
+		) {
+			uint32_t trav_level = log4_clz(1+3*index);
+			return child_node_base(trav_level, index);
+	}
+
+	/* Structures */
 	struct edge {
 		int v1, v2;
 		float sharpness;
@@ -112,16 +147,64 @@ namespace subd {
 		}
 	};
 
-	struct patch_node {
-		aabb boxes[4];
+	struct subd_patch;
+	struct subd_subpatch {
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+		std::vector<patch_slab_node> nodes;
+#else
+		std::vector<patch_base_node> nodes; //REVIEW: BASE?
+#endif
+		uint32_t vert_start;
+		glm::mat3 trafo;
+#ifdef PROJECTION
+		glm::mat3 proj;
+#endif
+		aabb root_box;
+		aabb root_box_world; // TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
+		uint32_t subd_level;
+
+		void build_bvh(const subd_patch *parent, bool debug = false);
+		uint32_t len() const;
+//[INDP_BOX]
+/*#ifndef SLAB_COMPRESSION
+		const aabb &box_from_index(uint32_t local_index) const;
+#else
+		aabb box_from_index(uint32_t local_index) const;*/
+	//[INDP_BOX]
+	/*#ifdef HALF_SLAB_COMPRESSION
+		aabb box_from_node(uint32_t node_index, uint32_t box_index, bool debug = false) const;
+	private:
+		float slab_from_parent(uint32_t node_index, uint32_t child_index, bool is_x_slab, uint32_t slab_pos) const;
+	public:
+	#endif
+#endif*/
+
+
+#ifdef PROJECTION
+		glm::vec3 oriented_to_projected(const glm::vec3 &p) const;
+		glm::vec3 projected_to_oriented(const glm::vec3 &p) const;
+#endif
 	};
+
+#ifdef BOX_APPROXIMATION
+	struct patch_vertex {
+		glm::vec2 tc;
+		glm::vec3 norm;
+	};
+#endif
 
 	struct subd_patch {
 		std::vector<vertex> verts;
-		std::vector<patch_node> nodes;
+		std::vector<patch_base_node> nodes;
+		std::vector<subd_subpatch> subpatches;
 		aabb root_box;
 		uint32_t material_id;
 		uint32_t subd_level;
+		int32_t align_level;
+		bool align_boxes;
+#ifdef BOX_APPROXIMATION
+		patch_vertex data[4];
+#endif
 
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
@@ -136,23 +219,38 @@ namespace subd {
 			}
 		}
 
-		void print_verts() const;
-		void print_vert_tcs() const;
 		uint32_t len() const;
 		uint32_t len(uint32_t level) const;
-		uint32_t vert_right(uint32_t vert_id) const;
-		uint32_t vert_down(uint32_t vert_id) const;
-		uint32_t vert_down_right(uint32_t vert_id) const;
+		uint32_t vert_right(uint32_t vert_id, uint32_t step = 1) const;
+		uint32_t vert_down(uint32_t vert_id, uint32_t step = 1) const;
+		uint32_t vert_down_right(uint32_t vert_id, uint32_t step = 1) const;
 		uint32_t vert_offset(uint32_t vert_id, int32_t off_x, int32_t off_y) const;
-		void build_bvh();
-		int get_subd_quad(int morton_code) const;
-		std::array<triangle, 2> tris(int morton_code) const;
-		triangle tri(int morton_code, bool upper) const;
-		uint32_t quad_ref_from_index(uint32_t index) const;
+		void build_bvh(int32_t align_level, bool debug = false);
+		std::array<triangle, 2> tris(int vert_quad_id) const;
+		triangle tri(int vert_quad_id, bool upper) const;
 
-		private:
-		int calculate_morton_code(int x, int y) const;
-		tuple<int, int> evaluate_morton_code(int morton_code) const;
+		// Index operations
+		std::tuple<uint32_t, uint32_t> xy_from_index(uint32_t index) const;
+		uint32_t quad_ref_from_index(uint32_t index, uint32_t level) const;
+		uint32_t quad_ref_from_index(uint32_t index) const;
+		//uint32_t subpatch_ref_from_index(uint32_t index) const;
+		uint32_t index_from_quad_ref(uint32_t vert_quad_id) const;
+
+		const subd_subpatch &subpatch_from_index(uint32_t index) const;
+		//const aabb &box_from_index(const subd_subpatch &subpatch, uint32_t index) const;
+
+		void print_verts() const;
+		void print_vert_tcs() const;
+		void export_bvh(const std::string &path) const;
+
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+		std::tuple<float, float> global_uvs(quad_ref quad_ref, float local_u, float loacl_v) const;
+#endif
+
+		//private:
+		//int calculate_morton_code(int x, int y) const;
+		//tuple<int, int> evaluate_morton_code(int morton_code) const;
 	};
 
 	typedef std::function<glm::vec4(glm::vec2)> sample_tex;
@@ -167,19 +265,29 @@ namespace subd {
 		edge_list creases;
 		std::vector<subd_patch> patches;
 		bool storage_type_patches;
+
 		int get_vert_id(glm::vec3 v_pos);
 		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
 		void displace(sample_tex sample, float strength);
-		void build_patch_bvhs() {
+		void build_patch_bvhs(uint32_t align_level) {
 			if (storage_type_patches) {
-				for (int i = 0; i < patches.size(); i++) {
-					auto &patch = patches[i];
-					patch.build_bvh();
+				#pragma omp parallel
+				{
+					#pragma omp single
+					{
+						for (int i = 0; i < patches.size(); i++) {
+							auto &patch = patches[i];
+							patch.build_bvh(align_level, true);
+						}
+					}
 				}
 			}
 		}
+#ifdef BOX_APPROXIMATION
+		void prepare_box_approximation();
+#endif
 
 		mesh() : storage_type_patches(true) { }
 

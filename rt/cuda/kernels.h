@@ -54,7 +54,7 @@ void launch_setup_ray_incoherent(int2 config, int2 resolution, float4 *rays,
 								 curandStateMtgp32 *rand_state);
 
 void launch_add_hitpoint_albedo(int2 res, wf::cuda::tri_is *intersections, 
-								uint4 *triangles, float2 *tex_coords, wf::cuda::material *materials, float4 *framebuffer);
+								uint4 *triangles, float2 *tex_coords, wf::cuda::material *materials, wf::cuda::scene_refs *refs, float4 *framebuffer);
 
 void launch_copy_to_preview_framebuffer(int2 res, float4 *framebuffer, float4 *preview_framebuffer);
 

@@ -3,8 +3,9 @@
 #include "rt.h"
 
 struct aabb {
-	vec3 min, max;
+	glm::vec3 min, max;
 	aabb() : min(FLT_MAX), max(-FLT_MAX) {}
+	aabb(glm::vec3 min, glm::vec3 max) : min(min), max(max) {}
 	void grow(vec3 v) {
 		min = glm::min(v, min);
 		max = glm::max(v, max);
@@ -12,6 +13,35 @@ struct aabb {
 	void grow(const aabb &other) {
 		min = glm::min(other.min, min);
 		max = glm::max(other.max, max);
+	}
+
+	/**
+	 * Grows the box by another box that is possibly in another space.
+	 * The passed box is first projected and afterwards transformed by the given matrices.
+	 */
+	void grow(const aabb &oa_box, const glm::mat3 &trafo, const glm::mat3 &proj) {
+		auto project = [] (const glm::vec3 &a, const glm::mat3 &proj) -> glm::vec3 {
+			glm::vec3 tmp = proj * glm::vec3(a.x, a.z, 1.f);
+			return glm::vec3(tmp.x/tmp.z, a.y, tmp.y/tmp.z);
+		};
+		grow(trafo * project(vec3(oa_box.min.x, oa_box.min.y, oa_box.min.z), proj));
+		grow(trafo * project(vec3(oa_box.max.x, oa_box.min.y, oa_box.min.z), proj));
+		grow(trafo * project(vec3(oa_box.max.x, oa_box.max.y, oa_box.min.z), proj));
+		grow(trafo * project(vec3(oa_box.min.x, oa_box.max.y, oa_box.min.z), proj));
+		grow(trafo * project(vec3(oa_box.min.x, oa_box.min.y, oa_box.max.z), proj));
+		grow(trafo * project(vec3(oa_box.max.x, oa_box.min.y, oa_box.max.z), proj));
+		grow(trafo * project(vec3(oa_box.max.x, oa_box.max.y, oa_box.max.z), proj));
+		grow(trafo * project(vec3(oa_box.min.x, oa_box.max.y, oa_box.max.z), proj));
+	}
+	void grow(const aabb &oa_box, const glm::mat3 &trafo) {
+		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.min.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.min.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.min.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.max.x, oa_box.max.y, oa_box.max.z));
+		grow(trafo * vec3(oa_box.min.x, oa_box.max.y, oa_box.max.z));
 	}
 };
 
@@ -79,7 +109,7 @@ inline bool intersect(const triangle &t, const vertex *vertices, const ray &ray,
  *  this allows the calling code to figure out if the intersection found is
  *  really the closest along the ray.
  */
-inline bool intersect(const aabb &box, const ray &ray, float &is) {
+inline bool intersect(const aabb &box, const ray &ray, float &is_near, float &is_far) {
 #ifndef RTGI_SKIP_RAY_BOX_IS_1
 	float t_near = -FLT_MAX;
 	float t_far  =  FLT_MAX;
@@ -144,12 +174,18 @@ inline bool intersect(const aabb &box, const ray &ray, float &is) {
 			return false;
 	}
 
-	is = t_near;
+	is_near = t_near;
+	is_far = t_far;
 	return true;
 #else
 	// todo
 	return false;
 #endif
+}
+
+inline bool intersect(const aabb &box, const ray &ray, float &is) {
+	float t_far;
+	return intersect(box, ray, is, t_far);
 }
 
 inline bool intersect2(const aabb &box, const ray &ray, float &is) {

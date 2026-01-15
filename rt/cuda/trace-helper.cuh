@@ -5,7 +5,9 @@
 
 #define EPSILON 0.000001 // Moeller-Trumbore triangle intersection
 
-#define INTERSECT_BOX_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max, float &hit_t
+#define BOX_RAY_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max
+//#define INTERSECT_BOX_PARAMETERS float3 &boxmin, float3 &boxmax, float3 &ray_o, float3 &ray_d, float3 &ray_id, float3 &ray_ood, const float &t_min, const float &t_max, float &hit_t
+#define INTERSECT_BOX_PARAMETERS BOX_RAY_PARAMETERS, float &hit_t
 __forceinline__ __device__ bool intersect_box(INTERSECT_BOX_PARAMETERS);
 __forceinline__ __device__ bool intersect_box_shirley(INTERSECT_BOX_PARAMETERS);
 __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS);
@@ -24,7 +26,7 @@ __forceinline__ __device__ int vmax_min (int a, int b, int c);
 __forceinline__ __device__ int vmin_min (int a, int b, int c);
 __forceinline__ __device__ int vmax_max (int a, int b, int c);
 
-__forceinline__ __device__ float3 f4_to_f3(const float4 &v) {
+__forceinline__ __device__ float3 f3(const float4 &v) {
 	return make_float3(v.x, v.y, v.z);
 }
 
@@ -209,6 +211,85 @@ __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS) {
     return intersect;
 }
 
+//__forceinline__ __device__ void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
+__forceinline__ __device__ void bary_calc(BOX_RAY_PARAMETERS, float t_dist, bool &upper_tri, float &beta, float &gamma) {
+	float3 hit = ray_o + t_dist * ray_d;
+	float width = boxmax.x - boxmin.x;
+	float height = boxmax.z - boxmin.z;
+	float3 hit_relative = hit - boxmin;
+	float2 hit_xy = make_float2(hit_relative.x, hit_relative.z);
+	hit_xy.x = hit_xy.x / width;
+	hit_xy.y = hit_xy.y / height;
+	//assert(hit_xy.x >= -eps && hit_xy.x <= 1+eps);
+	//assert(hit_xy.y >= -eps && hit_xy.y <= 1+eps);
+	if (hit_xy.x < 0) hit_xy.x = 0;
+	if (hit_xy.x > 1) hit_xy.x = 1;
+	if (hit_xy.y < 0) hit_xy.y = 0;
+	if (hit_xy.y > 1) hit_xy.y = 1;
+
+	//bool upper_tri = hit_xy.y < -hit_xy.x + 1;
+	//is.subd_quad_ref.set_upper_tri(upper_tri);
+	upper_tri = hit_xy.y < -hit_xy.x + 1;
+	if (upper_tri) {
+		beta = hit_xy.x;
+		gamma = hit_xy.y;
+	}
+	else {
+		beta = 1 - hit_xy.x;
+		gamma = 1 - hit_xy.y;
+	}
+	//assert(is.beta >= 0 && is.beta <= 1);
+	//assert(is.gamma >= 0 && is.gamma <= 1);
+	//assert(is.beta + is.gamma >= 0);
+	//assert(is.beta + is.gamma <= 1);
+}
+
+__forceinline__ __device__ bool compute_valid_hit(
+	//INTERSECT_BOX_PARAMETERS,
+	BOX_RAY_PARAMETERS,
+	float closest_t,
+#ifdef PROJECTION
+	float t_near_oriented,
+	const float3 &hit_near_oriented,
+	float t_off,
+	const wf::cuda::subd_subpatch &subpatch,
+#endif
+	bool allow_negative_t,
+	float &hit_t,
+	float &bary_t
+) {
+	//if (!intersect4(box, transformed_ray, dist)) return false;
+	//if (!intersect_box(INTERSECT_BOX_PARAMETERS)) return false;
+	float dist;
+	if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
+
+#ifndef PROJECTION
+	//assert(!std::isnan(dist)); // REVIEW: can this happen?
+	if (isnan(dist)) return false;
+	if (dist >= closest_t) return false;
+	if (!allow_negative_t && dist <= 0) return false;
+	hit_t = dist;
+	bary_t = dist;
+#else
+	dist += t_off; // correct by earlier added epsilon
+
+	// Calculate new t
+	float t_total;
+	float3 x_proj = ray_o + dist * ray_d;
+	float3 x_oriented = subpatch.projected_to_oriented(x_proj);
+	float t_dist = length(x_oriented - hit_near_oriented);
+	t_total = t_near_oriented + t_dist;
+	
+	if (isnan(t_total)) return false; //REVIEW: check nans here
+	if (t_total >= closest_t) return false; // -> fixes overlapping and shadow ray self intersection
+	if (!allow_negative_t && t_total <= 0) return false;
+	hit_t = t_total;
+	bary_t = dist;
+#endif
+
+	return true;
+}
+
 __forceinline__ __device__ bool intersect_triangle(INTERSECT_TRIANGLE_PARAMETERS) {
     return intersect_triangle_shirley(v1, v2, v3, ray_o, ray_d, t_min, t_max, hit_t, hit_beta, hit_gamma, debug);
     // return intersect_triangle_moeller_trumbore(v1, v2, v3, ray_o, ray_d, t_min, t_max, hit_t, hit_beta, hit_gamma, debug);
@@ -334,4 +415,170 @@ __forceinline__ __device__ int vmax_max (int a, int b, int c) {
     int val;
     asm("vmax.s32.s32.s32.max %0, %1, %2, %3;" : "=r"(val) : "r"(a), "r"(b), "r"(c));
     return val;
+}
+
+
+
+namespace wf {
+	namespace cuda {
+		struct __align__(16) diff_geom {
+			__device__ __inline__ diff_geom(const tri_is &is, const float3 &ray_org, const float3 &ray_dir, const scene_refs *params, int32_t dbg_x = -1, int32_t dbg_y = -1) {
+				this->dbg_x = dbg_x;
+				this->dbg_y = dbg_y;
+				if (is.is_tri())
+					init_tri(is, params);
+				else
+					init_custom_prim(is, ray_org, ray_dir, params);
+			}
+
+			float2 tc;
+			float3 x;
+			float3 ng, ns;
+			const material *mat;
+
+			// TODO/TMP: only debugging
+			int32_t dbg_x, dbg_y;
+			__device__ __forceinline__ bool debug() { return true && dbg_x == 566 && dbg_y == 281; }
+
+			// This function provides a light weight diff_geom that does not require a ray, but also does not provie the hit point x.
+			// The other fields are initialized correctly.
+			// This might be used e.g. for primary hit.
+			static __device__ __forceinline__ diff_geom init_lightweight(const tri_is &is, const scene_refs *params) {
+				float3 dummy_org = {0,0,0};
+				float3 dummy_dir = {0,0,0};
+				return diff_geom(is, dummy_org, dummy_dir, params);
+			}
+
+		private:
+			__device__ __forceinline__ void init_base(const float3 vertex_pos_a, const float3 vertex_pos_b, const float3 vertex_pos_c,
+														const float3 vertex_norm_a, const float3 vertex_norm_b, const float3 vertex_norm_c,
+														const float2 vertex_tc_a, const float2 vertex_tc_b, const float2 vertex_tc_c,
+														const float2 barycentrics, const material *mat) {
+
+				float alpha = 1.f - barycentrics.x - barycentrics.y;
+				x  = alpha * vertex_pos_a  + barycentrics.x * vertex_pos_b  + barycentrics.y * vertex_pos_c;
+				tc = alpha * vertex_tc_a   + barycentrics.x * vertex_tc_b   + barycentrics.y * vertex_tc_c;
+				ns = alpha * vertex_norm_a + barycentrics.x * vertex_norm_b + barycentrics.y * vertex_norm_c;
+				ng = cross(vertex_pos_b-vertex_pos_a, vertex_pos_c-vertex_pos_a);
+				normalize(ng);
+				this->mat = mat;
+			}
+
+			__device__ __forceinline__ void init_tri(const tri_is &is, const scene_refs *params) {
+				const unsigned int primitive_index = is.ref();
+				const uint4 triangle = params->triangles[primitive_index];
+				const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+				init_base(
+					f3(params->vertex_pos[triangle.x]), f3(params->vertex_pos[triangle.y]), f3(params->vertex_pos[triangle.z]),
+					f3(params->vertex_norm[triangle.x]), f3(params->vertex_norm[triangle.y]), f3(params->vertex_norm[triangle.z]),
+					params->vertex_tc[triangle.x], params->vertex_tc[triangle.y], params->vertex_tc[triangle.z],
+					barycentrics, &params->materials[triangle.w]
+				);
+				//printf("Material: %d\n", triangle.w);
+			}
+
+			__device__ __forceinline__ void init_custom_prim(const tri_is &is, const float3 &ray_org, const float3 &ray_dir, const scene_refs *params) {
+				uint32_t patch_ref = is.ref();
+				bool upper = is.subd_quad_ref.is_upper_tri();
+				int32_t subd_quad_ref = is.subd_quad_ref.ref();
+				const float2 barycentrics = {.x = is.beta, .y = is.gamma};
+
+				const subd_patch patch = params->patches[patch_ref];
+
+				if (debug()) printf("Patch ref: %d, quad_ref: %d, upper: %d\n", patch_ref, subd_quad_ref, upper);
+
+#ifndef BOX_APPROXIMATION
+				const uint4 tri = patch.subd_tri(subd_quad_ref, upper);
+				init_base(
+					f3(params->patch_vertex_pos[tri.x]), f3(params->patch_vertex_pos[tri.y]), f3(params->patch_vertex_pos[tri.z]),
+					f3(params->patch_vertex_norm[tri.x]), f3(params->patch_vertex_norm[tri.y]), f3(params->patch_vertex_norm[tri.z]),
+					params->patch_vertex_tc[tri.x], params->patch_vertex_tc[tri.y], params->patch_vertex_tc[tri.z],
+					barycentrics, &params->materials[tri.w]
+				);
+				if (debug()) printf("before: a: %d, b: %d, c: %d, material: %d\n", tri.x, tri.y, tri.z, tri.w);
+				if (debug()) printf("before: TCs: %f %f\n", tc.x, tc.y);
+				if (debug()) printf("before: TCs: %f %f %f\n", ns.x, ns.y, ns.z);
+				return;
+#else
+				uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
+				const uint4 tri = patch.subd_tri(vert_quad_ref, upper); //REVIEW: still required here? or only for material?
+
+				const subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref, params->subpatches);
+				const mat3 &M = subpatch.trafo.transpose(); // equivalent to inverse here, REVIEW: base always orthogonal here? //TODO: check why this is not allowed without const?
+				//float3 box_min, box_max;
+				//subpatch.box_from_index(subd_quad_ref, params->patch_nodes, box_min, box_max);
+
+				//float alpha = 1.f - barycentrics.x - barycentrics.y;
+				//x  = alpha * a_pos  + barycentrics.x * b_pos  + barycentrics.y * c_pos;
+				//ng = cross(b_pos-a_pos, c_pos-a_pos);
+				x = ray_org + is.t * ray_dir;
+				// TODO/REVIEW: adjust normal to the side of the box that has been hit
+				// REVIEW: correct access to access column (and not row)?
+				ng = { M.read_at(1, 0), M.read_at(1, 1), M.read_at(1, 2) };
+				//normalize(ng); <- already normalized
+				this->mat = &params->materials[tri.w];
+
+				//REVIEW: put somewhere more suitable...
+				float2 uv = patch.global_uvs(is.subd_quad_ref, is.beta, is.gamma);
+				//assert(u >= 0 && u <= 1);
+				//assert(v >= 0 && v <= 1);
+				float2 u1 = patch.box_tcs[0] + (patch.box_tcs[1] - patch.box_tcs[0]) * uv.x;
+				float2 u2 = patch.box_tcs[2] + (patch.box_tcs[3] - patch.box_tcs[2]) * uv.x;
+				tc = u1 + (u2 - u1) * uv.y;
+
+				//TODO: interpolate normal, REVIW: correct like that??
+				float4 n1 = patch.box_norms[0] + (patch.box_norms[1] - patch.box_norms[0]) * uv.x;
+				float4 n2 = patch.box_norms[2] + (patch.box_norms[3] - patch.box_norms[2]) * uv.x;
+				ns = f3(n1 + (n2 - n1) * uv.y);
+				//if (debug()) printf("after: a: %d, b: %d, c: %d, material: %d\n", tri.x, tri.y, tri.z, tri.w);
+				if (debug()) printf("after: TCs: %f %f\n", tc.x, tc.y);
+				if (debug()) printf("ns: TCs: %f %f %f\n", ns.x, ns.y, ns.z);
+				if (debug()) printf("pos x: %f %f %f\n", x.x, x.y, x.z);
+				if (debug()) printf("bary: alpha: %f, beta %f, gamma %f\n", (1.f - barycentrics.x - barycentrics.y), barycentrics.x, barycentrics.y);
+				if (debug()) printf("global UVs: u: %f, v: %f\n", uv.x, uv.y);
+				//if (debug()) printf("a_pos: %f %f %f\n", a_pos.x, a_pos.y, a_pos.z);
+				//if (debug()) printf("b_pos: %f %f %f\n", b_pos.x, b_pos.y, b_pos.z);
+				//if (debug()) printf("c_pos: %f %f %f\n", c_pos.x, c_pos.y, c_pos.z);
+				if (debug()) printf("box TCs 0: u: %f, v: %f\n", patch.box_tcs[0].x, patch.box_tcs[0].y);
+				if (debug()) printf("box TCs 1: u: %f, v: %f\n", patch.box_tcs[1].x, patch.box_tcs[1].y);
+				if (debug()) printf("box TCs 2: u: %f, v: %f\n", patch.box_tcs[2].x, patch.box_tcs[2].y);
+				if (debug()) printf("box TCs 3: u: %f, v: %f\n", patch.box_tcs[3].x, patch.box_tcs[3].y);
+
+	/*#ifdef PROJECTION
+				// Project x back to oriented space
+				const mat3 &M = subpatch.trafo.inverse();
+				x = M * subpatch.projected_to_oriented(x);
+	#endif*/
+#endif
+
+				// TODO: keep this assert?
+				//assert(tc.x >= 0 && tc.x <= 1);
+				//assert(tc.y >= 0 && tc.y <= 1);
+			}
+		};
+
+		__device__ __forceinline__ bool not_black(float4 c) {
+			return c.x != 0 || c.y != 0 || c.z != 0;
+		}
+		__device__ __forceinline__ bool not_black(float3 c) {
+			return c.x != 0 || c.y != 0 || c.z != 0;
+		}
+		
+		__device__ __forceinline__ float4 albedo4(const diff_geom &dg) {
+			if (dg.mat->albedo_tex > 0) {
+				return tex2D<float4>(dg.mat->albedo_tex, dg.tc.x, dg.tc.y);
+			}
+			return dg.mat->albedo;
+		}
+
+		__device__ __forceinline__ float3 albedo(const diff_geom &dg) {
+			return f3(albedo4(dg));
+		}
+
+		__device__ __forceinline__ float4 emissive_albedo4(const diff_geom &dg) {
+			float4 albedo = albedo4(dg);
+			if(not_black(albedo))	return albedo * dg.mat->emissive;
+			else					return dg.mat->emissive;
+		}
+	}
 }

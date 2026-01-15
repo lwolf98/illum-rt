@@ -7,7 +7,6 @@
 #include "base.h"
 #include "trace-helper.cuh"
 
-
 namespace wf::cuda {
     extern "C" __constant__ optix_launch_params launch_params;
 	#define DBG_PRINT false
@@ -80,12 +79,12 @@ namespace wf::cuda {
 
 		optixGetLaunchIndex();
 
-		prd->set_ref(optixGetPrimitiveIndex(), true);
+		const auto &subpatch = launch_params.subpatches[optixGetPrimitiveIndex()];
+		prd->set_ref(subpatch.parent_id, true);
         prd->beta = __uint_as_float(optixGetAttribute_0()); //0.5f;
         prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
-		int32_t quad_ref = (int32_t)optixGetAttribute_2();
-		prd->set_quad_ref(abs(quad_ref)-1, quad_ref >= 0);
+		prd->subd_quad_ref = subd::quad_ref(optixGetAttribute_2());
 		if (debug) printf("CH: t: %f, beta: %f, gamma: %f\n", prd->t, prd->beta, prd->gamma);
 	};
 
@@ -93,39 +92,6 @@ namespace wf::cuda {
 		//TODO: implement
 		if (DBG_PRINT) printf("any hit patches\n");
 	};
-
-	//TODO: find better place for these functions
-	static uint32_t __forceinline__ __device__ log4_clz(uint32_t x) {
-		return (31 - __clz(x)) >> 1;
-	}
-
-	static __forceinline__ __device__ int geometric_series4(int iterations) {
-		return (1 - (1 << ((iterations+1)<<1))) / (-3);
-	}
-
-	/*static __forceinline__ __device__ int geometric_series(int iterations, int base) {
-		return (1-pow(base, iterations+1))/(1-base);
-	}*/
-
-	static uint32_t __forceinline__ __device__ child_node_base(
-			uint32_t trav_level,
-			uint32_t index
-		) {
-			uint32_t off_current_level = geometric_series4(trav_level-1);
-			uint32_t off_child_level = geometric_series4(trav_level);
-			uint32_t idx_current_relative = index - off_current_level;
-			uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
-			uint32_t index_child = off_child_level + idx_child_relative;
-			return index_child;
-	}
-
-	static uint32_t __forceinline__ __device__ child_node_base(
-			uint32_t index
-		) {
-			uint32_t trav_level = log4_clz(1+3*index);
-			return child_node_base(trav_level, index);
-	}
-	//TODO end: until here
 
 	extern "C" __global__ void __intersection__patches() {
 		if (DBG_PRINT) printf("intersection patches\n");
@@ -136,23 +102,75 @@ namespace wf::cuda {
 		//debug = debug && px_index.x == 640 && px_index.y == 250;
 
 		// node x, patch x (level -1), quad x (x)
-		debug = debug && px_index.x == 566 && px_index.y == 281;
-
-		float3 ray_origin = optixGetObjectRayOrigin();
-		float3 ray_direction = optixGetObjectRayDirection();
-		float tmin = optixGetRayTmin();
-		float tmax = optixGetRayTmax();
-		float3 r_id = ray_id(ray_direction);
-		float3 r_ood = ray_ood(ray_origin, r_id);
+		debug = debug && px_index.x == 528 && px_index.y == 251;
 
 		int id = optixGetPrimitiveIndex();
-		auto &patch = launch_params.patches[id];
-		uint32_t node_offset = patch.bvh_node_offset;
+		auto &subpatch = launch_params.subpatches[id];
+		auto &patch = launch_params.patches[subpatch.parent_id];
+		uint32_t node_offset = subpatch.bvh_node_offset;
 
-		uint32_t stack[25];
+#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+	#ifndef PROJECTION
+					aabb_f3 root_box = { f3(subpatch.root_min), f3(subpatch.root_max) };
+	#else
+					aabb_f3 root_box =  {
+											make_float3(-1.f, subpatch.root_min_y, -1.f),
+											make_float3(1.f, subpatch.root_max_y, 1.f)
+										};
+	#endif
+#endif
+
+		float3 ray_origin_world = optixGetObjectRayOrigin();
+		float3 ray_direction_world = optixGetObjectRayDirection();
+		float3 ray_origin = subpatch.trafo * ray_origin_world;
+		float3 ray_direction = subpatch.trafo * ray_direction_world;
+		float3 r_id = ray_id(ray_direction);
+#ifndef PROJECTION
+		float tmin = optixGetRayTmin();
+		float tmax = optixGetRayTmax();
+		float3 r_ood = ray_ood(ray_origin, r_id);
+#else
+		static constexpr float eps = 1e-4f;
+
+		// Note: root_box is in projected space, but the y coordinate can also be used to
+		// calculate points in oriented space here. x and z cannot directly be mapped.
+		float t1 = (subpatch.root_max_y - ray_origin.y) * r_id.y;
+		float t2 = (subpatch.root_min_y - ray_origin.y) * r_id.y;
+		if (t1 > t2) {
+			float tmp = t1;
+			t1 = t2;
+			t2 = tmp;
+		}
+
+		float3 p1_oriented = ray_origin + t1 * ray_direction;
+		float3 p1 = subpatch.oriented_to_projected(p1_oriented);
+		float3 p2 = subpatch.oriented_to_projected(ray_origin + t2 * ray_direction);
+		
+		float3 dir = (t1 != t2) ? p2-p1 : make_float3(0, 1.f, 0); // REVIEW: stable solution for t1 == t2?
+		normalize(dir); // REVIEW: required?
+		p1 = p1 - eps * dir; // -> eps offset fixes (in this case wanted) potential self intersections
+		ray_origin = p1;
+		ray_direction = dir;
+		float tmin = eps;
+		float tmax = FLT_MAX; // REVIEW: t values correct? lenght_exclusive required somewhere?
+		//tmax = 2.f; // -> quick fix for artifacts, but does not explain them...
+		r_id = ray_id(ray_direction);
+		float3 r_ood = ray_ood(ray_origin, r_id);
+#endif
+
+		// TMP: DEBUGGING
+		//optixReportIntersection(0.f, 0, __float_as_uint(0.f), __float_as_uint(0.f), 1);
+		//return;
+
+		constexpr uint32_t max_size = 25;
+		uint32_t stack[max_size];
 		int32_t sp = 0;
-		bool is_root_and_leaf = patch.subd_level == 0;
+		bool is_root_and_leaf = subpatch.subd_level == 0;
 		stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
+#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+		aabb_f3 box_stack[max_size];
+		box_stack[sp] = root_box; //aabb_f3 { subpatch.root_min_y, subpatch.root_max_y };
+#endif
 
 		if (debug) printf("Ray origin: (%f %f %f)\n", ray_origin.x, ray_origin.y, ray_origin.z);
 		if (debug) printf("Ray direction: (%f %f %f)\n", ray_direction.x, ray_direction.y, ray_direction.z);
@@ -160,52 +178,121 @@ namespace wf::cuda {
 
 		float closest_t = FLT_MAX;
 		float beta = 0, gamma = 0;
-		int32_t closest_quad_ref = 0;
+		subd::quad_ref closest_quad_ref;
 		while (sp >= 0) {
 			if (debug) printf("\n");
-			uint32_t index = stack[sp--];
-			uint32_t trav_level = log4_clz(1+3*index);
+			uint32_t index = stack[sp];
+		#if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
+			const aabb_f3 &parent_box = box_stack[sp];
+		#endif
+			sp--;
 
-			bool is_leaf = trav_level == patch.subd_level;
+			uint32_t trav_level = log4_clz(1+3*index);
+			bool is_leaf = trav_level == subpatch.subd_level;
 			if (!is_leaf) {
 				const auto &node = launch_params.patch_nodes[node_offset + index];
-				float t = FLT_MAX;
+				uint32_t child_base = child_node_base(trav_level, index);
+				uint32_t off_current_level = geometric_series4(trav_level);
+				float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
+				float t_bary;
 
 				for (int i = 0; i < 4; ++i) {
-					float3 node_min = node.get_min(i);
-					float3 node_max = node.get_max(i);
-					bool hit = intersect_box(node_min, node_max,
-									ray_origin, ray_direction, r_id, r_ood,
-									tmin, tmax, t);
+#ifndef QUANTIZATION
+	#if defined(SLAB_COMPRESSION) && defined(HALF_SLAB_COMPRESSION)
+					//float3 box_min, box_max;
+					//[INDP_BOX]
+					//aabb_f3 box;
+					//subpatch.box_from_node(index, i, launch_params.patch_nodes, box);
+					aabb_f3 box = node.get_box(i, parent_box);
+	#else
+					//float3 box_min = node.get_min(i);
+					//float3 box_max = node.get_max(i);
+					aabb_f3 box = node.get_box<aabb_f3>(i);
+	#endif
+#else
+					// [FEAT-QUANT] Implement box stack and pass parent box!
+					//float3 box_min = node.get_min(i, aabb_f3());
+					//float3 box_max = node.get_max(i, aabb_f3());
+					//aabb_f3 box = node.get_box(i, aabb_f3());
+					aabb_f3 box = node.get_box(i, parent_box);
+#endif
 
-					if (hit && t < closest_t) {
+#ifndef PROJECTION
+					if (!compute_valid_hit(box.min, box.max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, true,									// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+#else
+					if (!compute_valid_hit(box.min, box.max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+#endif
+					
+#ifndef BOX_APPROXIMATION
+					if (debug) printf("hit node!!!!!!\n");
+					stack[++sp] = child_base+i;
+#else
+					if (trav_level < subpatch.subd_level-1) {
 						if (debug) printf("hit node!!!!!!\n");
-						uint32_t child_base = child_node_base(trav_level, index);
-						stack[++sp] = child_base+i;
+						sp++;
+						stack[sp] = child_base+i;
+						box_stack[sp] = box;
 					}
-					else if (debug) printf("didn't hit node...\n");
+					else {
+						if (debug) printf("hit leaf box!!!!!!\n");
+
+	#ifndef PROJECTION
+						if (t_hit <= 0) continue;
+	#endif
+						//bary_calc(box, transformed_ray, t_bary, closest);
+						bool upper_tri;
+						bary_calc(box.min, box.max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									t_bary, upper_tri, beta, gamma);
+						closest_quad_ref.set_upper_tri(upper_tri);
+						//closest.ref = ((uint32_t)-1) - patch_ref;
+						closest_t = t_hit;
+
+						uint32_t relative_index = (child_base+i) - off_current_level;
+						uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+													+ relative_index;
+
+						closest_quad_ref.set_ref(quad_ref_morton);
+					}
+#endif
 				}
 			}
 			else {
-				uint32_t quad_ref = 0;
+#ifndef BOX_APPROXIMATION
+				uint32_t quad_ref = subpatch.vert_start;
 				if (!is_root_and_leaf) { // is only leaf
 					uint32_t off_current_level = geometric_series4(trav_level-1);
-					quad_ref = patch.quad_ref_from_index(index - off_current_level);
+					quad_ref += patch.quad_ref_from_index(index - off_current_level);
+					if (debug) printf("Index: %d, trav_level: %d, off_cur_level: %d, quad_ref: %d\n", index, trav_level, off_current_level, quad_ref);
+					if (debug) printf("Rel_index: %d, rel_quad_ref: %d\n", index - off_current_level, patch.quad_ref_from_index(index - off_current_level));
 				}
 
-				if (debug) printf("Patch ref: %d, Quad ref: %d\n", id, quad_ref);
+				if (debug) printf("Patch ref: %d, Subpatch ref: %d, Quad ref: %d\n", subpatch.parent_id, id, quad_ref);
 				if (debug) printf("Patch start index: %d\n", patch.start_index);
+				if (debug) printf("Subpatch vert start: %d\n", subpatch.vert_start);
 
 				uint4 tri_0 = patch.subd_tri(quad_ref, true);
 				uint4 tri_1 = patch.subd_tri(quad_ref, false);
 				if (debug) printf("Tri 0: %d %d %d\n", tri_0.x, tri_0.y, tri_0.z);
 				if (debug) printf("Tri 1: %d %d %d\n", tri_1.x, tri_1.y, tri_1.z);
-				float3 a_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.x]);
-				float3 b_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.y]);
-				float3 c_0 = f4_to_f3(launch_params.patch_vertex_pos[tri_0.z]);
-				float3 a_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.x]);
-				float3 b_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.y]);
-				float3 c_1 = f4_to_f3(launch_params.patch_vertex_pos[tri_1.z]);
+				float3 a_0 = f3(launch_params.patch_vertex_pos[tri_0.x]);
+				float3 b_0 = f3(launch_params.patch_vertex_pos[tri_0.y]);
+				float3 c_0 = f3(launch_params.patch_vertex_pos[tri_0.z]);
+				float3 a_1 = f3(launch_params.patch_vertex_pos[tri_1.x]);
+				float3 b_1 = f3(launch_params.patch_vertex_pos[tri_1.y]);
+				float3 c_1 = f3(launch_params.patch_vertex_pos[tri_1.z]);
 				if (debug) {
 					printf("t_min: %f, t_max: %f\n", tmin, tmax);
 					printf("Tri 0 coords: (%f %f %f)", a_0.x, a_0.y, a_0.z);
@@ -218,7 +305,7 @@ namespace wf::cuda {
 
 				float t = FLT_MAX;
 				bool hit = intersect_triangle(a_0, b_0, c_0,
-												ray_origin, ray_direction, tmin, tmax,
+												ray_origin_world, ray_direction_world, tmin, tmax,
 												t, beta, gamma, debug);
 
 				
@@ -230,13 +317,14 @@ namespace wf::cuda {
 				if (hit && t < closest_t) {
 					if (debug) printf("hit tri 0 and is closer!!!\n");
 					closest_t = t;
-					closest_quad_ref = quad_ref+1;
+					closest_quad_ref.set_ref(quad_ref);
+					closest_quad_ref.set_upper_tri(true);
 					continue;
 				}
 
 				t = FLT_MAX;
 				hit = intersect_triangle(a_1, b_1, c_1,
-												ray_origin, ray_direction, tmin, tmax,
+												ray_origin_world, ray_direction_world, tmin, tmax,
 												t, beta, gamma, debug);
 
 				if (debug) {
@@ -247,14 +335,50 @@ namespace wf::cuda {
 				if (hit && t < closest_t) {
 					if (debug) printf("hit tri 1 and is closer!!!\n");
 					closest_t = t;
-					closest_quad_ref = (quad_ref+1) * -1;
+					closest_quad_ref.set_ref(quad_ref);
+					closest_quad_ref.set_upper_tri(false);
 				}
+#else
+					float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
+					float t_bary;
+	#ifndef PROJECTION
+					float3 root_min = f3(subpatch.root_min); // REVIEW: more efficient way without copying?
+					float3 root_max = f3(subpatch.root_max);
+					if (!compute_valid_hit(root_min, root_max,							// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, false,									// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+	#else
+					float3 root_min = make_float3(-1.f, subpatch.root_min_y, -1.f);
+					float3 root_max = make_float3(1.f, subpatch.root_max_y, 1.f);
+					if (!compute_valid_hit(root_min, root_max,						// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+									closest_t, t1, p1_oriented, eps, subpatch, false,	// additional params
+									t_hit, t_bary)) {									// reference/out params
+										if (debug) printf("didn't hit node...\n");
+										continue;
+									}
+	#endif
+					bool upper_tri;
+					bary_calc(root_min, root_max,									// box
+								ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
+								t_bary, upper_tri, beta, gamma);
+					closest_quad_ref.set_upper_tri(upper_tri);
+					closest_t = t_hit;
+
+					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start);
+					closest_quad_ref.set_ref(quad_ref_morton);
+#endif
 			}
 		}
 
-		//printf("hit:%d\n", closest_t < FLT_MAX);
+		if (debug) printf("Closest t: %f\n", closest_t);
+
 		if (closest_t < FLT_MAX)
-			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref);
+			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref.internal_data());
 
 	};
     

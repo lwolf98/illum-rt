@@ -1289,4 +1289,13 @@ namespace subd {
 
 		update(true);
 	}
+
+#ifdef BOX_APPROXIMATION
+	void mesh::prepare_box_approximation() {
+		if (storage_type_patches)
+			for (auto &patch : patches)
+				patch.prepare_box_approximation();
+				
+	}
+#endif
 }

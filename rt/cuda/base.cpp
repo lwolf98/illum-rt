@@ -4,6 +4,8 @@
 
 #include "rt/cpu/bvh-ctor.h"
 
+#include <string.h>
+#include <sstream>
 #include <iostream>
 
 #define error(x) { cerr << "command (" << command << "): " << x << endl;  return true; }
@@ -44,8 +46,41 @@ namespace wf {
 			events.clear();
 		}
 		
-	
+		template<typename T>
+		std::string vecsize_string(const std::string &name, std::vector<T> vec) {
+			uint32_t vec_size = vec.size();
+			uint32_t type_size = sizeof(T);
+			uint32_t total_size = vec_size * type_size;
+			//float size_mb = total_size * 1.f/1e6;
+
+			double value = static_cast<double>(total_size);
+			const char* unit = "B";
+			uint32_t prec = 0;
+
+			if (total_size >= 1'000'000) {
+				value /= 1e6;
+				unit = "MB";
+				prec = 3;
+			}
+			else if (total_size >= 1'000) {
+				value /= 1e3;
+				unit = "kB";
+				prec = 3;
+			}
+
+			std::stringstream sstr;
+			sstr << std::left << std::setw(20) << (name + ":") << std::right
+				 << "Count: " << std::setw(8) << vec_size
+				 << " | Item size: " << std::setw(4) << type_size << " B"
+				 << " | Total size: " << std::setw(8)
+				 << std::fixed << std::setprecision(prec) << value << " " << unit;
+
+			return sstr.str();
+		}
+
 		void scenedata::upload(scene *scene) {
+			std::cout << "Device upload stats:" << std::endl;
+
 			vector<uint4> scene_tris;
 			scene_tris.reserve(scene->triangles.size());
 			for (triangle t : scene->triangles)
@@ -67,6 +102,14 @@ namespace wf {
 			vertex_norm.upload(tmp_n);
 			vertex_tc.upload(tmp_t);
 
+			std::cout << "Regular geometry:\n"
+				<< "\t" << vecsize_string("Vertices", tmp_p) << "\n"
+				<< "\t" << vecsize_string("Triangles", scene_tris) << "\n"
+				<< "\t" << "Copy:\n"
+				<< "\t" << tmp_p.size() << "\n"
+				<< "\t" << scene_tris.size() << "\n"
+				<< std::endl;
+
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
 			vector<material> mtls(scene->materials.size());
 			for (int i = 0; i < scene->materials.size(); ++i) {
@@ -83,38 +126,87 @@ namespace wf {
 				mtls[i].roughness = scene->materials[i].roughness;
 			}
 			materials.upload(mtls);
+			
+			std::cout << "Scene:\n"
+				<< "\t" << vecsize_string("Materials", mtls) << "\n"
+				<< "\t" << "Copy:\n"
+				<< "\t" << mtls.size() << "\n"
+				<< std::endl;
 
 			// SubD patches
 			vector<subd_patch> device_patches(scene->patches.size());
+			vector<subd_subpatch> device_subpatches;
 			vector<patch_node> device_nodes;
-			vector<aabb> device_root_nodes(scene->patches.size());
+			vector<aabb> device_root_boxes;
 			tmp_p.clear(), tmp_n.clear(), tmp_t.clear();
-			for (int i = 0; i < scene->patches.size(); ++i) {
-				const auto &patch = scene->patches[i];
+			for (uint32_t i = 0; i < scene->patches.size(); ++i) {
+				const subd::subd_patch &patch = scene->patches[i];
 				auto &device_patch = device_patches[i];
 				device_patch.subd_level = patch.subd_level;
 				device_patch.material_id = patch.material_id;
-				
-				uint32_t offset = device_nodes.size();
-				device_nodes.resize(offset + patch.nodes.size());
-				device_patch.bvh_node_offset = offset;
+#ifdef BOX_APPROXIMATION
+				device_patch.subpatch_offset = device_subpatches.size();
+				for (uint32_t n = 0; n < 4; ++n) {
+					device_patch.box_tcs[n] = make_float2(patch.data[n].tc.x, patch.data[n].tc.y);
+					device_patch.box_norms[n] = make_float4(patch.data[n].norm.x, patch.data[n].norm.y, patch.data[n].norm.z, 0.f);
+				}
+#endif
 
-				device_root_nodes[i] = patch.root_box;
+				// Resize subpatches and set offset
+				uint32_t offset_subpatches = device_subpatches.size();
+				device_subpatches.resize(offset_subpatches + patch.subpatches.size());
+				device_root_boxes.resize(offset_subpatches + patch.subpatches.size());
 
-				#pragma omp parallel for
-				for (int j = 0; j < patch.nodes.size(); ++j) {
-					patch_node device_node;
-					const subd::patch_node &node = patch.nodes[j];
-					device_node.set_min(0, node.boxes[0].min);
-					device_node.set_min(1, node.boxes[1].min);
-					device_node.set_min(2, node.boxes[2].min);
-					device_node.set_min(3, node.boxes[3].min);
-					device_node.set_max(0, node.boxes[0].max);
-					device_node.set_max(1, node.boxes[1].max);
-					device_node.set_max(2, node.boxes[2].max);
-					device_node.set_max(3, node.boxes[3].max);
+				// TODO: ! Currently align_level -1 (meaning no box alignment) does not work on GPU, because this does not use subpatches !
+				for (uint32_t j = 0; j < patch.subpatches.size(); ++j) {
+					const subd::subd_subpatch &subpatch = patch.subpatches[j];
+					auto &device_subpatch = device_subpatches[offset_subpatches+j];
+					auto &device_subpatch_root_box = device_root_boxes[offset_subpatches+j];
+					device_subpatch_root_box = subpatch.root_box_world; //aabb root_box from parent patch (not subpatch.root_box)
 
-					device_nodes[offset + j] = device_node;
+					device_subpatch.parent_id = i; // reference to parent patch
+					device_subpatch.vert_start = subpatch.vert_start;
+					device_subpatch.trafo = mat3::from(subpatch.trafo);
+#ifdef PROJECTION
+					device_subpatch.proj = mat3::from(subpatch.proj);
+#endif
+					device_subpatch.subd_level = subpatch.subd_level;
+#ifdef BOX_APPROXIMATION
+	#ifndef PROJECTION
+					device_subpatch.root_min = f4(subpatch.root_box.min); //-> REVIEW: required for box approximation (probably better to use two float4)
+					device_subpatch.root_max = f4(subpatch.root_box.max);
+	#else
+					device_subpatch.root_min_y = subpatch.root_box.min.y;
+					device_subpatch.root_max_y = subpatch.root_box.max.y;
+	#endif
+#endif
+
+					// Resize nodes and set offset
+					uint32_t offset_nodes = device_nodes.size();
+					device_nodes.resize(offset_nodes + subpatch.nodes.size());
+					device_subpatch.bvh_node_offset = offset_nodes;
+
+					#pragma omp parallel for
+					for (uint32_t k = 0; k < subpatch.nodes.size(); ++k) {
+#if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
+						const subd::patch_base_node &node = subpatch.nodes[k]; //REVIEW: BASE?
+						patch_node &device_node = device_nodes[offset_nodes+k];
+						device_node.set_min(0, node.boxes[0].min);
+						device_node.set_min(1, node.boxes[1].min);
+						device_node.set_min(2, node.boxes[2].min);
+						device_node.set_min(3, node.boxes[3].min);
+						device_node.set_max(0, node.boxes[0].max);
+						device_node.set_max(1, node.boxes[1].max);
+						device_node.set_max(2, node.boxes[2].max);
+						device_node.set_max(3, node.boxes[3].max);
+#else
+						const subd::patch_slab_node &node = subpatch.nodes[k];
+						patch_node &device_node = device_nodes[offset_nodes+k];
+						//device_node = patch_node::from(node);
+						//device_node = node;
+						device_node = patch_node::copy(node); //REVIEW: also possible to just assign?
+#endif
+					}
 				}
 
 				device_patch.start_index = tmp_p.size();
@@ -130,18 +222,39 @@ namespace wf {
 					tmp_n[insert_index] = float4{ patch.verts[j].norm.x, patch.verts[j].norm.y, patch.verts[j].norm.z, 0 };
 					tmp_t[insert_index] = float2{ patch.verts[j].tc.x, patch.verts[j].tc.y };
 				}
-
 			}
 
+			// Store patch data
 			if (device_patches.size() > 0) {
 				patches.upload(device_patches);
+				subpatches.upload(device_subpatches);
 				patch_nodes.upload(device_nodes);
-				patch_root_nodes.upload(device_root_nodes);
+				patch_root_boxes.upload(device_root_boxes);
 
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 				patch_vertex_pos.upload(tmp_p);
 				patch_vertex_norm.upload(tmp_n);
 				patch_vertex_tc.upload(tmp_t);
+#endif
 			}
+
+			std::cout << "Patch geometry:\n"
+				<< "\t" << vecsize_string("Patches", device_patches) << "\n"
+				<< "\t" << vecsize_string("Subpatches", device_subpatches) << "\n"
+				<< "\t" << vecsize_string("Patch nodes", device_nodes) << "\n"
+				<< "\t" << vecsize_string("Patch root boxes", device_root_boxes) << "\n"
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
+				<< "\t" << vecsize_string("Patch vertices", tmp_p) << "\n"
+#endif
+				<< "\t" << "Copy:\n"
+				<< "\t" << device_patches.size() << "\n"
+				<< "\t" << device_subpatches.size() << "\n"
+				<< "\t" << device_nodes.size() << "\n"
+				<< "\t" << device_root_boxes.size() << "\n"
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
+				<< "\t" << tmp_p.size() << "\n"
+#endif
+				<< std::endl;
 
 			// load scene_refs object
 
@@ -154,9 +267,13 @@ namespace wf {
 			//device_refs.tex_images = tex_images.device_memory;
 
 			device_refs.patches = patches.device_memory;
+#if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 			device_refs.patch_vertex_pos = patch_vertex_pos.device_memory;
 			device_refs.patch_vertex_norm = patch_vertex_norm.device_memory;
 			device_refs.patch_vertex_tc = patch_vertex_tc.device_memory;
+#endif
+			device_refs.subpatches = subpatches.device_memory;
+			device_refs.patch_nodes = patch_nodes.device_memory;
 			refs.upload(1, &device_refs);
 		}
 

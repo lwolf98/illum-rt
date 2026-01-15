@@ -202,7 +202,7 @@ texture2d<vec3>* load_hdr_image3f(const std::filesystem::path &given_path) {
 	return tex;
 }
 
-void scene::add(const filesystem::path& path, const std::string &name, const mat4 &trafo, const uint subdiv_level, const bool subdiv_type_patches, const std::filesystem::path &displace_map_path, float displace_strength) {
+void scene::add(const load_config &cfg) {
 	#ifndef RTGI_SKIP_BRDF
 		// initialize brdfs
 		if (brdfs.empty() || brdfs.count("default") == 0) {
@@ -211,9 +211,9 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 	#endif
 
 	// find file
-	filesystem::path modelpath = find_model(path);
+	filesystem::path modelpath = find_model(cfg.model_path);
 	if (modelpath == "")
-		throw std::runtime_error("Model " + path.string() + " not found in any search directory");
+		throw std::runtime_error("Model " + cfg.model_path.string() + " not found in any search directory");
 
 	// load file by extension
 	std::string extension = modelpath.extension().c_str();
@@ -221,18 +221,18 @@ void scene::add(const filesystem::path& path, const std::string &name, const mat
 		[](unsigned char c) { return std::tolower(c); });
 		
 	if (extension.substr(0, 4) == ".usd") {
-		import::usd_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
-		imp.load_scene(modelpath, displace_map_path);
+		import::usd_importer imp(cfg);
+		imp.load_scene();
 		imp.import(*this);
 	}
 	else if (extension == ".objx") {
-		import::objx_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
-		imp.load_scene(modelpath, displace_map_path);
+		import::objx_importer imp(cfg);
+		imp.load_scene();
 		imp.import(*this);
 	}
 	else {
-		import::assimp_importer imp(name, trafo, subdiv_level, subdiv_type_patches, displace_strength);
-		imp.load_scene(modelpath, displace_map_path);
+		import::assimp_importer imp(cfg);
+		imp.load_scene();
 		imp.import(*this);
 	}
 }

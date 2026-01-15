@@ -1,4 +1,5 @@
 #include "subd_bvh.h"
+#include "debug/pixel.h"
 
 #include <algorithm>
 #include <iostream>
@@ -171,60 +172,26 @@ bool subd_naive_bvh::any_hit(const ray &ray) {
 	return false;
 }
 
-
-//TODO: find better place for these functions
-/*static uint32_t log2_clz(uint32_t x) {
-	return 31 - __builtin_clz(x);
-}*/
-
-static uint32_t log4_clz(uint32_t x) {
-	return (31 - __builtin_clz(x)) >> 1;
-}
-
-static int geometric_series4(int iterations) {
-	return (1 - (1 << ((iterations+1)<<1))) / (-3);
-}
-
-/*static int geometric_series(int iterations, int base) {
-	return (1-pow(base, iterations+1))/(1-base);
-}*/
-
-uint32_t child_node_base(
-		uint32_t trav_level,
-		uint32_t index
-	) {
-		uint32_t off_current_level = geometric_series4(trav_level-1);
-		uint32_t off_child_level = geometric_series4(trav_level);
-		uint32_t idx_current_relative = index - off_current_level;
-		uint32_t idx_child_relative = idx_current_relative << 2; //(* 4)
-		uint32_t index_child = off_child_level + idx_child_relative;
-		return index_child;
-}
-
-uint32_t child_node_base(
-		uint32_t index
-	) {
-		uint32_t trav_level = log4_clz(1+3*index);
-		return child_node_base(trav_level, index);
-}
-//TODO end: until here
-
 void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle_intersection &closest) {
+	using namespace subd;
+
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
-	const auto &root_node = patch.nodes[0];
 
-	uint32_t stack[25];
+	// ---- REVIEW size
+	//uint32_t max_size = patch.align_level + 4; // tree height + number of child nodes
+	uint32_t max_size = 25;
+	uint32_t stack[max_size];
 	int32_t sp = 0;
 
-	bool is_root_and_leaf = patch.subd_level == 0;
+	bool is_root_and_leaf = patch.align_level == 0;
 	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
 
 	while (sp >= 0) {
 		uint32_t index = stack[sp--];
 		uint32_t trav_level = log4_clz(1+3*index);
 
-		bool is_leaf = trav_level == patch.subd_level;
+		bool is_leaf = trav_level == patch.align_level;
 		if (!is_leaf) {
 			const auto &node = patch.nodes[index];
 			float dist;
@@ -240,28 +207,271 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 			}
 		}
 		else {
-			uint32_t quad_ref = 0;
+			uint32_t relative_index = 0;
 			if (!is_root_and_leaf) {
 				uint32_t off_current_level = geometric_series4(trav_level-1);
-				quad_ref = patch.quad_ref_from_index(index - off_current_level);
+				relative_index = index - off_current_level;
 			}
 
-			assert(patch_ref >= 0);
+			if (patch.align_boxes) {
+				traverse_subpatch(ray, patch.subpatches[relative_index], closest, patch_ref);
+			}
+			else {
+				uint32_t quad_ref = is_root_and_leaf ? 0 : quad_ref = patch.quad_ref_from_index(relative_index);
+				assert(patch_ref >= 0);
+				std::array<triangle, 2> tris = patch.tris(quad_ref);
+				for (int i = 0; i < 2; i++) {
+					if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
+						if (intersection.t < closest.t) {
+							assert(quad_ref <= patch.verts.size());
+							closest = intersection;
+							closest.ref = ((uint32_t)-1) - patch_ref;
+
+							closest.subd_quad_ref.set_ref(quad_ref);
+							closest.subd_quad_ref.set_upper_tri(i == 0);
+
+							break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
+						}
+					}
+				}	
+			}
+		}
+	}
+}
+
+inline void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
+	//const float eps = 1e-4f;
+
+	vec3 hit = ray.o + t_dist * ray.d;
+	float width = box.max.x - box.min.x;
+	float height = box.max.z - box.min.z;
+	vec3 hit_relative = hit - box.min;
+	vec2 hit_xy(hit_relative.x, hit_relative.z);
+	hit_xy.x = hit_xy.x / width;
+	hit_xy.y = hit_xy.y / height;
+	//assert(hit_xy.x >= -eps && hit_xy.x <= 1+eps);
+	//assert(hit_xy.y >= -eps && hit_xy.y <= 1+eps);
+	if (hit_xy.x < 0) hit_xy.x = 0;
+	if (hit_xy.x > 1) hit_xy.x = 1;
+	if (hit_xy.y < 0) hit_xy.y = 0;
+	if (hit_xy.y > 1) hit_xy.y = 1;
+
+	bool upper_tri = hit_xy.y < -hit_xy.x + 1;
+	is.subd_quad_ref.set_upper_tri(upper_tri);
+	if (upper_tri) {
+		is.beta = hit_xy.x;
+		is.gamma = hit_xy.y;
+	}
+	else {
+		is.beta = 1 - hit_xy.x;
+		is.gamma = 1 - hit_xy.y;
+	}
+	assert(is.beta >= 0 && is.beta <= 1);
+	assert(is.gamma >= 0 && is.gamma <= 1);
+	assert(is.beta + is.gamma >= 0);
+	assert(is.beta + is.gamma <= 1);
+}
+
+inline bool compute_valid_hit(
+	const aabb &box,
+	const ray &transformed_ray,
+	float closest_t,
+#ifdef PROJECTION
+	float t_near_oriented,
+	const glm::vec3 &hit_near_oriented,
+	float t_off,
+	const subd::subd_subpatch &subpatch,
+#endif
+	bool allow_negative_t,
+	float &t_hit,
+	float &t_bary
+) {
+	float dist;
+	if (!intersect4(box, transformed_ray, dist)) return false;
+
+#ifndef PROJECTION
+	//assert(!std::isnan(dist)); // REVIEW: can this happen?
+	if (std::isnan(dist)) return false;
+	if (dist >= closest_t) return false;
+	if (!allow_negative_t && dist <= 0) return false;
+	t_hit = dist;
+	t_bary = dist;
+#else
+	dist += t_off; // correct by earlier added epsilon
+
+	// Calculate new t
+	float t_total;
+	vec3 x_proj = transformed_ray.o + dist * transformed_ray.d;
+	vec3 x_oriented = subpatch.projected_to_oriented(x_proj);
+	float t_dist = glm::length(x_oriented - hit_near_oriented);
+	t_total = t_near_oriented + t_dist;
+		
+	if (isnan(t_total)) return false; //REVIEW: check nans here
+	if (t_total >= closest_t) return false; // -> fixes overlapping and shadow ray self intersection
+	if (!allow_negative_t && t_total <= 0) return false;
+	t_hit = t_total;
+	t_bary = dist;
+#endif
+
+	return true;
+}
+
+void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
+	using namespace subd;
+
+	bool dbg_pixel = true;
+	dbg_pixel = dbg_pixel && current_pixel_x == debug_pixel_x && current_pixel_y && debug_pixel_y;
+
+	triangle_intersection intersection;
+	const auto &patch = scene->patches[patch_ref];
+
+	// ---- REVIEW size
+	//uint32_t max_size = subpatch.subd_level + 4; // tree height + number of child nodes
+	constexpr uint32_t max_size = 25;
+	uint32_t stack[max_size];
+	aabb box_stack[max_size];
+	int32_t sp = 0;
+
+	bool is_root_and_leaf = subpatch.subd_level == 0;
+	stack[sp] = 0; // If subd_level is 0, the stack/this value is not used
+	box_stack[sp] = subpatch.root_box;
+
+	ray transformed_ray = ray(
+						subpatch.trafo * rayy.o,
+						subpatch.trafo * rayy.d
+					);
+#ifndef PROJECTION
+	transformed_ray.t_min = rayy.t_min; // TODO: test this in Box approximation !
+	transformed_ray.t_max = rayy.t_max;
+#else
+	const float eps = transformed_ray.eps;
+
+	// Note: root_box is in projected space, but the y coordinate can also be used to
+	// calculate points in oriented space here. x and z cannot directly be mapped.
+	float t1 = (subpatch.root_box.max.y - transformed_ray.o.y) * transformed_ray.id.y;
+	float t2 = (subpatch.root_box.min.y - transformed_ray.o.y) * transformed_ray.id.y;
+	if (t1 > t2) std::swap(t1, t2);
+
+	vec3 p1_oriented = transformed_ray.o + t1 * transformed_ray.d;
+	vec3 p1 = subpatch.oriented_to_projected(p1_oriented);
+	vec3 p2 = subpatch.oriented_to_projected(transformed_ray.o + t2 * transformed_ray.d);
+	
+	vec3 dir = (t1 != t2) ? normalize(p2-p1) : vec3(0, 1.f, 0); // REVIEW: stable solution for t1 == t2?
+	p1 = p1 - eps * dir; // -> eps offset fixes (in this case wanted) potential self intersections
+	transformed_ray = ray(p1, dir);
+	//transformed_ray.t_min = 0; // REVIEW: correct here? Or how to translate: rayy.t_min ?
+	//transformed_ray.t_max = FLT_MAX; // REVIEW: correct here? Or how to translate: rayy.t_max ?
+	//transformed_ray.t_max = 2.f; // -> quick fix for artifacts, but does not explain them...
+#endif
+
+	while (sp >= 0) {
+		uint32_t index = stack[sp];
+		const aabb &parent_box = box_stack[sp];
+		sp--;
+
+		uint32_t trav_level = log4_clz(1+3*index);
+		bool is_leaf = trav_level == subpatch.subd_level;
+		if (!is_leaf) {
+			const auto &node = subpatch.nodes[index];
+			uint32_t child_base = child_node_base(trav_level, index);
+			uint32_t off_current_level = geometric_series4(trav_level);
+			float dist;
+			for (int i = 0; i < 4; ++i) {
+#if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
+				const aabb &box = node.boxes[i];
+#else
+	#ifndef QUANTIZATION
+		#ifndef HALF_SLAB_COMPRESSION
+				const aabb box = node.get_box<aabb>(i);
+		#else
+				//[INDP_BOX]
+				//const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
+				const aabb box = node.get_box(i, parent_box);
+		#endif
+	#else
+				// [FEAT-QUANT] Implement box stack and pass parent box!
+				//const aabb box = node.get_box(i, aabb());
+				//const aabb box = node.get_box(i, aabb(vec3(0), vec3(1)));
+				const aabb box = node.get_box(i, parent_box);
+	#endif
+#endif
+				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
+				float t_hit, t_bary;
+#ifndef PROJECTION
+				if (!compute_valid_hit(box, transformed_ray, closest.t, true, t_hit, t_bary)) continue;
+#else
+				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
+#endif
+
+#ifndef BOX_APPROXIMATION
+				stack[++sp] = child_base+i;
+#else
+				if (trav_level < subpatch.subd_level-1) {
+					sp++;
+					stack[sp] = child_base+i;
+					box_stack[sp] = box;
+				}
+				else {
+	#ifndef PROJECTION
+					if (t_hit <= 0) continue;
+	#endif
+					bary_calc(box, transformed_ray, t_bary, closest); // !REVIEW: breaks for quantisation without slab compression on CPU, check what is happening
+					closest.ref = ((uint32_t)-1) - patch_ref;
+					closest.t = t_hit;
+
+					uint32_t relative_index = (child_base+i) - off_current_level;
+					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
+												+ relative_index;
+
+					closest.subd_quad_ref.set_ref(quad_ref_morton);
+				}
+#endif
+			}
+		}
+		else {
+#ifndef BOX_APPROXIMATION
+			/* Regular geometry hit */
+			uint32_t quad_ref = subpatch.vert_start;
+			if (!is_root_and_leaf) {
+				uint32_t off_current_level = geometric_series4(trav_level-1);
+				uint32_t relative_index = index - off_current_level;
+				quad_ref += patch.quad_ref_from_index(relative_index);
+			}
+
+			// TODO: ! supply projection logic !
 			std::array<triangle, 2> tris = patch.tris(quad_ref);
 			for (int i = 0; i < 2; i++) {
-				if (intersect(tris[i], patch.verts.data(), ray, intersection)) {
+				if (intersect(tris[i], patch.verts.data(), rayy, intersection)) {
 					if (intersection.t < closest.t) {
 						assert(quad_ref <= patch.verts.size());
 						closest = intersection;
 						closest.ref = ((uint32_t)-1) - patch_ref;
-						closest.subd_quad_ref = quad_ref + 1;
-						if (i == 1)
-							closest.subd_quad_ref *= -1;
+
+						closest.subd_quad_ref.set_ref(quad_ref);
+						closest.subd_quad_ref.set_upper_tri(i == 0);
 
 						break; // TODO: This should always be correct, right? Should not be possible to hit both tris...
 					}
 				}
 			}
+#else
+			/* Box approximation root box hit */
+			float t_hit, t_bary;
+			
+#ifndef PROJECTION
+			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, t_hit, t_bary)) continue;
+#else
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
+#endif
+
+				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
+				closest.t = t_hit;
+				closest.ref = ((uint32_t)-1) - patch_ref;
+				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
+				closest.subd_quad_ref.set_ref(quad_ref_morton);
+
+#endif
 		}
 	}
 }
