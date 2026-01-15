@@ -26,7 +26,7 @@ namespace subd {
 			uint32_t material_id;
 			uint32_t subd_level;
 			int32_t  align_level;
-			uint8_t  align_boxes; // NOT bool
+			uint32_t  align_boxes;
 		};
 
 		struct subd_subpatch_cache {
@@ -35,7 +35,7 @@ namespace subd {
 			uint32_t subd_level;
 		};
 
-		void write_subd_patch(std::ofstream& file, const subd_patch& p)
+		void write_subd_patch(std::ostream& file, const subd_patch& p)
 		{
 			// ---- header ----
 			subd_patch_cache header {
@@ -48,7 +48,7 @@ namespace subd {
 				p.align_boxes ? 1u : 0u
 			};
 
-			file.write(reinterpret_cast<char*>(&header), sizeof(header));
+			file.write(reinterpret_cast<const char*>(&header), sizeof(header));
 
 			// ---- flat data ----
 			file.write(reinterpret_cast<const char*>(p.verts.data()),
@@ -65,10 +65,10 @@ namespace subd {
 					sp.subd_level
 				};
 
-				file.write(reinterpret_cast<char*>(&sp_header), sizeof(sp_header));
+				file.write(reinterpret_cast<const char*>(&sp_header), sizeof(sp_header));
 
 				file.write(reinterpret_cast<const char*>(sp.nodes.data()),
-						sizeof(patch_base_node) * sp_header.node_count);
+						sizeof(patch_slab_node) * sp_header.node_count);
 
 				file.write(reinterpret_cast<const char*>(&sp.trafo), sizeof(sp.trafo));
 				file.write(reinterpret_cast<const char*>(&sp.proj), sizeof(sp.proj));
@@ -81,7 +81,7 @@ namespace subd {
 			file.write(reinterpret_cast<const char*>(p.data), sizeof(p.data));
 		}
 
-		void write_subd_patches(std::ofstream& file, const std::vector<subd_patch>& patches) {
+		void write_subd_patches(std::ostream& file, const std::vector<subd_patch>& patches) {
 			uint32_t patch_count =
 				static_cast<uint32_t>(patches.size());
 
@@ -95,7 +95,7 @@ namespace subd {
 
 		void store_model(const load_config& config, const std::filesystem::path& cache_path, const subd::object &obj) {
 			std::string file_name = "test.cache";
-			std::ofstream file(cache_path / file_name);
+			std::ofstream file(cache_path / file_name, std::ios::binary);
 			if (!file.is_open()) {
 				return; // caching not available...
 				//throw std::runtime_error("Failed to open config file for writing");
@@ -133,9 +133,9 @@ namespace subd {
 			write_subd_patches(file, obj.mesh.patches);
 		}
 
-		void read_subd_patch(std::ifstream& file, subd_patch& p) {
+		void read_subd_patch(std::istream& file, subd_patch& p) {
 			// ---- header ----
-			subd_patch_cache header;
+			subd_patch_cache header {};
 			file.read(reinterpret_cast<char*>(&header), sizeof(header));
 
 			p.material_id  = header.material_id;
@@ -155,7 +155,7 @@ namespace subd {
 			// ---- subpatches ----
 			p.subpatches.resize(header.subpatch_count);
 			for (subd_subpatch& sp : p.subpatches) {
-				subd_subpatch_cache sp_header;
+				subd_subpatch_cache sp_header {};
 				file.read(reinterpret_cast<char*>(&sp_header), sizeof(sp_header));
 
 				sp.vert_start = sp_header.vert_start;
@@ -163,7 +163,7 @@ namespace subd {
 
 				sp.nodes.resize(sp_header.node_count);
 				file.read(reinterpret_cast<char*>(sp.nodes.data()),
-						sizeof(patch_base_node) * sp_header.node_count);
+						sizeof(patch_slab_node) * sp_header.node_count);
 
 				file.read(reinterpret_cast<char*>(&sp.trafo), sizeof(sp.trafo));
 				file.read(reinterpret_cast<char*>(&sp.proj), sizeof(sp.proj));
@@ -176,7 +176,7 @@ namespace subd {
 			file.read(reinterpret_cast<char*>(p.data), sizeof(p.data));
 		}
 
-		void read_subd_patches(std::ifstream& file, std::vector<subd_patch>& patches) {
+		void read_subd_patches(std::istream& file, std::vector<subd_patch>& patches) {
 			uint32_t patch_count;
 			file.read(reinterpret_cast<char*>(&patch_count),
 					sizeof(patch_count));
@@ -190,8 +190,8 @@ namespace subd {
 			}
 		}
 
-		bool load_model(const std::filesystem::path& file_path, load_config& config) {
-			std::ifstream file(file_path);
+		bool load_model(const std::filesystem::path& file_path, load_config& config, std::vector<subd::subd_patch> &patches) {
+			std::ifstream file(file_path, std::ios::binary);
 			if (!file.is_open()) {
 				return false;
 			}
@@ -258,7 +258,6 @@ namespace subd {
 				// unknown keys are ignored (forward-compatible)
 			}
 
-			std::vector<subd::subd_patch> patches;
 			read_subd_patches(file, patches);
 
 			return true;

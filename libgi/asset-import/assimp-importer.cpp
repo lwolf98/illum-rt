@@ -216,37 +216,47 @@ namespace import {
 				for (auto &normal : o.mesh.normals)
 					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
-				// Subdivide object
-				o.mesh.subdivide(cfg.subd_level);
-
+				bool cached = true;
+				if (!cached || !cfg.subd_type_patches) {
+					// Subdivide object
+					o.mesh.subdivide(cfg.subd_level);
+				}
 
 				if (cfg.subd_type_patches) {
-					// apply displacement
-					o.mesh.displace(displace_tex ?
-					subd::sample_tex([&](vec2 tc) {
-						return displace_tex->sample(tc);
-					})
-					: subd::sample_tex(nullptr),
-					cfg.displacement_strength);
+					if (!cached) {
+						// apply displacement
+						o.mesh.displace(displace_tex ?
+						subd::sample_tex([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						})
+						: subd::sample_tex(nullptr),
+						cfg.displacement_strength);
 
-					// build second level BVH for each patch
-					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+						// build second level BVH for each patch
+						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
 
-					// Cache model
-					subd::cache::store_model(cfg, rtgi_scene.cache_path, o);
-					static_assert(std::is_trivially_copyable_v<::vertex>);
-					static_assert(std::is_trivially_copyable_v<subd::patch_base_node>);
-					static_assert(std::is_trivially_copyable_v<subd::patch_slab_node>);
-					std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
-					std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
-					std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
-					std::cout << "Bool size: " << sizeof(bool) << std::endl;
-					//static_assert(std::is_trivially_copyable_v<subd::subd_subpatch>);
-					//static_assert(std::is_trivially_copyable_v<subd::subd_patch>);
+						// Cache model
+						subd::cache::store_model(cfg, rtgi_scene.cache_path, o);
+						static_assert(std::is_trivially_copyable_v<::vertex>);
+						static_assert(std::is_trivially_copyable_v<subd::patch_base_node>);
+						static_assert(std::is_trivially_copyable_v<subd::patch_slab_node>);
+						std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
+						std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
+						std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
+						std::cout << "Bool size: " << sizeof(bool) << std::endl;
+						//static_assert(std::is_trivially_copyable_v<subd::subd_subpatch>);
+						//static_assert(std::is_trivially_copyable_v<subd::subd_patch>);
+					}
+					else {
+						// Restore cached model
 
-					//DBG: test caching
-					load_config test_cfg;
-					//subd::cache::load_model(rtgi_scene.cache_path + "/test.cache", test_cfg);
+						//DBG: test caching
+						load_config test_cfg;
+						std::vector<subd::subd_patch> cached_patches;
+						subd::cache::load_model(rtgi_scene.cache_path + "/test.cache", test_cfg, cached_patches);
+						o.mesh.patches.clear();
+						o.mesh.patches = cached_patches;
+					}
 
 					//TMP: Debugging
 					{
