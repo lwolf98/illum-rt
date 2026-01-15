@@ -9,6 +9,7 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					context.cpp \
 					denoise.cpp \
 					framebuffer.cpp \
+					cache.cpp \
 					random.cpp \
 					rt.cpp \
 					subdivision_grid.cpp \
@@ -39,6 +40,7 @@ noinst_HEADERS = 	algorithm.h \
 					intersect.h \
 					material.h \
 					load.h \
+					cache.h \
 					random.h \
 					subdivision-helper.h \
 					rt.h \

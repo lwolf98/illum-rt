@@ -21,8 +21,8 @@ namespace subd {
 
 #ifdef QUANTIZATION
 	#define SIZE_XZ 8
-	#define THRESHOLDS_XZ_VALUES 0.f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f
-	//#define THRESHOLDS_XZ_VALUES 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.65f // switched 0.40f with 0.35f and so 0.60f with 0.65f
+	//#define THRESHOLDS_XZ_VALUES 0.f, 0.125f, 0.25f, 0.375f, 0.5f, 0.625f, 0.75f, 0.875f
+	#define THRESHOLDS_XZ_VALUES 0.00f, 0.35f, 0.48f, 0.49f, 0.50f, 0.51f, 0.52f, 0.65f // switched 0.40f with 0.35f and so 0.60f with 0.65f
 	#define SIZE_Y 4
 	#define THRESHOLDS_Y_VALUES 0.f, 0.25f, 0.5f, 0.75f
 	static uint8_t quantize_xz(float val) {

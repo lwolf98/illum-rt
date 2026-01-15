@@ -3,6 +3,7 @@
 #include "libgi/color.h"
 #include "libgi/util.h"
 #include "libgi/subdivision.h"
+#include "libgi/cache.h"
 
 #include <vector>
 #include <iostream>
@@ -230,6 +231,22 @@ namespace import {
 
 					// build second level BVH for each patch
 					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+
+					// Cache model
+					subd::cache::store_model(cfg, rtgi_scene.cache_path, o);
+					static_assert(std::is_trivially_copyable_v<::vertex>);
+					static_assert(std::is_trivially_copyable_v<subd::patch_base_node>);
+					static_assert(std::is_trivially_copyable_v<subd::patch_slab_node>);
+					std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
+					std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
+					std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
+					std::cout << "Bool size: " << sizeof(bool) << std::endl;
+					//static_assert(std::is_trivially_copyable_v<subd::subd_subpatch>);
+					//static_assert(std::is_trivially_copyable_v<subd::subd_patch>);
+
+					//DBG: test caching
+					load_config test_cfg;
+					//subd::cache::load_model(rtgi_scene.cache_path + "/test.cache", test_cfg);
 
 					//TMP: Debugging
 					{

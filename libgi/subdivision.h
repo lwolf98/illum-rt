@@ -206,6 +206,7 @@ namespace subd {
 		patch_vertex data[4];
 #endif
 
+		subd_patch() {}
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
 														   material_id(material_id) {
