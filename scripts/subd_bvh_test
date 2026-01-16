@@ -78,8 +78,8 @@ modeltrafo shift 0 0 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 # Suzanne
-#load render-data/local/models/suzanne/suzanne.usda subd_level 1
-load render-data/local/models/suzanne/suzanne.obj subd_level 3 align_level 2
+load render-data/local/models/suzanne/suzanne.usda subd_level 4 align_level 2
+#load render-data/local/models/suzanne/suzanne.obj subd_level 3 align_level 2
 
 material select body
 material albedo 0 0.215 0.047
