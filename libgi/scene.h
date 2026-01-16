@@ -156,6 +156,7 @@ struct scene {
 	::camera camera;
 	vec3 up;
 	aabb scene_bounds;
+	bool caching;
 	std::string cache_path;
 
 	std::vector<subd::subd_patch> patches;
@@ -167,7 +168,7 @@ struct scene {
 		return materials[triangles[triangle_index].material_id];
 	}
 	scene() : camera(vec3(0,0,-1), vec3(0,0,0), vec3(0,1,0), 65, 1280, 720),
-			  cache_path("/tmp") {
+			  caching(false), cache_path("/tmp") {
 		modelpaths.push_back("");
 	}
 	~scene();

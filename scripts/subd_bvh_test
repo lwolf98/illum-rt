@@ -1,5 +1,8 @@
 #omp off
 
+caching on
+cache-path /home/lukas/rtgi/cache
+
 up 0 1 0
 
 #sppx 1
@@ -37,11 +40,11 @@ load render-data/light/dome_sky.obj
 load render-data/local/models/playground/plane_sand.obj
 
 # Scene
-load render-data/local/models/playground/playground.obj
+#load render-data/local/models/playground/playground.obj
 
 # Cartoon dragon
 #load render-data/local/models/playground/dragon_pg.obj
-load render-data/local/models/playground/dragon_pg.obj subd_level 3 align_level 2
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 align_level 2
 #load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.02
 #load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace render-data/displace/map1.png strength 0.1
 
@@ -73,6 +76,10 @@ modeltrafo shift 0 0 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 4 align_level 0
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
+
+# Suzanne
+#load render-data/local/models/suzanne/suzanne.usda subd_level 1
+load render-data/local/models/suzanne/suzanne.obj subd_level 3 align_level 2
 
 material select body
 material albedo 0 0.215 0.047
@@ -138,6 +145,10 @@ look 0.610622 -0.183563 -0.770354
 #look 0.494362 0.029664 -0.86875
 #at 7.62313 9.98547 27.888
 #look -0.871951 -0.151514 -0.465559
+
+# Pos Suzanne
+at -0.962002 0.845822 2.54479
+look 0.288034 -0.322959 -0.901518
 
 ## CPU Direct
 #raytracer subd-naive-bvh

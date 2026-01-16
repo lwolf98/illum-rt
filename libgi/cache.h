@@ -1,5 +1,6 @@
 #pragma once
 
+#include "driver/defines.h"
 #include "load.h"
 #include "subdivision.h"
 
@@ -9,16 +10,13 @@
 #include <glm/glm.hpp>
 #include <sstream>
 #include <unordered_map>
+#include <iostream> // only DBG
 
 #include <cstdint>
 #include <type_traits>
 
 namespace subd {
 	namespace cache {
-		void store_patch(std::ostream out) {
-
-		}
-
 		struct subd_patch_cache {
 			uint32_t vert_count;
 			uint32_t node_count;
@@ -34,6 +32,56 @@ namespace subd {
 			uint32_t vert_start;
 			uint32_t subd_level;
 		};
+
+		// FNV-1a hashing (64-bit) https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+		using hash64 = uint64_t;
+		static constexpr hash64 FNV_OFFSET = 14695981039346656037ull; // 0xcbf29ce484222325
+		static constexpr hash64 FNV_PRIME  = 1099511628211ull; // 0x100000001b3
+		static constexpr uint32_t approx_var = APPROXIMATION_VARIANT;
+		static constexpr uint32_t comp_var = COMPRESSION_VARIANT;
+
+		inline void hash_combine(hash64& h, const void* data, size_t size) {
+			const uint8_t* bytes = static_cast<const uint8_t*>(data);
+			for (size_t i = 0; i < size; ++i) {
+				h ^= bytes[i];
+				h *= FNV_PRIME;
+			}
+		}
+
+		hash64 hash_config(const load_config& c) {
+			hash64 h = FNV_OFFSET;
+
+			// model identity
+			const std::string path = c.model_path.string();
+			hash_combine(h, path.data(), path.size());
+
+			// geometry-affecting parameters
+			hash_combine(h, &c.subd_level, sizeof(c.subd_level));
+			hash_combine(h, &c.subd_type_patches, sizeof(c.subd_type_patches));
+			hash_combine(h, &c.displacement_strength, sizeof(c.displacement_strength));
+			hash_combine(h, &c.bvh_align_level, sizeof(c.bvh_align_level));
+
+			// matrix
+			hash_combine(h, &c.model_matrix, sizeof(c.model_matrix));
+
+			// displacement map string
+			hash_combine(h,
+				c.displacement_map.data(),
+				c.displacement_map.size());
+
+			return h;
+		}
+
+		std::string hash_to_hex(uint64_t h) {
+			std::ostringstream oss;
+			oss << std::hex << std::setw(16) << std::setfill('0') << h;
+			return oss.str();
+		}
+
+		inline std::string file_name(const load_config &config) {
+			std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(config));
+			return "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
+		}
 
 		void write_subd_patch(std::ostream& file, const subd_patch& p)
 		{
@@ -67,8 +115,13 @@ namespace subd {
 
 				file.write(reinterpret_cast<const char*>(&sp_header), sizeof(sp_header));
 
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 				file.write(reinterpret_cast<const char*>(sp.nodes.data()),
 						sizeof(patch_slab_node) * sp_header.node_count);
+#else
+				file.write(reinterpret_cast<const char*>(sp.nodes.data()),
+						sizeof(patch_base_node) * sp_header.node_count);
+#endif
 
 				file.write(reinterpret_cast<const char*>(&sp.trafo), sizeof(sp.trafo));
 				file.write(reinterpret_cast<const char*>(&sp.proj), sizeof(sp.proj));
@@ -94,8 +147,11 @@ namespace subd {
 		}
 
 		void store_model(const load_config& config, const std::filesystem::path& cache_path, const subd::object &obj) {
-			std::string file_name = "test.cache";
-			std::ofstream file(cache_path / file_name, std::ios::binary);
+			std::cout << "Hash (store): " << hash_config(config) << std::endl;
+			//std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(config));
+			//std::string file_name = "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
+			std::string filename = file_name(config);
+			std::ofstream file(cache_path / filename, std::ios::binary);
 			if (!file.is_open()) {
 				return; // caching not available...
 				//throw std::runtime_error("Failed to open config file for writing");
@@ -162,8 +218,13 @@ namespace subd {
 				sp.subd_level = sp_header.subd_level;
 
 				sp.nodes.resize(sp_header.node_count);
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 				file.read(reinterpret_cast<char*>(sp.nodes.data()),
 						sizeof(patch_slab_node) * sp_header.node_count);
+#else
+				file.read(reinterpret_cast<char*>(sp.nodes.data()),
+						sizeof(patch_base_node) * sp_header.node_count);
+#endif
 
 				file.read(reinterpret_cast<char*>(&sp.trafo), sizeof(sp.trafo));
 				file.read(reinterpret_cast<char*>(&sp.proj), sizeof(sp.proj));
@@ -190,7 +251,9 @@ namespace subd {
 			}
 		}
 
-		bool load_model(const std::filesystem::path& file_path, load_config& config, std::vector<subd::subd_patch> &patches) {
+		bool load_model(const std::filesystem::path& cache_path, const std::string &filename, load_config& config, std::vector<subd::subd_patch> &patches) {
+			//std::string filename = file_name(config);
+			std::filesystem::path file_path = cache_path / filename;
 			std::ifstream file(file_path, std::ios::binary);
 			if (!file.is_open()) {
 				return false;
@@ -257,6 +320,7 @@ namespace subd {
 				}
 				// unknown keys are ignored (forward-compatible)
 			}
+			std::cout << "Hash (load): " << hash_config(config) << std::endl;
 
 			read_subd_patches(file, patches);
 
