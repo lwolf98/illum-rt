@@ -231,7 +231,9 @@ namespace import {
 				std::cout << "Vertex size: " << sizeof(vertex) << std::endl;
 				std::cout << "AABB size: " << sizeof(aabb) << std::endl;
 				std::cout << "Base node size: " << sizeof(subd::patch_base_node) << std::endl;
+				#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
 				std::cout << "Slab node size: " << sizeof(subd::patch_slab_node) << std::endl;
+				#endif
 
 				std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
 				std::cout << "Bool size: " << sizeof(bool) << std::endl;

@@ -48,7 +48,7 @@ namespace subd {
 			}
 		}
 
-		hash64 hash_config(const load_config& c) {
+		inline hash64 hash_config(const load_config& c) {
 			hash64 h = FNV_OFFSET;
 
 			// model identity
@@ -72,7 +72,7 @@ namespace subd {
 			return h;
 		}
 
-		std::string hash_to_hex(uint64_t h) {
+		inline std::string hash_to_hex(uint64_t h) {
 			std::ostringstream oss;
 			oss << std::hex << std::setw(16) << std::setfill('0') << h;
 			return oss.str();
@@ -83,7 +83,7 @@ namespace subd {
 			return "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
 		}
 
-		void write_subd_patch(std::ostream& file, const subd_patch& p)
+		inline void write_subd_patch(std::ostream& file, const subd_patch& p)
 		{
 			// ---- header ----
 			subd_patch_cache header {
@@ -134,7 +134,7 @@ namespace subd {
 			file.write(reinterpret_cast<const char*>(p.data), sizeof(p.data));
 		}
 
-		void write_subd_patches(std::ostream& file, const std::vector<subd_patch>& patches) {
+		inline void write_subd_patches(std::ostream& file, const std::vector<subd_patch>& patches) {
 			uint32_t patch_count =
 				static_cast<uint32_t>(patches.size());
 
@@ -146,7 +146,7 @@ namespace subd {
 			}
 		}
 
-		void store_model(const load_config& config, const std::filesystem::path& cache_path, const subd::object &obj) {
+		inline void store_model(const load_config& config, const std::filesystem::path& cache_path, const subd::object &obj) {
 			std::cout << "Hash (store): " << hash_config(config) << std::endl;
 			//std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(config));
 			//std::string file_name = "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
@@ -189,7 +189,7 @@ namespace subd {
 			write_subd_patches(file, obj.mesh.patches);
 		}
 
-		void read_subd_patch(std::istream& file, subd_patch& p) {
+		inline void read_subd_patch(std::istream& file, subd_patch& p) {
 			// ---- header ----
 			subd_patch_cache header {};
 			file.read(reinterpret_cast<char*>(&header), sizeof(header));
@@ -237,7 +237,7 @@ namespace subd {
 			file.read(reinterpret_cast<char*>(p.data), sizeof(p.data));
 		}
 
-		void read_subd_patches(std::istream& file, std::vector<subd_patch>& patches) {
+		inline void read_subd_patches(std::istream& file, std::vector<subd_patch>& patches) {
 			uint32_t patch_count;
 			file.read(reinterpret_cast<char*>(&patch_count),
 					sizeof(patch_count));
@@ -251,7 +251,7 @@ namespace subd {
 			}
 		}
 
-		bool load_model(const std::filesystem::path& cache_path, const std::string &filename, load_config& config, std::vector<subd::subd_patch> &patches) {
+		inline bool load_model(const std::filesystem::path& cache_path, const std::string &filename, load_config& config, std::vector<subd::subd_patch> &patches) {
 			//std::string filename = file_name(config);
 			std::filesystem::path file_path = cache_path / filename;
 			std::ifstream file(file_path, std::ios::binary);
@@ -326,6 +326,5 @@ namespace subd {
 
 			return true;
 		}
-
 	}
 }
