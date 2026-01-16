@@ -149,16 +149,17 @@ namespace subd {
 
 	struct subd_patch;
 	struct subd_subpatch {
-#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION) // [CACHE] unify node type for simplicity
 		std::vector<patch_slab_node> nodes;
 #else
 		std::vector<patch_base_node> nodes; //REVIEW: BASE?
+		//std::vector<patch_slab_node<glm::vec4>> nodes;
 #endif
 		uint32_t vert_start;
 		glm::mat3 trafo;
-#ifdef PROJECTION
+//#ifdef PROJECTION // [CACHE] leave in for simplicity
 		glm::mat3 proj;
-#endif
+//#endif
 		aabb root_box;
 		aabb root_box_world; // TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
 		uint32_t subd_level;
@@ -186,12 +187,12 @@ namespace subd {
 #endif
 	};
 
-#ifdef BOX_APPROXIMATION
+//#ifdef BOX_APPROXIMATION // [CACHE] leave in for simplicity
 	struct patch_vertex {
 		glm::vec2 tc;
 		glm::vec3 norm;
 	};
-#endif
+//#endif
 
 	struct subd_patch {
 		std::vector<vertex> verts;
@@ -202,10 +203,11 @@ namespace subd {
 		uint32_t subd_level;
 		int32_t align_level;
 		bool align_boxes;
-#ifdef BOX_APPROXIMATION
+//#ifdef BOX_APPROXIMATION // [CACHE] leave in for simplicity
 		patch_vertex data[4];
-#endif
+//#endif
 
+		subd_patch() {}
 		subd_patch(uint32_t level) : subd_patch(level, 0) {}
 		subd_patch(uint32_t level, uint32_t material_id) : subd_level(level),
 														   material_id(material_id) {

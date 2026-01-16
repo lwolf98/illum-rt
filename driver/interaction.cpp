@@ -664,6 +664,17 @@ void eval(const std::string &line) {
 			error("Thge preview offset needs to be larger than zero");
 		rc->preview_offset = offset;
 	}
+	else ifcmd("caching") {
+		string val;
+		in >> val;
+		if (val == "on") scene.caching = true;
+		else scene.caching = false;
+	}
+	else ifcmd("cache-path") {
+		std::cout << "Old cache location: " << scene.cache_path << std::endl;
+		in >> scene.cache_path;
+		std::cout << "New cache location: " << scene.cache_path << std::endl;
+	}
 	else ifcmd("run") {
 		if (!uc.valid_platform)
 			error("Invalid platform");

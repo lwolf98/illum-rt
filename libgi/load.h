@@ -23,4 +23,16 @@ struct load_config {
 				  displacement_map(""),
 				  displacement_strength(0.f), // strength 0 means no displacement
 				  bvh_align_level(-1) {}
+
+	bool operator==(const load_config &comp) const {
+		bool result = true;
+		result &= (model_path == comp.model_path);
+		result &= (name == comp.name);
+		result &= (subd_level == comp.subd_level);
+		result &= (subd_type_patches == comp.subd_type_patches);
+		result &= (displacement_map == comp.displacement_map);
+		result &= (displacement_strength == comp.displacement_strength);
+		result &= (bvh_align_level == comp.bvh_align_level);
+		return result;
+	}
 };

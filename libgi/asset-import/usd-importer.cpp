@@ -4,6 +4,7 @@
 #include "libgi/util.h"
 #include "libgi/subdivision.h"
 #include "libgi/material.h"
+#include "libgi/cache.h"
 
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
@@ -311,8 +312,18 @@ namespace import {
 				for (auto &normal : o.mesh.normals)
 					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
-				// Subdivide object
-				o.mesh.subdivide(cfg.subd_level);
+				bool cached = false;
+				std::vector<subd::subd_patch> cached_patches;
+				if (scene.caching) {
+					load_config test_cfg;
+					std::string filename = subd::cache::file_name(cfg);
+					cached = subd::cache::load_model(scene.cache_path, filename, test_cfg, cached_patches);
+					cached = cached && (cfg == test_cfg);
+				}
+				if (!cached || !cfg.subd_type_patches) {
+					// Subdivide object
+					o.mesh.subdivide(cfg.subd_level);
+				}
 
 				if (cfg.subd_level == 0) {
 					// Triangulate quad faces
@@ -367,16 +378,33 @@ namespace import {
 													: nullptr;
 
 					if (cfg.subd_type_patches) {
-						// apply displacement
-						o.mesh.displace(displace_tex ?
-						subd::sample_tex([&](vec2 tc) {
-							return displace_tex->sample(tc);
-						})
-						: subd::sample_tex(nullptr),
-						  cfg.displacement_strength);
+						if (!cached) {
+							// apply displacement
+							o.mesh.displace(displace_tex ?
+							subd::sample_tex([&](vec2 tc) {
+								return displace_tex->sample(tc);
+							})
+							: subd::sample_tex(nullptr),
+							cfg.displacement_strength);
 
-						// build second level BVH for each patch
-						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+							// build second level BVH for each patch
+							o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+
+							// Cache model
+							if (scene.caching) {
+								subd::cache::store_model(cfg, scene.cache_path, o);
+								static_assert(std::is_trivially_copyable_v<::vertex>);
+								static_assert(std::is_trivially_copyable_v<subd::patch_base_node>);
+								#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+								static_assert(std::is_trivially_copyable_v<subd::patch_slab_node>);
+								#endif
+							}
+						}
+						else {
+							// Restore cached model
+							o.mesh.patches.clear();
+							o.mesh.patches = cached_patches;
+						}
 
 #ifdef BOX_APPROXIMATION
 						o.mesh.prepare_box_approximation();

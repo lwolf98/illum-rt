@@ -3,6 +3,7 @@
 #include "libgi/color.h"
 #include "libgi/util.h"
 #include "libgi/subdivision.h"
+#include "libgi/cache.h"
 
 #include <vector>
 #include <iostream>
@@ -215,21 +216,69 @@ namespace import {
 				for (auto &normal : o.mesh.normals)
 					normal = normalize(glm::vec3(normal_transform * vec4(normal, 1.f)));
 
-				// Subdivide object
-				o.mesh.subdivide(cfg.subd_level);
+				bool cached = false;
+				std::vector<subd::subd_patch> cached_patches;
+				if (rtgi_scene.caching) {
+					//std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(cfg));
+					load_config test_cfg;
+					std::string filename = subd::cache::file_name(cfg);
+					cached = subd::cache::load_model(rtgi_scene.cache_path, filename, test_cfg, cached_patches);
+					cached = cached && (cfg == test_cfg);
+				}
+				std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
+				std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
 
+				std::cout << "Vertex size: " << sizeof(vertex) << std::endl;
+				std::cout << "AABB size: " << sizeof(aabb) << std::endl;
+				std::cout << "Base node size: " << sizeof(subd::patch_base_node) << std::endl;
+				#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+				std::cout << "Slab node size: " << sizeof(subd::patch_slab_node) << std::endl;
+				#endif
+
+				std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
+				std::cout << "Bool size: " << sizeof(bool) << std::endl;
+
+				if (!cached || !cfg.subd_type_patches) {
+					// Subdivide object
+					o.mesh.subdivide(cfg.subd_level);
+				}
 
 				if (cfg.subd_type_patches) {
-					// apply displacement
-					o.mesh.displace(displace_tex ?
-					subd::sample_tex([&](vec2 tc) {
-						return displace_tex->sample(tc);
-					})
-					: subd::sample_tex(nullptr),
-					cfg.displacement_strength);
+					if (!cached) {
+						// apply displacement
+						o.mesh.displace(displace_tex ?
+						subd::sample_tex([&](vec2 tc) {
+							return displace_tex->sample(tc);
+						})
+						: subd::sample_tex(nullptr),
+						cfg.displacement_strength);
 
-					// build second level BVH for each patch
-					o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+						// build second level BVH for each patch
+						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
+
+						// Cache model
+						if (rtgi_scene.caching) {
+							subd::cache::store_model(cfg, rtgi_scene.cache_path, o);
+							static_assert(std::is_trivially_copyable_v<::vertex>);
+							static_assert(std::is_trivially_copyable_v<subd::patch_base_node>);
+							#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+							static_assert(std::is_trivially_copyable_v<subd::patch_slab_node>);
+							#endif
+						}
+
+						//static_assert(std::is_trivially_copyable_v<subd::subd_subpatch>);
+						//static_assert(std::is_trivially_copyable_v<subd::subd_patch>);
+					}
+					else {
+						// Restore cached model
+
+						//DBG: test caching
+						//load_config test_cfg;
+						//std::vector<subd::subd_patch> cached_patches;
+						//subd::cache::load_model(rtgi_scene.cache_path + "/test.cache", test_cfg, cached_patches);
+						o.mesh.patches.clear();
+						o.mesh.patches = cached_patches;
+					}
 
 					//TMP: Debugging
 					{
