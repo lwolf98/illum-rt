@@ -195,6 +195,7 @@ namespace wf::cuda {
 				uint32_t off_current_level = geometric_series4(trav_level);
 				float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
 				float t_bary;
+				uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 
 				for (int i = 0; i < 4; ++i) {
 #ifndef QUANTIZATION
@@ -221,7 +222,7 @@ namespace wf::cuda {
 					if (!compute_valid_hit(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, true,									// additional params
-									t_hit, t_bary)) {									// reference/out params
+									t_hit, t_bary, hit_side)) {							// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -229,7 +230,7 @@ namespace wf::cuda {
 					if (!compute_valid_hit(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
-									t_hit, t_bary)) {									// reference/out params
+									t_hit, t_bary, hit_side)) {							// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -265,6 +266,7 @@ namespace wf::cuda {
 													+ relative_index;
 
 						closest_quad_ref.set_ref(quad_ref_morton);
+						closest_quad_ref.set_hit_side(hit_side);
 					}
 #endif
 				}
@@ -341,13 +343,14 @@ namespace wf::cuda {
 #else
 					float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
 					float t_bary;
+					uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 	#ifndef PROJECTION
 					float3 root_min = f3(subpatch.root_min); // REVIEW: more efficient way without copying?
 					float3 root_max = f3(subpatch.root_max);
 					if (!compute_valid_hit(root_min, root_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, false,									// additional params
-									t_hit, t_bary)) {									// reference/out params
+									t_hit, t_bary, hit_side)) {									// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -357,7 +360,7 @@ namespace wf::cuda {
 					if (!compute_valid_hit(root_min, root_max,						// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
 									closest_t, t1, p1_oriented, eps, subpatch, false,	// additional params
-									t_hit, t_bary)) {									// reference/out params
+									t_hit, t_bary, hit_side)) {									// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -371,6 +374,7 @@ namespace wf::cuda {
 
 					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start);
 					closest_quad_ref.set_ref(quad_ref_morton);
+					closest_quad_ref.set_hit_side(hit_side);
 #endif
 			}
 		}

@@ -10,7 +10,7 @@
 namespace subd {
 	/**
 	 * sub quad ref:	27 bit (supports up to subd_level 13)
-	 * arbitrary data:	 4 bit
+	 * hit box side:	 4 bit
 	 * upper/lower tri:	 1 bit
 	 */
 	class quad_ref {
@@ -29,14 +29,14 @@ namespace subd {
 			data_field = (data_field & 0x1Fu) | (ref << 5);
 		}
 
-		heterogeneous uint32_t data() const { return (data_field & (0xFu << 1)) >> 1; }
+		heterogeneous uint32_t hit_side() const { return (data_field & (0xFu << 1)) >> 1; }
 
-		heterogeneous void set_data(uint32_t data) {
+		heterogeneous void set_hit_side(uint32_t side) {
 			// limit input value to 4 bits
-			data &= 0xFu;
+			side &= 0xFu;
 			uint32_t reset_mask = ~(0xFu << 1);
 			// reset the 4 relevant bits to 0 and write into data_field
-			data_field = (data_field & reset_mask) | (data << 1);
+			data_field = (data_field & reset_mask) | (side << 1);
 		}
 
 		// 1 -> upper tri, 0 -> lower tri

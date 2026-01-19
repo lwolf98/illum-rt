@@ -96,7 +96,6 @@ diff_geom diff_geom::init(const triangle_intersection &is, const ray &is_ray, co
 		// approximate geometry by bounding boxes
 
 		uint32_t vert_quad_ref = patch.quad_ref_from_index(subd_quad_ref); //REVIEW: only temp until TC and normal data is stored in subpatches
-		triangle tri = patch.tri(vert_quad_ref, upper);
 
 		const subd::subd_subpatch &subpatch = patch.subpatch_from_index(subd_quad_ref);
 		const glm::mat3 M = glm::inverse(subpatch.trafo);
@@ -114,14 +113,26 @@ diff_geom diff_geom::init(const triangle_intersection &is, const ray &is_ray, co
 		glm::vec2 u2 = patch.data[2].tc + (patch.data[3].tc - patch.data[2].tc) * u;
 		dg.tc = u1 + (u2 - u1) * v;
 
+		dg.x = is_ray.o + is.t * is_ray.d;
+		// TODO/REVIEW: adjust normal to the side of the box that has been hit
+		switch (is.subd_quad_ref.hit_side()) {
+			case BOX_SIDE_FRONT:      dg.ng = -M[1]; break;
+			case BOX_SIDE_BACK:       dg.ng = M[1]; break;
+			case BOX_SIDE_SIDE_LEFT:  dg.ng = cross(M[0], M[1]); break;
+			case BOX_SIDE_SIDE_RIGHT: dg.ng = cross(M[1], M[0]); break;
+			case BOX_SIDE_SIDE_DOWN:  dg.ng = cross(M[2], M[1]); break;
+			case BOX_SIDE_SIDE_UP:    dg.ng = cross(M[1], M[2]); break;
+			default:                  dg.ng = vec3(0);
+		}
+
+	#ifndef SHADE_BY_GEOMETRY_NORMAL
 		//TODO: interpolate normal, REVIW: correct like that??
 		glm::vec3 n1 = patch.data[0].norm + (patch.data[1].norm - patch.data[0].norm) * u;
 		glm::vec3 n2 = patch.data[2].norm + (patch.data[3].norm - patch.data[2].norm) * u;
-		dg.ns = n1 + (n2 - n1) * v;
-
-		dg.x = is_ray.o + is.t * is_ray.d;
-		// TODO/REVIEW: adjust normal to the side of the box that has been hit
-		dg.ng = M[1]; // already normalized
+		dg.ns = normalize(n1 + (n2 - n1) * v);
+	#else
+		dg.ns = dg.ng;
+	#endif
 
 		// TMP: Debugging
 		/*vec3 dg_x = is_ray.o + is.t * is_ray.d;
