@@ -283,6 +283,7 @@ inline bool compute_valid_hit(
 	const subd::subd_subpatch &subpatch,
 #endif
 	bool allow_negative_t,
+	bool intersect_box_mid,
 	float &t_hit,
 	float &t_bary,
 	uint32_t &hit_side
@@ -290,6 +291,15 @@ inline bool compute_valid_hit(
 	float dist;
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	if (!intersect4_extended(box, transformed_ray, dist, hit_side)) return false;
+	if (intersect_box_mid) {
+		uint32_t hit_side_mid;
+		//float dist_mid;
+		aabb mid_box = box;
+		float mid = box.min.y + (box.max.y - box.min.y)*0.5f;
+		mid_box.min.y = mid;
+		mid_box.max.y = mid;
+		if (!intersect4_extended(mid_box, transformed_ray, dist, hit_side_mid)) return false;
+	}
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?
@@ -320,6 +330,7 @@ inline bool compute_valid_hit(
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	using namespace subd;
+	constexpr bool intersect_box_mid = true;
 
 	bool dbg_pixel = true;
 	dbg_pixel = dbg_pixel && current_pixel_x == debug_pixel_x && current_pixel_y && debug_pixel_y;
@@ -382,18 +393,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
 				const aabb &box = node.boxes[i];
 #else
-	#ifndef QUANTIZATION
-		#ifndef HALF_SLAB_COMPRESSION
+	#if !defined(QUANTIZATION) && !defined(HALF_SLAB_COMPRESSION)
 				const aabb box = node.get_box<aabb>(i);
-		#else
-				//[INDP_BOX]
-				//const aabb box = subpatch.box_from_node(index, i, dbg_pixel);
-				const aabb box = node.get_box(i, parent_box);
-		#endif
 	#else
-				// [FEAT-QUANT] Implement box stack and pass parent box!
-				//const aabb box = node.get_box(i, aabb());
-				//const aabb box = node.get_box(i, aabb(vec3(0), vec3(1)));
 				const aabb box = node.get_box(i, parent_box);
 	#endif
 #endif
@@ -401,9 +403,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				float t_hit, t_bary;
 				uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 #ifndef PROJECTION
-				if (!compute_valid_hit(box, transformed_ray, closest.t, true, t_hit, t_bary, hit_side)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, true, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #else
-				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary, hit_side)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #endif
 
 #ifndef BOX_APPROXIMATION
@@ -465,9 +467,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			
 #ifndef PROJECTION
 			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #else
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #endif
 
 				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
