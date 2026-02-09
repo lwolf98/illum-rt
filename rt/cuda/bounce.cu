@@ -268,7 +268,7 @@ namespace wf::cuda {
 		static __global__ void sample_mis(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
 											const scene_refs *refs,
 											int lights, float *lights_f, float *lights_cdf, float lights_int_1spaced, uint4 *tri_lights, float3 *lightcol, // TODO F4
-											float *pdfs_light, float *pdfs_other, bool is_light_sample, float4 *random) {
+											float *pdfs_light, bool is_light_sample, float4 *random) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -282,16 +282,14 @@ namespace wf::cuda {
 			float3 org { 0,0,0 };
 			float tmax = -FLT_MAX;
 			float3 l_col { 0,0,0 };
-			//float pdf = 0;
-			float pdf_light = 0;
-			float pdf_other = 0;
+			float pdf = 0;
 			if (hit.valid()) {
 				if (not_black(dg.mat->emissive))
 					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
 				else {
 					if (is_light_sample) {
 						float4 xis = random[ray_index];
-						int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf_light);
+						int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf);
 						float a_pdf = 0, r_tm;
 						float3 r_d, r_o;
 						sample_Li(l_id, hit, {xis.x,xis.y}, ray_index,
@@ -302,9 +300,7 @@ namespace wf::cuda {
 							org = r_o;
 							tmax = r_tm;
 						}
-						pdf_light *= a_pdf;
-
-						pdf_other = one_over_2pi;
+						pdf *= a_pdf;
 					}
 					else {
 						//[MIS]...
@@ -319,16 +315,13 @@ namespace wf::cuda {
 						w_i = align(sampled_dir, ns);
 						org = cam_org + hit.t * cam_dir;
 						tmax = FLT_MAX;
-						pdf_other = one_over_2pi;
-
-						//pdf_light = ...;
+						pdf = one_over_2pi;
 					}
 				}
 			}
 			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
 			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
-			pdfs_light[ray_index] = pdf_light;
-			pdfs_other[ray_index] = pdf_other;
+			pdfs_light[ray_index] = pdf;
 			lightcol[ray_index] = l_col;
 		}
 	}
@@ -360,7 +353,6 @@ namespace wf::cuda {
 										   light_dist->tri_lights.device_memory,
 										   light_col->data.device_memory,
 										   pdf_light->data.device_memory,
-										   pdf_other->data.device_memory,
 										   is_light_sample,
 										   rng.random_numbers);
 	}
@@ -527,7 +519,7 @@ namespace wf::cuda {
 											   float4 *shadowrays, tri_is *shadow_hits,
 											   float4 *framebuffer,
 											   wf::cuda::scene_refs *refs,
-											   float3 *lightcol, float *pdfs_light, float *pdfs_other, float lights_int_1spaced, bool is_light_sample) {
+											   float3 *lightcol, float *pdfs_light, float lights_int_1spaced, bool is_light_sample) {
 			int x = threadIdx.x + blockIdx.x*blockDim.x;
 			int y = threadIdx.y + blockIdx.y*blockDim.y;
 			int ray_index = y*res.x + x;
@@ -542,8 +534,10 @@ namespace wf::cuda {
 			float4 shadowray_org = shadowrays[2*ray_index+0];
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
 
-			float pdf_light = pdfs_light[ray_index];
-			float pdf_other = pdfs_other[ray_index];
+			float pdf_light = 0.f;
+			float pdf_other = 0.f;
+			if (is_light_sample) pdf_light = pdfs_light[ray_index];
+			else				 pdf_other = pdfs_light[ray_index];
 
 			float3 brightness;
 			float cos_theta;
@@ -565,6 +559,7 @@ namespace wf::cuda {
 					cos_theta = cdot(w_i, dg.ns);
 					// combine
 					//radiance = radiance + brightness * f * cos_theta / pdf_light;
+					pdf_other = one_over_2pi;
 					integrated = true;
 				}
 			}
@@ -645,7 +640,6 @@ namespace wf::cuda {
 											  pf->sd->refs.device_memory,
 											  light_col->data.device_memory,
 											  pdf_light->data.device_memory,
-											  pdf_other->data.device_memory,
 											  light_dist->integral_1spaced,
 											  is_light_sample);
 	}

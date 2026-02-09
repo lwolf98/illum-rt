@@ -610,9 +610,9 @@ namespace wf {
 			sample_light  = sample; //[MIS]
 			find_light    = trace;
 			integrate     = contrib; //[MIS]
-			sample->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
+			sample->use(camrays, shadowrays, pdf, l_dist, lightcol); //[MIS]
 			trace->use(shadowrays);
-			contrib->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
+			contrib->use(camrays, shadowrays, pdf, l_dist, lightcol); //[MIS]
 		}
 		else throw runtime_error("unsupported importance sampling method for wf/direct");
 
@@ -650,10 +650,7 @@ namespace wf {
 			else if (value == "cosine") sampling_mode = ::direct_light::sample_cosine;
 			else if (value == "light") sampling_mode = ::direct_light::sample_light;
 			else if (value == "brdf") sampling_mode = ::direct_light::sample_brdf;
-			else if (value == "mis") {
-				sampling_mode = ::direct_light::sample_mis;
-				pdf_other = rc->platform->allocate_float_per_sample();
-			}
+			else if (value == "mis") sampling_mode = ::direct_light::sample_mis;
 			else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
 			regenerate_steps();
 			return true;
