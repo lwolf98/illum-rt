@@ -20,6 +20,7 @@ namespace wf::cuda {
             optix_tracer(bool alpha_aware);
 
             void build(scenedata *scene) override;
+			void update_res(glm::ivec2 new_res) override;
             void compute_hit(bool anyhit) override;
         private:
             OptixTraversableHandle build_gas(wf::cuda::scenedata *scene, std::vector<OptixBuildInput> &build_inputs, OptixAccelBuildOptions &build_options, wf::cuda::global_memory_buffer<char> &accel_struct_buffer);

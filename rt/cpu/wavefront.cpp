@@ -6,6 +6,8 @@
 #include "libgi/util.h"
 #include "libgi/timer.h"
 
+#include "manylight.h"
+
 #include "seq.h"
 #include "bvh.h"
 
@@ -28,19 +30,21 @@ namespace wf {
 
 		// raydata
 
-		raydata::raydata(int w, int h) : w(w), h(h) {
+		raydata::raydata(int w, int h, bool update_size) : w(w), h(h) {
 			if (w > 0 && h > 0) {
 				rays = new ray[w*h];
 				intersections = new triangle_intersection[w*h];
 			}
-			rc->call_at_resolution_change[this] = [this](int new_w, int new_h) {
-				delete [] rays;
-				delete [] intersections;
-				this->w = new_w;
-				this->h = new_h;
-				rays = new ray[this->w*this->h];
-				intersections = new triangle_intersection[this->w*this->h];
-			};
+			if (update_size) {
+				rc->call_at_resolution_change[this] = [this](int new_w, int new_h) {
+					delete [] rays;
+					delete [] intersections;
+					this->w = new_w;
+					this->h = new_h;
+					rays = new ray[this->w*this->h];
+					intersections = new triangle_intersection[this->w*this->h];
+				};
+			}
 		}
 		raydata::~raydata() {
 			rc->call_at_resolution_change.erase(this);
@@ -48,25 +52,51 @@ namespace wf {
 			delete [] intersections;
 		}
 
+		// vpldata
+
+		vpldata::vpldata(int w, int h, bool update_size) : w(w), h(h) {
+			if (w > 0 && h > 0)
+				vpls = new vpl[w*h];
+
+			if (update_size) {
+				rc->call_at_resolution_change[this] = [this](int new_w, int new_h) {
+					delete [] vpls;
+					this->w = new_w;
+					this->h = new_h;
+					vpls = new vpl[this->w*this->h];
+				};
+			}
+		}
+		vpldata::~vpldata() {
+			rc->call_at_resolution_change.erase(this);
+			delete [] vpls;
+		}
+		int vpldata::size() {
+			return w*h;
+		}
+
 		// batch_rt_adapter
 
 		void batch_rt_adapter::compute_closest_hit() {
-			glm::ivec2 res = rc->resolution();
+			//glm::ivec2 res = rc->resolution();
 			#pragma omp parallel for
-			for (int y = 0; y < res.y; ++y)
+			for (int y = 0; y < rd->h; ++y)
+				for (int x = 0; x < rd->w; ++x)  // ray data missing
+					rd->intersections[y*rd->w+x] = underlying_rt->closest_hit(rd->rays[y*rd->w+x]);
+			/*for (int y = 0; y < res.y; ++y)
 				for (int x = 0; x < res.x; ++x)  // ray data missing
-					rd->intersections[y*res.x+x] = underlying_rt->closest_hit(rd->rays[y*res.x+x]);
+					rd->intersections[y*res.x+x] = underlying_rt->closest_hit(rd->rays[y*res.x+x]);*/
 		}
 		void batch_rt_adapter::compute_any_hit() {
-			glm::ivec2 res = rc->resolution();	
+			//glm::ivec2 res = rc->resolution();	
 			#pragma omp parallel for
-			for (int y = 0; y < res.y; ++y)
-				for (int x = 0; x < res.x; ++x) {
-					if (underlying_rt->any_hit(rd->rays[y*res.x+x]))
-						rd->intersections[y*res.x+x].t = rd->intersections[y*res.x+x].ref = -1;
+			for (int y = 0; y < rd->h; ++y)
+				for (int x = 0; x < rd->w; ++x)
+					if (underlying_rt->any_hit(rd->rays[y*rd->w+x]))
+						rd->intersections[y*rd->w+x].t = rd->intersections[y*rd->w+x].ref = -1;
 					else
-						rd->intersections[y*res.x+x].reset();
-				}
+						rd->intersections[y*rd->w+x].reset();
+
 		}
 
 		void batch_rt_adapter::build(cpu::scene *s) {
@@ -205,6 +235,14 @@ namespace wf {
 			register_wf_step_by_id(, integrate_mis_sample);
 			register_wf_step_by_id(, add_hitpoint_albedo_to_framebuffer);
 			register_wf_step_by_id(, add_hitpoint_normal_to_framebuffer);
+			//manylight steps
+			register_wf_step_by_id(, sample_v_0s);
+			register_wf_step_by_id(, create_vpls);
+			register_wf_step_by_id(, russian_roulette);
+			register_wf_step_by_id(, sample_next_vpls);
+			register_wf_step_by_id(, copy_vpls);
+			register_wf_step_by_id(, sample_vpls);
+			register_wf_step_by_id(, integrate_vpl_samples);
 
 			timer = new wf::cpu::timer;
 		}
@@ -235,15 +273,86 @@ namespace wf {
 		raydata* platform::allocate_raydata() {
 			return new raydata(rc->resolution());
 		}
+
+		raydata* platform::allocate_raydata_manually(int size) {
+			return new raydata(size, 1, false);
+		}
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
 			return new per_sample_data<float>(rc->resolution());
 		}
-
+		
 		per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
 			return new per_sample_data<vec3>(rc->resolution());
 		}
+		
+		per_sample_data<int>* platform::allocate_int_per_sample() {
+			return new per_sample_data<int>(rc->resolution());
+		}
+		
+		per_sample_data<float>* platform::allocate_float_per_sample_manually(int size) {
+			return new per_sample_data<float>(glm::ivec2(size, 1), false);
+		}
+		
+		per_sample_data<vec3>* platform::allocate_vec3_per_sample_manually(int size) {
+			return new per_sample_data<vec3>(glm::ivec2(size, 1), false);
+		}
+		
+		per_sample_data<int>* platform::allocate_int_per_sample_manually(int size) {
+			return new per_sample_data<int>(glm::ivec2(size, 1), false);
+		}
 
+		/*per_sample_data<void>* platform::allocate_data_per_sample(int32_t typesize) {
+			return new per_sample_data<void>(rc->resolution()*typesize);
+		}*/
+
+		/* manylight allocation */
+		vpldata* platform::allocate_vpldata() {
+			return new vpldata(rc->resolution());
+		}
+
+		vpldata* platform::allocate_vpldata_manually(int size) {
+			return new vpldata(size, 1, false);
+		}
+
+		/*::vpl* platform::allocate_vpl_store() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+			auto path_length = ml->get_path_length();
+
+			return new ::vpl[paths*path_length];
+		}
+
+		vec3* platform::allocate_light_throughput() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			return new vec3[paths];
+		}
+
+		vector<::vpl>* platform::allocate_vpls() {
+			return new vector<::vpl>;
+		}
+
+		::vpl* platform::allocate_vpl_per_sample() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			glm::ivec2 res = rc->resolution();
+			return new ::vpl[res.x*res.y];
+		}*/
 
 		platform *pf = nullptr;
 	}

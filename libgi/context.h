@@ -6,6 +6,8 @@
 
 #include <functional>
 #include <map>
+//#include "gi/manylight.h"
+struct vpl;
 
 struct gi_algorithm;
 
@@ -24,6 +26,11 @@ struct render_context {
 	unsigned int sppx = 1;
 	unsigned int preview_offset = 1;
 	wf::platform *platform = nullptr;
+
+	/* global VPL data */
+	std::vector<vpl> *vpls;
+	bool ml_cpu_preparation = false;
+	int vpl_count = -1;
 
 	bool enable_denoising = false;
 	// Store albedo information for denoising. Values need to be in the range of [0, 1]. Don't forget to set albedo_valid if used.

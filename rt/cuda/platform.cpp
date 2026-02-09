@@ -6,6 +6,7 @@
 #include "tracers.h"
 #include "preprocessing.h"
 #include "bounce.h"
+#include "manylight.h"
 
 #include <iostream>
 
@@ -76,6 +77,15 @@ namespace wf {
 			register_wf_step_by_id(, sample_mis_dir);
 			register_wf_step_by_id(, integrate_mis_sample);
 
+			//manylight steps
+			register_wf_step_by_id(, sample_v_0s);
+			register_wf_step_by_id(, create_vpls);
+			register_wf_step_by_id(, russian_roulette);
+			register_wf_step_by_id(, sample_next_vpls);
+			register_wf_step_by_id(, copy_vpls);
+			register_wf_step_by_id(, sample_vpls);
+			register_wf_step_by_id(, integrate_vpl_samples);
+
 			timer = new wf::cuda::timer;
 		}
 
@@ -135,14 +145,83 @@ namespace wf {
 		raydata* platform::allocate_raydata() {
 			return new raydata(rc->resolution());
 		}
+
+		raydata* platform::allocate_raydata_manually(int size) {
+			return new raydata(size, 1, false);
+		}
 		
 		per_sample_data<float>* platform::allocate_float_per_sample() {
 			return new per_sample_data<float>(rc->resolution());
 		}
-
+		
 		per_sample_data<vec3>* platform::allocate_vec3_per_sample() {
 			return new per_sample_data<vec3>(rc->resolution());
 		}
+		
+		per_sample_data<int>* platform::allocate_int_per_sample() {
+			return new per_sample_data<int>(rc->resolution());
+		}
+		
+		per_sample_data<float>* platform::allocate_float_per_sample_manually(int size) {
+			return new per_sample_data<float>(glm::ivec2(size, 1), false);
+		}
+		
+		per_sample_data<vec3>* platform::allocate_vec3_per_sample_manually(int size) {
+			return new per_sample_data<vec3>(glm::ivec2(size, 1), false);
+		}
+		
+		per_sample_data<int>* platform::allocate_int_per_sample_manually(int size) {
+			return new per_sample_data<int>(glm::ivec2(size, 1), false);
+		}
+
+		/* manylight allocation */
+		vpldata* platform::allocate_vpldata() {
+			return new vpldata(rc->resolution());
+		}
+
+		vpldata* platform::allocate_vpldata_manually(int size) {
+			return new vpldata(size, 1, false);
+		}
+
+		//TODO: return global_memory_buffer
+		/*vpl* platform::allocate_vpl_store() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+			auto path_length = ml->get_path_length();
+
+			return new vpl[paths*path_length];
+		}
+
+		vec3* platform::allocate_light_throughput() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			return new vec3[paths];
+		}
+
+		vector<vpl>* platform::allocate_vpls() {
+			return new vector<vpl>;
+		}
+
+		vpl* platform::allocate_vpl_per_sample() {
+			if (!dynamic_cast<manylight_algorithm*>(rc->algo)) {
+				//TODO: better handling for this situation
+				return nullptr;
+			}
+			manylight_algorithm* ml = dynamic_cast<manylight_algorithm*>(rc->algo);
+			auto paths = ml->get_paths();
+
+			glm::ivec2 res = rc->resolution();
+			return new vpl[res.x*res.y];
+		}*/
 
 		platform *pf = nullptr;
 

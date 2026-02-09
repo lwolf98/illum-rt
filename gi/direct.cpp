@@ -523,6 +523,13 @@ bool direct_light_mis::interprete(const std::string &command, std::istringstream
 #ifndef RTGI_SKIP_WF
 namespace wf {
 	direct_light::direct_light() {
+		direct_light::regenerate_steps();
+	}
+	void direct_light::regenerate_steps() {
+		frame_preparation_steps.clear();
+		sampling_steps.clear();
+		frame_finalization_steps.clear();
+		
 		auto *init_fb = rc->platform->step<initialize_framebuffer>();
 		auto *download_fb = rc->platform->step<download_framebuffer>();
 		// TODO: remove those two?
@@ -532,25 +539,10 @@ namespace wf {
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
-		if (sampling_mode == ::direct_light::sample_mis)
 		
-		regenerate_steps();
-	}
-	void direct_light::regenerate_steps() {
-		frame_preparation_steps.clear();
-		frame_finalization_steps.clear();
-		
-		auto *init_fb = rc->platform->step<initialize_framebuffer>();
-		auto *download_fb = rc->platform->step<download_framebuffer>();
-		
-		frame_preparation_steps.push_back(init_fb);
-		frame_finalization_steps.push_back(download_fb);
-
 		init_fb->use(camrays);
 		download_fb->use(camrays);
 
-		sampling_steps.clear();
-		
 		auto *sample_cam   = rc->platform->step<sample_camera_rays>("primary hits");
 		auto *find_hit     = rc->platform->step<find_closest_hits>();
 		step *find_light   = nullptr;
@@ -637,11 +629,12 @@ namespace wf {
 #ifdef HAVE_GL
 		if (preview_window) {
 			auto *copy_prev = rc->platform->step<copy_to_preview>();
-			sampling_steps.push_back(copy_prev); // add this last so we have data to copy
+			this->sampling_steps.push_back(copy_prev); // add this last so we have data to copy
 			copy_prev->use(camrays);
 		}
 #endif
 	}
+	
 	bool direct_light::interprete(const std::string &command, std::istringstream &in) {
 		string value;
 		if (command == "is") {
@@ -652,7 +645,7 @@ namespace wf {
 			else if (value == "brdf") sampling_mode = ::direct_light::sample_brdf;
 			else if (value == "mis") sampling_mode = ::direct_light::sample_mis;
 			else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
-			regenerate_steps();
+			direct_light::regenerate_steps();
 			return true;
 		}
 		return false;

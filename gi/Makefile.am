@@ -8,12 +8,18 @@ $(srcdir)/primary-steps.h: primary-steps.lisp
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 $(srcdir)/direct-steps.h: direct-steps.lisp primary-steps.h
 	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
+manylight-steps.h: manylight-steps.lisp
+	cm c++ -D top_srcdir=$(top_srcdir) $< -o $@
 endif
 #endif
 
 noinst_LIBRARIES = libprimary-hit.a
 libprimary_hit_a_SOURCES = primary-hit.cpp
 noinst_HEADERS = primary-hit.h
+
+noinst_LIBRARIES += libmanylight.a
+libmanylight_a_SOURCES = manylight.cpp
+noinst_HEADERS += manylight.h
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM
 noinst_LIBRARIES += libdirect.a 
@@ -28,7 +34,7 @@ noinst_HEADERS += pt.h
 #endif
 
 #ifndef RTGI_SKIP_WF
-noinst_HEADERS +=  primary-steps.h direct-steps.h
-EXTRA_DIST  = primary-steps.lisp direct-steps.lisp
-EXTRA_DIST += primary-steps.h    direct-steps.h
+noinst_HEADERS +=  primary-steps.h direct-steps.h manylight-steps.h
+EXTRA_DIST  = primary-steps.lisp direct-steps.lisp manylight-steps.lisp
+EXTRA_DIST += primary-steps.h    direct-steps.h    manylight-steps.h
 #endif

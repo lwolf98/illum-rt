@@ -8,6 +8,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample uniform dir";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf) = 0;
 	};
@@ -41,6 +42,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "sample cosine distributed dir";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf) = 0;
 	};
@@ -74,6 +76,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "integrate directional sample";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *camrays, raydata *shadowrays, per_sample_data<float> *pdf) = 0;
 	};
@@ -107,12 +110,14 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "compute light distribution";
+		std::string get_id() override { return id; }
 	};
 
 	class sample_light_dir : public step
 	{
 	public:
 		static constexpr char id[] = "sample dir according to light distribution";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *camdata, raydata *bouncedata, per_sample_data<float> *pdf, compute_light_distribution *light_dist, per_sample_data<vec3> *light_col) = 0;
 	};
@@ -150,6 +155,7 @@ namespace wf
 	{
 	public:
 		static constexpr char id[] = "integrate light sample";
+		std::string get_id() override { return id; }
 
 		virtual void use(raydata *camrays, raydata *shadowrays, per_sample_data<float> *pdf, per_sample_data<vec3> *light_col) = 0;
 	};

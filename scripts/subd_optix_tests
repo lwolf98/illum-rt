@@ -66,15 +66,25 @@ look 0.797373 -0.346276 -0.494256
 #outfile out_subds/test_direct_cpu.png
 
 # WF GPU Direct
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile out_subds/test_primary_cuda.png
+#algo direct-wf
+#is light
+##is cosine
+#outfile out_subds/test_direct_cuda.png
+
+# WF setup ML
 platform cuda
 raytracer optix
 add-scene-step build accel struct
-#algo primary-wf
-#outfile out_subds/test_primary_cuda.png
-algo direct-wf
-is light
-#is cosine
-outfile out_subds/test_direct_cuda.png
-commit
+algo manylight-wf
+is light paths 4096 length 10 g 0.1
+#is light paths 4096 length 10 g 0.1 vps 1
+#is light paths 512 length 10 g 0.1 vps 1
+outfile out_subds/subd-ml_cuda.png
 
+commit
 run

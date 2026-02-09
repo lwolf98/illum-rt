@@ -15,7 +15,8 @@ libgi_a_SOURCES = 	algorithm.cpp \
 					subdivision_grid.cpp \
 					subdivision.cpp \
 					scene.cpp \
-					timer.cpp
+					timer.cpp \
+					objdraw.cpp
 
 
 #ifndef RTGI_SKIP_BRDF
@@ -48,7 +49,8 @@ noinst_HEADERS = 	algorithm.h \
 					subdivision.h \
 					scene.h \
 					timer.h \
-					util.h
+					util.h \
+					objdraw.h
 
 
 #ifndef RTGI_SKIP_LIGHT_SOURCE_SAMPLING
