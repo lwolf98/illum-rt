@@ -38,7 +38,7 @@ namespace wf::gl {
 		void run() override;
 	};
 
-	struct integrate_mis_sample : public wf::wire::integrate_mis_sample<raydata, per_sample_data<float>, per_sample_data<vec3>> {
+	struct integrate_mis_sample : public wf::wire::integrate_mis_sample<raydata, per_sample_data<float>, compute_light_distribution, per_sample_data<vec3>> {
 		void run() override;
 	};
 

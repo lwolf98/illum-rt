@@ -558,7 +558,8 @@ namespace wf {
 			lightcol = rc->platform->allocate_vec3_per_sample();
 		
 			auto *sample  = rc->platform->step<sample_light_dir>();
-			auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			//auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			auto *trace   = rc->platform->step<find_closest_hits>("find occluders");
 			auto *contrib = rc->platform->step<integrate_light_sample>();
 			sample_light  = sample;
 			find_light    = trace;
@@ -574,14 +575,15 @@ namespace wf {
 			lightcol = rc->platform->allocate_vec3_per_sample();
 		
 			auto *sample  = rc->platform->step<sample_mis_dir>(); //[MIS]
-			auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			//auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			auto *trace   = rc->platform->step<find_closest_hits>("find occluders"); //TODO: alternate closest and anyhit!
 			auto *contrib = rc->platform->step<integrate_mis_sample>(); //[MIS]
 			sample_light  = sample; //[MIS]
 			find_light    = trace;
 			integrate     = contrib; //[MIS]
 			sample->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
 			trace->use(shadowrays);
-			contrib->use(camrays, shadowrays, pdf, pdf_other, lightcol); //[MIS]
+			contrib->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
 		}
 		else throw runtime_error("unsupported importance sampling method for wf/direct");
 
