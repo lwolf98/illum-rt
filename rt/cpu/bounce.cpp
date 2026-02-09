@@ -106,6 +106,10 @@ namespace wf::cpu {
 			}
 	}
 
+	void sample_mis_dir::run() {
+
+	}
+
 	void integrate_dir_sample::run() {
 		time_this_wf_step;
 		auto res = rc->resolution();
@@ -149,6 +153,10 @@ namespace wf::cpu {
 				}
 				rc->framebuffer.color(x,y) += vec4(radiance, 1);
 			}
+	}
+
+	void integrate_mis_sample::run() {
+
 	}
 
 }

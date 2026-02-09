@@ -166,6 +166,7 @@ namespace wf {
 			using namespace std::chrono;
 			auto start = system_clock::now();
 			bool estimated = false;
+			std::cout << "TESTTTTTT!!!" << std::endl;
 			while(bool run = compute_sample()) {
 				run = compute_sample();
 				if (!estimated) {

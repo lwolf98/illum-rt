@@ -333,6 +333,74 @@ namespace wf::cuda {
 										   rng.random_numbers);
 	}
 
+
+
+	namespace k {
+		static __global__ void sample_mis(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
+											const scene_refs *refs,
+											int lights, float *lights_f, float *lights_cdf, float lights_int_1spaced, uint4 *tri_lights, float3 *lightcol, // TODO F4
+											float *pdfs_light, float *pdfs_other, float4 *random) {
+			int x = threadIdx.x + blockIdx.x*blockDim.x;
+			int y = threadIdx.y + blockIdx.y*blockDim.y;
+			int ray_index = y*res.x + x;
+			if (x >= res.x || y >= res.y)
+				return;
+			tri_is hit = hits[ray_index];
+			diff_geom dg(hit, refs); //TODO: maybe don't use diff_geom here when only material is required
+			float3 w_i { 0,0,0 };
+			float3 org { 0,0,0 };
+			float tmax = -FLT_MAX;
+			float3 l_col { 0,0,0 };
+			float pdf = 0;
+			if (hit.valid()) {
+				if (not_black(dg.mat->emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
+				else {
+					float pdf_light = 0;
+					float pdf_brdf = 0;
+					float4 xis = random[ray_index];
+					int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf);
+					float a_pdf = 0, r_tm;
+					float3 r_d, r_o;
+					sample_Li(l_id, hit, {xis.x,xis.y}, ray_index,
+							  camrays, tri_lights, refs,
+							  r_d, r_o, r_tm, l_col, a_pdf);
+					if (not_black(l_col)) {
+						w_i = r_d;
+						org = r_o;
+						tmax = r_tm;
+					}
+					pdf *= a_pdf;
+				}
+			}
+			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
+			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
+			pdfs_light[ray_index] = pdf;
+			//pdfs_other[ray_index] = ...;
+			lightcol[ray_index] = l_col;
+		}
+	}
+
+	void sample_mis_dir::run() {
+		rng.compute();
+		int2 res = frame_res();
+		k::sample_mis<<<launch_config>>>(res,
+										   camdata->rays.device_memory,
+										   camdata->intersections.device_memory,
+										   bouncedata->rays.device_memory,
+										   camdata->framebuffer.device_memory,
+										   pf->sd->refs.device_memory,
+										   light_dist->n,
+										   light_dist->f.device_memory,
+										   light_dist->cdf.device_memory,
+										   light_dist->integral_1spaced,
+										   light_dist->tri_lights.device_memory,
+										   light_col->data.device_memory,
+										   pdf_light->data.device_memory,
+										   pdf_other->data.device_memory,
+										   rng.random_numbers);
+	}
+
 	// 
 	// Integration
 	// 
@@ -495,5 +563,59 @@ namespace wf::cuda {
 											  pf->sd->refs.device_memory,
 											  light_col->data.device_memory,
 											  pdf->data.device_memory);
+	}
+
+
+	namespace k {
+		static __global__ void integrate_mis(int2 res,
+											   float4 *camrays, tri_is *cam_hits,
+											   float4 *shadowrays, tri_is *shadow_hits,
+											   float4 *framebuffer,
+											   wf::cuda::scene_refs *refs,
+											   float3 *lightcol, float *pdf_light, float *pdf_other) {
+			int x = threadIdx.x + blockIdx.x*blockDim.x;
+			int y = threadIdx.y + blockIdx.y*blockDim.y;
+			int ray_index = y*res.x + x;
+			if (x >= res.x || y >= res.y)
+				return;
+
+			tri_is hit = cam_hits[ray_index];
+			tri_is shadow_hit = shadow_hits[ray_index];
+			float3 radiance {0,0,0};
+			float4 shadowray_dir = shadowrays[2*ray_index+1];
+
+			if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
+				diff_geom dg(hit, refs);
+
+				// light color
+				float3 brightness = lightcol[ray_index];
+				// brdf
+				float3 w_o = -f3(camrays[2*ray_index+1]);
+				float3 w_i = f3(shadowray_dir);
+
+				float3 f = layered_gtr2(w_o, w_i, dg, hit.is_tri() ? refs->vertex_tc : refs->patch_vertex_tc);
+				// dot
+				float cos_theta = cdot(w_i, dg.ns);
+				// combine
+				radiance = radiance + brightness * f * cos_theta / pdf_light[ray_index];
+			}
+
+			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+		}
+	}
+
+	void integrate_mis_sample::run() {
+		int2 res = frame_res();
+		
+		k::integrate_mis<<<launch_config>>>(res,
+											  camrays->rays.device_memory,
+											  camrays->intersections.device_memory,
+											  shadowrays->rays.device_memory,
+											  shadowrays->intersections.device_memory,
+											  camrays->framebuffer.device_memory,
+											  pf->sd->refs.device_memory,
+											  light_col->data.device_memory,
+											  pdf_light->data.device_memory,
+											  pdf_other->data.device_memory);
 	}
 }

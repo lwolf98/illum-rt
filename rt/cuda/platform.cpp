@@ -73,6 +73,8 @@ namespace wf {
 			register_wf_step_by_id(, compute_light_distribution);
 			register_wf_step_by_id(, sample_light_dir);
 			register_wf_step_by_id(, integrate_light_sample);
+			register_wf_step_by_id(, sample_mis_dir);
+			register_wf_step_by_id(, integrate_mis_sample);
 
 			timer = new wf::cuda::timer;
 		}
