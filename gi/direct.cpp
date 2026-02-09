@@ -391,9 +391,13 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					pdf_light = l_pdf*pdf;
 					#ifndef BAD_MIS
 					pdf_brdf  = brdf->pdf(dg, -view_ray.d, shadow_ray.d);
+
+					//[MIS] uni
+					//pdf_brdf   = 1.f/(2*pi);
+
 					#endif
 					if (l_col != vec3(0)) {
-						shadow_ray.t_min = 0.1f; //DEBUG
+						//shadow_ray.t_min = 0.1f; //DEBUG
 						auto is = rc->scene.rt->closest_hit(shadow_ray);
 						if (x == debug_pixel_x && y == debug_pixel_y) {
 							std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
@@ -409,10 +413,25 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 					}
 				}
 				else {
+					//[MIS] uni
+					/*vec2 xi = rc->rng.uniform_float2();
+					float z = xi.x;
+					float phi = 2*pi*xi.y;
+					// z is cos(theta), sin(theta) = sqrt(1-cos(theta)^2)
+					float sin_theta = sqrtf(1.0f - z*z);
+					vec3 sampled_dir = vec3(sin_theta * cosf(phi),
+											sin_theta * sinf(phi),
+											z);
+					vec3 w_i = align(sampled_dir, dg.ng);
+					ray sample_ray(dg.x, w_i);
+					vec3 f = brdf->f(dg, -view_ray.d, w_i);
+					float pdf = 1.f/(2*pi);*/
+
+
 					auto [w_i, f, pdf, _] = brdf->sample(dg, -view_ray.d, rc->rng.uniform_float2());
 					if (pdf == 0 && f == vec3(0)) break; // this will loop forever as balance will become 0 (in case pdf==0 originates from geometry (shading normals))
 					ray light_ray(dg.x, w_i);
-					light_ray.t_min = 0.1f; //DEBUG
+					//light_ray.t_min = 0.1f; //DEBUG
 					pdf_brdf  = pdf;
 					if (f != vec3(0))
 #ifndef RTGI_SKIP_ASS
@@ -513,6 +532,7 @@ namespace wf {
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
+		if (sampling_mode == ::direct_light::sample_mis)
 		
 		regenerate_steps();
 	}
@@ -567,7 +587,8 @@ namespace wf {
 			lightcol = rc->platform->allocate_vec3_per_sample();
 		
 			auto *sample  = rc->platform->step<sample_light_dir>();
-			auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			//auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			auto *trace   = rc->platform->step<find_closest_hits>("find occluders");
 			auto *contrib = rc->platform->step<integrate_light_sample>();
 			sample_light  = sample;
 			find_light    = trace;
@@ -576,6 +597,23 @@ namespace wf {
 			trace->use(shadowrays);
 			contrib->use(camrays, shadowrays, pdf, lightcol);
 		}
+		else if (sampling_mode == ::direct_light::sample_mis) {
+			// for this case we also have to compute the light distribution
+			auto *l_dist = rc->platform->step<compute_light_distribution>();
+			data_reset_steps.push_back(l_dist);
+			lightcol = rc->platform->allocate_vec3_per_sample();
+		
+			auto *sample  = rc->platform->step<sample_mis_dir>(); //[MIS]
+			//auto *trace   = rc->platform->step<find_any_hits>("find occluders");
+			auto *trace   = rc->platform->step<find_closest_hits>("find occluders"); //TODO: alternate closest and anyhit!
+			auto *contrib = rc->platform->step<integrate_mis_sample>(); //[MIS]
+			sample_light  = sample; //[MIS]
+			find_light    = trace;
+			integrate     = contrib; //[MIS]
+			sample->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
+			trace->use(shadowrays);
+			contrib->use(camrays, shadowrays, pdf, pdf_other, l_dist, lightcol); //[MIS]
+		}
 		else throw runtime_error("unsupported importance sampling method for wf/direct");
 
 		sample_cam->use(camrays);
@@ -583,9 +621,9 @@ namespace wf {
 
 		sampling_steps.push_back(sample_cam);
 		sampling_steps.push_back(find_hit);
-		sampling_steps.push_back(sample_light);
+		sampling_steps.push_back(sample_light); //[MIS]
 		sampling_steps.push_back(find_light);
-		sampling_steps.push_back(integrate);
+		sampling_steps.push_back(integrate); //[MIS]
 
 		// For denoising
 		// TODO: denoising needs to be fixed, currently crashing compilation
@@ -612,6 +650,10 @@ namespace wf {
 			else if (value == "cosine") sampling_mode = ::direct_light::sample_cosine;
 			else if (value == "light") sampling_mode = ::direct_light::sample_light;
 			else if (value == "brdf") sampling_mode = ::direct_light::sample_brdf;
+			else if (value == "mis") {
+				sampling_mode = ::direct_light::sample_mis;
+				pdf_other = rc->platform->allocate_float_per_sample();
+			}
 			else cerr << "unknown sampling mode in " << __func__ << ": " << value << endl;
 			regenerate_steps();
 			return true;

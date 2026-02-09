@@ -11,6 +11,8 @@ namespace wf::gl {
 	extern compute_shader sample_light_shader;
 	extern compute_shader integrate_dir_sample_shader;
 	extern compute_shader integrate_light_sample_shader;
+	extern compute_shader sample_mis_shader;
+	extern compute_shader integrate_mis_sample_shader;
 
 	void sample_uniform_dir::run() {
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
@@ -70,6 +72,10 @@ namespace wf::gl {
 		cs.unbind();
 	}
 
+	void sample_mis_dir::run() {
+
+	}
+
 	void integrate_dir_sample::run() {
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_BUFFER_UPDATE_BARRIER_BIT | GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT);
 		time_this_wf_step;
@@ -105,5 +111,9 @@ namespace wf::gl {
 		cs.uniform("w", res.x).uniform("h", res.y);
 		cs.dispatch(res.x, res.y);
 		cs.unbind();
+	}
+
+	void integrate_mis_sample::run() {
+		
 	}
 }

@@ -6,6 +6,9 @@
 #include "cuda-operators.h"
 #include "trace-helper.cuh"
 
+//#define MIS_DBG
+//#define MIS_DBG_LIGHT
+
 #define launch_config NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE
 namespace wf::cuda {
 
@@ -259,6 +262,109 @@ namespace wf::cuda {
 										   rng.random_numbers);
 	}
 
+
+
+	namespace k {
+		static __global__ void sample_mis(int2 res, float4 *camrays, tri_is *hits, float4 *shadowrays, float4 *framebuffer,
+											const scene_refs *refs,
+											int lights, float *lights_f, float *lights_cdf, float lights_int_1spaced, uint4 *tri_lights, float3 *lightcol, // TODO F4
+											float *pdfs_light, float *pdfs_other, bool is_light_sample, float4 *random) {
+			int x = threadIdx.x + blockIdx.x*blockDim.x;
+			int y = threadIdx.y + blockIdx.y*blockDim.y;
+			int ray_index = y*res.x + x;
+			if (x >= res.x || y >= res.y)
+				return;
+			tri_is hit = hits[ray_index];
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			diff_geom dg(hit, cam_org, cam_dir, refs); //TODO: maybe don't use diff_geom here when only material is required
+			float3 w_i { 0,0,0 };
+			float3 org { 0,0,0 };
+			float tmax = -FLT_MAX;
+			float3 l_col { 0,0,0 };
+			//float pdf = 0;
+			float pdf_light = 0;
+			float pdf_other = 0;
+			if (hit.valid()) {
+				if (not_black(dg.mat->emissive))
+					framebuffer[ray_index] = framebuffer[ray_index] + emissive_albedo4(dg); // might be w==0
+				else {
+					if (is_light_sample) {
+						float4 xis = random[ray_index];
+						int l_id = sample_index(lights, lights_f, lights_cdf, lights_int_1spaced, xis.z, pdf_light);
+						float a_pdf = 0, r_tm;
+						float3 r_d, r_o;
+						sample_Li(l_id, hit, {xis.x,xis.y}, ray_index,
+								camrays, tri_lights, refs,
+								r_d, r_o, r_tm, l_col, a_pdf);
+						if (not_black(l_col)) {
+							w_i = r_d;
+							org = r_o;
+							tmax = r_tm;
+						}
+						pdf_light *= a_pdf;
+
+						pdf_other = one_over_2pi;
+					}
+					else {
+						//[MIS]...
+						//float2 xi = make_float2{random[ray_index].x, random[ray_index.y]};
+						float2 xi;
+						xi.x = random[ray_index].x;
+						xi.y = random[ray_index].y;
+						float3 sampled_dir = uniform_sample_hemisphere<float3>(xi);
+						float3 ns = dg.ns;
+
+						flip_normals_to_ray(ns, cam_dir);
+						w_i = align(sampled_dir, ns);
+						org = cam_org + hit.t * cam_dir;
+						tmax = FLT_MAX;
+						pdf_other = one_over_2pi;
+
+						//pdf_light = ...;
+					}
+				}
+			}
+			shadowrays[ray_index*2+0] = make_float4(org.x, org.y, org.z, 0.0001);
+			shadowrays[ray_index*2+1] = make_float4(w_i.x, w_i.y, w_i.z, tmax);
+			pdfs_light[ray_index] = pdf_light;
+			pdfs_other[ray_index] = pdf_other;
+			lightcol[ray_index] = l_col;
+		}
+	}
+
+	void sample_mis_dir::run() {
+		rng.compute();
+		int2 res = frame_res();
+		//is_light_sample = !is_light_sample;
+		//is_light_sample = true;
+#ifndef MIS_DBG
+		is_light_sample = !is_light_sample;
+#else
+	#ifdef MIS_DBG_LIGHT
+		is_light_sample = true;
+	#else
+		is_light_sample = false;
+	#endif
+#endif
+		k::sample_mis<<<launch_config>>>(res,
+										   camdata->rays.device_memory,
+										   camdata->intersections.device_memory,
+										   bouncedata->rays.device_memory,
+										   camdata->framebuffer.device_memory,
+										   pf->sd->refs.device_memory,
+										   light_dist->n,
+										   light_dist->f.device_memory,
+										   light_dist->cdf.device_memory,
+										   light_dist->integral_1spaced,
+										   light_dist->tri_lights.device_memory,
+										   light_col->data.device_memory,
+										   pdf_light->data.device_memory,
+										   pdf_other->data.device_memory,
+										   is_light_sample,
+										   rng.random_numbers);
+	}
+
 	// 
 	// Integration
 	// 
@@ -408,5 +514,139 @@ namespace wf::cuda {
 											  pf->sd->refs.device_memory,
 											  light_col->data.device_memory,
 											  pdf->data.device_memory);
+	}
+
+
+	namespace k {// Perceptional brightness of a color
+		static __device__ inline float luma(const float3& rgb) {
+			return dot({0.212671f, 0.715160f, 0.072169f}, rgb);
+		}
+
+		static __global__ void integrate_mis(int2 res,
+											   float4 *camrays, tri_is *cam_hits,
+											   float4 *shadowrays, tri_is *shadow_hits,
+											   float4 *framebuffer,
+											   wf::cuda::scene_refs *refs,
+											   float3 *lightcol, float *pdfs_light, float *pdfs_other, float lights_int_1spaced, bool is_light_sample) {
+			int x = threadIdx.x + blockIdx.x*blockDim.x;
+			int y = threadIdx.y + blockIdx.y*blockDim.y;
+			int ray_index = y*res.x + x;
+			if (x >= res.x || y >= res.y)
+				return;
+
+			tri_is hit = cam_hits[ray_index];
+			tri_is shadow_hit = shadow_hits[ray_index];
+			float3 radiance {0,0,0};
+			float3 cam_org = f3(camrays[ray_index*2]);
+			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+			float4 shadowray_org = shadowrays[2*ray_index+0];
+			float4 shadowray_dir = shadowrays[2*ray_index+1];
+
+			float pdf_light = pdfs_light[ray_index];
+			float pdf_other = pdfs_other[ray_index];
+
+			float3 brightness;
+			float cos_theta;
+			float3 f;
+			bool integrated = false;
+
+			if (is_light_sample) {
+				if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
+					diff_geom dg(hit, cam_org, cam_dir, refs);
+
+					// light color
+					brightness = lightcol[ray_index];
+					// brdf
+					float3 w_o = -f3(camrays[2*ray_index+1]);
+					float3 w_i = f3(shadowray_dir);
+
+					f = layered_gtr2(w_o, w_i, dg);
+					// dot
+					cos_theta = cdot(w_i, dg.ns);
+					// combine
+					//radiance = radiance + brightness * f * cos_theta / pdf_light;
+					integrated = true;
+				}
+			}
+			else {
+				tri_is &light_hit = shadow_hit;
+				if (hit.valid() && light_hit.valid()) {
+					diff_geom dg(hit, cam_org, cam_dir, refs);
+					diff_geom on_light(light_hit, dg.x, f3(shadowray_dir), refs);
+
+					// light color
+					uint4 light_tri = refs->triangles[light_hit.ref()];
+					material light_mat = refs->materials[light_tri.w];
+					brightness = f3(light_mat.emissive);
+					// brdf
+					float3 w_o = -cam_dir; //f3(camrays[2*ray_index+1]);
+					float3 w_i = f3(shadowray_dir);
+					f = layered_gtr2(w_o, w_i, dg);
+					// dot
+					cos_theta = cdot(w_i, dg.ns);
+					// combine
+					//radiance = radiance + brightness * f * cos_theta / pdf[ray_index];
+
+					// Power:
+					float area  = 0.5f * length(cross(f3(refs->vertex_pos[light_tri.y]-refs->vertex_pos[light_tri.x]),
+													f3(refs->vertex_pos[light_tri.z]-refs->vertex_pos[light_tri.x])));
+					float3 power = brightness * area;
+					
+					// PDF tri light:
+					float d = length(on_light.x - f3(shadowray_org));
+					float cos_theta_light = dot(on_light.ns, -f3(shadowray_dir));
+					//if (cos_theta_light <= 0.0f) return 0.0f;
+					float pdf = cos_theta <= 0 ? 0.f : d*d/(cos_theta_light*area);
+
+
+					//pdf_light = power.x; //luma(tl.power()) / rc->scene.light_distribution->integral();
+					pdf_light = luma(power) / lights_int_1spaced;
+					pdf_light *= pdf; //tl.pdf(light_ray, hit_geom);
+					integrated = true;
+				}
+			}
+
+			if (integrated) {
+				#ifndef MIS_DBG
+				float pdf_mis = 0.5 * (pdf_light + pdf_other);
+				#else
+				#ifdef MIS_DBG_LIGHT
+				float pdf_mis = pdf_light;
+				#else
+				float pdf_mis = pdf_other;
+				#endif
+				#endif
+				radiance = radiance + brightness * f * cos_theta / pdf_mis;
+			}
+
+			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+		}
+	}
+
+	void integrate_mis_sample::run() {
+		int2 res = frame_res();
+		//is_light_sample = !is_light_sample;
+		//is_light_sample = true;
+#ifndef MIS_DBG
+		is_light_sample = !is_light_sample;
+#else
+	#ifdef MIS_DBG_LIGHT
+		is_light_sample = true;
+	#else
+		is_light_sample = false;
+	#endif
+#endif
+		k::integrate_mis<<<launch_config>>>(res,
+											  camrays->rays.device_memory,
+											  camrays->intersections.device_memory,
+											  shadowrays->rays.device_memory,
+											  shadowrays->intersections.device_memory,
+											  camrays->framebuffer.device_memory,
+											  pf->sd->refs.device_memory,
+											  light_col->data.device_memory,
+											  pdf_light->data.device_memory,
+											  pdf_other->data.device_memory,
+											  light_dist->integral_1spaced,
+											  is_light_sample);
 	}
 }

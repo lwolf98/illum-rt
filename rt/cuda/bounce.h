@@ -41,4 +41,15 @@ namespace wf::cuda {
 
 
 
+	struct sample_mis_dir : public wf::wire::sample_mis_dir<raydata, per_sample_data<float>, compute_light_distribution, per_sample_data<vec3>> {
+		random_number_generator<float4> rng;
+		void run() override;
+	};
+
+	struct integrate_mis_sample : public wf::wire::integrate_mis_sample<raydata, per_sample_data<float>, compute_light_distribution, per_sample_data<vec3>> {
+		void run() override;
+	};
+
+
+
 }

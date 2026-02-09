@@ -66,6 +66,8 @@ namespace wf::gl {
 		register_wf_step_by_id(, sample_light_dir);
 		register_wf_step_by_id(, integrate_dir_sample);
 		register_wf_step_by_id(, integrate_light_sample);
+		register_wf_step_by_id(, sample_mis_dir);
+		register_wf_step_by_id(, integrate_mis_sample);
 		register_wf_step_by_id(, copy_to_preview);
 
 		timer = new wf::gl::timer;
