@@ -10,6 +10,8 @@ config.h.in
 config.h.in~
 INSTALL
 rt/gl/glsl.deps
+embedded-ptx-code.*
+configure~
 configure
 rt/gl/glsl.deps
 auxx
@@ -38,3 +40,6 @@ render-data/local/
 local/
 .vscode/
 rtgi_*
+
+#Script generation
+scripts/gen-test/

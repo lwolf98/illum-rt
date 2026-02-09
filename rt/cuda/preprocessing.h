@@ -31,6 +31,7 @@ namespace wf::cuda {
 	 */
 	struct rotate_scene : public wf::step {
 		static constexpr char id[] = "rotate scene";
+		std::string get_id() override { return id; }
 		void run() override;
 	};
 
@@ -42,6 +43,7 @@ namespace wf::cuda {
 	 */
 	struct rotate_scene_keep_org : public wf::step {
 		static constexpr char id[] = "rotate scene keeping original data";
+		std::string get_id() override { return id; }
 		void run() override;
 	};
 
@@ -50,6 +52,7 @@ namespace wf::cuda {
 	 */
 	struct drop_scene_view : public wf::step {
 		static constexpr char id[] = "drop scene view";
+		std::string get_id() override { return id; }
 		void run() override;
 	};
 }

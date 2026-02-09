@@ -15,6 +15,8 @@
 
 #include "config.h"
 
+#include <regex>
+
 #ifdef HAVE_GL
 #include "preview.h"
 #endif
@@ -106,7 +108,12 @@ void run(gi_algorithm *algo) {
 		std::cout << "Denoising took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
 	}
 
-	rc->framebuffer.png().write(cmdline.outfile);
+	string out_name = cmdline.outfile;
+	if (rc->vpl_count >= 0)
+		out_name = std::regex_replace(out_name, std::regex(".png"), "_v" + std::to_string(rc->vpl_count) + ".png");
+
+	std::cout << out_name << std::endl;
+	rc->framebuffer.png().write(out_name);
 }
 
 void start_repl_and_process_commands() {

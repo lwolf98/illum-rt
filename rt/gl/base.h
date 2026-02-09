@@ -292,6 +292,10 @@ namespace wf {
 			}
 		};
 
+		struct vpldata : public wf::vpldata {
+			//TODO-ML: to be implemented
+		};
+
 		
 		/*! \brief A copy of the scene data kept on the GPU.
 		 *

@@ -1,10 +1,13 @@
-platform opengl
+platform cpu
 
 at 0 0 0
 look 0 0 -1
 up 0 1 0
 
 load render-data/tri.obj
+raytracer embree
+add-scene-step build accel struct
+
 algo primary-wf
 sppx 1
 resolution 640 360

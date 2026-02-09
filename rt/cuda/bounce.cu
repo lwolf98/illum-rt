@@ -14,13 +14,6 @@ namespace wf::cuda {
 
 	const float eps = 1e-4f; // see rt.h
 
-	__device__ float3 hit_ns(const tri_is &hit, const uint4 &tri, const float4 *vert_norm) {
-		float3 a = f3(vert_norm[tri.x]);
-		float3 b = f3(vert_norm[tri.y]);
-		float3 c = f3(vert_norm[tri.z]);
-		return bary_interpol(a, b, c, hit.beta, hit.gamma);
-	}
-
 	// 
 	// Uniform Sampling
 	// 
@@ -64,6 +57,8 @@ namespace wf::cuda {
 	int2 frame_res() { auto r = rc->resolution(); return {r.x,r.y}; }
 
 	void sample_uniform_dir::run() {
+		//time_this_block(sample_uniform_dir);
+		//time_this_wf_step;
 		rng.compute();
 
 		int2 res = frame_res();
@@ -120,6 +115,8 @@ namespace wf::cuda {
 	}
 
 	void sample_cos_weighted_dir::run() {
+		//time_this_wf_step;
+		//time_this_block(sample_cos_dir);
 		rng.compute();
 
 		int2 res = frame_res();
@@ -244,6 +241,8 @@ namespace wf::cuda {
 
 	
 	void sample_light_dir::run() {
+		//time_this_block(sample_light_dir);
+		//time_this_wf_step;
 		rng.compute();
 		int2 res = frame_res();
 		k::sample_light<<<launch_config>>>(res,
@@ -363,13 +362,13 @@ namespace wf::cuda {
 
 	namespace k {
 
-		__device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
+		static __device__ float3 lambertian_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
 			if (!same_hemisphere(w_i, dg.ns)) return make_float3(0,0,0);
 			return one_over_pi * wf::cuda::albedo(dg);
 		}
 
 		#define sqr(x) ((x)*(x))
-		__device__ inline float ggx_d(const float NdotH, float roughness) {
+		static __device__ inline float ggx_d(const float NdotH, float roughness) {
 			if (NdotH <= 0) return 0.f;
 			const float tan2 = tan2_theta(NdotH);
 			if (!isfinite(tan2)) return 0.f;
@@ -377,7 +376,7 @@ namespace wf::cuda {
 			return a2 / (pi * sqr(sqr(NdotH)) * sqr(a2 + tan2));
 		}
 
-		__device__ inline float ggx_g1(const float NdotV, float roughness) {
+		static __device__ inline float ggx_g1(const float NdotV, float roughness) {
 			if (NdotV <= 0) return 0.f;
 			const float tan2 = tan2_theta(NdotV);
 			if (!isfinite(tan2)) return 0.f;
@@ -386,7 +385,7 @@ namespace wf::cuda {
 		#undef sqr
 
 		
-		__device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
+		static __device__ float3 gtr_coat_reflection(float3 w_o, float3 w_i, const diff_geom &dg) {
 			if (!same_hemisphere(dg.ns, w_i)) return make_float3(0,0,0); // should be ng
 			const float NdotV = cdot(dg.ns, w_o);
 			const float NdotL = cdot(dg.ns, w_i);
@@ -401,7 +400,7 @@ namespace wf::cuda {
 			return make_float3(microfacet,microfacet,microfacet);
 		}
 
-		__device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg) {
+		static __device__ float3 layered_gtr2(float3 w_o, float3 w_i, const diff_geom &dg) {
 			const float F = fresnel_dielectric(absdot(dg.ns, w_o), 1.0f, dg.mat->ior);
 			float3 diff = lambertian_reflection(w_o, w_i, dg);
 			float3 spec = gtr_coat_reflection(w_o, w_i, dg);
@@ -480,10 +479,13 @@ namespace wf::cuda {
 			}
 
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(0,0,0, 1.0);
 		}
 	}
 
 	void integrate_dir_sample::run() {
+		//time_this_block(integr_dir_sample);
+		//time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_dir<<<launch_config>>>(res,
 											camrays->rays.device_memory,
@@ -496,6 +498,8 @@ namespace wf::cuda {
 	}
 	
 	void integrate_light_sample::run() {
+		//time_this_block(integr_light_sample);
+		//time_this_wf_step;
 		int2 res = frame_res();
 		k::integrate_light<<<launch_config>>>(res,
 											  camrays->rays.device_memory,

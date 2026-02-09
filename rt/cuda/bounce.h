@@ -14,7 +14,22 @@
  *
  */
 
+/*namespace wf::cuda::k {
+	static __device__ bool not_black(float4 c);
+}
+static __device__ bool wf::cuda::k::not_black(float4 c);*/
+
 namespace wf::cuda {
+	/*const float eps = 1e-4f; // see rt.h
+	int2 frame_res();
+	__device__ float3 f3(const float4 &v);
+	__device__ float3 hit_ng(const tri_is &hit, const uint4 &tri, const float4 *vert_norm);
+
+	namespace k {
+		//static __device__ bool not_black(float4 c);
+		//__device__ bool test_funct();
+		__device__ int lower_bound(int n, float v, float *lights_cdf);
+	}*/
 	
 	struct sample_uniform_dir : public wf::wire::sample_uniform_dir<raydata, per_sample_data<float>> {
 		random_number_generator<float2> rng;

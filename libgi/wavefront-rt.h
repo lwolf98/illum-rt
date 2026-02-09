@@ -9,6 +9,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 #include <chrono>
 
 namespace wf {
@@ -61,6 +62,7 @@ namespace wf {
 
 	struct step {
 		virtual void run() = 0;
+		virtual std::string get_id() { return "not overriden"; }
 	};
 	
 	struct raydata {
@@ -74,6 +76,11 @@ namespace wf {
 	 */
 	 template<typename T> struct per_sample_data {
 		virtual ~per_sample_data() {}
+	};
+
+	struct vpldata {
+		virtual ~vpldata() {}
+		virtual int size() = 0;
 	};
 	
 	#define register_batch_rt(N,C,X) tracers[N] = [C]() -> wf::batch_ray_tracer* { return new X; }
@@ -126,9 +133,23 @@ namespace wf {
 		template<typename T> T* step(const std::string &name = T::id) { return dynamic_cast<T*>(step(T::id, name)); }
 		
 		virtual wf::raydata* allocate_raydata() = 0;
-		// sadly, these cannot be templated...
+		virtual wf::raydata* allocate_raydata_manually(int size) = 0;
+		// sadly, this cannot be templated...
 		virtual wf::per_sample_data<float>* allocate_float_per_sample() = 0;
-		virtual wf::per_sample_data<vec3>*  allocate_vec3_per_sample()  = 0;
+		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample() = 0;
+		virtual wf::per_sample_data<int>* allocate_int_per_sample() = 0;
+		virtual wf::per_sample_data<float>* allocate_float_per_sample_manually(int size) = 0;
+		virtual wf::per_sample_data<vec3>* allocate_vec3_per_sample_manually(int size) = 0;
+		virtual wf::per_sample_data<int>* allocate_int_per_sample_manually(int size) = 0;
+		//virtual wf::per_sample_data<void>* allocate_data_per_sample(int32_t typesize) = 0;
+
+		/* manylight allocation */
+		virtual wf::vpldata* allocate_vpldata() = 0;
+		virtual wf::vpldata* allocate_vpldata_manually(int size) = 0;
+		/*virtual vpl* allocate_vpl_store() = 0;
+		virtual vec3* allocate_light_throughput() = 0;
+		//virtual vector<vpl>* allocate_vpls() = 0;
+		virtual vpl* allocate_vpl_per_sample() = 0;*/
 
 		virtual void commit_scene(scene *scene) = 0;
 		virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
@@ -148,18 +169,36 @@ namespace wf {
 		std::vector<step*> frame_finalization_steps;
 	public:
 		void prepare_data() override {
-			for (auto *s : data_reset_steps) s->run();
+			int i = 0;
+			for (auto *s : data_reset_steps) {
+				raii_timer raii_timer__test_timer("p_da_" + s->get_id(), stats_timer);
+				s->run();
+			}
 		}
 		void prepare_frame() override {
 			wavefront_algorithm::prepare_frame();
-			for (auto *s : frame_preparation_steps) s->run();
+			for (auto *s : frame_preparation_steps) {
+				raii_timer raii_timer__test_timer("p_fr_" + s->get_id(), stats_timer);
+				s->run();
+			}
 		}
 		bool compute_sample() override {
 			if (current_sample_index >= rc->sppx) return false;
 			current_sample_index++;
-			for (auto *step : sampling_steps)
+			for (auto *step : sampling_steps) {
+				raii_timer raii_timer__test_timer("intg_" + step->get_id(), stats_timer);
 				step->run();
+			}
 			rc->platform->timer->synchronize();
+			//std::cout << "end compute sample" << std::endl;
+			if (frame_preparation_steps.size() > 2) {
+				auto *tmp1 = frame_preparation_steps[0];
+				auto *tmp2 = frame_preparation_steps[frame_preparation_steps.size()-1];
+				frame_preparation_steps.clear();
+				frame_preparation_steps.push_back(tmp1);
+				frame_preparation_steps.push_back(tmp2);
+				std::cout << "removed init steps" << std::endl;
+			}
 			return current_sample_index < rc->sppx;	
 		}
 		void compute_samples() override {
@@ -178,7 +217,11 @@ namespace wf {
 			std::cout << "Took " << timediff(delta_ms) << " (" << delta_ms << " ms) " << " to complete" << std::endl;
 		}
 		void finalize_frame() override {
-			for (auto *s : frame_finalization_steps) s->run();
+			std::cout << "finalize frame!!!" << std::endl;
+			for (auto *s : frame_finalization_steps) {
+				raii_timer raii_timer__test_timer("finl_" + s->get_id(), stats_timer);
+				s->run();
+			}
 			rc->platform->timer->synchronize();
 		}
 	};
@@ -196,10 +239,11 @@ namespace wf {
 		batch_ray_tracer *rt;
 	public:
 		static constexpr char id[] = "find closest hit";
+		std::string get_id() override { return id; }
 		find_closest_hits(batch_ray_tracer *rt) : rt(rt) {}
 		virtual void use(raydata*) = 0;
 		void run() override {
-			time_this_wf_step;
+			//time_this_wf_step;
 			rt->compute_closest_hit();
 		}
 	};
@@ -208,15 +252,22 @@ namespace wf {
 		batch_ray_tracer *rt;
 	public:
 		static constexpr char id[] = "find any hit";
+		std::string get_id() override {
+			const void *address = static_cast<const void*>(this);
+			std::stringstream ss;
+			ss << address;
+			return id + ss.str();
+		}
 		find_any_hits(batch_ray_tracer *rt) : rt(rt) {}
 		virtual void use(raydata*) = 0;
 		void run() override {
-			time_this_wf_step;
+			//time_this_wf_step;
 			rt->compute_any_hit();
 		}
 	};
 	struct build_accel_struct : public step {
 		static constexpr char id[] = "build accel struct";
+		std::string get_id() override { return id; }
 	};
 
 	struct path_rays {
