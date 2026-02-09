@@ -503,7 +503,6 @@ namespace wf {
 		camrays = rc->platform->allocate_raydata();
 		shadowrays = rc->platform->allocate_raydata();
 		pdf = rc->platform->allocate_float_per_sample();
-		if (sampling_mode == ::direct_light::sample_mis)
 		
 		regenerate_steps();
 	}
