@@ -6,7 +6,12 @@ Makefile
 config.log
 config.status
 config.h
+config.h.in
 config.h.in~
+INSTALL
+rt/gl/glsl.deps
+embedded-ptx-code.*
+configure~
 configure
 auxx
 src/rtgi
@@ -18,14 +23,7 @@ driver/rtgi
 libgi/libgi.a
 test.obj
 *.a
-
 #*.png
-config.h.in
-configure~
-INSTALL
-embedded-ptx-code.*
-glsl.deps
-scripts/gen-test/
 rtgi-202*tar.gz
 rtgi-202*tar.bz2
 
@@ -40,3 +38,7 @@ render-data/dragon/
 render-data/local/
 local/
 .vscode/
+rtgi_*
+
+#Script generation
+scripts/gen-test/
