@@ -95,7 +95,8 @@ vec3 direct_light::sample_pixel(uint32_t x, uint32_t y) {
 
 #ifndef RTGI_SKIP_DIRECT_ILLUM_IMPL
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+//				radiance = dg.mat->emissive;
+radiance = dg.emissive_albedo();
 			}
 			else {
 				//auto col = dg.mat->albedo_tex ? dg.mat->albedo_tex->sample(dg.tc) : dg.mat->albedo;
@@ -362,7 +363,8 @@ vec3 direct_light_mis::sample_pixel(uint32_t x, uint32_t y) {
 			diff_geom dg = diff_geom::init(closest, rc->scene);
 			
 			if (dg.mat->emissive != vec3(0)) {
-				radiance = dg.mat->emissive;
+//				radiance = dg.mat->emissive;
+radiance = dg.emissive_albedo();
 			}
 			else {
 				brdf *brdf = dg.mat->brdf;

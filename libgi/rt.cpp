@@ -55,6 +55,12 @@ vec3 diff_geom::albedo() const {
 	return mat->albedo;
 }
 
+vec3 diff_geom::emissive_albedo() const {
+	vec3 color = albedo();
+	if(color != vec3(0))	return color * mat->emissive;
+	else					return mat->emissive;
+}
+
 float diff_geom::opacity() const {
 	if (mat->albedo_tex)
 		return mat->albedo_tex->sample(tc).w;
