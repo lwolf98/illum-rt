@@ -1,0 +1,151 @@
+#omp off
+
+up 0 1 0
+
+#sppx 128
+sppx 40960
+#sppx 400000
+#resolution 960 540
+resolution 1920 1080
+#resolution 1920 1200
+
+default-brdf layered-gtr2
+
+# Plane light
+#load render-data/light/plane_sky.obj
+#material select Light
+#material emissive 2 2 2
+
+# Dome light
+#load render-data/light/dome_light.obj
+#material select Dome
+#material emissive 1 1 1
+
+# Environment
+load render-data/light/dome_sky.obj
+material select Material.004
+#material emissive 0 0 0
+#material emissive 0.5 0.5 0.5
+load render-data/local/models/playground/plane_sand.obj
+
+# Scene
+#load render-data/local/models/playground/playground.obj
+load render-data/local/models/playground/playground_subd.obj
+
+# Cartoon dragon
+#load render-data/local/models/playground/dragon_pg.obj
+load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.02
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace render-data/displace/map1.png strength 0.6
+
+# Party
+#load render-data/local/models/party/party_objects.obj
+#load /data/home/wol37689/dev/models/party/party_objects.obj
+load /data/home/wol37689/dev/models/party/party_objects_3.obj
+load /data/home/wol37689/dev/models/party/dino1.obj
+load /data/home/wol37689/dev/models/party/dino2.obj subd_level 3
+load /data/home/wol37689/dev/models/party/dino3.obj subd_level 3 subd_type tris displace uniform strength 0.02
+load /data/home/wol37689/dev/models/party/dino4.obj subd_level 2 subd_type tris displace random strength 0.01
+load /data/home/wol37689/dev/models/party/hats_2.obj subd_level 4
+#load /data/home/wol37689/dev/models/party/pinata_base.obj subd_level 3 subd_type tris
+load /data/home/wol37689/dev/models/party/pinata_base.obj
+load /data/home/wol37689/dev/models/party/pinata_base.obj subd_level 3 subd_type tris displace random strength 0.02
+load /data/home/wol37689/dev/models/party/pinata_tail.obj
+modeltrafo shift 0 0 -0.015
+load /data/home/wol37689/dev/models/party/pinata_eye.obj
+modeltrafo shift 0 0 0.015
+load /data/home/wol37689/dev/models/party/balloons.obj subd_level 2
+
+load /data/home/wol37689/dev/models/party/photo_light.obj
+load /data/home/wol37689/dev/models/party/sun_2.obj
+material select Sun
+#material emissive 1000 1000 1000
+
+# Displaced plane
+modeltrafo shift 0 1 0
+modeltrafo shift 2 0 0
+#load render-data/displace/magic_plane.obj
+modeltrafo shift -2 0 0
+#load render-data/displace/magic_plane.obj subd_level 8 subd_type tris displace render-data/displace/map1.png strength 0.7
+#load render-data/displace/magic_plane.obj subd_level 8 subd_type tris displace render-data/displace/map2.png strength 0.5
+modeltrafo shift 0 -1 0
+
+# Displaced cube
+#load render-data/displace/cube.obj subd_level 4 subd_type tris displace render-data/displace/map2.png strength 2
+#load render-data/displace/cube.obj subd_level 6 subd_type patches displace random strength 0.7
+#load render-data/displace/cube.obj subd_level 3
+
+#load render-data/displace/cube.usda
+#load render-data/displace/cube.usda subd_level 4 subd_type patches displace render-data/displace/map2.png strength 0.5
+#load render-data/displace/cube.usda subd_level 4 subd_type tris displace random strength 1
+
+#load render-data/displace/test_cube.usda
+
+material select body
+material albedo 0 0.215 0.047
+material select eye_white
+material albedo 0.2 0.2 0.2
+material select teeth_white
+material albedo 0.2 0.2 0.2
+material select mouth
+material albedo 0.107 0.025 0.023
+
+material select Material.006
+#material albedo 1 0 0
+material ior 50.0
+
+material select Material.001
+material ior 2.0
+material select Material.003
+material ior 3.0
+material select Material.005
+material ior 5.0
+
+material select Party_Hat
+material ior 3.0
+material select Party_Hat.001
+material ior 3.0
+material select Party_Hat.002
+material ior 3.0
+material select Party_Hat.003
+material ior 3.0
+
+material select Material.008
+#material emissive 8.4 10 1.2
+#material emissive 5 5 5
+#material emissive 3.7 5 2.5
+material emissive 7.5 10 5
+
+# Pos playground bridge
+at -28.4391 3.89833 1.99398
+look 0.610622 -0.183563 -0.770354
+
+# Pos debug displacement plane
+at -3.54953 0.806178 4.99113
+look 0.933423 -0.115461 -0.339691
+
+# Party
+#at -0.04444 5.18964 -10.6648
+#look -0.475811 -0.135801 0.869001
+at -0.637768 5.88921 -10.5636
+look -0.255779 -0.342509 0.904027
+
+## CPU Direct
+#raytracer subd-naive-bvh
+#commit
+##algo primary
+#algo direct/mis
+#outfile out_subds/playground_direct_cpu.png
+
+# WF GPU Direct
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile out_subds/playground_primary_cuda.png
+algo direct-wf
+#is light
+is uniform
+outfile out_subds/playground_direct_cuda.png
+commit
+
+run

@@ -2,7 +2,7 @@
 
 // Box approximation defines
 #define BOX_APPROXIMATION
-//#define PROJECTION
+#define PROJECTION
 //#define KEEP_GEOMETRY
 
 // Compression defines

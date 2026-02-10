@@ -10,6 +10,7 @@
 #include "rt.h"
 #include "intersect.h"
 #include "subdivision_nodes.h"
+#include "load.h"
 
 PXR_NAMESPACE_OPEN_SCOPE
 // forward declaration to avoid full include of pxr/usd/usdGeom/mesh.h
@@ -272,7 +273,7 @@ namespace subd {
 		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
-		void displace(sample_tex sample, float strength);
+		void displace(sample_tex sample, disp_action action, float strength, bool displace_out);
 		void build_patch_bvhs(uint32_t align_level) {
 			if (storage_type_patches) {
 				#pragma omp parallel
