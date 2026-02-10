@@ -443,9 +443,13 @@ void eval(const std::string &line) {
 
 				std::string displace_param;
 				in >> displace_param;
-				if (displace_param != "random")
+				cfg.set_displace_action(displace_param);
+				if (cfg.is_displace_map()) {
+					if (displace_param == "map" || displace_param == "map_out")
+						in >> displace_param;
+
 					cfg.displacement_map = displace_param;
-					
+				}	
 			}
 			else if (load_args == "strength") {
 				in >> cfg.displacement_strength;

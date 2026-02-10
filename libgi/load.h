@@ -4,6 +4,15 @@
 #include <filesystem>
 #include <glm/mat4x4.hpp>
 
+enum class disp_action {
+	map = 0,
+	map_out = 1,
+	uniform = 2,
+	uniform_out = 3,
+	random = 4,
+	random_out = 5
+};
+
 struct load_config {
 	std::filesystem::path model_path;
 	std::string name;
@@ -11,6 +20,7 @@ struct load_config {
 	uint32_t subd_level;
 	bool subd_type_patches;
 	std::string displacement_map;
+	enum disp_action displace_action;
 	float displacement_strength;
 	int32_t bvh_align_level;
 
@@ -21,8 +31,26 @@ struct load_config {
 				  subd_level(0),
 				  subd_type_patches(true),
 				  displacement_map(""),
+				  displace_action(disp_action::map),
 				  displacement_strength(0.f), // strength 0 means no displacement
 				  bvh_align_level(-1) {}
+
+	bool displace_out() {
+		return static_cast<int>(displace_action) % 2;
+	}
+
+	bool is_displace_map() {
+		return displace_action == disp_action::map || displace_action == disp_action::map_out;
+	}
+
+	void set_displace_action(std::string action) {
+		if (action == "map")				displace_action = disp_action::map;
+		else if (action == "map_out")		displace_action = disp_action::map_out;
+		else if (action == "uniform")		displace_action = disp_action::uniform;
+		else if (action == "uniform_out")	displace_action = disp_action::uniform_out;
+		else if (action == "random")		displace_action = disp_action::random;
+		else if (action == "random_out")	displace_action = disp_action::random_out;
+	}
 
 	bool operator==(const load_config &comp) const {
 		bool result = true;

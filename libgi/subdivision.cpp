@@ -1245,7 +1245,7 @@ namespace subd {
 		}
 	}
 
-	void mesh::displace(sample_tex sample, float strength) {
+	void mesh::displace(sample_tex sample, disp_action action, float strength) {
 		if (strength == 0.f)
 			return;
 
@@ -1254,16 +1254,20 @@ namespace subd {
 			//for (auto &vc : f.verts) {
 				auto &v = vertices[i];
 				float displacement = 0.f;
-				if (sample) {
+				if (action == disp_action::map || action == disp_action::map_out) {
+					// displacement map
 					vec4 s = sample(v.tc);
-					////vec4 s = sample(tex_coords[v.faces[0].tc]);
-					//vec4 s = sample(tex_coords[vc.tc]);
 					displacement = strength * 1.f/3 * (s.x + s.y + s.z);
-					displacement -= 0.5f * strength;
+				}
+				else if (action == disp_action::uniform || action == disp_action::uniform_out) {
+					// uniform
+					displacement = strength;
 				}
 				else {
+					// random
 					displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
 				}
+				displacement -= 0.5f * strength;
 				v.pos += displacement * v.norm;
 			//}
 		}
@@ -1272,16 +1276,22 @@ namespace subd {
 			for (auto &patch : patches) {
 				for (auto &v : patch.verts) {
 					float displacement = 0.f;
-					if (sample) {
+					if (action == disp_action::map || action == disp_action::map_out) {
+						// displacement map
 						vec4 s = sample(v.tc);
 						////vec4 s = sample(tex_coords[v.faces[0].tc]);
 						//vec4 s = sample(tex_coords[vc.tc]);
 						displacement = strength * 1.f/3 * (s.x + s.y + s.z);
-						displacement -= 0.5f * strength;
+					}
+					else if (action == disp_action::uniform || action == disp_action::uniform_out) {
+						// uniform
+						displacement = strength;
 					}
 					else {
+						// random
 						displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
 					}
+					displacement -= 0.5f * strength;
 					v.pos += displacement * v.norm;
 				}
 			}
