@@ -8,11 +8,12 @@ up 0 1 0
 #sppx 1
 #sppx 10
 #sppx 20
-#sppx 128
+sppx 128
 #sppx 1024
-sppx 4096
+#sppx 4096
 #sppx 400000
 resolution 960 540
+#resolution 1920 1080
 #resolution 1920 1200
 
 default-brdf layered-gtr2
@@ -32,12 +33,12 @@ default-brdf layered-gtr2
 #modeltrafo shift 0 10 0
 
 # Point light
-#pointlight pos 0 10 0 col 10 10 10
+pointlight pos 0 10 0 col 10 10 10
 #pointlight pos -20 30 30 col 100 100 100
 
 # Environment
-load render-data/light/dome_sky.obj
-load render-data/local/models/playground/plane_sand.obj
+#load render-data/light/dome_sky.obj
+#load render-data/local/models/playground/plane_sand.obj
 
 # Scene
 #load render-data/local/models/playground/playground.obj
@@ -64,7 +65,7 @@ modeltrafo shift 0 0 -2
 #load render-data/local/dbg_approx/two_planes_combined3.obj subd_level 1 align_level 1
 #load render-data/local/dbg_approx/two_planes_combined4.obj subd_level 3 align_level 3
 modeltrafo shift 0 0 2
-#load render-data/local/dbg_approx/cube.obj subd_level 5 align_level 4
+load render-data/local/dbg_approx/cube.obj subd_level 1 align_level 0
 #load render-data/local/dbg_approx/cube2.obj subd_level 3 align_level 0
 #load render-data/local/dbg_approx/mixed_prims.obj subd_level 1
 #load render-data/local/dbg_approx/mixed_prims_tex.obj subd_level 2 align_level 0
@@ -78,7 +79,7 @@ modeltrafo shift 0 0 2
 #load render-data/local/models/monsterfrog_mine/monsterfrog.obj subd_level 3 align_level 2 displace render-data/local/models/monsterfrog/monsterfrog-d.bmp strength 5
 
 # Suzanne
-load render-data/local/models/suzanne/suzanne.usda subd_level 4 align_level 2
+#load render-data/local/models/suzanne/suzanne.usda subd_level 4 align_level 2
 #load render-data/local/models/suzanne/suzanne.obj subd_level 3 align_level 2
 
 material select body
@@ -117,6 +118,8 @@ look 0.610622 -0.183563 -0.770354
 # Number cube
 #at -9.3126 0.763892 -2.51368
 #look 0.789801 -0.314353 -0.526684
+at -6.57853 2.81695 -2.76694
+look 0.754796 -0.475974 0.451367
 
 # Surface
 #at 6.77278 2.17657 1.145
@@ -147,30 +150,30 @@ look 0.610622 -0.183563 -0.770354
 #look -0.871951 -0.151514 -0.465559
 
 # Pos Suzanne
-at -0.962002 0.845822 2.54479
-look 0.288034 -0.322959 -0.901518
+#at -0.962002 0.845822 2.54479
+#look 0.288034 -0.322959 -0.901518
 
-## CPU Direct
-#raytracer subd-naive-bvh
-#commit
-##algo local
-##algo direct
-##is light
+# CPU Direct
+raytracer subd-naive-bvh
+commit
+#algo local
+#algo direct
+#is light
 #algo direct/mis
-##algo primary
-##algo local
-#outfile out_subds/playground_direct_cpu.png
+#algo primary
+algo local
+outfile out_subds/dbg_normals_1.png
 
 # WF GPU Direct
-platform cuda
-raytracer optix
-add-scene-step build accel struct
-#algo primary-wf
-#outfile out_subds/playground_primary_cuda.png
-algo direct-wf
-is light
-#is cosine
-outfile out_subds/playground_direct_cuda.png
-commit
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile out_subds/playground_primary_cuda.png
+#algo direct-wf
+#is light
+##is cosine
+#outfile out_subds/playground_direct_cuda.png
+#commit
 
 run

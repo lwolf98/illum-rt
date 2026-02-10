@@ -239,6 +239,7 @@ namespace subd {
 		//uint32_t subpatch_ref_from_index(uint32_t index) const;
 		uint32_t index_from_quad_ref(uint32_t vert_quad_id) const;
 
+		uint32_t subpatch_id_from_index(uint32_t index) const;
 		const subd_subpatch &subpatch_from_index(uint32_t index) const;
 		//const aabb &box_from_index(const subd_subpatch &subpatch, uint32_t index) const;
 

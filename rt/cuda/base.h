@@ -51,6 +51,9 @@ namespace wf {
 			__device__ __forceinline__ float read_at(int x, int y) const {
 				return a[y*3+x];
 			}
+			__device__ __forceinline__ float3 read_vector(int x) const {
+				return { read_at(x, 0), read_at(x, 1), read_at(x, 2) };
+			}
 			__device__ __forceinline__ float3 operator*(const float3 &f) const {
 				float3 res;
 				res.x = f.x * read_at(0,0) + f.y * read_at(1,0) + f.z * read_at(2,0);
