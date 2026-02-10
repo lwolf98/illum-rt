@@ -1,9 +1,12 @@
 #pragma once
 
+/* Configuration */
+
+// Shade by geometry normal instead of shading normal
 #define SHADE_BY_GEOMETRY_NORMAL
 
-//#define DEBUG_LOCAL_ILLUM_NORMALS_SHADING
-//#define DEBUG_LOCAL_ILLUM_NORMALS_GEOMETRY
+// Box mid intersection
+#define BOX_MID_INTERSECTION
 
 // Box approximation defines
 #define BOX_APPROXIMATION
@@ -15,6 +18,19 @@
 //#define Y_SLAB_COMPRESSION
 //#define HALF_SLAB_COMPRESSION
 //#define QUANTIZATION
+
+// Debugging
+//#define DEBUG_LOCAL_ILLUM_NORMALS_SHADING
+#define DEBUG_LOCAL_ILLUM_NORMALS_GEOMETRY
+//#define DEBUG_LOCAL_ILLUM_ALBEDO
+
+/* Calculations */
+
+#ifndef BOX_MID_INTERSECTION
+	constexpr bool def_intersect_box_mid = false;
+#else
+	constexpr bool def_intersect_box_mid = true;
+#endif
 
 #ifndef BOX_APPROXIMATION
 	#define APPROXIMATION_VARIANT 0

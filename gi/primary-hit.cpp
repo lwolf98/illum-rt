@@ -96,6 +96,9 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 			std::cout << "";
 		return tmp;
 #endif
+#ifdef DEBUG_LOCAL_ILLUM_ALBEDO
+		return dg.albedo();
+#endif
 
 #ifdef WITH_OBJ_DEBUG
 		if (dbg_current) {

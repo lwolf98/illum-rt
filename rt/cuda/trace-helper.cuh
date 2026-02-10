@@ -289,6 +289,7 @@ __forceinline__ __device__ bool compute_valid_hit(
 	const wf::cuda::subd_subpatch &subpatch,
 #endif
 	bool allow_negative_t,
+	bool intersect_box_mid,
 	float &hit_t,
 	float &bary_t,
 	uint32_t &hit_side
@@ -298,6 +299,16 @@ __forceinline__ __device__ bool compute_valid_hit(
 	float dist;
 	//if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
 	if (!intersect_box_shirley_extended(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
+#ifdef BOX_MID_INTERSECTION
+	if (intersect_box_mid) {
+		float mid = boxmin.y + (boxmax.y - boxmin.y)*0.5f;
+		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
+		float3 mid_box_min = make_float3(boxmin.x, mid, boxmin.z);
+		float3 mid_box_max = make_float3(boxmax.x, mid+eps, boxmax.z);
+
+		if (!intersect_box_shirley_extended(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
+	}
+#endif
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?

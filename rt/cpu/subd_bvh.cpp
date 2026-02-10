@@ -239,6 +239,11 @@ void subd_naive_bvh::traverse_patch(const ray &ray, uint32_t patch_ref, triangle
 	}
 }
 
+inline bool dbg_pixel() {
+	bool dbg = true;
+	return dbg && current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y;
+}
+
 inline void bary_calc(const aabb &box, const ray &ray, float t_dist, triangle_intersection &is) {
 	//const float eps = 1e-4f;
 
@@ -291,15 +296,24 @@ inline bool compute_valid_hit(
 	float dist;
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	if (!intersect4_extended(box, transformed_ray, dist, hit_side)) return false;
+#ifdef BOX_MID_INTERSECTION
 	if (intersect_box_mid) {
-		uint32_t hit_side_mid;
+		if (dbg_pixel())
+			std::cout << "DBG: Primary hit side: " << hit_side << std::endl;
+
+		//uint32_t hit_side_mid;
 		//float dist_mid;
 		aabb mid_box = box;
 		float mid = box.min.y + (box.max.y - box.min.y)*0.5f;
+		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
 		mid_box.min.y = mid;
-		mid_box.max.y = mid;
-		if (!intersect4_extended(mid_box, transformed_ray, dist, hit_side_mid)) return false;
+		mid_box.max.y = mid+eps;
+
+		if (!intersect4_extended(mid_box, transformed_ray, dist, hit_side)) return false;
+		//hit_side = hit_side_mid;
+		//if (hit_side != BOX_SIDE_FRONT) return false;
 	}
+#endif
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?
@@ -330,10 +344,13 @@ inline bool compute_valid_hit(
 
 void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatch &subpatch, triangle_intersection &closest, uint32_t patch_ref) {
 	using namespace subd;
-	constexpr bool intersect_box_mid = true;
+	//constexpr bool intersect_box_mid = true;
 
-	bool dbg_pixel = true;
-	dbg_pixel = dbg_pixel && current_pixel_x == debug_pixel_x && current_pixel_y && debug_pixel_y;
+	bool dbg_px = dbg_pixel();
+	//bool dbg_pixel = true;
+	//dbg_pixel = dbg_pixel && current_pixel_x == debug_pixel_x && current_pixel_y == debug_pixel_y;
+	if (dbg_px)
+		std::cout << "";
 
 	triangle_intersection intersection;
 	const auto &patch = scene->patches[patch_ref];
@@ -388,6 +405,8 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			const auto &node = subpatch.nodes[index];
 			uint32_t child_base = child_node_base(trav_level, index);
 			uint32_t off_current_level = geometric_series4(trav_level);
+			bool is_leaf_node = trav_level >= subpatch.subd_level-1;
+			bool intersect_box_mid = def_intersect_box_mid && is_leaf_node;
 			float dist;
 			for (int i = 0; i < 4; ++i) {
 #if !defined(SLAB_COMPRESSION) && !defined(QUANTIZATION)
@@ -467,9 +486,9 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			
 #ifndef PROJECTION
 			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, def_intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #else
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, def_intersect_box_mid, t_hit, t_bary, hit_side)) continue;
 #endif
 
 				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
