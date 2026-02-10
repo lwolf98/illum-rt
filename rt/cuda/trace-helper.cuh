@@ -78,6 +78,7 @@ __forceinline__ __device__ bool intersect_box_shirley(INTERSECT_BOX_PARAMETERS) 
     return true;
 }
 __forceinline__ __device__ bool intersect_box_shirley_extended(INTERSECT_BOX_PARAMETERS, uint32_t &hit_side) {
+	hit_side = BOX_SIDE_UNDEFINED;
     const float t1x_tmp = (boxmin.x - ray_o.x) * ray_id.x;
     const float t2x_tmp = (boxmax.x - ray_o.x) * ray_id.x;
 	uint32_t x_side = (t1x_tmp < t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
@@ -109,6 +110,49 @@ __forceinline__ __device__ bool intersect_box_shirley_extended(INTERSECT_BOX_PAR
 
     hit_t = t1;
 	hit_side = hit_side_min;
+    return true;
+}
+__forceinline__ __device__ bool intersect_box_shirley_midbox(INTERSECT_BOX_PARAMETERS, uint32_t &hit_side) {
+	hit_side = BOX_SIDE_UNDEFINED;
+    const float t1x_tmp = (boxmin.x - ray_o.x) * ray_id.x;
+    const float t2x_tmp = (boxmax.x - ray_o.x) * ray_id.x;
+	uint32_t x_side_near = (t1x_tmp <= t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+	uint32_t x_side_far = (t1x_tmp > t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+    const float t1x = (t1x_tmp < t2x_tmp) ? t1x_tmp : t2x_tmp;
+    const float t2x = (t2x_tmp < t1x_tmp) ? t1x_tmp : t2x_tmp;
+
+    const float t1y_tmp = (boxmin.y - ray_o.y) * ray_id.y;
+    const float t2y_tmp = (boxmax.y - ray_o.y) * ray_id.y;
+    const float t1y = (t1y_tmp < t2y_tmp) ? t1y_tmp : t2y_tmp;
+    const float t2y = (t2y_tmp < t1y_tmp) ? t1y_tmp : t2y_tmp;
+	uint32_t y_side_near = (t1y_tmp <= t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+	uint32_t y_side_far = (t1y_tmp > t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+
+    const float t1z_tmp = (boxmin.z - ray_o.z) * ray_id.z;
+    const float t2z_tmp = (boxmax.z - ray_o.z) * ray_id.z;
+    const float t1z = (t1z_tmp < t2z_tmp) ? t1z_tmp : t2z_tmp;
+    const float t2z = (t2z_tmp < t1z_tmp) ? t1z_tmp : t2z_tmp;
+	uint32_t z_side_near = (t1z_tmp <= t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+	uint32_t z_side_far = (t1z_tmp > t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+
+	uint32_t hit_side_min = (t1x < t1y) ? y_side_near : x_side_near;
+    float              t1 = (t1x < t1y) ? t1y : t1x;
+	         hit_side_min = (t1z < t1 ) ? hit_side_min : z_side_near;
+                       t1 = (t1z < t1) ? t1  : t1z;
+	uint32_t hit_side_max = (t2x < t2y) ? x_side_far : y_side_far;
+    float              t2 = (t2x < t2y) ? t2x : t2y;
+	         hit_side_max = (t2z < t2 ) ? z_side_far : hit_side_max;
+                       t2 = (t2z < t2) ? t2z : t2;
+
+    if (t1 > t2)    return false;
+    if (t2 < t_min) return false;
+
+    float t_hit = (t1 < t_min) ? t2 : t1;
+	if (t_hit < t_min) return false;
+	if (t_hit > t_max) return false;
+
+    hit_t = t_hit;
+	hit_side = (t1 < t_min) ? hit_side_max : hit_side_min;
     return true;
 }
 __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS) {
@@ -300,13 +344,38 @@ __forceinline__ __device__ bool compute_valid_hit(
 	//if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
 	if (!intersect_box_shirley_extended(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
 #ifdef BOX_MID_INTERSECTION
+	#ifndef BOX_MID_VAR_FLAT
+		intersect_box_mid = intersect_box_mid && (hit_side == BOX_SIDE_FRONT || hit_side == BOX_SIDE_BACK);
+	#endif
 	if (intersect_box_mid) {
 		float mid = boxmin.y + (boxmax.y - boxmin.y)*0.5f;
+		float3 mid_box_min = boxmin; //make_float3(boxmin.x, mid, boxmin.z);
+		float3 mid_box_max = boxmax; //make_float3(boxmax.x, mid+eps, boxmax.z);
+	#ifdef BOX_MID_VAR_FLAT
 		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
-		float3 mid_box_min = make_float3(boxmin.x, mid, boxmin.z);
-		float3 mid_box_max = make_float3(boxmax.x, mid+eps, boxmax.z);
-
+		//float3 mid_box_min = make_float3(boxmin.x, mid, boxmin.z);
+		//float3 mid_box_max = make_float3(boxmax.x, mid+eps, boxmax.z);
+		mid_box_min.y = mid;
+		mid_box_max.y = mid+eps;
 		if (!intersect_box_shirley_extended(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
+	#else
+		#ifdef BOX_MID_VAR_CARDBOX
+			constexpr float eps = 1e-4f; // ray t epsilon to prevent self intersection -> see rt.h
+			//mid_box_max.y = mid;
+			float t_min_mid = dist + eps;
+			if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) {
+				#ifdef BOX_MID_SUPPORT_BACK_SIDE
+					mid_box_max.y = boxmax.y;
+					mid_box_min.y = mid;
+					if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) return false;
+				#else
+					return false;
+				#endif
+			};
+		#else
+			// Projection Variant
+		#endif
+	#endif
 	}
 #endif
 

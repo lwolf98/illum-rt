@@ -297,6 +297,9 @@ inline bool compute_valid_hit(
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	if (!intersect4_extended(box, transformed_ray, dist, hit_side)) return false;
 #ifdef BOX_MID_INTERSECTION
+	#ifndef BOX_MID_VAR_FLAT
+		intersect_box_mid = intersect_box_mid && (hit_side == BOX_SIDE_FRONT || hit_side == BOX_SIDE_BACK);
+	#endif
 	if (intersect_box_mid) {
 		if (dbg_pixel())
 			std::cout << "DBG: Primary hit side: " << hit_side << std::endl;
@@ -305,13 +308,38 @@ inline bool compute_valid_hit(
 		//float dist_mid;
 		aabb mid_box = box;
 		float mid = box.min.y + (box.max.y - box.min.y)*0.5f;
+	#ifdef BOX_MID_VAR_FLAT
 		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
 		mid_box.min.y = mid;
 		mid_box.max.y = mid+eps;
-
 		if (!intersect4_extended(mid_box, transformed_ray, dist, hit_side)) return false;
+	#else
+		#ifdef BOX_MID_VAR_CARDBOX
+		//mid_box.min.y = box.min.y - 1;
+		mid_box.max.y = mid;
+
+		//mid_box.min.y = mid;
+
+		//vec3 inside_org = transformed_ray.o + dist * transformed_ray.d;
+		//ray inside_ray(inside_org, transformed_ray.d);
+		ray inside_ray = transformed_ray;
+		inside_ray.t_min += dist;
+		//if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) return false;
+		if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) {
+			#ifdef BOX_MID_SUPPORT_BACK_SIDE
+				mid_box.max.y = box.max.y;
+				mid_box.min.y = mid;
+				if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) return false;
+			#else
+				return false;
+			#endif
+		}
+		#else
+			// Projection Variant
+		#endif
+	#endif
 		//hit_side = hit_side_mid;
-		//if (hit_side != BOX_SIDE_FRONT) return false;
+		//if (hit_side == BOX_SIDE_FRONT) return false;
 	}
 #endif
 
