@@ -253,7 +253,8 @@ namespace import {
 						})
 						: subd::sample_tex(nullptr),
 						  cfg.displace_action,
-						  cfg.displacement_strength);
+						  cfg.displacement_strength,
+						  cfg.displace_out());
 
 						// build second level BVH for each patch
 						o.mesh.build_patch_bvhs(cfg.bvh_align_level);
@@ -336,20 +337,14 @@ namespace import {
 					o.mesh.triangulate();
 
 					// apply displacement
-					//o.mesh.displace(nullptr);
-					//o.mesh.displace(displace_tex->sample);
-					/*if (displace_tex) {
-						o.mesh.displace([&](vec2 tc) {
-							return displace_tex->sample(tc);
-						});
-					}*/
 					o.mesh.displace(displace_tex ?
 						subd::sample_tex([&](vec2 tc) {
 							return displace_tex->sample(tc);
 						})
 						: subd::sample_tex(nullptr),
 						  cfg.displace_action,
-						  cfg.displacement_strength);
+						  cfg.displacement_strength,
+						  cfg.displace_out());
 
 					//o.write_obj("out_spike.obj", true, "", 0.2);
 

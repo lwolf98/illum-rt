@@ -25,7 +25,7 @@ load render-data/light/dome_sky.obj
 load render-data/local/models/playground/plane_sand.obj
 
 # Scene
-#load render-data/local/models/playground/playground.obj
+load render-data/local/models/playground/playground.obj
 
 # Cartoon dragon
 #load render-data/local/models/playground/dragon_pg.obj
@@ -43,14 +43,14 @@ modeltrafo shift 0 -1 0
 
 # Displaced cube
 #load render-data/displace/cube.obj subd_level 4 subd_type tris displace render-data/displace/map2.png strength 2
-load render-data/displace/cube.obj subd_level 6 subd_type patches displace random strength 0.7
+load render-data/displace/cube.obj subd_level 6 subd_type patches displace random_out strength 0.7
 #load render-data/displace/cube.obj subd_level 3
 
 #load render-data/displace/cube.usda
 #load render-data/displace/cube.usda subd_level 4 subd_type patches displace render-data/displace/map2.png strength 0.5
 #load render-data/displace/cube.usda subd_level 4 subd_type tris displace random strength 1
 
-load render-data/displace/test_cube.usda
+#load render-data/displace/test_cube.usda
 
 material select body
 material albedo 0 0.215 0.047
@@ -66,8 +66,8 @@ at -28.4391 3.89833 1.99398
 look 0.610622 -0.183563 -0.770354
 
 # Pos debug displacement plane
-at -3.54953 0.806178 4.99113
-look 0.933423 -0.115461 -0.339691
+#at -3.54953 0.806178 4.99113
+#look 0.933423 -0.115461 -0.339691
 
 ## CPU Direct
 #raytracer subd-naive-bvh
@@ -83,8 +83,11 @@ add-scene-step build accel struct
 #algo primary-wf
 #outfile out_subds/playground_primary_cuda.png
 algo direct-wf
+#is mis
 is light
 #is cosine
+#algo manylight-wf
+#is mis paths 128 length 10 g 0.00001
 outfile out_subds/playground_direct_cuda.png
 commit
 

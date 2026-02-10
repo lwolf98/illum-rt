@@ -386,7 +386,8 @@ namespace import {
 							})
 							: subd::sample_tex(nullptr),
 							  cfg.displace_action,
-							  cfg.displacement_strength);
+							  cfg.displacement_strength,
+							  cfg.displace_out());
 
 							// build second level BVH for each patch
 							o.mesh.build_patch_bvhs(cfg.bvh_align_level);
@@ -455,7 +456,8 @@ namespace import {
 						})
 						: subd::sample_tex(nullptr),
 						  cfg.displace_action,
-						  cfg.displacement_strength);
+						  cfg.displacement_strength,
+						  cfg.displace_out());
 
 						// serialize vertices
 						vector<vertex> serialized_verts;

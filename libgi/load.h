@@ -35,11 +35,11 @@ struct load_config {
 				  displacement_strength(0.f), // strength 0 means no displacement
 				  bvh_align_level(-1) {}
 
-	bool displace_out() {
+	bool displace_out() const {
 		return static_cast<int>(displace_action) % 2;
 	}
 
-	bool is_displace_map() {
+	bool is_displace_map() const {
 		return displace_action == disp_action::map || displace_action == disp_action::map_out;
 	}
 

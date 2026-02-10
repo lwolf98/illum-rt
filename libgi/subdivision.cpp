@@ -1245,31 +1245,30 @@ namespace subd {
 		}
 	}
 
-	void mesh::displace(sample_tex sample, disp_action action, float strength) {
+	void mesh::displace(sample_tex sample, disp_action action, float strength, bool displace_out) {
 		if (strength == 0.f)
 			return;
 
 		for (uint32_t i = 0; i < vertices.size(); i++) {
-		//for (auto &f : faces) {
-			//for (auto &vc : f.verts) {
-				auto &v = vertices[i];
-				float displacement = 0.f;
-				if (action == disp_action::map || action == disp_action::map_out) {
-					// displacement map
-					vec4 s = sample(v.tc);
-					displacement = strength * 1.f/3 * (s.x + s.y + s.z);
-				}
-				else if (action == disp_action::uniform || action == disp_action::uniform_out) {
-					// uniform
-					displacement = strength;
-				}
-				else {
-					// random
-					displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
-				}
+			auto &v = vertices[i];
+			float displacement = 0.f;
+			if (action == disp_action::map || action == disp_action::map_out) {
+				// displacement map
+				vec4 s = sample(v.tc);
+				displacement = strength * 1.f/3 * (s.x + s.y + s.z);
+			}
+			else if (action == disp_action::uniform || action == disp_action::uniform_out) {
+				// uniform
+				displacement = strength;
+			}
+			else {
+				// random
+				displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
+			}
+			if (!displace_out)
 				displacement -= 0.5f * strength;
-				v.pos += displacement * v.norm;
-			//}
+				
+			v.pos += displacement * v.norm;
 		}
 
 		if (storage_type_patches) {
@@ -1279,8 +1278,6 @@ namespace subd {
 					if (action == disp_action::map || action == disp_action::map_out) {
 						// displacement map
 						vec4 s = sample(v.tc);
-						////vec4 s = sample(tex_coords[v.faces[0].tc]);
-						//vec4 s = sample(tex_coords[vc.tc]);
 						displacement = strength * 1.f/3 * (s.x + s.y + s.z);
 					}
 					else if (action == disp_action::uniform || action == disp_action::uniform_out) {
@@ -1291,7 +1288,10 @@ namespace subd {
 						// random
 						displacement = strength * static_cast<float>(rand() / static_cast<float>(RAND_MAX));
 					}
-					displacement -= 0.5f * strength;
+
+					if (!displace_out)
+						displacement -= 0.5f * strength;
+
 					v.pos += displacement * v.norm;
 				}
 			}
