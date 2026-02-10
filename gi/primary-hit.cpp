@@ -53,6 +53,11 @@ vec3 primary_hit_display::sample_pixel(uint32_t x, uint32_t y) {
 #endif
 }
 
+static vec3 dbg_normal(const vec3 &norm) {
+	//return 0.5f * norm + 0.5f;
+	return abs(norm);
+}
+
 #ifndef RTGI_SKIP_LOCAL_ILLUM
 vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 #ifdef WITH_OBJ_DEBUG
@@ -67,14 +72,33 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 	vec3 radiance(0);
 	ray view_ray = cam_ray(rc->scene.camera, x, y, glm::vec2(rc->rng.uniform_float()-0.5f, rc->rng.uniform_float()-0.5f));
 	triangle_intersection closest = rc->scene.rt->closest_hit(view_ray);
-	if (x == debug_pixel_x && y == debug_pixel_y)
-		std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
+	if (dbg_current) std::cout << "Camray: " << std::endl << closest.to_string() << std::endl;
+	if (dbg_current) {
+		if (closest.ref > rc->scene.triangles.size()) {
+			uint32_t patch_ref = ((uint32_t)-1) - closest.ref;
+			const auto &patch = rc->scene.patches[patch_ref];
+			uint32_t subd_quad_ref = closest.subd_quad_ref.ref();
+			uint32_t subpatch_id = patch.subpatch_id_from_index(subd_quad_ref);
+			std::cout << "-> subpatch ref: " << subpatch_id << std::endl;
+		}
+	}
 
 	if (closest.valid()) {
 		diff_geom dg = diff_geom::init(closest, view_ray, rc->scene, dbg_current);
+		if (dbg_current) std::cout << dg.to_string() << std::endl;
+
+#ifdef DEBUG_LOCAL_ILLUM_NORMALS_SHADING
+		return dbg_normal(dg.ns);
+#endif
+#ifdef DEBUG_LOCAL_ILLUM_NORMALS_GEOMETRY
+		vec3 tmp = dbg_normal(dg.ng);
+		if (dg.ng.x < 0.f)
+			std::cout << "";
+		return tmp;
+#endif
 
 #ifdef WITH_OBJ_DEBUG
-		if (x == debug_pixel_x && y == debug_pixel_y) {
+		if (dbg_current) {
 			*ow << obj::line(view_ray.o, view_ray.o + view_ray.d * closest.t);
 			if (rc->scene.is_patch(closest.ref)) {
 				const subd::subd_patch &patch = rc->scene.patches[((uint32_t)-1) - closest.ref];
@@ -106,7 +130,7 @@ vec3 local_illumination::sample_pixel(uint32_t x, uint32_t y) {
 		ray shadow_ray(dg.x, w_i);
 		shadow_ray.length_exclusive(d);
 		triangle_intersection is = rc->scene.rt->closest_hit(shadow_ray);
-		if (x == debug_pixel_x && y == debug_pixel_y) {
+		if (dbg_current) {
 			std::cout << "Shadowray: " << std::endl << is.to_string() << std::endl << std::endl;
 			float t = is.t;
 			if (!is.valid())

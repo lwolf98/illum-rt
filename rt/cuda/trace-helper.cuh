@@ -77,6 +77,40 @@ __forceinline__ __device__ bool intersect_box_shirley(INTERSECT_BOX_PARAMETERS) 
     hit_t = t1;
     return true;
 }
+__forceinline__ __device__ bool intersect_box_shirley_extended(INTERSECT_BOX_PARAMETERS, uint32_t &hit_side) {
+    const float t1x_tmp = (boxmin.x - ray_o.x) * ray_id.x;
+    const float t2x_tmp = (boxmax.x - ray_o.x) * ray_id.x;
+	uint32_t x_side = (t1x_tmp < t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+    const float t1x = (t1x_tmp < t2x_tmp) ? t1x_tmp : t2x_tmp;
+    const float t2x = (t2x_tmp < t1x_tmp) ? t1x_tmp : t2x_tmp;
+
+    const float t1y_tmp = (boxmin.y - ray_o.y) * ray_id.y;
+    const float t2y_tmp = (boxmax.y - ray_o.y) * ray_id.y;
+    const float t1y = (t1y_tmp < t2y_tmp) ? t1y_tmp : t2y_tmp;
+    const float t2y = (t2y_tmp < t1y_tmp) ? t1y_tmp : t2y_tmp;
+	uint32_t y_side = (t1y_tmp < t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+
+    const float t1z_tmp = (boxmin.z - ray_o.z) * ray_id.z;
+    const float t2z_tmp = (boxmax.z - ray_o.z) * ray_id.z;
+    const float t1z = (t1z_tmp < t2z_tmp) ? t1z_tmp : t2z_tmp;
+    const float t2z = (t2z_tmp < t1z_tmp) ? t1z_tmp : t2z_tmp;
+	uint32_t z_side = (t1z_tmp < t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+
+	uint32_t hit_side_min = (t1x < t1y) ? y_side : x_side;
+    float              t1 = (t1x < t1y) ? t1y : t1x;
+	         hit_side_min = (t1z < t1 ) ? hit_side_min : z_side;
+                       t1 = (t1z < t1) ? t1  : t1z;
+    float t2 = (t2x < t2y) ? t2x : t2y;
+          t2 = (t2z < t2) ? t2z : t2;
+
+    if (t1 > t2)    return false;
+    if (t2 < t_min) return false;
+    if (t1 > t_max) return false;
+
+    hit_t = t1;
+	hit_side = hit_side_min;
+    return true;
+}
 __forceinline__ __device__ bool intersect_box_aila(INTERSECT_BOX_PARAMETERS) {
     // Following Aila, Laine, Karras: Understanding the efficiency of ray traversal on GPUs–Kepler and Fermi addendum
 
@@ -256,12 +290,14 @@ __forceinline__ __device__ bool compute_valid_hit(
 #endif
 	bool allow_negative_t,
 	float &hit_t,
-	float &bary_t
+	float &bary_t,
+	uint32_t &hit_side
 ) {
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	//if (!intersect_box(INTERSECT_BOX_PARAMETERS)) return false;
 	float dist;
-	if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
+	//if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
+	if (!intersect_box_shirley_extended(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?
@@ -514,7 +550,15 @@ namespace wf {
 				x = ray_org + is.t * ray_dir;
 				// TODO/REVIEW: adjust normal to the side of the box that has been hit
 				// REVIEW: correct access to access column (and not row)?
-				ng = { M.read_at(1, 0), M.read_at(1, 1), M.read_at(1, 2) };
+				switch (is.subd_quad_ref.hit_side()) {
+					case BOX_SIDE_FRONT:      ng = -M.read_vector(1); break;
+					case BOX_SIDE_BACK:       ng = M.read_vector(1); break;
+					case BOX_SIDE_SIDE_LEFT:  ng = cross(M.read_vector(0), M.read_vector(1)); break;
+					case BOX_SIDE_SIDE_RIGHT: ng = cross(M.read_vector(1), M.read_vector(0)); break;
+					case BOX_SIDE_SIDE_DOWN:  ng = cross(M.read_vector(2), M.read_vector(1)); break;
+					case BOX_SIDE_SIDE_UP:    ng = cross(M.read_vector(1), M.read_vector(2)); break;
+					default:                  ng = make_float3(0,0,0);
+				}
 				//normalize(ng); <- already normalized
 				this->mat = &params->materials[tri.w];
 
@@ -526,10 +570,14 @@ namespace wf {
 				float2 u2 = patch.box_tcs[2] + (patch.box_tcs[3] - patch.box_tcs[2]) * uv.x;
 				tc = u1 + (u2 - u1) * uv.y;
 
+	#ifndef SHADE_BY_GEOMETRY_NORMAL
 				//TODO: interpolate normal, REVIW: correct like that??
 				float4 n1 = patch.box_norms[0] + (patch.box_norms[1] - patch.box_norms[0]) * uv.x;
 				float4 n2 = patch.box_norms[2] + (patch.box_norms[3] - patch.box_norms[2]) * uv.x;
 				ns = f3(n1 + (n2 - n1) * uv.y);
+	#else
+				ns = ng;
+	#endif
 				//if (debug()) printf("after: a: %d, b: %d, c: %d, material: %d\n", tri.x, tri.y, tri.z, tri.w);
 				if (debug()) printf("after: TCs: %f %f\n", tc.x, tc.y);
 				if (debug()) printf("ns: TCs: %f %f %f\n", ns.x, ns.y, ns.z);

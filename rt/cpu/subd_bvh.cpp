@@ -284,10 +284,12 @@ inline bool compute_valid_hit(
 #endif
 	bool allow_negative_t,
 	float &t_hit,
-	float &t_bary
+	float &t_bary,
+	uint32_t &hit_side
 ) {
 	float dist;
-	if (!intersect4(box, transformed_ray, dist)) return false;
+	//if (!intersect4(box, transformed_ray, dist)) return false;
+	if (!intersect4_extended(box, transformed_ray, dist, hit_side)) return false;
 
 #ifndef PROJECTION
 	//assert(!std::isnan(dist)); // REVIEW: can this happen?
@@ -397,10 +399,11 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #endif
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
 				float t_hit, t_bary;
+				uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 #ifndef PROJECTION
-				if (!compute_valid_hit(box, transformed_ray, closest.t, true, t_hit, t_bary)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, true, t_hit, t_bary, hit_side)) continue;
 #else
-				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary, hit_side)) continue;
 #endif
 
 #ifndef BOX_APPROXIMATION
@@ -424,6 +427,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 												+ relative_index;
 
 					closest.subd_quad_ref.set_ref(quad_ref_morton);
+					closest.subd_quad_ref.set_hit_side(hit_side);
 				}
 #endif
 			}
@@ -457,12 +461,13 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 #else
 			/* Box approximation root box hit */
 			float t_hit, t_bary;
+			uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 			
 #ifndef PROJECTION
 			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, t_hit, t_bary)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, t_hit, t_bary, hit_side)) continue;
 #else
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, t_hit, t_bary, hit_side)) continue;
 #endif
 
 				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
@@ -470,6 +475,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 				closest.ref = ((uint32_t)-1) - patch_ref;
 				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
 				closest.subd_quad_ref.set_ref(quad_ref_morton);
+				closest.subd_quad_ref.set_hit_side(hit_side);
 
 #endif
 		}

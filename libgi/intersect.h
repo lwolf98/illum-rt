@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rt.h"
+#include "driver/defines.h"
 
 struct aabb {
 	glm::vec3 min, max;
@@ -302,4 +303,45 @@ inline bool intersect4(const aabb &box, const ray &ray, float &is) {
 #endif
 }
 
+inline bool intersect4_extended(const aabb &box, const ray &ray, float &is, uint32_t &hit_side) {
+	hit_side = BOX_SIDE_UNDEFINED;
+	float idx = ray.id.x;
+	float idy = ray.id.y;
+	float idz = ray.id.z;
+
+	float t1x_tmp = (box.min.x - ray.o.x) * idx;
+	float t2x_tmp = (box.max.x - ray.o.x) * idx;
+	uint32_t x_side = (t1x_tmp < t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+	float t1x = (t1x_tmp < t2x_tmp) ? t1x_tmp : t2x_tmp;
+	float t2x = (t2x_tmp < t1x_tmp) ? t1x_tmp : t2x_tmp;
+
+	float t1y_tmp = (box.min.y - ray.o.y) * idy;
+	float t2y_tmp = (box.max.y - ray.o.y) * idy;
+	uint32_t y_side = (t1y_tmp < t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+	float t1y = (t1y_tmp < t2y_tmp) ? t1y_tmp : t2y_tmp;
+	float t2y = (t2y_tmp < t1y_tmp) ? t1y_tmp : t2y_tmp;
+
+	float t1z_tmp = (box.min.z - ray.o.z) * idz;
+	float t2z_tmp = (box.max.z - ray.o.z) * idz;
+	uint32_t z_side = (t1z_tmp < t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+	float t1z = (t1z_tmp < t2z_tmp) ? t1z_tmp : t2z_tmp;
+	float t2z = (t2z_tmp < t1z_tmp) ? t1z_tmp : t2z_tmp;
+
+	//uint32_t hit_side_min = (t1x < t1y) ? x_side : y_side;
+	//         hit_side_min = (t1z < t1 ) ? z_side : hit_side_min;
+	uint32_t hit_side_min = (t1x < t1y) ? y_side : x_side;
+	float              t1 = (t1x < t1y) ? t1y : t1x;
+	         hit_side_min = (t1z < t1 ) ? hit_side_min : z_side;
+	                   t1 = (t1z < t1 ) ? t1  : t1z;
+	float t2 = (t2x < t2y) ? t2x : t2y;
+	      t2 = (t2z < t2 ) ? t2z : t2;
+		
+	if (t1 > t2)        return false;
+	if (t2 < ray.t_min) return false;
+	if (t1 > ray.t_max) return false;
+		
+	is = t1;
+	hit_side = hit_side_min;
+	return true;
+}
 #endif

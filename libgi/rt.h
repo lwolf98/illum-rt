@@ -20,6 +20,13 @@ constexpr float one_over_pi = (1.0 / M_PI);
 constexpr float one_over_2pi = (1.0 / (2*M_PI));
 constexpr float one_over_4pi = (1.0 / (4*M_PI));
 
+static std::string box_sides[] = { "unspecified", "front", "back", "side (down)", "side (right)", "side (up)", "side (left)" };
+
+static inline std::ostream& operator<<(std::ostream &o, const vec2 &v) { o << v.x << " " << v.y; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec3 &v) { o << v.x << " " << v.y << " " << v.z; return o; }
+static inline std::ostream& operator<<(std::ostream &o, const vec4 &v) { o << v.x << " " << v.y << " " << v.z << " " << v.w; return o; }
+
+static inline std::ostream& operator<<(std::ostream &o, const glm::ivec2 &v) { o << v.x << " " << v.y; return o; }
 
 /*! \brief A ray holds its origin, direction and inverse direction (o, d, id) as well
  *         as its minimal and maximal parameter range.
@@ -79,9 +86,11 @@ struct triangle_intersection {
 
 	std::string to_string() {
 		std::ostringstream stream;
+		uint32_t hit_side = subd_quad_ref.hit_side();
 		stream	<< "tri ref: " << ref << " (patch ref: " << ((uint32_t)-1) - ref << ")" << std::endl
 		
 				<< "quad ref: " << subd_quad_ref.ref()
+				<< ", hit side: " << hit_side << " (" << box_sides[hit_side] << ")"
 				<< ", tri pos: " << (subd_quad_ref.is_upper_tri() ? "u" : "l") << std::endl
 
 				<< "t: " << (t == FLT_MAX ? "invalid" : std::to_string(t))
@@ -112,6 +121,17 @@ struct diff_geom {
 	vec3 albedo() const;			// evaluates the surface albedo (including texture lookup)
 	vec3 emissive_albedo() const;	// evaluates the surface albedo considering the emissive value(including texture lookup)
 	float opacity() const;			// evaluates the surface opacity (including texture lookup)
+
+	std::string to_string() {
+		std::ostringstream stream;
+		stream	<< "diff_geom:" << std::endl
+				<< "hit x: " << x << std::endl
+				<< "ng: " << ng << ", ns: " << ns << std::endl
+				<< "tc: " << tc << std::endl;
+				//<< "mat: " << mat->name << std::endl; // probably no access to mat because only forward declared
+		return stream.str();
+	}
+
 private:
 	diff_geom(const vertex &a, const vertex &b, const vertex &c, const material *m, const triangle_intersection &is, const scene &scene);
 	diff_geom(const triangle &tri, const triangle_intersection &is, const scene &scene);
@@ -141,11 +161,4 @@ public:
 	virtual bool any_hit(const ray &) = 0;
 	virtual bool interprete(const std::string &command, std::istringstream &in) { return false; }
 };
-
-
-static inline std::ostream& operator<<(std::ostream &o, const vec2 &v) { o << v.x << " " << v.y; return o; }
-static inline std::ostream& operator<<(std::ostream &o, const vec3 &v) { o << v.x << " " << v.y << " " << v.z; return o; }
-static inline std::ostream& operator<<(std::ostream &o, const vec4 &v) { o << v.x << " " << v.y << " " << v.z << " " << v.w; return o; }
-
-static inline std::ostream& operator<<(std::ostream &o, const glm::ivec2 &v) { o << v.x << " " << v.y; return o; }
 

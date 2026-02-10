@@ -749,10 +749,15 @@ uint32_t subd_patch::index_from_quad_ref(uint32_t vert_quad_id) const {
 	return encode_morton(x, y);
 }
 
-const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
+uint32_t subd_patch::subpatch_id_from_index(uint32_t index) const {
 	assert(subpatches.size() > 0);
 	uint32_t aligned_subd_level = subpatches[0].subd_level;
 	uint32_t subpatch_id = index >> 2*aligned_subd_level; // divide by subpatch size (#quads in subpatch)
+	return subpatch_id;
+}
+
+const subd_subpatch &subd_patch::subpatch_from_index(uint32_t index) const {
+	uint32_t subpatch_id = subpatch_id_from_index(index);
 	return subpatches[subpatch_id];
 }
 
