@@ -1,0 +1,64 @@
+#omp off
+
+up 0 1 0
+
+#sppx 128
+sppx 4096
+#sppx 400000
+resolution 960 540
+#resolution 1920 1200
+
+default-brdf layered-gtr2
+
+# Plane light
+#load render-data/light/plane_sky.obj
+#material select Light
+#material emissive 2 2 2
+
+# Dome light
+#load render-data/light/dome_light.obj
+#material select Dome
+#material emissive 1 1 1
+
+# Environment
+load render-data/light/dome_sky.obj
+load render-data/local/models/playground/plane_sand.obj
+
+# Scene
+#load render-data/local/models/playground/playground.obj
+
+load render-data/local/models/opensubdiv/test/opensubdiv_car.obj subd_level 1
+#load render-data/local/models/opensubdiv/test/opensubdiv_car_chrome.obj subd_level 3
+# Alter materials
+material select car_body
+#material albedo 0.014 0 0.032
+#material albedo 1 1 1
+material albedo 0.107 0.025 0.023
+
+#Pos OpenSubdiv Car
+at -0.86379 0.590247 3.98039
+look 0.663228 -0.076339 -0.744514
+
+## CPU Direct
+#raytracer subd-naive-bvh
+#commit
+##algo primary
+#algo direct/mis
+#outfile out_subds/playground_direct_cpu.png
+
+# WF GPU Direct
+platform cuda
+raytracer optix
+add-scene-step build accel struct
+#algo primary-wf
+#outfile out_subds/playground_primary_cuda.png
+#algo direct-wf
+#is mis
+#is light
+#is cosine
+algo manylight-wf
+is mis paths 128 length 10 g 0.00001
+outfile out_subds/playground_direct_cuda.png
+commit
+
+run

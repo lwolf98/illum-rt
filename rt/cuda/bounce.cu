@@ -624,6 +624,10 @@ namespace wf::cuda {
 			}
 
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+
+			//Debug ML indirect illum:
+			//framebuffer[ray_index] = framebuffer[ray_index] + float4{0.001f,0.001f,0.001f,1.f};
+			//framebuffer[ray_index] = framebuffer[ray_index] + float4{0,0,0,1};
 		}
 	}
 
