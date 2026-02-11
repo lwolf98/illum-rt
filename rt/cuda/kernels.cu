@@ -169,6 +169,7 @@ void launch_setup_ray_incoherent(int2 config, int2 res,
 // ADD INTERSECTION'S SURFACE ALBEDO TO FRAMEBUFFER  - - - - - - - - - - - - -
 
 __global__ void add_hitpoint_albedo(int2 res,
+									float4 *rays,
 									wf::cuda::tri_is *intersections,
 									uint4 *triangles,
 									float2 *tex_coords,
@@ -186,22 +187,29 @@ __global__ void add_hitpoint_albedo(int2 res,
 
 	float4 result { 0,0,0,1 };
 	wf::cuda::tri_is hit = intersections[ray_index];
+	float4 r_o = rays[2*ray_index+0];
+	float4 r_d = rays[2*ray_index+1];
 	if (hit.valid()) {
 		wf::cuda::diff_geom dg = wf::cuda::diff_geom::init_lightweight(hit, refs);
-		result = wf::cuda::albedo4(dg);
+		//result = wf::cuda::albedo4(dg);
+		wf::cuda::diff_geom dg_full(hit, f3(r_o), f3(r_d), refs);
+		result.x = dg_full.ng.x; result.y = dg_full.ng.y; result.z = dg_full.ng.z;
 		result.w = 1; // be safe
 	}
-	framebuffer[ray_index] = framebuffer[ray_index] + result;
+	//framebuffer[ray_index] = framebuffer[ray_index] + result;
+	//framebuffer[ray_index] = make_float4(1, 0, 0, 1);
+	framebuffer[ray_index] = framebuffer[ray_index] + make_float4(abs(result.x), abs(result.y), abs(result.z), 1.0);
 }
 
 void launch_add_hitpoint_albedo(int2 res,
+								float4 *rays,
 								wf::cuda::tri_is *intersections,
 								uint4 *triangles,
 								float2 *tex_coords,
 								wf::cuda::material *materials,
 								wf::cuda::scene_refs *refs,
 								float4 *framebuffer) {
-	add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, intersections, triangles,
+	add_hitpoint_albedo<<<NUM_BLOCKS_FOR_RESOLUTION(res), DESIRED_BLOCK_SIZE>>>(res, rays, intersections, triangles,
 																				tex_coords, materials, refs, framebuffer);
 }
 

@@ -460,10 +460,12 @@ namespace wf::cuda {
 			float3 radiance {0,0,0};
 			float4 shadowray_dir = shadowrays[2*ray_index+1];
 
+			//float3 dbg_ng {0,0,0};
 			if (hit.valid() && shadowray_dir.w > 0 && !shadow_hit.valid()) {
-			float3 cam_org = f3(camrays[ray_index*2]);
-			float3 cam_dir = f3(camrays[ray_index*2 + 1]);
-			diff_geom dg(hit, cam_org, cam_dir, refs);
+				float3 cam_org = f3(camrays[ray_index*2]);
+				float3 cam_dir = f3(camrays[ray_index*2 + 1]);
+				diff_geom dg(hit, cam_org, cam_dir, refs);
+				//dbg_ng = dg.ng;
 
 				// light color
 				float3 brightness = lightcol[ray_index];
@@ -479,7 +481,10 @@ namespace wf::cuda {
 			}
 
 			framebuffer[ray_index] = framebuffer[ray_index] + make_float4(radiance.x, radiance.y, radiance.z, 1.0);
+			// Debug
 			//framebuffer[ray_index] = framebuffer[ray_index] + make_float4(0,0,0, 1.0);
+			// Debug with normals
+			//framebuffer[ray_index] = make_float4(abs(dbg_ng.x), abs(dbg_ng.y), abs(dbg_ng.z), 1.0);
 		}
 	}
 

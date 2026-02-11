@@ -85,6 +85,9 @@ namespace wf::cuda {
         prd->gamma = __uint_as_float(optixGetAttribute_1()); //0.5f;
         prd->t = optixGetRayTmax();
 		prd->subd_quad_ref = subd::quad_ref(optixGetAttribute_2());
+#ifdef BOX_MID_VAR_PROJECTION
+		prd->t_mid_box = __uint_as_float(optixGetAttribute_3());
+#endif
 		if (debug) printf("CH: t: %f, beta: %f, gamma: %f\n", prd->t, prd->beta, prd->gamma);
 	};
 
@@ -108,6 +111,9 @@ namespace wf::cuda {
 		auto &subpatch = launch_params.subpatches[id];
 		auto &patch = launch_params.patches[subpatch.parent_id];
 		uint32_t node_offset = subpatch.bvh_node_offset;
+
+		// Required for mid box projection
+		float t_mid_box_closest = 0.f;
 
 #if defined(BOX_APPROXIMATION) || defined(QUANTIZATION)
 	#ifndef PROJECTION
@@ -195,7 +201,10 @@ namespace wf::cuda {
 				uint32_t off_current_level = geometric_series4(trav_level);
 				float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
 				float t_bary;
+				float t_mid_box;
 				uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
+				bool is_leaf_node = trav_level >= subpatch.subd_level-1;
+				bool intersect_box_mid = def_intersect_box_mid && is_leaf_node;
 
 				for (int i = 0; i < 4; ++i) {
 #ifndef QUANTIZATION
@@ -221,16 +230,16 @@ namespace wf::cuda {
 #ifndef PROJECTION
 					if (!compute_valid_hit(box.min, box.max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, true,									// additional params
-									t_hit, t_bary, hit_side)) {							// reference/out params
+									closest_t, true, intersect_box_mid,					// additional params
+									t_hit, t_bary, t_mid_box, hit_side)) {							// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
 #else
-					if (!compute_valid_hit(box.min, box.max,							// box
-									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, t1, p1_oriented, eps, subpatch, true,	// additional params
-									t_hit, t_bary, hit_side)) {							// reference/out params
+					if (!compute_valid_hit(box.min, box.max,											// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,					// ray
+									closest_t, t1, p1_oriented, eps, subpatch, true, intersect_box_mid,	// additional params
+									t_hit, t_bary, t_mid_box, hit_side)) {											// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -260,6 +269,7 @@ namespace wf::cuda {
 						closest_quad_ref.set_upper_tri(upper_tri);
 						//closest.ref = ((uint32_t)-1) - patch_ref;
 						closest_t = t_hit;
+						t_mid_box_closest = t_mid_box;
 
 						uint32_t relative_index = (child_base+i) - off_current_level;
 						uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
@@ -343,24 +353,25 @@ namespace wf::cuda {
 #else
 					float t_hit = FLT_MAX; // REVIEW: initialization required? and if yes, correct?
 					float t_bary;
+					float t_mid_box;
 					uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 	#ifndef PROJECTION
 					float3 root_min = f3(subpatch.root_min); // REVIEW: more efficient way without copying?
 					float3 root_max = f3(subpatch.root_max);
 					if (!compute_valid_hit(root_min, root_max,							// box
 									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, false,									// additional params
-									t_hit, t_bary, hit_side)) {									// reference/out params
+									closest_t, false, def_intersect_box_mid,				// additional params
+									t_hit, t_bary, t_mid_box, hit_side)) {							// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
 	#else
 					float3 root_min = make_float3(-1.f, subpatch.root_min_y, -1.f);
 					float3 root_max = make_float3(1.f, subpatch.root_max_y, 1.f);
-					if (!compute_valid_hit(root_min, root_max,						// box
-									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,	// ray
-									closest_t, t1, p1_oriented, eps, subpatch, false,	// additional params
-									t_hit, t_bary, hit_side)) {									// reference/out params
+					if (!compute_valid_hit(root_min, root_max,												// box
+									ray_origin, ray_direction, r_id, r_ood, tmin, tmax,						// ray
+									closest_t, t1, p1_oriented, eps, subpatch, false, def_intersect_box_mid,// additional params
+									t_hit, t_bary, t_mid_box, hit_side)) {												// reference/out params
 										if (debug) printf("didn't hit node...\n");
 										continue;
 									}
@@ -371,6 +382,7 @@ namespace wf::cuda {
 								t_bary, upper_tri, beta, gamma);
 					closest_quad_ref.set_upper_tri(upper_tri);
 					closest_t = t_hit;
+					t_mid_box_closest = t_mid_box;
 
 					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start);
 					closest_quad_ref.set_ref(quad_ref_morton);
@@ -381,8 +393,13 @@ namespace wf::cuda {
 
 		if (debug) printf("Closest t: %f\n", closest_t);
 
-		if (closest_t < FLT_MAX)
+		if (closest_t < FLT_MAX) {
+#ifndef BOX_MID_VAR_PROJECTION
 			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref.internal_data());
+#else
+			optixReportIntersection(closest_t, 0, __float_as_uint(beta), __float_as_uint(gamma), closest_quad_ref.internal_data(), __float_as_uint(t_mid_box_closest));
+#endif
+		}
 
 	};
     

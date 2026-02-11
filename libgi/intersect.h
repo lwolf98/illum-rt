@@ -339,9 +339,62 @@ inline bool intersect4_extended(const aabb &box, const ray &ray, float &is, uint
 	if (t1 > t2)        return false;
 	if (t2 < ray.t_min) return false;
 	if (t1 > ray.t_max) return false;
-		
+	
 	is = t1;
 	hit_side = hit_side_min;
+	return true;
+}
+
+inline bool intersect4_mid_box(const aabb &box, const ray &ray, float &is, uint32_t &hit_side) {
+	hit_side = BOX_SIDE_UNDEFINED;
+	float idx = ray.id.x;
+	float idy = ray.id.y;
+	float idz = ray.id.z;
+
+	float t1x_tmp = (box.min.x - ray.o.x) * idx;
+	float t2x_tmp = (box.max.x - ray.o.x) * idx;
+	uint32_t x_side_near = (t1x_tmp <= t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+	uint32_t x_side_far = (t1x_tmp > t2x_tmp) ? BOX_SIDE_SIDE_DOWN : BOX_SIDE_SIDE_UP;
+	float t1x = (t1x_tmp < t2x_tmp) ? t1x_tmp : t2x_tmp;
+	float t2x = (t2x_tmp < t1x_tmp) ? t1x_tmp : t2x_tmp;
+
+	float t1y_tmp = (box.min.y - ray.o.y) * idy;
+	float t2y_tmp = (box.max.y - ray.o.y) * idy;
+	uint32_t y_side_near = (t1y_tmp <= t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+	uint32_t y_side_far = (t1y_tmp > t2y_tmp) ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
+	float t1y = (t1y_tmp < t2y_tmp) ? t1y_tmp : t2y_tmp;
+	float t2y = (t2y_tmp < t1y_tmp) ? t1y_tmp : t2y_tmp;
+
+	float t1z_tmp = (box.min.z - ray.o.z) * idz;
+	float t2z_tmp = (box.max.z - ray.o.z) * idz;
+	uint32_t z_side_near = (t1z_tmp <= t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+	uint32_t z_side_far = (t1z_tmp > t2z_tmp) ? BOX_SIDE_SIDE_RIGHT : BOX_SIDE_SIDE_LEFT;
+	float t1z = (t1z_tmp < t2z_tmp) ? t1z_tmp : t2z_tmp;
+	float t2z = (t2z_tmp < t1z_tmp) ? t1z_tmp : t2z_tmp;
+
+	uint32_t hit_side_min = (t1x < t1y) ? y_side_near : x_side_near;
+	float              t1 = (t1x < t1y) ? t1y : t1x;
+	         hit_side_min = (t1z < t1 ) ? hit_side_min : z_side_near;
+	                   t1 = (t1z < t1 ) ? t1  : t1z;
+	uint32_t hit_side_max = (t2x < t2y) ? x_side_far : y_side_far;
+	float              t2 = (t2x < t2y) ? t2x : t2y;
+	         hit_side_max = (t2z < t2 ) ? z_side_far : hit_side_max;
+	                   t2 = (t2z < t2 ) ? t2z : t2;
+		
+	if (t1 > t2)        return false;
+	if (t2 < ray.t_min) return false;
+	//if (t1 > ray.t_max) return false;
+
+	//float t_hit = (t1 < ray.t_min) ? ray.t_min : t1;
+	//if (t_hit > ray.t_max) return false;
+
+	float t_hit = (t1 < ray.t_min) ? t2 : t1;
+	if (t_hit < ray.t_min) return false;
+	if (t_hit > ray.t_max) return false;
+		
+	is = t_hit; //t1;
+	//hit_side = hit_side_min;
+	hit_side = (t1 < ray.t_min) ? hit_side_max : hit_side_min;
 	return true;
 }
 #endif

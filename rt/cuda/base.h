@@ -114,6 +114,9 @@ namespace wf {
 			float beta;
 			float gamma;
 			subd::quad_ref subd_quad_ref;
+#ifdef BOX_MID_VAR_PROJECTION
+			float t_mid_box;
+#endif
 
 			__device__ tri_is() : t(FLT_MAX), beta(-1), gamma(-1), prim_ref(0) {};
 			__device__ tri_is(float t, float beta, float gamma, uint32_t ref) : t(t), beta(beta), gamma(gamma) {
