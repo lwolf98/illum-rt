@@ -1,5 +1,8 @@
 #omp off
 
+caching on
+cache-path /home/lukas/rtgi/cache
+
 up 0 1 0
 
 #sppx 128
@@ -31,7 +34,8 @@ load render-data/local/models/playground/plane_sand.obj
 
 #load render-data/local/models/opensubdiv/test/opensubdiv_car.obj subd_level 3
 #load render-data/local/models/opensubdiv/test/opensubdiv_car_chrome.obj subd_level 3
-load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 3
+load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 3 align_level 2
+#load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 5 subd_type tris
 material select car_body
 #material albedo 0.014 0 0.032
 #material albedo 1 1 1
@@ -49,9 +53,9 @@ material albedo 0.107 0.025 0.023
 #load render-data/local/models/opensubdiv/base_objx/catmark_car.objx subd_level 3
 #load render-data/local/models/opensubdiv/base_objx/catmark_cube_creases1.objx subd_level 4
 
-load render-data/local/models/opensubdiv/base_objx/catmark_bishop.objx subd_level 1
-load render-data/local/models/opensubdiv/base_objx/catmark_pawn.objx subd_level 1
-load render-data/local/models/opensubdiv/base_objx/catmark_rook.objx subd_level 1
+load render-data/local/models/opensubdiv/base_objx/catmark_bishop.objx subd_level 3 align_level 2
+load render-data/local/models/opensubdiv/base_objx/catmark_pawn.objx subd_level 3 align_level 2
+load render-data/local/models/opensubdiv/base_objx/catmark_rook.objx subd_level 3 align_level 2
 
 
 #Pos OpenSubdiv Car
