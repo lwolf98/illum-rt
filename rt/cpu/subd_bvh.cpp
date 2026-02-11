@@ -291,13 +291,16 @@ inline bool compute_valid_hit(
 	bool intersect_box_mid,
 	float &t_hit,
 	float &t_bary,
+	float &t_mid_box,
 	uint32_t &hit_side
 ) {
 	float dist;
+	t_mid_box = 0.f;
+
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	if (!intersect4_extended(box, transformed_ray, dist, hit_side)) return false;
 #ifdef BOX_MID_INTERSECTION
-	#ifndef BOX_MID_VAR_FLAT
+	#if defined(BOX_MID_VAR_CARDBOX) && !defined(BOX_MID_VAR_PROJECTION)
 		intersect_box_mid = intersect_box_mid && (hit_side == BOX_SIDE_FRONT || hit_side == BOX_SIDE_BACK);
 	#endif
 	if (intersect_box_mid) {
@@ -309,12 +312,14 @@ inline bool compute_valid_hit(
 		aabb mid_box = box;
 		float mid = box.min.y + (box.max.y - box.min.y)*0.5f;
 	#ifdef BOX_MID_VAR_FLAT
+		// Flat Variant
 		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
 		mid_box.min.y = mid;
 		mid_box.max.y = mid+eps;
 		if (!intersect4_extended(mid_box, transformed_ray, dist, hit_side)) return false;
 	#else
-		#ifdef BOX_MID_VAR_CARDBOX
+		// Cardboard Box Variant
+
 		//mid_box.min.y = box.min.y - 1;
 		mid_box.max.y = mid;
 
@@ -323,19 +328,25 @@ inline bool compute_valid_hit(
 		//vec3 inside_org = transformed_ray.o + dist * transformed_ray.d;
 		//ray inside_ray(inside_org, transformed_ray.d);
 		ray inside_ray = transformed_ray;
+		//ray inside_ray = ray(transformed_ray.o, transformed_ray.d);
 		inside_ray.t_min += dist;
+		bool hit_front = true;
 		//if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) return false;
 		if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) {
 			#ifdef BOX_MID_SUPPORT_BACK_SIDE
 				mid_box.max.y = box.max.y;
 				mid_box.min.y = mid;
 				if (!intersect4_mid_box(mid_box, inside_ray, dist, hit_side)) return false;
+				hit_front = false;
 			#else
 				return false;
 			#endif
 		}
-		#else
+		#ifdef BOX_MID_VAR_PROJECTION
 			// Projection Variant
+			float mid_box_hit_y = transformed_ray.o.y + dist * transformed_ray.d.y;
+			t_mid_box = hit_front ? mid_box_hit_y - mid : mid - mid_box_hit_y;
+			hit_side = hit_front ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
 		#endif
 	#endif
 		//hit_side = hit_side_mid;
@@ -447,12 +458,12 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 	#endif
 #endif
 				//TODO: is it (more) efficient to not evaluate the last bounding box and instead evaluate the related quad/tris directly?
-				float t_hit, t_bary;
+				float t_hit, t_bary, t_mid_box;
 				uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 #ifndef PROJECTION
-				if (!compute_valid_hit(box, transformed_ray, closest.t, true, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, true, intersect_box_mid, t_hit, t_bary, t_mid_box, hit_side)) continue;
 #else
-				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+				if (!compute_valid_hit(box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, intersect_box_mid, t_hit, t_bary, t_mid_box, hit_side)) continue;
 #endif
 
 #ifndef BOX_APPROXIMATION
@@ -470,6 +481,7 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 					bary_calc(box, transformed_ray, t_bary, closest); // !REVIEW: breaks for quantisation without slab compression on CPU, check what is happening
 					closest.ref = ((uint32_t)-1) - patch_ref;
 					closest.t = t_hit;
+					closest.t_mid_box = t_mid_box;
 
 					uint32_t relative_index = (child_base+i) - off_current_level;
 					uint32_t quad_ref_morton =    patch.index_from_quad_ref(subpatch.vert_start)
@@ -509,19 +521,21 @@ void subd_naive_bvh::traverse_subpatch(const ray &rayy, const subd::subd_subpatc
 			}
 #else
 			/* Box approximation root box hit */
-			float t_hit, t_bary;
+			float t_hit, t_bary, t_mid_box;
 			uint32_t hit_side; //REVIEW/TODO: optimization: only use intersect_exteded (in compute_valid_hit) when trav_level == subpatch.subd_level-1
 			
 #ifndef PROJECTION
 			// REVIEW: Before using this function, dist < closest.t was not tested and slightly other results. Which is correct?
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, def_intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, false, def_intersect_box_mid, t_hit, t_bary, t_mid_box, hit_side)) continue;
 #else
-			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, def_intersect_box_mid, t_hit, t_bary, hit_side)) continue;
+			if (!compute_valid_hit(subpatch.root_box, transformed_ray, closest.t, t1, p1_oriented, eps, subpatch, false, def_intersect_box_mid, t_hit, t_bary, t_mid_box, hit_side)) continue;
 #endif
 
 				bary_calc(subpatch.root_box, transformed_ray, t_bary, closest);
 				closest.t = t_hit;
 				closest.ref = ((uint32_t)-1) - patch_ref;
+				closest.t_mid_box = t_mid_box;
+
 				uint32_t quad_ref_morton = patch.index_from_quad_ref(subpatch.vert_start);
 				closest.subd_quad_ref.set_ref(quad_ref_morton);
 				closest.subd_quad_ref.set_hit_side(hit_side);

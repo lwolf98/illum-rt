@@ -125,6 +125,9 @@ diff_geom diff_geom::init(const triangle_intersection &is, const ray &is_ray, co
 			default:                  dg.ng = vec3(0);
 		}
 
+		if (def_intersect_box_mid)
+			dg.x = dg.x + is.t_mid_box * -dg.ng;
+
 	#ifndef SHADE_BY_GEOMETRY_NORMAL
 		//TODO: interpolate normal, REVIW: correct like that??
 		glm::vec3 n1 = patch.data[0].norm + (patch.data[1].norm - patch.data[0].norm) * u;

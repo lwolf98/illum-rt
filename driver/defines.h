@@ -9,8 +9,8 @@
 #define BOX_MID_INTERSECTION
 #define BOX_MID_SUPPORT_BACK_SIDE
 //#define BOX_MID_VAR_FLAT
-#define BOX_MID_VAR_CARDBOX
-//#define BOX_MID_VAR_PROJECTION
+//#define BOX_MID_VAR_CARDBOX
+#define BOX_MID_VAR_PROJECTION
 
 // Box approximation defines
 #define BOX_APPROXIMATION
@@ -92,3 +92,4 @@
 #define BOX_SIDE_SIDE_RIGHT 4
 #define BOX_SIDE_SIDE_UP 5
 #define BOX_SIDE_SIDE_LEFT 6
+#define BOX_SIDE_DEBUG 7

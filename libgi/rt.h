@@ -65,6 +65,7 @@ struct triangle_intersection {
 	float t, beta, gamma;
 	uint ref;
 	subd::quad_ref subd_quad_ref;
+	float t_mid_box;
 	triangle_intersection() : t(FLT_MAX), ref(0) {
 	}
 	explicit triangle_intersection(uint t) : t(FLT_MAX), ref(t) {

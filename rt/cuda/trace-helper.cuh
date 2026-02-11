@@ -336,15 +336,17 @@ __forceinline__ __device__ bool compute_valid_hit(
 	bool intersect_box_mid,
 	float &hit_t,
 	float &bary_t,
+	float &mid_box_t,
 	uint32_t &hit_side
 ) {
 	//if (!intersect4(box, transformed_ray, dist)) return false;
 	//if (!intersect_box(INTERSECT_BOX_PARAMETERS)) return false;
+	mid_box_t = 0.f;
 	float dist;
 	//if (!intersect_box(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist)) return false;
 	if (!intersect_box_shirley_extended(boxmin, boxmax, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
 #ifdef BOX_MID_INTERSECTION
-	#ifndef BOX_MID_VAR_FLAT
+	#if defined(BOX_MID_VAR_CARDBOX) && !defined(BOX_MID_VAR_PROJECTION)
 		intersect_box_mid = intersect_box_mid && (hit_side == BOX_SIDE_FRONT || hit_side == BOX_SIDE_BACK);
 	#endif
 	if (intersect_box_mid) {
@@ -352,6 +354,7 @@ __forceinline__ __device__ bool compute_valid_hit(
 		float3 mid_box_min = boxmin; //make_float3(boxmin.x, mid, boxmin.z);
 		float3 mid_box_max = boxmax; //make_float3(boxmax.x, mid+eps, boxmax.z);
 	#ifdef BOX_MID_VAR_FLAT
+		// Flat Variant
 		constexpr float eps = 1e-6; //TODO: switch this IS with quad intersection, then no eps required
 		//float3 mid_box_min = make_float3(boxmin.x, mid, boxmin.z);
 		//float3 mid_box_max = make_float3(boxmax.x, mid+eps, boxmax.z);
@@ -359,21 +362,26 @@ __forceinline__ __device__ bool compute_valid_hit(
 		mid_box_max.y = mid+eps;
 		if (!intersect_box_shirley_extended(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min, t_max, dist, hit_side)) return false;
 	#else
-		#ifdef BOX_MID_VAR_CARDBOX
-			constexpr float eps = 1e-4f; // ray t epsilon to prevent self intersection -> see rt.h
-			//mid_box_max.y = mid;
-			float t_min_mid = dist + eps;
-			if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) {
-				#ifdef BOX_MID_SUPPORT_BACK_SIDE
-					mid_box_max.y = boxmax.y;
-					mid_box_min.y = mid;
-					if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) return false;
-				#else
-					return false;
-				#endif
-			};
-		#else
+		// Cardboard Box Variant
+		constexpr float eps = 1e-4f; // ray t epsilon to prevent self intersection -> see rt.h
+		mid_box_max.y = mid;
+		float t_min_mid = dist + eps;
+		bool hit_front = true;
+		if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) {
+			#ifdef BOX_MID_SUPPORT_BACK_SIDE
+				mid_box_max.y = boxmax.y;
+				mid_box_min.y = mid;
+				if (!intersect_box_shirley_midbox(mid_box_min, mid_box_max, ray_o, ray_d, ray_id, ray_ood, t_min_mid, t_max, dist, hit_side)) return false;
+				hit_front = false;
+			#else
+				return false;
+			#endif
+		};
+		#ifdef BOX_MID_VAR_PROJECTION
 			// Projection Variant
+			float mid_box_hit_y = ray_o.y + dist * ray_d.y;
+			mid_box_t = hit_front ? mid_box_hit_y - mid : mid - mid_box_hit_y;
+			hit_side = hit_front ? BOX_SIDE_FRONT : BOX_SIDE_BACK;
 		#endif
 	#endif
 	}
@@ -640,6 +648,11 @@ namespace wf {
 					default:                  ng = make_float3(0,0,0);
 				}
 				//normalize(ng); <- already normalized
+#ifdef BOX_MID_VAR_PROJECTION
+				if (def_intersect_box_mid)
+					x = x + is.t_mid_box * -ng;
+#endif
+
 				this->mat = &params->materials[tri.w];
 
 				//REVIEW: put somewhere more suitable...

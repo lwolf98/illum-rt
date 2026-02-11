@@ -128,6 +128,7 @@ namespace wf {
 			auto res = int2{rc->resolution().x, rc->resolution().y};
 
 			launch_add_hitpoint_albedo(res,
+									   sample_rays->rays.device_memory,
 									   sample_rays->intersections.device_memory,
 									   pf->sd->triangles.device_memory,
 									   pf->sd->vertex_tc.device_memory,
