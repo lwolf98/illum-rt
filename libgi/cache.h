@@ -59,6 +59,7 @@ namespace subd {
 			hash_combine(h, &c.subd_level, sizeof(c.subd_level));
 			hash_combine(h, &c.subd_type_patches, sizeof(c.subd_type_patches));
 			hash_combine(h, &c.displacement_strength, sizeof(c.displacement_strength));
+			hash_combine(h, &c.displace_action, sizeof(c.displace_action));
 			hash_combine(h, &c.bvh_align_level, sizeof(c.bvh_align_level));
 
 			// matrix
@@ -176,6 +177,8 @@ namespace subd {
 				<< (config.subd_type_patches ? "true" : "false") << '\n';
 
 			file << "displacement_map = " << config.displacement_map << '\n';
+			file << "displace_action = "
+				<< static_cast<int32_t>(config.displace_action) << '\n';
 			file << "displacement_strength = "
 				<< config.displacement_strength << '\n';
 
@@ -311,6 +314,9 @@ namespace subd {
 				}
 				else if (key == "displacement_map") {
 					config.displacement_map = value;
+				}
+				else if (key == "displace_action") {
+					config.displace_action = static_cast<disp_action>(std::stof(value));
 				}
 				else if (key == "displacement_strength") {
 					config.displacement_strength = std::stof(value);

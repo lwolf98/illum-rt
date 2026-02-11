@@ -36,7 +36,7 @@ struct load_config {
 				  bvh_align_level(-1) {}
 
 	bool displace_out() const {
-		return static_cast<int>(displace_action) % 2;
+		return static_cast<int32_t>(displace_action) % 2;
 	}
 
 	bool is_displace_map() const {
