@@ -35,7 +35,12 @@ namespace import {
 		~assimp_importer() {}
 
 		void load_scene() override;
-		void import(scene& scene) override;
+		void import(scene& scene) override {
+			subd::crease_mapping creases;
+			import(scene, creases);
+		}
+		// This import variant allows to inject crease data also for formats like OBJ
+		void import(scene& scene, const subd::crease_mapping &creases);
 	};
 
 	class usd_importer : public asset_importer {
@@ -56,10 +61,10 @@ namespace import {
 		void import(scene& scene) override;
 	};
 
-	class objx_importer : public asset_importer {
+	class objx_importer : public assimp_importer {
 		public:
 		objx_importer(const load_config &cfg)
-			: asset_importer(cfg) {}
+			: assimp_importer(cfg) {}
 		~objx_importer() {}
 
 		void load_scene() override;

@@ -108,6 +108,11 @@ namespace subd {
 		}
 	};
 
+	struct crease_mapping {
+		std::map<std::pair<int,int>, float> creases;
+		std::map<uint32_t, glm::vec3> vertex_map;
+	};
+
 	struct vertex_config {
 		uint pos;
 		uint tc;
@@ -270,7 +275,7 @@ namespace subd {
 		std::vector<subd_patch> patches;
 		bool storage_type_patches;
 
-		int get_vert_id(glm::vec3 v_pos);
+		int get_vert_id(glm::vec3 v_pos) const;
 		void update(bool clear = false);
 		void subdivide(uint32_t level);
 		void triangulate();
@@ -317,10 +322,10 @@ namespace subd {
 		struct mesh mesh;
 
 		object() : name(""), material("") {}
-		object(aiMesh *mesh_ai, bool subd_type_patches = true, std::string mat_name = "") : object() {
+		object(aiMesh *mesh_ai, const crease_mapping &creases = crease_mapping(), bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
 			mesh.storage_type_patches = subd_type_patches;
-			init_object(mesh_ai);
+			init_object(mesh_ai, creases);
 		}
 		object(const pxr::UsdGeomMesh &usd_mesh, bool subd_type_patches = true, std::string mat_name = "") : object() {
 			material = mat_name;
@@ -334,7 +339,7 @@ namespace subd {
 		}
 
 	private:
-		void init_object(aiMesh *mesh_ai);
+		void init_object(aiMesh *mesh_ai, const crease_mapping &creases);
 		void init_object(const pxr::UsdGeomMesh &usd_mesh);
 
 	};

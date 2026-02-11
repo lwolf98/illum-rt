@@ -3,7 +3,9 @@
 up 0 1 0
 
 #sppx 128
-sppx 4096
+#sppx 512
+sppx 1024
+#sppx 4096
 #sppx 400000
 resolution 960 540
 #resolution 1920 1200
@@ -27,17 +29,47 @@ load render-data/local/models/playground/plane_sand.obj
 # Scene
 #load render-data/local/models/playground/playground.obj
 
-load render-data/local/models/opensubdiv/test/opensubdiv_car.obj subd_level 1
+#load render-data/local/models/opensubdiv/test/opensubdiv_car.obj subd_level 3
 #load render-data/local/models/opensubdiv/test/opensubdiv_car_chrome.obj subd_level 3
-# Alter materials
+load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 3
 material select car_body
 #material albedo 0.014 0 0.032
 #material albedo 1 1 1
 material albedo 0.107 0.025 0.023
 
+#load render-data/local/models/opensubdiv/test/opensubdiv_car_tires.obj
+#material select Front_Tire
+#material albedo 0.1 0.1 0.1
+#material roughness 1
+#material select Front_Tire.001
+#material albedo 0.1 0.1 0.1
+#material roughness 1
+
+#load render-data/local/models/opensubdiv/base/catmark_car.obj subd_level 1
+#load render-data/local/models/opensubdiv/base_objx/catmark_car.objx subd_level 3
+#load render-data/local/models/opensubdiv/base_objx/catmark_cube_creases1.objx subd_level 4
+
+load render-data/local/models/opensubdiv/base_objx/catmark_bishop.objx subd_level 1
+load render-data/local/models/opensubdiv/base_objx/catmark_pawn.objx subd_level 1
+load render-data/local/models/opensubdiv/base_objx/catmark_rook.objx subd_level 1
+
+
 #Pos OpenSubdiv Car
 at -0.86379 0.590247 3.98039
 look 0.663228 -0.076339 -0.744514
+at -0.624228 0.594388 3.3308
+look 0.440687 -0.201263 -0.874807
+#at 1.40961 -2.289 0.698466
+#look -0.710212 0.348096 -0.611905
+# Car Creases Side
+at 1.27734 0.065989 2.3199
+look -0.491033 0.022897 -0.87084
+
+#Pos Debug Bishop
+at 3.45763 -0.539758 1.76516
+look -0.739658 -0.369544 -0.562444
+#at 0.90729 -1.67368 0.766342
+#look -0.861298 -0.500292 0.088736
 
 ## CPU Direct
 #raytracer subd-naive-bvh
@@ -52,13 +84,13 @@ raytracer optix
 add-scene-step build accel struct
 #algo primary-wf
 #outfile out_subds/playground_primary_cuda.png
-#algo direct-wf
+algo direct-wf
 #is mis
-#is light
+is light
 #is cosine
-algo manylight-wf
-is mis paths 128 length 10 g 0.00001
-outfile out_subds/playground_direct_cuda.png
+#algo manylight-wf
+#is mis paths 128 length 10 g 0.00001
+outfile out_subds/car_blender_obj.png
 commit
 
 run

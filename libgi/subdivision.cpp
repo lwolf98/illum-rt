@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <glm/gtc/epsilon.hpp>
 #include "subdivision.h"
 #include "libgi/timer.h"
 
@@ -157,7 +158,7 @@ namespace subd {
 	/* object implementation */
 
 	// Load from Assimp
-	void object::init_object(aiMesh *mesh_ai) {
+	void object::init_object(aiMesh *mesh_ai, const crease_mapping &obj_crease_mapping) {
 		time_this_block(init_object);
 
 		// Meta data
@@ -192,6 +193,17 @@ namespace subd {
 		else {
 			//TODO: is this required?
 			mesh.tex_coords.push_back(vec2(0, 0));
+		}
+
+		// store injected crease data
+		const auto &obj_creases = obj_crease_mapping.creases;
+		const auto &obj_vertex_map = obj_crease_mapping.vertex_map;
+		for (const auto& [edge, weight] : obj_creases) {
+			const vec3 &pos_1 = obj_vertex_map.at(edge.first);
+			const vec3 &pos_2 = obj_vertex_map.at(edge.second);
+			uint32_t v_id_1 = mesh.get_vert_id(pos_1);
+			uint32_t v_id_2 = mesh.get_vert_id(pos_2);
+			mesh.creases.add(v_id_1, v_id_2, weight);
 		}
 
 		// load control mesh faces (ctrl_faces)
@@ -1084,10 +1096,14 @@ namespace subd {
 	}
 
 	// Get vertex id from position
-	int mesh::get_vert_id(vec3 v_pos) {
+	int mesh::get_vert_id(vec3 v_pos) const {
 		for (int i = 0; i < vertices.size(); i++) {
-			if (v_pos == vertices[i].pos)
+#ifndef VERTEX_EPSILON_COMPARE_FOR_OBJ_IMPORT
+			if (v_pos == vertices[i].pos) return i;
+#else
+			if (glm::all(glm::epsilonEqual(v_pos, vertices[i].pos, 1e-5f)))
 				return i;
+#endif
 		}
 
 		return -1;

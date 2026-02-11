@@ -26,7 +26,7 @@ using namespace std;
 namespace import {
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
 								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene,
-								const load_config &cfg,
+								const load_config &cfg, const subd::crease_mapping &creases,
 								const texture2d<vec4>* displace_tex);
 
 	inline vec3 to_glm(const aiVector3D& v) { return vec3(v.x, v.y, v.z); }
@@ -63,7 +63,8 @@ namespace import {
 
 	}
 
-	void assimp_importer::import(scene& scene) {
+	//void assimp_importer::import(scene& scene) {
+	void assimp_importer::import(scene& scene, const subd::crease_mapping &creases) {
 		// todo: store indices prior to adding anything to allow "transform-last"
 
 		// load materials
@@ -126,7 +127,7 @@ namespace import {
 										: nullptr;
 
 		// load meshes
-		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), cfg.model_matrix, material_offset, light_geom, light_prims, scene, cfg, displace_tex);
+		mesh_load_process_node(scene_ai->mRootNode, scene_ai, mat4(1.0f), cfg.model_matrix, material_offset, light_geom, light_prims, scene, cfg, creases, displace_tex);
 		
 	}
 
@@ -134,7 +135,7 @@ namespace import {
 	// Recursive load function for assimp that applies the transformation matrices of the node hierarchy to the loaded data
 	void mesh_load_process_node(aiNode *node_ai, const aiScene *scene_ai, mat4 parent_trafo, mat4 model_trafo, unsigned material_offset, 
 								std::vector<std::tuple<int,int,int>> &light_geom, int &light_prims, scene &rtgi_scene,
-								const load_config &cfg,
+								const load_config &cfg, const subd::crease_mapping &creases,
 								const texture2d<vec4>* displace_tex) {
 		mat4 node_trafo = parent_trafo * to_glm(node_ai->mTransformation);
 		mat4 transform = model_trafo * node_trafo;
@@ -201,7 +202,7 @@ namespace import {
 			else {
 				// object with control mesh vertices and faces
 				// -> load data from Assimp import
-				subd::object o(mesh_ai, cfg.subd_type_patches, name_ai.C_Str());
+				subd::object o(mesh_ai, creases, cfg.subd_type_patches, name_ai.C_Str());
 
 				for (auto &vert : o.mesh.vertices) {
 					// cut off ctrl_vertex to regular vertex
@@ -394,6 +395,6 @@ namespace import {
 		}
 		
 		for (int i = 0; i < node_ai->mNumChildren; i++)
-			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, cfg, displace_tex);
+			mesh_load_process_node(node_ai->mChildren[i], scene_ai, node_trafo, model_trafo, material_offset, light_geom, light_prims, rtgi_scene, cfg, creases, displace_tex);
 	}
 }
