@@ -287,7 +287,7 @@ namespace wf {
 			profile << "Patch geometry:\n"
 				<< "\t" << vecsize_string("Patches", device_patches, &part_size) << "\n"
 				<< "\t" << vecsize_string("Subpatches", device_subpatches, &part_size) << "\n"
-				<< "\t" << vecsize_string("Patch nodes", device_nodes, &part_size) << "\n"
+				<< "\t" << vecsize_string("Subpatch nodes", device_nodes, &part_size) << "\n"
 				<< "\t" << vecsize_string("Patch root boxes", device_root_boxes, &part_size) << "\n"
 #if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
 				<< "\t" << vecsize_string("Patch vertices", tmp_p, &part_size) << "\n"
@@ -313,6 +313,8 @@ namespace wf {
 			std::cout << "Test path: " << outfile << std::endl;
 			std::ofstream out(outfile);
 			if (out) {
+				out << outfile;
+				out << "\n" << "----------------------------------------------------------------" << "\n\n";
 				out << profile.str();
 				out.close();
 			}

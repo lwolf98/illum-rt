@@ -1,5 +1,6 @@
 // mostly taken over from niho's codebase
 #include "timer.h"
+#include "global-context.h"
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
@@ -86,20 +87,34 @@ void timer::print(const std::string& timer_name) {
 			  [](const std::pair<std::string, uint64_t> &a, const std::pair<std::string, uint64_t> &b) {
 			  	return b.second < a.second;
 			  });
-    std::cout << (timer_name.size() ? timer_name : "Times taken") << ":" << std::endl;
+    std::stringstream str;
+    str << "\n" << "----------------------------------------------------------------" << "\n\n";
+    str << (timer_name.size() ? timer_name : "Times taken") << ":" << std::endl;
     for (auto &t : sorted_times) {
         // output timing
-        //std::cout << std::left << std::setw(25) << t.first;
-        //std::cout << format(t.first) << std::endl;
-        std::cout << std::left << std::setw(50) << t.first;
-        std::cout << format(t.first) << std::endl;
+        //str << std::left << std::setw(25) << t.first;
+        //str << format(t.first) << std::endl;
+        str << std::left << std::setw(50) << t.first;
+        str << format(t.first) << std::endl;
     }
     // output total
-    std::cout << std::left << std::setw(50) << "Total:";
-    std::cout << std::right << std::setw(25) << format(ms_total(), ms_total()) << std::endl;
-    //std::cout << std::left << string_width("Total:", 50);
-    //std::cout << std::right << std::setw(50) << format(ms_total(), ms_total()) << std::endl;
-    std::cout << std::endl;
+    str << std::left << std::setw(50) << "Total:";
+    str << std::right << std::setw(25) << format(ms_total(), ms_total()) << std::endl;
+    //str << std::left << string_width("Total:", 50);
+    //str << std::right << std::setw(50) << format(ms_total(), ms_total()) << std::endl;
+    str << std::endl;
+
+    std::cout << str.str();
+
+    std::string outfile = "out_profiling/" + rc->outfile_full(".txt", true, true);
+    std::ofstream out(outfile, std::ios::app);
+    if (out) {
+        out << str.str();
+        out.close();
+    }
+    else {
+        std::cout << "Error opening file: " << outfile << std::endl;
+    }
 }
 
 void cpu_timer::start(const std::string& name) { starts[name] = std::chrono::steady_clock::now(); }

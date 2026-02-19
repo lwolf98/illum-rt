@@ -40,6 +40,7 @@ struct render_context {
 	int vpl_count = -1;
 
 	load_config last_config;
+	std::optional<std::string> opt_timestamp = std::nullopt;
 
 	bool enable_denoising = false;
 	// Store albedo information for denoising. Values need to be in the range of [0, 1]. Don't forget to set albedo_valid if used.
@@ -87,14 +88,20 @@ struct render_context {
 
 		std::string timestamp = "";
 		if (add_timestamp) {
-			auto now = std::chrono::system_clock::now();
-			std::time_t t = std::chrono::system_clock::to_time_t(now);
-			std::tm tm{};
-			localtime_r(&t, &tm);
-			std::ostringstream oss;
-			oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
-			timestamp = "__" + oss.str();
-			//timestamp = std::format("{:%Y-%m-%d_%H-%M-%S}", system_clock::now());
+			if (opt_timestamp) {
+				timestamp = *opt_timestamp;
+			}
+			else {
+				auto now = std::chrono::system_clock::now();
+				std::time_t t = std::chrono::system_clock::to_time_t(now);
+				std::tm tm{};
+				localtime_r(&t, &tm);
+				std::ostringstream oss;
+				oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+				timestamp = "__" + oss.str();
+				//timestamp = std::format("{:%Y-%m-%d_%H-%M-%S}", system_clock::now());
+				opt_timestamp = timestamp;
+			}
 		}
 
 		out_name = std::regex_replace(out_name, std::regex(".png"), str.str() + timestamp + type);

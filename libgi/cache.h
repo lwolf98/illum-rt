@@ -130,6 +130,7 @@ namespace subd {
 
 				file.write(reinterpret_cast<const char*>(&sp.trafo), sizeof(sp.trafo));
 				file.write(reinterpret_cast<const char*>(&sp.proj), sizeof(sp.proj));
+				file.write(reinterpret_cast<const char*>(&sp.proj_inv), sizeof(sp.proj_inv));
 				file.write(reinterpret_cast<const char*>(&sp.root_box), sizeof(sp.root_box));
 				file.write(reinterpret_cast<const char*>(&sp.root_box_world), sizeof(sp.root_box_world));
 			}
@@ -236,6 +237,7 @@ namespace subd {
 
 				file.read(reinterpret_cast<char*>(&sp.trafo), sizeof(sp.trafo));
 				file.read(reinterpret_cast<char*>(&sp.proj), sizeof(sp.proj));
+				file.read(reinterpret_cast<char*>(&sp.proj_inv), sizeof(sp.proj_inv));
 				file.read(reinterpret_cast<char*>(&sp.root_box), sizeof(sp.root_box));
 				file.read(reinterpret_cast<char*>(&sp.root_box_world), sizeof(sp.root_box_world));
 			}
