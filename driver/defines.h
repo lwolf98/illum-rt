@@ -1,23 +1,26 @@
 #pragma once
 
-/* Configuration */
+/* --- Configuration --- */
 
-// Shade by geometry normal instead of shading normal
+/* Shade by geometry normal instead of shading normal */
 #define SHADE_BY_GEOMETRY_NORMAL
 
-// Box mid intersection
+/* Precalculation of the inverse projection matrix */
+#define PRECALC_INV_PROJ_MATRIX
+
+/* Box mid intersection */
 #define BOX_MID_INTERSECTION
 #define BOX_MID_SUPPORT_BACK_SIDE
 //#define BOX_MID_VAR_FLAT
 //#define BOX_MID_VAR_CARDBOX
 #define BOX_MID_VAR_PROJECTION
 
-// Box approximation defines
+/* Box approximation defines */
 #define BOX_APPROXIMATION
-#define PROJECTION
+//#define PROJECTION
 //#define KEEP_GEOMETRY
 
-// Compression defines
+/* Compression defines */
 //#define SLAB_COMPRESSION
 //#define Y_SLAB_COMPRESSION
 //#define HALF_SLAB_COMPRESSION
@@ -25,12 +28,12 @@
 
 #define VERTEX_EPSILON_COMPARE_FOR_OBJ_IMPORT
 
-// Debugging
+/* Debugging */
 //#define DEBUG_LOCAL_ILLUM_NORMALS_SHADING
 #define DEBUG_LOCAL_ILLUM_NORMALS_GEOMETRY
 //#define DEBUG_LOCAL_ILLUM_ALBEDO
 
-/* Calculations */
+/* --- Calculations --- */
 
 #ifndef BOX_MID_INTERSECTION
 	constexpr bool def_intersect_box_mid = false;
@@ -50,37 +53,37 @@
 
 #ifndef SLAB_COMPRESSION
 	#ifndef QUANTIZATION
-		#define COMPRESSION_VARIANT 0
+		#define COMPRESSION_VARIANT 0 // B
 	#else
-		#define COMPRESSION_VARIANT 1
+		#define COMPRESSION_VARIANT 1 // Q
 	#endif
 #else
 	#ifndef HALF_SLAB_COMPRESSION
 		#ifndef QUANTIZATION
 			#ifndef Y_SLAB_COMPRESSION
-				#define COMPRESSION_VARIANT 2
+				#define COMPRESSION_VARIANT 2 // S_C
 			#else
-				#define COMPRESSION_VARIANT 3
+				#define COMPRESSION_VARIANT 3 // S_C Z
 			#endif
 		#else
 			#ifndef Y_SLAB_COMPRESSION
-				#define COMPRESSION_VARIANT 4
+				#define COMPRESSION_VARIANT 4 // S_C Q
 			#else
-				#define COMPRESSION_VARIANT 5
+				#define COMPRESSION_VARIANT 5 // S_C Q Z
 			#endif
 		#endif
 	#else
 		#ifndef QUANTIZATION
 			#ifndef Y_SLAB_COMPRESSION
-				#define COMPRESSION_VARIANT 6
+				#define COMPRESSION_VARIANT 6 // S_H
 			#else
-				#define COMPRESSION_VARIANT 7
+				#define COMPRESSION_VARIANT 7 // S_H Z
 			#endif
 		#else
 			#ifndef Y_SLAB_COMPRESSION
-				#define COMPRESSION_VARIANT 8
+				#define COMPRESSION_VARIANT 8 // S_H Q
 			#else
-				#define COMPRESSION_VARIANT 9
+				#define COMPRESSION_VARIANT 9 // S_H Q Z
 			#endif
 		#endif
 	#endif
