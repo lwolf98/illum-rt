@@ -33,6 +33,7 @@ embedded-ptx-code.cpp
 embedded-ptx-code.ptx
 
 out_subds/
+out_profiling/
 render-data/sibenik/
 render-data/sponza/
 render-data/dragon/

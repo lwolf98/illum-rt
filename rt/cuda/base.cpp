@@ -113,7 +113,8 @@ namespace wf {
 		}
 
 		void scenedata::upload(scene *scene) {
-			std::cout << "Device upload stats:" << std::endl;
+			std::stringstream profile;
+			profile << "Device upload stats:" << std::endl;
 			uint32_t total_size = 0;
 			uint32_t part_size = 0;
 
@@ -139,7 +140,7 @@ namespace wf {
 			vertex_tc.upload(tmp_t);
 
 			part_size = 0;
-			std::cout << "Regular geometry:\n"
+			profile << "Regular geometry:\n"
 				<< "\t" << vecsize_string("Vertices", tmp_p, &part_size) << "\n"
 				<< "\t" << vecsize_string("Triangles", scene_tris, &part_size) << "\n"
 				<< "\t" << size_string("Total", part_size) << "\n"
@@ -167,7 +168,7 @@ namespace wf {
 			materials.upload(mtls);
 			
 			part_size = 0;
-			std::cout << "Scene:\n"
+			profile << "Scene:\n"
 				<< "\t" << vecsize_string("Materials", mtls, &part_size) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << mtls.size() << "\n"
@@ -283,7 +284,7 @@ namespace wf {
 			}
 
 			part_size = 0;
-			std::cout << "Patch geometry:\n"
+			profile << "Patch geometry:\n"
 				<< "\t" << vecsize_string("Patches", device_patches, &part_size) << "\n"
 				<< "\t" << vecsize_string("Subpatches", device_subpatches, &part_size) << "\n"
 				<< "\t" << vecsize_string("Patch nodes", device_nodes, &part_size) << "\n"
@@ -301,10 +302,23 @@ namespace wf {
 				<< "\t" << tmp_p.size() << "\n"
 #endif
 				<< std::endl;
-				
+
 			total_size += part_size;
-			std::cout << "Summary:\n"
+			profile << "Summary:\n"
 				<< "\t" << size_string("Total", total_size) << "\n";
+
+			std::cout << profile.str();
+			std::string outfile = "out_profiling/" + rc->outfile_full(".txt", true, true);
+			//std::cout << "Test path: " << rc->outfile_full(".txt", true) << std::endl;
+			std::cout << "Test path: " << outfile << std::endl;
+			std::ofstream out(outfile);
+			if (out) {
+				out << profile.str();
+				out.close();
+			}
+			else {
+				std::cout << "Error opening file: " << outfile << std::endl;
+			}
 
 			// load scene_refs object
 
