@@ -32,6 +32,8 @@ struct render_context {
 	bool ml_cpu_preparation = false;
 	int vpl_count = -1;
 
+	load_config last_config;
+
 	bool enable_denoising = false;
 	// Store albedo information for denoising. Values need to be in the range of [0, 1]. Don't forget to set albedo_valid if used.
 	::framebuffer framebuffer_albedo;

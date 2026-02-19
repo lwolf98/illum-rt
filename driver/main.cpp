@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <omp.h>
 #include <thread>
+#include <sstream>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/string_cast.hpp>
@@ -109,8 +110,25 @@ void run(gi_algorithm *algo) {
 	}
 
 	string out_name = cmdline.outfile;
-	if (rc->vpl_count >= 0)
-		out_name = std::regex_replace(out_name, std::regex(".png"), "_v" + std::to_string(rc->vpl_count) + ".png");
+	//if (rc->vpl_count >= 0) {
+	//	out_name = std::regex_replace(out_name, std::regex(".png"), "_v" + std::to_string(rc->vpl_count) + ".png");
+
+	//std::string append = "s" + std::to_string
+	const load_config &cfg = rc->last_config;
+	static constexpr uint32_t approx_var = APPROXIMATION_VARIANT;
+	static constexpr uint32_t comp_var = COMPRESSION_VARIANT;
+	std::stringstream str;
+	str << "_s" << cfg.subd_level;
+	str << "_a" << cfg.bvh_align_level;
+	if (cfg.subd_type_patches) {
+		str << "_A" << approx_var;
+		str << "_C" << comp_var;
+	}
+	if (cfg.displacement_strength != 0) {
+		str << "_DA" << static_cast<int32_t>(cfg.displace_action);
+		str << "_DS" << cfg.displacement_strength;
+	}
+	out_name = std::regex_replace(out_name, std::regex(".png"), str.str() + ".png");
 
 	std::cout << out_name << std::endl;
 	rc->framebuffer.png().write(out_name);

@@ -227,18 +227,18 @@ namespace import {
 					cached = subd::cache::load_model(rtgi_scene.cache_path, filename, test_cfg, cached_patches);
 					cached = cached && (cfg == test_cfg);
 				}
-				std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
-				std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
-
-				std::cout << "Vertex size: " << sizeof(vertex) << std::endl;
-				std::cout << "AABB size: " << sizeof(aabb) << std::endl;
-				std::cout << "Base node size: " << sizeof(subd::patch_base_node) << std::endl;
-				#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
-				std::cout << "Slab node size: " << sizeof(subd::patch_slab_node) << std::endl;
-				#endif
-
-				std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
-				std::cout << "Bool size: " << sizeof(bool) << std::endl;
+				//std::cout << "Patch size: " << sizeof(subd::subd_patch) << std::endl;
+				//std::cout << "Subpatch size: " << sizeof(subd::subd_subpatch) << std::endl;
+//
+				//std::cout << "Vertex size: " << sizeof(vertex) << std::endl;
+				//std::cout << "AABB size: " << sizeof(aabb) << std::endl;
+				//std::cout << "Base node size: " << sizeof(subd::patch_base_node) << std::endl;
+				//#if defined(SLAB_COMPRESSION) || defined(QUANTIZATION)
+				//std::cout << "Slab node size: " << sizeof(subd::patch_slab_node) << std::endl;
+				//#endif
+//
+				//std::cout << "Vector size: " << sizeof(std::vector<vertex>) << std::endl;
+				//std::cout << "Bool size: " << sizeof(bool) << std::endl;
 
 				if (!cached || !cfg.subd_type_patches) {
 					// Subdivide object

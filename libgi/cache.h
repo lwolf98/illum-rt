@@ -149,6 +149,7 @@ namespace subd {
 
 		inline void store_model(const load_config& config, const std::filesystem::path& cache_path, const subd::object &obj) {
 			std::cout << "Hash (store): " << hash_config(config) << std::endl;
+			std::cout << "Hex: " << hash_to_hex(hash_config(config)) << std::endl;
 			//std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(config));
 			//std::string file_name = "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
 			std::string filename = file_name(config);
@@ -327,6 +328,7 @@ namespace subd {
 				// unknown keys are ignored (forward-compatible)
 			}
 			std::cout << "Hash (load): " << hash_config(config) << std::endl;
+			std::cout << "Hex: " << hash_to_hex(hash_config(config)) << std::endl;
 
 			read_subd_patches(file, patches);
 

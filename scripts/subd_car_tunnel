@@ -6,8 +6,8 @@ cache-path /home/lukas/rtgi/cache
 
 up 0 1 0
 
-#sppx 1024
-sppx 4096
+sppx 1024
+#sppx 4096
 #sppx 10000
 #sppx 40000
 #sppx 100000
@@ -25,7 +25,8 @@ load render-data/local/models/car-track/tunnel_own_street.obj
 
 # Car
 modeltrafo shift 0 0 -3.2
-load render-data/local/models/car-track/car_base.obj subd_level 2 subd_type patches
+#load render-data/local/models/car-track/car_base.obj subd_level 2 subd_type patches
+load render-data/local/models/car-track/car_base.obj subd_level 2 align_level 1 subd_type patches
 #load render-data/local/models/car-track/car_base.obj
 material select body
 material albedo 0.014 0 0.032

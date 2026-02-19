@@ -465,6 +465,7 @@ void eval(const std::string &line) {
 		if (cfg.model_path.string() == "")
 			error("Syntax error, requires a file name");
 
+		rc->last_config = cfg;
 		scene.add(cfg);
 		uc.scene_touched_at = uc.cmdid;
 	}

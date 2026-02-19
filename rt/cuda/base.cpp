@@ -47,10 +47,12 @@ namespace wf {
 		}
 		
 		template<typename T>
-		std::string vecsize_string(const std::string &name, std::vector<T> vec) {
+		std::string vecsize_string(const std::string &name, std::vector<T> vec, uint32_t *inc_size = nullptr) {
 			uint32_t vec_size = vec.size();
 			uint32_t type_size = sizeof(T);
 			uint32_t total_size = vec_size * type_size;
+			if (inc_size)
+				*inc_size += total_size;
 			//float size_mb = total_size * 1.f/1e6;
 
 			double value = static_cast<double>(total_size);
@@ -77,9 +79,43 @@ namespace wf {
 
 			return sstr.str();
 		}
+		
+		std::string size_string(const std::string &name, uint32_t total_size) {
+			//uint32_t vec_size = vec.size();
+			//uint32_t type_size = sizeof(T);
+			//uint32_t total_size = vec_size * type_size;
+			//if (out_size)
+			//	*out_size = total_size;
+
+			double value = static_cast<double>(total_size);
+			const char* unit = "B";
+			uint32_t prec = 0;
+
+			if (total_size >= 1'000'000) {
+				value /= 1e6;
+				unit = "MB";
+				prec = 3;
+			}
+			else if (total_size >= 1'000) {
+				value /= 1e3;
+				unit = "kB";
+				prec = 3;
+			}
+
+			std::stringstream sstr;
+			sstr << std::left << std::setw(20) << (name + ":") << std::right
+				 << "Count: " << std::setw(8) << 1
+				 << " | Item size: " << std::setw(4) << 0 << " B"
+				 << " | Total size: " << std::setw(8)
+				 << std::fixed << std::setprecision(prec) << value << " " << unit;
+
+			return sstr.str();
+		}
 
 		void scenedata::upload(scene *scene) {
 			std::cout << "Device upload stats:" << std::endl;
+			uint32_t total_size = 0;
+			uint32_t part_size = 0;
 
 			vector<uint4> scene_tris;
 			scene_tris.reserve(scene->triangles.size());
@@ -102,13 +138,16 @@ namespace wf {
 			vertex_norm.upload(tmp_n);
 			vertex_tc.upload(tmp_t);
 
+			part_size = 0;
 			std::cout << "Regular geometry:\n"
-				<< "\t" << vecsize_string("Vertices", tmp_p) << "\n"
-				<< "\t" << vecsize_string("Triangles", scene_tris) << "\n"
+				<< "\t" << vecsize_string("Vertices", tmp_p, &part_size) << "\n"
+				<< "\t" << vecsize_string("Triangles", scene_tris, &part_size) << "\n"
+				<< "\t" << size_string("Total", part_size) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << tmp_p.size() << "\n"
 				<< "\t" << scene_tris.size() << "\n"
 				<< std::endl;
+			total_size += part_size;
 
 			auto f4 = [](const vec3 &v) { return float4{ v.x, v.y, v.z, 0 }; };
 			vector<material> mtls(scene->materials.size());
@@ -127,11 +166,13 @@ namespace wf {
 			}
 			materials.upload(mtls);
 			
+			part_size = 0;
 			std::cout << "Scene:\n"
-				<< "\t" << vecsize_string("Materials", mtls) << "\n"
+				<< "\t" << vecsize_string("Materials", mtls, &part_size) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << mtls.size() << "\n"
 				<< std::endl;
+			total_size += part_size;
 
 			// SubD patches
 			vector<subd_patch> device_patches(scene->patches.size());
@@ -241,14 +282,16 @@ namespace wf {
 #endif
 			}
 
+			part_size = 0;
 			std::cout << "Patch geometry:\n"
-				<< "\t" << vecsize_string("Patches", device_patches) << "\n"
-				<< "\t" << vecsize_string("Subpatches", device_subpatches) << "\n"
-				<< "\t" << vecsize_string("Patch nodes", device_nodes) << "\n"
-				<< "\t" << vecsize_string("Patch root boxes", device_root_boxes) << "\n"
+				<< "\t" << vecsize_string("Patches", device_patches, &part_size) << "\n"
+				<< "\t" << vecsize_string("Subpatches", device_subpatches, &part_size) << "\n"
+				<< "\t" << vecsize_string("Patch nodes", device_nodes, &part_size) << "\n"
+				<< "\t" << vecsize_string("Patch root boxes", device_root_boxes, &part_size) << "\n"
 #if !defined(BOX_APPROXIMATION) || defined(KEEP_GEOMETRY)
-				<< "\t" << vecsize_string("Patch vertices", tmp_p) << "\n"
+				<< "\t" << vecsize_string("Patch vertices", tmp_p, &part_size) << "\n"
 #endif
+				<< "\t" << size_string("Total", part_size) << "\n"
 				<< "\t" << "Copy:\n"
 				<< "\t" << device_patches.size() << "\n"
 				<< "\t" << device_subpatches.size() << "\n"
@@ -258,6 +301,10 @@ namespace wf {
 				<< "\t" << tmp_p.size() << "\n"
 #endif
 				<< std::endl;
+				
+			total_size += part_size;
+			std::cout << "Summary:\n"
+				<< "\t" << size_string("Total", total_size) << "\n";
 
 			// load scene_refs object
 
