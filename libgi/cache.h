@@ -81,7 +81,11 @@ namespace subd {
 
 		inline std::string file_name(const load_config &config) {
 			std::string hash = subd::cache::hash_to_hex(subd::cache::hash_config(config));
-			return "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + "_" + hash + ".cache";
+			std::string precalc_inv_proj = "";
+			#ifdef PRECALC_INV_PROJ_MATRIX
+				precalc_inv_proj = "_PRE";
+			#endif
+			return "subd_app" + std::to_string(approx_var) + "_comp" + std::to_string(comp_var) + precalc_inv_proj + "_" + hash + ".cache";
 		}
 
 		inline void write_subd_patch(std::ostream& file, const subd_patch& p)
