@@ -33,6 +33,9 @@
 #define DEBUG_LOCAL_ILLUM_NORMALS_GEOMETRY
 //#define DEBUG_LOCAL_ILLUM_ALBEDO
 
+/* Profiling Flags */
+//#define PROF_INCLUDE_PREPROCESSING
+
 /* --- Calculations --- */
 
 #ifndef BOX_MID_INTERSECTION

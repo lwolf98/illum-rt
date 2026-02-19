@@ -159,7 +159,9 @@ namespace subd {
 
 	// Load from Assimp
 	void object::init_object(aiMesh *mesh_ai, const crease_mapping &obj_crease_mapping) {
+		#ifdef PROF_INCLUDE_PREPROCESSING
 		time_this_block(init_object);
+		#endif
 
 		// Meta data
 		mesh.has_normals = mesh_ai->HasNormals();
@@ -228,7 +230,9 @@ namespace subd {
 	// Load from USD with OpenUSD
 	void object::init_object(const pxr::UsdGeomMesh &usd_mesh) {
 		using namespace pxr;
+		#ifdef PROF_INCLUDE_PREPROCESSING
 		time_this_block(init_object);
+		#endif
 
 		// Meta data
 		mesh.has_normals = false; //TODO //mesh_ai->HasNormals();
@@ -421,7 +425,9 @@ namespace subd {
 	/* mesh implementation */
 
 	void mesh::update(bool clear) {
+		#ifdef PROF_INCLUDE_PREPROCESSING
 		time_this_block(mesh_update);
+		#endif
 		if (clear) {
 			edges.clear();
 			for (auto &v : vertices) {
@@ -487,7 +493,9 @@ namespace subd {
 		vector<vec3> face_vertices;
 		int32_t f1 = 0;
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(calc_face_verts);
+			#endif
 			for (uint i = 0; i < faces.size(); i++) {
 				face& f = faces[i];
 				vec3 f_new(0);
@@ -504,7 +512,9 @@ namespace subd {
 		}
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(assign_edge_creases);
+			#endif
 			// Assign edge crease sharpness
 			auto crease_it = creases.iterator();
 			for (int i = 0; i < creases.size(); i++) {
@@ -516,7 +526,9 @@ namespace subd {
 
 		vector<vec3> edge_vertices;
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(calc_cur_edge_verts);
+			#endif
 			// Calculate current edge vertices
 			auto edge_it = edges.iterator();
 			for (int i = 0; i < edges.size(); i++) {
@@ -535,7 +547,9 @@ namespace subd {
 
 		vector<vec3> e_news;
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(calc_edge_verts);
+			#endif
 			// Calculate new edge vertices
 			auto edge_it = edges.iterator();
 			for (int i = 0; i < edges.size(); i++) {
@@ -564,7 +578,9 @@ namespace subd {
 
 		vector<vec3> v_news;
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(calc_vertex_verts);
+			#endif
 			// Calculate new vertex points
 			for (uint i = 0; i < vertices.size(); i++) {
 				ctrl_vertex &v = vertices[i];
@@ -622,7 +638,9 @@ namespace subd {
 		vertices.clear();
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(assign_verts);
+			#endif
 			// Assign vertices
 			{
 				for (uint i = 0; i < old_vertices; i++) {
@@ -638,7 +656,9 @@ namespace subd {
 		}
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(assign_faces);
+			#endif
 			// Assign faces
 			normals.clear();
 			for (uint i = 0; i < faces.size(); i++) {
@@ -869,7 +889,9 @@ namespace subd {
 		}
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(cleanup);
+			#endif
 
 			// Propagate new crease values
 			creases.clear();
@@ -903,7 +925,9 @@ namespace subd {
 	}
 
 	void mesh::update_topology() {
+		//#ifdef PROF_INCLUDE_PREPROCESSING
 		//time_this_block(topology);
+		//#endif
 
 		// Pass 1: Calculate edges
 
@@ -913,7 +937,9 @@ namespace subd {
 		// 1. Edge collection (Map, parallel)
 		vector<vector<edge>> buckets(faces.size());
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_edge_collect);
+			#endif
 
 			#pragma omp parallel for
 			for (uint i = 0; i < faces.size(); i++) {
@@ -930,7 +956,9 @@ namespace subd {
 		// 2. Flatten/Group edge buckets (serial)
 		vector<edge> merged;
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_merge);
+			#endif
 
 			uint32_t merged_size = 0;
 
@@ -944,7 +972,9 @@ namespace subd {
 
 		// 3. Shuffle/Sort edges by key (possibly parallel)
 		/*{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_sort);
+			#endif
 			std::sort(merged.begin(), merged.end(), [](const edge &a, const edge &b) {
 				uint64_t val_a = ((uint64_t)a.v1 << 32) | a.v2;
 				uint64_t val_b = ((uint64_t)b.v1 << 32) | b.v2;
@@ -954,7 +984,9 @@ namespace subd {
 
 		// 4. Reduce edges (serial, possibly parallel?)
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_reduce);
+			#endif
 			
 			auto it = merged.begin();
 			while (it != merged.end()) {
@@ -973,7 +1005,9 @@ namespace subd {
 		}*/
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_reduce_compact);
+			#endif
 
 			for (int i = 0; i < merged.size(); i++) {
 				const edge &e = merged[i];
@@ -991,7 +1025,9 @@ namespace subd {
 		// Pass 2: Update vertices
 
 		{
+			#ifdef PROF_INCLUDE_PREPROCESSING
 			time_this_block(topology_vertices);
+			#endif
 
 			for (uint i = 0; i < faces.size(); i++) {
 				face& f = faces[i];
