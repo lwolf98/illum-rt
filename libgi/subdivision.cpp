@@ -595,7 +595,7 @@ namespace subd {
 					vec3 e1 = calc_sharp_edge_vertex(*sharp_edges[0]);
 					vec3 e2 = calc_sharp_edge_vertex(*sharp_edges[1]);
 					// TODO: which weight to use? (compare literature, blender, etc.)
-					//v_new = 1.f/8 * (6.f * v.v + e1 + e2);
+					//v_new = 1.f/8 * (6.f * v.pos + e1 + e2);
 					v_new = 1.f/4 * (2.f * v.pos + e1 + e2);
 				}
 				else {

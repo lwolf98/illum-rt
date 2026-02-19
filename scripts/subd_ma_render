@@ -1,0 +1,102 @@
+#omp off
+
+up 0 1 0
+
+#sppx 128
+sppx 1024
+#sppx 400000
+resolution 960 540
+#resolution 1920 1200
+
+default-brdf layered-gtr2
+
+# Plane light
+#load render-data/light/plane_sky.obj
+#material select Light
+#material emissive 2 2 2
+
+# Dome light
+#load render-data/light/dome_light.obj
+#material select Dome
+#material emissive 1 1 1
+
+# Environment
+#load render-data/light/dome_sky.obj
+#load render-data/local/models/playground/plane_sand.obj
+
+# Scene
+#load render-data/local/models/playground/playground.obj
+
+# -----
+
+load render-data/local/models/render_models/angled_light.obj
+#load render-data/local/models/render_models/white_wall.obj
+#load render-data/local/models/render_models/open_cube.obj subd_level 4 align_level 3
+#load render-data/local/models/render_models/open_cube.usda subd_level 6 align_level 5
+load render-data/local/models/render_models/closed_cube.usda subd_level 6 align_level 5
+at -2.86028 1.79994 1.13928
+look 0.876589 -0.294839 -0.380343
+at -2.42696 1.82888 0.161744
+look 0.89224 -0.418761 -0.168958
+
+# -----
+
+# Cartoon dragon
+#load render-data/local/models/playground/dragon_pg.obj
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace random strength 0.02
+#load render-data/local/models/playground/dragon_pg.obj subd_level 3 subd_type tris displace render-data/displace/map1.png strength 0.6
+
+## Displaced plane
+#modeltrafo shift 0 1 0
+#modeltrafo shift 2 0 0
+##load render-data/displace/magic_plane.obj
+#modeltrafo shift -2 0 0
+##load render-data/displace/magic_plane.obj subd_level 8 subd_type tris displace render-data/displace/map1.png strength 0.7
+##load render-data/displace/magic_plane.obj subd_level 8 subd_type tris displace render-data/displace/map2.png strength 0.5
+#modeltrafo shift 0 -1 0
+
+## Displaced cube
+##load render-data/displace/cube.obj subd_level 4 subd_type tris displace render-data/displace/map2.png strength 2
+#load render-data/displace/cube.obj subd_level 6 subd_type patches displace random_out strength 0.7
+##load render-data/displace/cube.obj subd_level 3
+
+#load render-data/displace/cube.usda
+#load render-data/displace/cube.usda subd_level 4 subd_type patches displace render-data/displace/map2.png strength 0.5
+#load render-data/displace/cube.usda subd_level 4 subd_type tris displace random strength 1
+
+#load render-data/displace/test_cube.usda
+
+#material select body
+#material albedo 0 0.215 0.047
+#material select eye_white
+#material albedo 0.2 0.2 0.2
+#material select teeth_white
+#material albedo 0.2 0.2 0.2
+#material select mouth
+#material albedo 0.107 0.025 0.023
+
+# CPU Direct
+raytracer subd-naive-bvh
+#algo primary
+#algo direct/mis
+algo direct
+is light
+outfile out_subds/playground_direct_cpu.png
+commit
+
+# WF GPU Direct
+#platform cuda
+#raytracer optix
+#add-scene-step build accel struct
+##algo primary-wf
+##outfile out_subds/playground_primary_cuda.png
+#algo direct-wf
+##is mis
+#is light
+##is cosine
+##algo manylight-wf
+##is mis paths 128 length 10 g 0.00001
+#outfile out_subds/ma_render/crease_weights_mine.png
+#commit
+
+run

@@ -26,15 +26,17 @@ default-brdf layered-gtr2
 #material emissive 1 1 1
 
 # Environment
-load render-data/light/dome_sky.obj
-load render-data/local/models/playground/plane_sand.obj
+#load render-data/light/dome_sky.obj
+#load render-data/local/models/playground/plane_sand.obj
+
+load render-data/local/models/sibenik/sibenik.obj
 
 # Scene
 #load render-data/local/models/playground/playground.obj
 
 #load render-data/local/models/opensubdiv/test/opensubdiv_car.obj subd_level 3
 #load render-data/local/models/opensubdiv/test/opensubdiv_car_chrome.obj subd_level 3
-load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 3 align_level 2
+#load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 3 align_level 2
 #load render-data/local/models/opensubdiv/test/opensubdiv_car.objx subd_level 5 subd_type tris
 material select car_body
 #material albedo 0.014 0 0.032
@@ -53,9 +55,16 @@ material albedo 0.107 0.025 0.023
 #load render-data/local/models/opensubdiv/base_objx/catmark_car.objx subd_level 3
 #load render-data/local/models/opensubdiv/base_objx/catmark_cube_creases1.objx subd_level 4
 
-load render-data/local/models/opensubdiv/base_objx/catmark_bishop.objx subd_level 3 align_level 2
-load render-data/local/models/opensubdiv/base_objx/catmark_pawn.objx subd_level 3 align_level 2
-load render-data/local/models/opensubdiv/base_objx/catmark_rook.objx subd_level 3 align_level 2
+
+load render-data/checkerpots/checkerpots.obj
+
+#load render-data/local/models/opensubdiv/base_objx/catmark_bishop.objx subd_level 3 align_level 2
+#load render-data/local/models/opensubdiv/base_objx/catmark_pawn.objx subd_level 3 align_level 2
+#load render-data/local/models/opensubdiv/base_objx/catmark_rook.objx subd_level 3 align_level 2
+
+load render-data/local/models/opensubdiv/test/opensubdiv_chess_bishop.objx subd_level 3 align_level 2
+load render-data/local/models/opensubdiv/test/opensubdiv_chess_pawn.objx subd_level 3 align_level 2
+load render-data/local/models/opensubdiv/test/opensubdiv_chess_rook.objx subd_level 3 align_level 2
 
 
 #Pos OpenSubdiv Car
@@ -74,6 +83,10 @@ at 3.45763 -0.539758 1.76516
 look -0.739658 -0.369544 -0.562444
 #at 0.90729 -1.67368 0.766342
 #look -0.861298 -0.500292 0.088736
+
+#Pos Sibenik roof checker
+#at 3.87351 0.503639 -1.1574
+#look 0.801802 -0.203691 -0.561804
 
 ## CPU Direct
 #raytracer subd-naive-bvh
