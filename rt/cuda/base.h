@@ -542,6 +542,9 @@ namespace wf {
 			mat3 trafo;
 #ifdef PROJECTION
 			mat3 proj;
+	#ifdef PRECALC_INV_PROJ_MATRIX
+			mat3 proj_inv;
+	#endif
 #endif
 			uint32_t bvh_node_offset;
 			uint32_t subd_level;
@@ -701,7 +704,11 @@ namespace wf {
 			}
 
 			float3 __forceinline__ __device__ projected_to_oriented(const float3 &p) const {
+	#ifdef PRECALC_INV_PROJ_MATRIX
+				return project(p, proj_inv);
+	#else
 				return project(p, proj.inverse());
+	#endif
 			}
 		private:
 			static __forceinline__ __device__ float3 project(const float3 &a, const mat3 &P) {

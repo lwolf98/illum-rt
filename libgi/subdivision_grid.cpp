@@ -272,7 +272,11 @@ glm::vec3 subd_subpatch::oriented_to_projected(const glm::vec3 &p) const {
 }
 
 glm::vec3 subd_subpatch::projected_to_oriented(const glm::vec3 &p) const {
-	return project(p, inverse(proj));
+	#ifdef PRECALC_INV_PROJ_MATRIX
+		return project(p, proj_inv);
+	#else
+		return project(p, inverse(proj));
+	#endif
 }
 #endif
 
@@ -316,6 +320,9 @@ void subd_subpatch::build_bvh(const subd_patch *parent, bool debug) {
 	target.emplace_back(1.f, -1.f);
 	target.emplace_back(1.f, 1.f);
 	proj = compute_homography(input, target) * proj;
+	#ifdef PRECALC_INV_PROJ_MATRIX
+	proj_inv = inverse(proj);
+	#endif
 	//subpatch_bounds.min.x = -1.f, subpatch_bounds.min.z = -1.f;
 	//subpatch_bounds.max.x = 1.f, subpatch_bounds.max.z = 1.f;
 #endif

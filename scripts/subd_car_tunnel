@@ -1,5 +1,9 @@
 #omp off
 
+caching off
+
+cache-path /home/lukas/rtgi/cache
+
 up 0 1 0
 
 #sppx 1024
@@ -23,18 +27,17 @@ load render-data/local/models/car-track/tunnel_own_street.obj
 modeltrafo shift 0 0 -3.2
 load render-data/local/models/car-track/car_base.obj subd_level 2 subd_type patches
 #load render-data/local/models/car-track/car_base.obj
-load render-data/local/models/car-track/car_tires.obj
-modeltrafo shift 0 0 3.2
-
-# Alter materials
 material select body
 material albedo 0.014 0 0.032
-material select Front_Tire
-material albedo 0.1 0.1 0.1
-material roughness 1
-material select Front_Tire.001
-material albedo 0.1 0.1 0.1
-material roughness 1
+
+#load render-data/local/models/car-track/car_tires.obj
+#material select Front_Tire
+#material albedo 0.1 0.1 0.1
+#material roughness 1
+#material select Front_Tire.001
+#material albedo 0.1 0.1 0.1
+#material roughness 1
+modeltrafo shift 0 0 3.2
 
 ## Pos Car Track
 # Car front:
@@ -69,7 +72,7 @@ look 0.809302 -0.146835 -0.568743
 #path len 10
 #outfile out_subds/car_pt_cpu.png
 
-# WF GPU Direct
+# WF GPU
 platform cuda
 raytracer optix
 add-scene-step build accel struct
@@ -77,18 +80,9 @@ add-scene-step build accel struct
 #outfile out_subds/car_primary_cuda.png
 algo direct-wf
 is uniform
+#algo manylight-wf
+#is light paths 4096 length 10 g 0.00001
 outfile out_subds/car_direct_cuda.png
-commit
-
-# WF setup ML
-platform cuda
-raytracer optix
-add-scene-step build accel struct
-algo manylight-wf
-is light paths 4096 length 10 g 0.00001
-#is light paths 4096 length 10 g 0.00001 vps 1
-#is light paths 512 length 10 g 0.00001 vps 1
-outfile out_subds/car_ml_cuda.png
 commit
 
 run

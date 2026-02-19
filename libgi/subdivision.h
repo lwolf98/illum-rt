@@ -166,6 +166,9 @@ namespace subd {
 //#ifdef PROJECTION // [CACHE] leave in for simplicity
 		glm::mat3 proj;
 //#endif
+#if defined(PROJECTION) && defined(PRECALC_INV_PROJ_MATRIX)
+		glm::mat3 proj_inv;
+#endif
 		aabb root_box;
 		aabb root_box_world; // TODO/TMP: this is only required for passing to GPU -> delete and calculate box index from parent where needed
 		uint32_t subd_level;

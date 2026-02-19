@@ -169,6 +169,9 @@ namespace wf {
 					device_subpatch.trafo = mat3::from(subpatch.trafo);
 #ifdef PROJECTION
 					device_subpatch.proj = mat3::from(subpatch.proj);
+	#ifdef PRECALC_INV_PROJ_MATRIX
+					device_subpatch.proj_inv = mat3::from(subpatch.proj_inv);
+	#endif
 #endif
 					device_subpatch.subd_level = subpatch.subd_level;
 #ifdef BOX_APPROXIMATION

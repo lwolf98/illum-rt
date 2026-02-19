@@ -171,14 +171,14 @@ namespace wf {
 		void prepare_data() override {
 			int i = 0;
 			for (auto *s : data_reset_steps) {
-				raii_timer raii_timer__test_timer("p_da_" + s->get_id(), stats_timer);
+				raii_timer raii_timer__test_timer("P_DA_" + s->get_id(), stats_timer);
 				s->run();
 			}
 		}
 		void prepare_frame() override {
 			wavefront_algorithm::prepare_frame();
 			for (auto *s : frame_preparation_steps) {
-				raii_timer raii_timer__test_timer("p_fr_" + s->get_id(), stats_timer);
+				raii_timer raii_timer__test_timer("P_FR_" + s->get_id(), stats_timer);
 				s->run();
 			}
 		}
@@ -186,7 +186,7 @@ namespace wf {
 			if (current_sample_index >= rc->sppx) return false;
 			current_sample_index++;
 			for (auto *step : sampling_steps) {
-				raii_timer raii_timer__test_timer("intg_" + step->get_id(), stats_timer);
+				raii_timer raii_timer__test_timer("INTG_" + step->get_id(), stats_timer);
 				step->run();
 			}
 			rc->platform->timer->synchronize();
