@@ -12,11 +12,21 @@ make clean && make -j && cp driver/rtgi rtgi_app2_comp7_SH_Z
 make clean && make -j && cp driver/rtgi rtgi_app2_comp8_SH_Q
 make clean && make -j && cp driver/rtgi rtgi_app2_comp9_SH_Q_Z
 
-make clean && make -j && cp driver/rtgi rtgi_app1_comp9_SH_Q_Z
-
 make clean && make -j && cp driver/rtgi rtgi_app2_comp9_SH_Q_Z_ng
 make clean && make -j && cp driver/rtgi rtgi_app2_comp9_SH_Q_Z_iproj
 make clean && make -j && cp driver/rtgi rtgi_app2_comp9_SH_Q_Z_ng_iprog
+
+
+make clean && make -j && cp driver/rtgi rtgi_app1_comp0_B
+make clean && make -j && cp driver/rtgi rtgi_app1_comp1_Q
+make clean && make -j && cp driver/rtgi rtgi_app1_comp2_SC
+make clean && make -j && cp driver/rtgi rtgi_app1_comp3_SC_Z
+make clean && make -j && cp driver/rtgi rtgi_app1_comp4_SC_Q
+make clean && make -j && cp driver/rtgi rtgi_app1_comp5_SC_Q_Z
+make clean && make -j && cp driver/rtgi rtgi_app1_comp6_SH
+make clean && make -j && cp driver/rtgi rtgi_app1_comp7_SH_Z
+make clean && make -j && cp driver/rtgi rtgi_app1_comp8_SH_Q
+make clean && make -j && cp driver/rtgi rtgi_app1_comp9_SH_Q_Z
 
 
 
