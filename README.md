@@ -1,5 +1,13 @@
 # RTGI -- Ray Tracing & Global Illumination Framework
 
+## Overview
+
+This ray tracing framework is provided by Kai Selgrad ([kiselgra](https://github.com/kiselgra), [rtgi repository](https://github.com/kiselgra/rtgi)). The base framework is represented in the [master branch](https://github.com/lwolf98/illum-rt/tree/master). 
+
+Contributions of a research project regarding subdivision surfaces in the context of ray tracing and the master's thesis "Ray Tracing of Compressed Subdivision Surfaces with Displacement on the GPU using OptiX" are provided in branch [subd/ma/slm16](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16) and can be reviewed in this [pull request](https://github.com/lwolf98/illum-rt/pull/1).
+
+Contributions the bachelor's thesis "GPU-gestützte Approximation globaler Beleuchtung mittels virtueller Punktlichtquellen" are provided in branch [manylight/ba/strided](https://github.com/lwolf98/illum-rt/tree/manylight/ba/strided) and can be reviewed in this [pull request](https://github.com/lwolf98/illum-rt/pull/2).
+
 ## Stand der Dinge
 
 Der Code wird stabiler, aber nach wie vor sind nicht alle Aspekte perfekt durchdacht und die Aufteilung des Codes (insb. entkopplung durch Plugins) weder sehr gut, noch final.
