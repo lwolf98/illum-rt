@@ -8,6 +8,30 @@ Contributions of a research project regarding subdivision surfaces in the contex
 
 Contributions of the bachelor's thesis "GPU-gestützte Approximation globaler Beleuchtung mittels virtueller Punktlichtquellen" are provided in branch [manylight/ba/strided](https://github.com/lwolf98/illum-rt/tree/manylight/ba/strided) and can be reviewed in this [pull request](https://github.com/lwolf98/illum-rt/pull/2).
 
+## Repository structure
+
+- [driver](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/driver)
+    - [**defines.h**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/driver/defines.h) - Enable/Disable features for subdivision surface compression
+    - [interaction.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/driver/interaction.cpp) - CLI setup
+- [gi](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/gi) - Ray tracing algorithms
+    - [direct.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.h) / [direct.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.cpp)
+    - [pt.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.h) / [pt.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.cpp)
+    - [manylight.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.h) / [manylight.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.cpp)
+- [libgi](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/libgi) - Central rendering library
+    - [**subdivision.h**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision.h) - Definition of classes and structures related to subdivision surfaces
+    - [**subdivision.cpp**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision.cpp) - Implementation of the Catmull-Clark subdivision surface algorithm
+    - [**subdivision_nodes.h**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision_nodes.h) - Compressed BVH node layouts used with subdivision surfaces
+    - [**subdivision_grid.cpp**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision_grid.cpp) - Implementation of structures for BVH compression used with subdivision surfaces
+    - [subdivision-helper.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision-helper.h) - Helper functionality independent of platform (CPU/CUDA/OptiX)
+    - [scene.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/scene.h) / [scene.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/scene.cpp) - The central scene class
+- [rt](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/rt) - Platform code for wavefront-styled ray tracing
+    - [cpu](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/rt/cpu) - CPU kernels
+        - [subd_bvh.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cpu/subd_bvh.h) / [**subd_bvh.cpp**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cpu/subd_bvh.cpp) - CPU traversal of the compressed BVH (for subdivision surfaces)
+    - [cuda](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/rt/cuda) - CUDA/OptiX kernels
+        - [**optix-kernels.cu**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cuda/optix-kernels.cu) - OptiX traversal of the compressed BVH (for subdivision surfaces)
+        - [bounce.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cuda/bounce.h) / [bounce.cu](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cuda/bounce.cu) - CUDA/OptiX-supported direct illumination
+        - [manylight.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cuda/manylight.h) / [manylight.cu](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/rt/cuda/manylight.cu) - CUDA/OptiX-supported Manylight (global illumination)
+
 ## Stand der Dinge
 
 Der Code wird stabiler, aber nach wie vor sind nicht alle Aspekte perfekt durchdacht und die Aufteilung des Codes (insb. entkopplung durch Plugins) weder sehr gut, noch final.
