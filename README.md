@@ -10,13 +10,15 @@ Contributions of the bachelor's thesis "GPU-gestützte Approximation globaler Be
 
 ## Repository structure
 
+This tree gives an overview of central files and directories of the repository. Highlighted files are especially relevant for subdivision surface processing.
+
 - [driver](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/driver)
     - [**defines.h**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/driver/defines.h) - Enable/Disable features for subdivision surface compression
     - [interaction.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/driver/interaction.cpp) - CLI setup
 - [gi](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/gi) - Ray tracing algorithms
-    - [direct.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.h) / [direct.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.cpp)
-    - [pt.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.h) / [pt.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.cpp)
-    - [manylight.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.h) / [manylight.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.cpp)
+    - [direct.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.h) / [direct.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/direct.cpp) - Direct illumination setup and CPU implementation
+    - [pt.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.h) / [pt.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/pt.cpp) - Path tracing (global illumination) setup and CPU implementation
+    - [manylight.h](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.h) / [manylight.cpp](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/gi/manylight.cpp) - Manylight (global illumination) setup and CPU implementation
 - [libgi](https://github.com/lwolf98/illum-rt/tree/subd/ma/slm16/libgi) - Central rendering library
     - [**subdivision.h**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision.h) - Definition of classes and structures related to subdivision surfaces
     - [**subdivision.cpp**](https://github.com/lwolf98/illum-rt/blob/subd/ma/slm16/libgi/subdivision.cpp) - Implementation of the Catmull-Clark subdivision surface algorithm
